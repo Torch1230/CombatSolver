@@ -97,47 +97,84 @@ impl Dec {
     }
 
     /// C# `Math.Round(d, dp, MidpointRounding.ToEven)`.
-    #[inline]
+    #[inline(always)]
     pub fn round_to_even(self, dp: u32) -> Self {
+        if self.0.scale() <= dp {
+            return self;
+        }
         Self(self.0.round_dp_with_strategy(dp, RoundingStrategy::MidpointNearestEven))
     }
 
     /// C# `Math.Floor(d)`.
-    #[inline]
+    #[inline(always)]
     pub fn floor(self) -> Self {
+        if self.0.scale() == 0 {
+            return self;
+        }
         Self(self.0.floor())
     }
 
     /// C# `Math.Ceiling(d)`.
-    #[inline]
+    #[inline(always)]
     pub fn ceil(self) -> Self {
+        if self.0.scale() == 0 {
+            return self;
+        }
         Self(self.0.ceil())
     }
 
     /// C# `Math.Truncate(d)` / `decimal.Truncate(d)`.
-    #[inline]
+    #[inline(always)]
     pub fn trunc(self) -> Self {
+        if self.0.scale() == 0 {
+            return self;
+        }
         Self(self.0.trunc())
     }
 
     /// Exact match for C# `(int)decimal` (truncates toward zero, errors on overflow).
-    #[inline]
+    #[inline(always)]
     pub fn to_i32_trunc(self) -> Result<i32, DecError> {
+        if self.0.scale() == 0 {
+            return i32::try_from(self.0.mantissa()).map_err(|_| DecError::Overflow);
+        }
         self.0.trunc().to_i32().ok_or(DecError::Overflow)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn checked_add(self, rhs: Self) -> Result<Self, DecError> {
+        if self.0.scale() == 0 && rhs.0.scale() == 0 {
+            let res = self.0.mantissa().wrapping_add(rhs.0.mantissa());
+            let abs = res.unsigned_abs();
+            if abs <= u32::MAX as u128 {
+                return Ok(Self(Decimal::from_parts(abs as u32, 0, 0, res < 0, 0)));
+            }
+        }
         self.0.checked_add(rhs.0).map(Self).ok_or(DecError::Overflow)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn checked_sub(self, rhs: Self) -> Result<Self, DecError> {
+        if self.0.scale() == 0 && rhs.0.scale() == 0 {
+            let res = self.0.mantissa().wrapping_sub(rhs.0.mantissa());
+            let abs = res.unsigned_abs();
+            if abs <= u32::MAX as u128 {
+                return Ok(Self(Decimal::from_parts(abs as u32, 0, 0, res < 0, 0)));
+            }
+        }
         self.0.checked_sub(rhs.0).map(Self).ok_or(DecError::Overflow)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn checked_mul(self, rhs: Self) -> Result<Self, DecError> {
+        if self.0.scale() == 0 && rhs.0.scale() == 0 {
+            if let Some(res) = self.0.mantissa().checked_mul(rhs.0.mantissa()) {
+                let abs = res.unsigned_abs();
+                if abs <= u32::MAX as u128 {
+                    return Ok(Self(Decimal::from_parts(abs as u32, 0, 0, res < 0, 0)));
+                }
+            }
+        }
         self.0.checked_mul(rhs.0).map(Self).ok_or(DecError::Overflow)
     }
 
@@ -255,6 +292,25 @@ mod tests {
             Dec::MAX_VALUE.to_i32_trunc(),
             Err(DecError::Overflow)
         );
+        assert_eq!(Dec::from_i32(i32::MAX).to_i32_trunc(), Ok(i32::MAX));
+        assert_eq!(Dec::from_i32(i32::MIN).to_i32_trunc(), Ok(i32::MIN));
+        assert_eq!(
+            Dec::from_i64(i32::MAX as i64 + 1).to_i32_trunc(),
+            Err(DecError::Overflow)
+        );
+        assert_eq!(
+            Dec::from_i64(i32::MIN as i64 - 1).to_i32_trunc(),
+            Err(DecError::Overflow)
+        );
+        assert_eq!(Dec::from_i32(i32::MAX).checked_add(Dec::ONE), Ok(Dec::from_i64(i32::MAX as i64 + 1)));
+        assert_eq!(Dec::from_i32(-5).checked_sub(Dec::from_i32(7)), Ok(Dec::from_i32(-12)));
+        assert_eq!(Dec::from_i32(-5).checked_mul(Dec::from_i32(-7)), Ok(Dec::from_i32(35)));
+        assert_eq!(Dec::from_parts(250, 2).unwrap().to_i32_trunc(), Ok(2));
+        assert_eq!(Dec::from_parts(-299, 2).unwrap().to_i32_trunc(), Ok(-2));
+        assert_eq!(Dec::from_i32(7).trunc(), Dec::from_i32(7));
+        assert_eq!(Dec::from_i32(-7).floor(), Dec::from_i32(-7));
+        assert_eq!(Dec::from_i32(-7).ceil(), Dec::from_i32(-7));
+        assert_eq!(Dec::from_parts(25, 1).unwrap().round_to_even(1), Dec::from_parts(25, 1).unwrap());
     }
 
     #[test]

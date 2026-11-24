@@ -23,6 +23,7 @@ pub fn remove_slots(state: &mut BattleState, amount: i32) {
     state.player.orb_capacity = (state.player.orb_capacity - amount).max(0);
     while (state.player.orbs.len() as i32) > state.player.orb_capacity {
         state.player.orbs.pop();
+        state.invalidate_orb_hooks();
     }
 }
 
@@ -47,6 +48,7 @@ pub fn channel(
             raw_evoke_value: None,
             raw_passive_value: None,
         });
+        state.invalidate_orb_hooks();
         state.record_orb_channel(orb_id);
         hooks::after_orb_channeled(state, content, orb_id)?;
     }
@@ -89,6 +91,7 @@ fn evoke_at(
     let targets = content.orb_evoke(state, idx)?;
     if dequeue && idx < state.player.orbs.len() {
         state.player.orbs.remove(idx);
+        state.invalidate_orb_hooks();
     }
     hooks::after_orb_evoked(state, content, orb_id, &targets)?;
     Ok(())

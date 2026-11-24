@@ -28,6 +28,10 @@ pub fn try_to_procure(
         return Ok(false);
     };
     state.player.potion_slots[empty_slot] = Some(potion_id);
+    if empty_slot < 16 {
+        state.player.combat_generated_potion_mask |= 1u16 << empty_slot;
+    }
+    state.invalidate_potion_hooks();
     hooks::after_potion_procured(state, content, potion_id)?;
     Ok(true)
 }
@@ -48,6 +52,10 @@ pub fn discard_potion(
         )));
     };
     state.player.potion_slots[potion_slot] = None;
+    if potion_slot < 16 {
+        state.player.combat_generated_potion_mask &= !(1u16 << potion_slot);
+    }
+    state.invalidate_potion_hooks();
     hooks::after_potion_discarded(state, content, potion_id)
 }
 
@@ -91,6 +99,10 @@ fn use_internal(
     }
     let _ = content.potion_meta(potion_id)?;
     state.player.potion_slots[potion_slot] = None;
+    if potion_slot < 16 {
+        state.player.combat_generated_potion_mask &= !(1u16 << potion_slot);
+    }
+    state.invalidate_potion_hooks();
     hooks::before_potion_used(state, content, potion_id, target)?;
 
     state.player.card_or_potion_effect_depth += 1;

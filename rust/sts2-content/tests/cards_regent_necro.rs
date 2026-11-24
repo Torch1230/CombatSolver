@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use sts2_content::Sts2Content;
 use sts2_kernel::commands::{card_pile, creature, osty, power};
@@ -33,12 +32,12 @@ fn build_battle(
 
     let mut cards = Vec::new();
     let mut next_h = 1u32;
-    let mut hand = SmallVec::new();
-    let mut draw = SmallVec::new();
-    let mut discard = SmallVec::new();
-    let mut deck = SmallVec::new();
+    let mut hand = Vec::new();
+    let mut draw = Vec::new();
+    let mut discard = Vec::new();
+    let mut deck = Vec::new();
 
-    let mut push_card = |cid: CardId, pile: PileType, target_vec: &mut SmallVec<[CardHandle; 32]>| {
+    let mut push_card = |cid: CardId, pile: PileType, target_vec: &mut Vec<CardHandle>| {
         let meta = generated_card_meta(cid);
         let h = CardHandle(next_h);
         next_h += 1;
@@ -103,7 +102,7 @@ fn build_battle(
         target_vec.push(h);
     };
 
-    let mut tmp_hand = SmallVec::new();
+    let mut tmp_hand = Vec::new();
     for &cid in hand_ids {
         push_card(cid, PileType::Hand, &mut tmp_hand);
     }
@@ -137,11 +136,12 @@ fn build_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let mut creatures = vec![player_creature];
-    let mut enemy_handles = SmallVec::new();
+    let mut enemy_handles = Vec::new();
     let mut enemy_vec = Vec::new();
     for i in 0..enemy_count {
         let eh = CreatureHandle((i + 2) as u32);
@@ -151,7 +151,7 @@ fn build_battle(
             handle: eh,
             combat_id: Some((i + 1) as u32),
             side: CombatSide::Enemy,
-            slot_name: Some(format!("slot_{i}")),
+            slot_name: Some(std::borrow::Cow::Owned(format!("slot_{i}"))),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -165,16 +165,17 @@ fn build_battle(
                 rng: Rng::from_seed(run_rngs.seed + 1 + i as u64),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: "FIRST_ACID_GOOP".to_owned(),
-                next_move_id: Some("FIRST_ACID_GOOP".to_owned()),
+                current_state_id: std::borrow::Cow::Borrowed("FIRST_ACID_GOOP"),
+                next_move_id: Some(std::borrow::Cow::Borrowed("FIRST_ACID_GOOP")),
                 next_move_can_transition_away: true,
                 performed_first_move: false,
                 state_log_ids: SmallVec::new(),
                 transient_move_follow_up_state_id: None,
-                setup_fields: BTreeMap::new(),
-                private_fields: BTreeMap::new(),
+                setup_fields: Default::default(),
+                private_fields: Default::default(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
     }
 
@@ -197,10 +198,11 @@ fn build_battle(
         hand,
         draw,
         discard,
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
         deck,
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: character.base_orb_slot_count(),
         orbs: SmallVec::new(),
         arrows,
@@ -212,7 +214,7 @@ fn build_battle(
                 is_melted: false,
                 stack_count: 1,
                 floor_added_to_deck: None,
-                private_fields: BTreeMap::new(),
+                private_fields: Default::default(),
             })
             .collect(),
         card_or_potion_effect_depth: 0,
@@ -230,11 +232,17 @@ fn build_battle(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -258,7 +266,7 @@ fn build_battle(
         card_extensions: Vec::new(),
         creatures,
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
+        ally_handles: vec![pc_handle],
         enemy_handles,
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
@@ -268,6 +276,8 @@ fn build_battle(
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     (state, enemy_vec)
 }
@@ -677,9 +687,11 @@ fn regent_and_necro_remaining_choice_and_special_cards() {
             cumulative_hp_lost: 0,
             is_detached: false,
             monster: None,
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
         state.ally_handles.push(ally_h);
+        state.invalidate_creature_hooks();
         let out_tu = CombatEngine::play_card(&mut state, &content, tutor_h, Some(ally_h), &mut choices).unwrap();
         assert!(matches!(out_tu, StepOutcome::NeedsChoice(_)));
         CombatEngine::resume_choice(&mut state, &content, &[0]).unwrap();

@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use sts2_kernel::commands::{
     block, card as card_cmd, card_factory, card_pile, card_select, creature as creature_cmd,
     damage, gold, orb, osty, potion, power,
@@ -14,8 +13,7 @@ use sts2_types::{
     generated_card_meta, CardId, CardKeywords, CardPilePosition, CardTags, CardType, CombatSide,
     Dec, HookMask, HookSlot, LocalEnergyModifierKind, MonsterId, OrbId, PileType, PlayerRngType,
     PlayerTurnPhase, PotionId, PowerId, PowerStackType, PowerStaticFlags, PowerType, RelicId,
-    RelicMeta, RelicStaticFlags, RoomType, RunRngType, TargetType, ValueProp, CARD_POOL_COLORLESS,
-    CARD_POOL_FOOL,
+    RelicMeta, RelicStaticFlags, RoomType, RunRngType, TargetType, ValueProp,
 };
 
 const fn meta(flags: RelicStaticFlags, hook_mask: HookMask) -> RelicMeta {
@@ -361,10 +359,10 @@ fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool 
 }
 
 #[inline]
-fn set_bool(state: &mut BattleState, id: RelicId, key: &str, val: bool) {
+fn set_bool(state: &mut BattleState, id: RelicId, key: &'static str, val: bool) {
     if let Some(r) = find_relic_mut(state, id) {
         r.private_fields
-            .insert(key.to_owned(), FieldValue::Bool(val));
+            .insert(std::borrow::Cow::Borrowed(key), FieldValue::Bool(val));
     }
 }
 
@@ -380,10 +378,10 @@ fn get_int(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
 }
 
 #[inline]
-fn set_int(state: &mut BattleState, id: RelicId, key: &str, val: i32) {
+fn set_int(state: &mut BattleState, id: RelicId, key: &'static str, val: i32) {
     if let Some(r) = find_relic_mut(state, id) {
         r.private_fields
-            .insert(key.to_owned(), FieldValue::Int(val));
+            .insert(std::borrow::Cow::Borrowed(key), FieldValue::Int(val));
     }
 }
 
@@ -400,12 +398,19 @@ fn get_card_handle(state: &BattleState, id: RelicId, key: &str) -> Option<CardHa
 }
 
 #[inline]
-fn set_card_handle(state: &mut BattleState, id: RelicId, key: &str, card: Option<CardHandle>) {
+fn set_card_handle(
+    state: &mut BattleState,
+    id: RelicId,
+    key: &'static str,
+    card: Option<CardHandle>,
+) {
     if let Some(r) = find_relic_mut(state, id) {
         match card {
             Some(ch) => {
-                r.private_fields
-                    .insert(key.to_owned(), FieldValue::CardHandle(ch.0 as i32));
+                r.private_fields.insert(
+                    std::borrow::Cow::Borrowed(key),
+                    FieldValue::CardHandle(ch.0 as i32),
+                );
             }
             None => {
                 r.private_fields.remove(key);
@@ -425,12 +430,14 @@ fn get_string<'a>(state: &'a BattleState, id: RelicId, key: &str) -> Option<&'a 
 }
 
 #[inline]
-fn set_string(state: &mut BattleState, id: RelicId, key: &str, val: Option<&str>) {
+fn set_string(state: &mut BattleState, id: RelicId, key: &'static str, val: Option<&str>) {
     if let Some(r) = find_relic_mut(state, id) {
         match val {
             Some(s) => {
-                r.private_fields
-                    .insert(key.to_owned(), FieldValue::String(s.to_owned()));
+                r.private_fields.insert(
+                    std::borrow::Cow::Borrowed(key),
+                    FieldValue::String(s.to_owned()),
+                );
             }
             None => {
                 r.private_fields.remove(key);
@@ -451,7 +458,7 @@ fn hittable_enemies(
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
     let mut out = SmallVec::new();
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
             && hooks::should_allow_hitting(state, content, eh)?
@@ -537,6 +544,9 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
                 is_reduce_only: false,
             });
             state.card_extensions.push(ext);
+            if idx < state.static_ctx.root_deck_prefix_len || state.cards[idx].pile == PileType::Deck {
+                state.deck_dirty.0 = true;
+            }
             state.cards[idx].ext_index = Some(ext_idx);
         }
     }
@@ -601,7 +611,7 @@ fn whispering_earring_autoplay_loop(
         {
             return Ok(());
         }
-        let hand = state.player.hand.clone();
+        let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
         let mut chosen: Option<CardHandle> = None;
         for ch in hand {
             if CombatEngine::can_play_card(state, content, ch)? {
@@ -962,9 +972,10 @@ pub fn dispatch_hook(
 
         RelicId::Ocarina => {
             if slot == HookSlot::BeforeHandDraw && state.player.turn_number <= 1 {
+                let pool = card_factory::melody_card_pool_candidates(state);
                 let picked = card_factory::get_distinct_for_combat_filtered(
                     state,
-                    CARD_POOL_FOOL,
+                    &pool,
                     1,
                     RunRngType::CombatCardGeneration,
                     |cid| {
@@ -1007,9 +1018,10 @@ pub fn dispatch_hook(
             if slot == HookSlot::AfterSideTurnStart {
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&pc) && state.player.turn_number == 1 {
+                        let pool = card_factory::colorless_card_pool_candidates(state);
                         let picked = card_factory::get_distinct_for_combat(
                             state,
-                            CARD_POOL_COLORLESS,
+                            &pool,
                             2,
                             RunRngType::CombatCardGeneration,
                         );
@@ -1151,7 +1163,7 @@ pub fn dispatch_hook(
                             && state.player.counters.manual_cards_played_this_turn == 0;
                         set_bool(state, id, "PaelsEye._eligibleForExtraTurn", eligible);
                         if eligible {
-                            let hand = state.player.hand.clone();
+                            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
                             for c in hand {
                                 card_pile::exhaust(state, content, c, false)?;
                             }
@@ -1352,7 +1364,7 @@ pub fn dispatch_hook(
                     }
                     if let Some(r) = find_relic_mut(state, id) {
                         r.private_fields.insert(
-                            "PaelsTooth._removedCards".to_owned(),
+                            "PaelsTooth._removedCards",
                             FieldValue::CardHandleArray(stored),
                         );
                     }
@@ -1610,7 +1622,7 @@ pub fn dispatch_hook(
                 }
                 HookSlot::AfterRoomEntered => {
                     if state.static_ctx.room_type.is_combat_room() {
-                        let enemies = state.enemy_handles.clone();
+                        let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
                         for eh in enemies {
                             if state.creature(eh).is_some_and(|c| c.is_alive()) {
                                 power::apply(
@@ -1716,7 +1728,8 @@ pub fn dispatch_hook(
                     if participants.contains(&pc) && state.player.turn_number <= 1 {
                         let mut non_innate: Vec<CardHandle> = Vec::new();
                         let mut innate: Vec<CardHandle> = Vec::new();
-                        let draw = state.player.draw.clone();
+                        let draw: SmallVec<[CardHandle; 32]> =
+                            SmallVec::from_slice(&state.player.draw);
                         for ch in draw {
                             let Some(c) = state.card(ch) else {
                                 continue;
@@ -2622,7 +2635,7 @@ pub fn dispatch_hook(
                             is_melted: false,
                             stack_count: 1,
                             floor_added_to_deck: None,
-                            private_fields: BTreeMap::new(),
+                            private_fields: Default::default(),
                         };
                     }
                 }
@@ -2825,9 +2838,10 @@ pub fn dispatch_hook(
                         && state.player.turn_number == 1
                     {
                         set_bool(state, id, "Toolbox._wasUsedThisCombat", true);
+                        let pool = card_factory::colorless_card_pool_candidates(state);
                         let picked = card_factory::get_distinct_for_combat(
                             state,
-                            CARD_POOL_COLORLESS,
+                            &pool,
                             3,
                             RunRngType::CombatCardGeneration,
                         );
@@ -2854,7 +2868,7 @@ pub fn dispatch_hook(
                                     handles.iter().map(|h| h.0 as i32).collect();
                                 if let Some(r) = find_relic_mut(state, id) {
                                     r.private_fields.insert(
-                                        "Toolbox._pendingCandidates".to_owned(),
+                                        "Toolbox._pendingCandidates",
                                         FieldValue::CardHandleArray(raw),
                                     );
                                 }
@@ -2869,6 +2883,7 @@ pub fn dispatch_hook(
                                         if let Some(c) = state.card_mut(h) {
                                             c.removed_from_state = true;
                                         }
+                                        state.invalidate_hook_cache();
                                     }
                                 }
                                 for h in selected {
@@ -2947,6 +2962,7 @@ pub fn dispatch_hook(
                             .find(|r| r.is_wax && !r.is_melted)
                         {
                             wax.is_melted = true;
+                            state.invalidate_hook_cache();
                         }
                     }
                 }
@@ -3545,6 +3561,7 @@ pub fn resume_hook_choice(
                     if let Some(c) = state.card_mut(h) {
                         c.removed_from_state = true;
                     }
+                    state.invalidate_hook_cache();
                 }
             }
             for &h in selected {

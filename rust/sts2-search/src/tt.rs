@@ -1,24 +1,49 @@
 use crate::hash::StateHash;
-use hashbrown::HashMap;
 use rayon::prelude::*;
 use smallvec::SmallVec;
 
 pub const TT_SHARD_COUNT: usize = 256;
+const INITIAL_SHARD_SLOTS: usize = 256;
 
-/// 8-dimensional Pareto non-dominance label matching `HotTranspositionTable.cs`.
+/// Compact 32-byte 8-dimensional Pareto non-dominance label matching `HotTtLabel`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TranspositionLabel {
     pub forced_used_mask: u64,
-    pub death_save_use_count: i32,
-    pub potion_count: i32,
-    pub potion_strategic_cost: i32,
-    pub future_sold_hp: i32,
-    pub cumulative_player_hp_lost: i32,
-    pub action_count: i32,
     pub score: f64,
+    pub cumulative_player_hp_lost: i32,
+    pub potion_strategic_cost: i16,
+    pub future_sold_hp: i16,
+    pub action_count: u16,
+    pub potion_count: u8,
+    pub death_save_use_count: u8,
 }
 
 impl TranspositionLabel {
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        forced_used_mask: u64,
+        death_save_use_count: i32,
+        potion_count: u16,
+        potion_strategic_cost: i32,
+        future_sold_hp: i32,
+        cumulative_player_hp_lost: i32,
+        action_count: u16,
+        score: f64,
+    ) -> Self {
+        Self {
+            forced_used_mask,
+            score,
+            cumulative_player_hp_lost,
+            potion_strategic_cost: potion_strategic_cost
+                .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            future_sold_hp: future_sold_hp.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            action_count,
+            potion_count: potion_count.min(u8::MAX as u16) as u8,
+            death_save_use_count: death_save_use_count.clamp(0, u8::MAX as i32) as u8,
+        }
+    }
+
     #[inline]
     pub fn dominates(&self, other: &Self) -> bool {
         (self.forced_used_mask & other.forced_used_mask) == other.forced_used_mask
@@ -90,36 +115,88 @@ impl TranspositionFrontier {
     }
 }
 
-#[derive(Clone, Debug)]
-struct TtBucketEntry {
+#[derive(Clone, Copy, Debug)]
+struct TtSlot {
+    hash: StateHash,
+    single: TranspositionLabel,
     generation: u32,
-    frontier: TranspositionFrontier,
+    overflow_idx: u32,
+}
+
+const _: () = assert!(std::mem::size_of::<TtSlot>() <= 64);
+
+impl TtSlot {
+    #[inline(always)]
+    const fn empty() -> Self {
+        Self {
+            hash: StateHash(0),
+            single: TranspositionLabel {
+                forced_used_mask: 0,
+                score: 0.0,
+                cumulative_player_hp_lost: 0,
+                potion_strategic_cost: 0,
+                future_sold_hp: 0,
+                action_count: 0,
+                potion_count: 0,
+                death_save_use_count: 0,
+            },
+            generation: 0,
+            overflow_idx: u32::MAX,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct TtShard {
-    entries: HashMap<StateHash, TtBucketEntry, ahash::RandomState>,
+    slots: Vec<TtSlot>,
+    mask: usize,
+    overflow: Vec<SmallVec<[TranspositionLabel; 2]>>,
     active_entries: usize,
 }
 
 impl Default for TtShard {
     fn default() -> Self {
         Self {
-            entries: HashMap::with_hasher(ahash::RandomState::with_seeds(
-                0x517c_c1b7_2722_0a95,
-                0x9e37_79b9_7f4a_7c15,
-                0xbf58_476d_1ce4_e5b9,
-                0x94d0_49bb_1331_11eb,
-            )),
+            slots: vec![TtSlot::empty(); INITIAL_SHARD_SLOTS],
+            mask: INITIAL_SHARD_SLOTS - 1,
+            overflow: Vec::new(),
             active_entries: 0,
         }
     }
 }
 
 impl TtShard {
-    fn clear_all(&mut self) {
-        self.entries.clear();
+    fn clear_all(&mut self, max_kept_slots: usize) {
         self.active_entries = 0;
+        self.overflow.clear();
+        if self.slots.len() > max_kept_slots {
+            self.slots.resize(INITIAL_SHARD_SLOTS, TtSlot::empty());
+            self.slots.shrink_to(INITIAL_SHARD_SLOTS);
+            self.mask = INITIAL_SHARD_SLOTS - 1;
+        }
+        for slot in &mut self.slots {
+            slot.generation = 0;
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn grow(&mut self, generation: u32) {
+        let new_len = (self.slots.len() * 2).max(INITIAL_SHARD_SLOTS);
+        let new_mask = new_len - 1;
+        let mut new_slots = vec![TtSlot::empty(); new_len];
+        for &slot in &self.slots {
+            if slot.generation != generation {
+                continue;
+            }
+            let mut idx = (slot.hash.0 as usize) & new_mask;
+            while new_slots[idx].generation != 0 {
+                idx = (idx + 1) & new_mask;
+            }
+            new_slots[idx] = slot;
+        }
+        self.slots = new_slots;
+        self.mask = new_mask;
     }
 
     #[inline]
@@ -129,13 +206,23 @@ impl TtShard {
         hash: StateHash,
         label: &TranspositionLabel,
     ) -> bool {
-        let Some(entry) = self.entries.get(&hash) else {
-            return false;
-        };
-        if entry.generation != generation {
-            return false;
+        let mut idx = (hash.0 as usize) & self.mask;
+        loop {
+            let slot = &self.slots[idx];
+            if slot.generation != generation {
+                return false;
+            }
+            if slot.hash == hash {
+                return if slot.overflow_idx == u32::MAX {
+                    slot.single.dominates(label)
+                } else {
+                    self.overflow[slot.overflow_idx as usize]
+                        .iter()
+                        .any(|cur| cur.dominates(label))
+                };
+            }
+            idx = (idx + 1) & self.mask;
         }
-        entry.frontier.is_dominated_by(label)
     }
 
     pub fn try_insert(
@@ -145,28 +232,62 @@ impl TtShard {
         hash: StateHash,
         label: TranspositionLabel,
     ) -> bool {
-        if let Some(entry) = self.entries.get_mut(&hash) {
-            if entry.generation == generation {
-                return entry.frontier.try_accept(label);
+        let mut idx = (hash.0 as usize) & self.mask;
+        loop {
+            let slot = &mut self.slots[idx];
+            if slot.generation != generation {
+                break;
             }
-            if self.active_entries >= entry_limit_per_shard {
+            if slot.hash == hash {
+                if slot.overflow_idx == u32::MAX {
+                    if slot.single.dominates(&label) {
+                        return false;
+                    }
+                    if label.dominates(&slot.single) {
+                        slot.single = label;
+                        return true;
+                    }
+                    let ov_idx = self.overflow.len() as u32;
+                    self.overflow.push(smallvec::smallvec![slot.single, label]);
+                    slot.overflow_idx = ov_idx;
+                    return true;
+                }
+                let tail = &mut self.overflow[slot.overflow_idx as usize];
+                for cur in tail.iter() {
+                    if cur.dominates(&label) {
+                        return false;
+                    }
+                }
+                tail.retain(|cur| !label.dominates(cur));
+                tail.push(label);
+                if tail.len() == 1 {
+                    slot.single = tail[0];
+                    slot.overflow_idx = u32::MAX;
+                    tail.clear();
+                }
                 return true;
             }
-            entry.generation = generation;
-            entry.frontier = TranspositionFrontier::new(label);
-            self.active_entries += 1;
-            return true;
+            idx = (idx + 1) & self.mask;
         }
+
         if self.active_entries >= entry_limit_per_shard {
             return true;
         }
-        self.entries.insert(
+
+        if (self.active_entries + 1) * 4 >= self.slots.len() * 3 {
+            self.grow(generation);
+            idx = (hash.0 as usize) & self.mask;
+            while self.slots[idx].generation == generation {
+                idx = (idx + 1) & self.mask;
+            }
+        }
+
+        self.slots[idx] = TtSlot {
             hash,
-            TtBucketEntry {
-                generation,
-                frontier: TranspositionFrontier::new(label),
-            },
-        );
+            single: label,
+            generation,
+            overflow_idx: u32::MAX,
+        };
         self.active_entries += 1;
         true
     }
@@ -197,25 +318,35 @@ impl ShardedParetoTT {
     }
 
     #[inline]
+    pub fn set_entry_limit(&mut self, total_entry_limit: usize) {
+        self.entry_limit_per_shard = (total_entry_limit / TT_SHARD_COUNT).max(64);
+    }
+
+    #[inline]
     pub fn generation(&self) -> u32 {
         self.generation
     }
 
-    /// O(1) pass reset via generation bump (clears tables only when generation wraps or tables grow large).
+    /// O(1) pass reset via generation bump (shrinks oversized tables back to initial size).
     pub fn reset_generation(&mut self) {
+        let max_kept_slots = (self.entry_limit_per_shard * 4)
+            .next_power_of_two()
+            .max(INITIAL_SHARD_SLOTS);
         if self.generation == u32::MAX {
             self.generation = 1;
             for shard in &mut self.shards {
-                shard.clear_all();
+                shard.clear_all(max_kept_slots);
             }
             return;
         }
         self.generation += 1;
-        let cap4 = self.entry_limit_per_shard * 4;
         for shard in &mut self.shards {
             shard.active_entries = 0;
-            if shard.entries.len() > cap4 {
-                shard.clear_all();
+            shard.overflow.clear();
+            if shard.slots.len() > max_kept_slots {
+                shard.slots.resize(INITIAL_SHARD_SLOTS, TtSlot::empty());
+                shard.slots.shrink_to(INITIAL_SHARD_SLOTS);
+                shard.mask = INITIAL_SHARD_SLOTS - 1;
             }
         }
     }
@@ -241,6 +372,62 @@ impl ShardedParetoTT {
             self.branches_pruned += 1;
         }
         accepted
+    }
+
+    /// Deterministically inserts shard-bucketed candidates across all 256 shards and writes
+    /// acceptance decisions into `accepted_flags[sort_idx]`, draining `shard_buckets` in-place.
+    /// Each shard's items MUST already be sorted by `(parent_rank, action_ord, choice_ord)`!
+    pub fn insert_sharded_batch_flags(
+        &mut self,
+        shard_buckets: &mut [Vec<(usize, StateHash, TranspositionLabel)>],
+        shard_accepted: &mut [Vec<usize>],
+        is_parallel: bool,
+        accepted_flags: &mut [bool],
+    ) {
+        let generation = self.generation;
+        let cap = self.entry_limit_per_shard;
+
+        accepted_flags.fill(false);
+        if is_parallel {
+            let pruned_total: u64 = self
+                .shards
+                .par_iter_mut()
+                .zip(shard_buckets.par_iter_mut())
+                .zip(shard_accepted.par_iter_mut())
+                .map(|((shard, items), acc)| {
+                    acc.clear();
+                    if items.is_empty() {
+                        return 0u64;
+                    }
+                    let mut pruned = 0u64;
+                    for &(sort_idx, hash, label) in items.iter() {
+                        if shard.try_insert(generation, cap, hash, label) {
+                            acc.push(sort_idx);
+                        } else {
+                            pruned += 1;
+                        }
+                    }
+                    items.clear();
+                    pruned
+                })
+                .sum();
+            self.branches_pruned += pruned_total;
+            for acc in shard_accepted.iter_mut() {
+                for sort_idx in acc.drain(..) {
+                    accepted_flags[sort_idx] = true;
+                }
+            }
+        } else {
+            for (shard, items) in self.shards.iter_mut().zip(shard_buckets.iter_mut()) {
+                for (sort_idx, hash, label) in items.drain(..) {
+                    if shard.try_insert(generation, cap, hash, label) {
+                        accepted_flags[sort_idx] = true;
+                    } else {
+                        self.branches_pruned += 1;
+                    }
+                }
+            }
+        }
     }
 
     /// Zero-allocation in-place variant of `insert_sharded_batch_reused` reusing `shard_accepted`
@@ -371,5 +558,86 @@ impl ShardedParetoTT {
             on_pruned(pruned_delta);
         }
         total_accepted
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mk_hash(tag: u64) -> StateHash {
+        let mut z = tag.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        let lo = z ^ (z >> 31);
+        let hi = lo.wrapping_mul(0x9E37_79B9_7F4A_7C15).rotate_left(17);
+        StateHash::from_parts(hi, lo)
+    }
+
+    #[test]
+    fn open_addressed_generation_reset_and_grow_preserve_parity() {
+        let mut tt = ShardedParetoTT::new(65_536);
+        let base_label = TranspositionLabel::new(0, 0, 0, 0, 0, 5, 1, 100.0);
+        let worse_label = TranspositionLabel::new(0, 0, 0, 0, 0, 10, 2, 50.0);
+        let better_label = TranspositionLabel::new(0, 0, 0, 0, 0, 2, 1, 150.0);
+        let trade_label = TranspositionLabel::new(0, 0, 1, 5, 0, 0, 2, 200.0);
+
+        let mut inserted_hashes = Vec::new();
+        for i in 0..4000u64 {
+            let h = mk_hash(i);
+            assert!(tt.try_insert_single(h, base_label));
+            assert!(tt.probe_dominated(h, &worse_label));
+            inserted_hashes.push(h);
+        }
+
+        // Non-dominated tradeoff enters overflow, dominated is rejected
+        let sample = inserted_hashes[17];
+        assert!(!tt.try_insert_single(sample, worse_label));
+        assert!(tt.try_insert_single(sample, trade_label));
+        assert!(tt.probe_dominated(sample, &trade_label));
+        assert!(tt.try_insert_single(sample, better_label));
+
+        // After generation reset, stale entries behave empty on probe and accept fresh inserts
+        tt.reset_generation();
+        for &h in &inserted_hashes[..32] {
+            assert!(!tt.probe_dominated(h, &worse_label));
+            assert!(tt.try_insert_single(h, worse_label));
+            assert!(tt.probe_dominated(h, &worse_label));
+            assert!(!tt.probe_dominated(h, &better_label));
+        }
+    }
+
+    #[test]
+    fn insert_sharded_batch_flags_matches_sequential_order() {
+        let mut tt_seq = ShardedParetoTT::new(65_536);
+        let mut tt_par = ShardedParetoTT::new(65_536);
+
+        let mut items = Vec::new();
+        for i in 0..512usize {
+            let h = mk_hash((i as u64) % 90);
+            let hp_loss = (i % 7) as i32;
+            let score = ((i * 19) % 100) as f64;
+            let pot = ((i / 13) % 2) as u16;
+            let label = TranspositionLabel::new(0, 0, pot, pot as i32 * 5, 0, hp_loss, 1, score);
+            items.push((i, h, label));
+        }
+
+        let seq_flags: Vec<bool> = items
+            .iter()
+            .map(|&(_, h, l)| tt_seq.try_insert_single(h, l))
+            .collect();
+
+        let mut buckets: Vec<Vec<(usize, StateHash, TranspositionLabel)>> =
+            (0..TT_SHARD_COUNT).map(|_| Vec::new()).collect();
+        let mut accepted_bufs: Vec<Vec<usize>> =
+            (0..TT_SHARD_COUNT).map(|_| Vec::new()).collect();
+        for &(sort_idx, h, l) in &items {
+            buckets[h.shard_index()].push((sort_idx, h, l));
+        }
+        let mut par_flags = vec![false; items.len()];
+        tt_par.insert_sharded_batch_flags(&mut buckets, &mut accepted_bufs, true, &mut par_flags);
+
+        assert_eq!(seq_flags, par_flags);
+        assert_eq!(tt_seq.branches_pruned, tt_par.branches_pruned);
     }
 }

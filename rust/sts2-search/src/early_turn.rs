@@ -40,10 +40,10 @@ fn first_action_of(arena: &NodeArena, mut id: NodeId) -> Option<CompactActionKin
     let mut first = None;
     loop {
         let n = arena.get(id);
-        if let Some(a) = n.action {
-            first = Some(a.kind);
+        if let Some(k) = n.action.kind() {
+            first = Some(k);
         }
-        match n.parent {
+        match n.parent_id() {
             Some(p) => id = p,
             None => return first,
         }
@@ -61,16 +61,16 @@ pub fn select_early_turn_frontier(
         HashMap::with_hasher(ahash::RandomState::with_seeds(31, 32, 33, 34));
     for &nid in ended {
         let node = arena.get(nid);
-        if node.is_terminal
-            || node.fast_eval.player_dead
+        if node.is_terminal()
+            || node.fast_eval.player_dead()
             || node.boundary_rank != 0
-            || node.turn != start_turn_number + completed_turns
+            || (node.turn as i32) != start_turn_number + completed_turns
         {
             continue;
         }
         match states.get_mut(&node.state_hash) {
             Some(prior) => {
-                if node.fast_eval.base_score > arena.get(*prior).fast_eval.base_score {
+                if node.beam_rank_score_or_base() > arena.get(*prior).beam_rank_score_or_base() {
                     *prior = nid;
                 }
             }
@@ -114,6 +114,12 @@ pub fn select_early_turn_frontier(
                 potion_id: Some(potion_id),
                 target_handle: target_handle.map(|h| h as i32),
             },
+            CompactActionKind::TurnSetup => EarlyTurnOpeningKey {
+                kind: 3,
+                card_handle: 0,
+                potion_id: None,
+                target_handle: None,
+            },
             CompactActionKind::EndTurn => EarlyTurnOpeningKey {
                 kind: 2,
                 card_handle: 0,
@@ -122,19 +128,18 @@ pub fn select_early_turn_frontier(
             },
         };
         let node = arena.get(nid);
-        let full = arena.full_eval(nid).copied().unwrap_or_default();
         let strategy = EarlyTurnStrategyKey {
             opening,
             potion_count: (node.potion_count as usize).min(3),
-            persistent_buff_band: full.persistent_buff_value / 8,
-            hand_value_band: full.reachable_hand_value / 8,
-            power_priority: full.best_power_priority,
+            persistent_buff_band: (node.persistent_buff_value as i32) / 8,
+            hand_value_band: (node.reachable_hand_value as i32) / 8,
+            power_priority: node.best_power_priority,
         };
         by_strategy.entry(strategy).or_default().push(Entry {
             node_id: nid,
             opening,
             strategy,
-            score: node.fast_eval.base_score,
+            score: node.beam_rank_score_or_base(),
         });
     }
 
@@ -172,7 +177,7 @@ pub fn select_early_turn_frontier(
                 completed_turns,
                 actions: arena.reconstruct_actions(nid),
                 state_hash: node.state_hash,
-                score: node.fast_eval.base_score,
+                score: node.beam_rank_score_or_base(),
             });
             if selected.len() == EARLY_TURN_CANDIDATES_PER_LAYER {
                 break;

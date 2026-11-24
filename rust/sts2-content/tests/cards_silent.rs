@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use sts2_content::Sts2Content;
 use sts2_kernel::commands::{card as card_cmd, card_pile, power};
@@ -59,8 +58,8 @@ fn build_combat(
     let pc_handle = CreatureHandle(1);
 
     let mut cards = Vec::new();
-    let mut hand = SmallVec::new();
-    let mut draw = SmallVec::new();
+    let mut hand = Vec::new();
+    let mut draw = Vec::new();
     let mut next_card = 1u32;
 
     for &cid in hand_ids {
@@ -90,11 +89,12 @@ fn build_combat(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let mut creatures = vec![player_creature];
-    let mut enemy_handles = SmallVec::new();
+    let mut enemy_handles = Vec::new();
     let mut slots = Vec::new();
     for (idx, &hp) in enemy_hps.iter().enumerate() {
         let eh = CreatureHandle((idx + 2) as u32);
@@ -105,7 +105,7 @@ fn build_combat(
             handle: eh,
             combat_id: Some((idx + 1) as u32),
             side: CombatSide::Enemy,
-            slot_name: Some(slot),
+            slot_name: Some(std::borrow::Cow::Owned(slot)),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(MonsterId::ShrinkerBeetle),
@@ -119,16 +119,17 @@ fn build_combat(
                 rng: Rng::from_seed(run_rngs.seed + (idx as u64) + 1),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: "SHRINKER_MOVE".to_owned(),
-                next_move_id: Some("CHOMP_MOVE".to_owned()),
+                current_state_id: std::borrow::Cow::Borrowed("SHRINKER_MOVE"),
+                next_move_id: Some(std::borrow::Cow::Borrowed("CHOMP_MOVE")),
                 next_move_can_transition_away: true,
                 performed_first_move: false,
                 state_log_ids: SmallVec::new(),
                 transient_move_follow_up_state_id: None,
-                setup_fields: BTreeMap::new(),
-                private_fields: BTreeMap::new(),
+                setup_fields: Default::default(),
+                private_fields: Default::default(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
     }
 
@@ -150,11 +151,12 @@ fn build_combat(
         counters: PlayerCounters::default(),
         hand: hand.clone(),
         draw,
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
-        deck: SmallVec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
+        deck: Vec::new(),
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: 0,
         orbs: SmallVec::new(),
         arrows: SmallVec::new(),
@@ -174,11 +176,17 @@ fn build_combat(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -202,16 +210,18 @@ fn build_combat(
         card_extensions: Vec::new(),
         creatures,
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
+        ally_handles: vec![pc_handle],
         enemy_handles: enemy_handles.clone(),
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
-        spawned_enemy_handles: enemy_handles.clone(),
+        spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: Default::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
 
     (state, hand.into_iter().collect(), enemy_handles.into_iter().collect())

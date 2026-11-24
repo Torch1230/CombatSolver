@@ -2,6 +2,7 @@ use crate::content_dispatch::HookListener;
 use crate::state::{CardHandle, CreatureHandle};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use sts2_types::{CardPilePosition, PileType, PotionId};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -16,11 +17,11 @@ pub enum ChoiceTiming {
 #[serde(rename_all = "camelCase")]
 pub struct ChoiceRequest {
     pub timing: ChoiceTiming,
-    pub source_id: String,
+    pub source_id: Cow<'static, str>,
     pub source_pile: PileType,
     pub min_count: usize,
     pub max_count: usize,
-    pub candidates: SmallVec<[CardHandle; 16]>,
+    pub candidates: SmallVec<[CardHandle; 32]>,
     pub can_skip: bool,
 }
 

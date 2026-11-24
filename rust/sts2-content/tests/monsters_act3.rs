@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sts2_content::Sts2Content;
 use sts2_kernel::commands::{creature, damage, power};
@@ -83,7 +83,7 @@ fn build_battle(
         CardId::DefendIronclad,
     ];
     let mut cards = Vec::new();
-    let mut deck_handles = SmallVec::new();
+    let mut deck_handles = Vec::new();
     for (idx, &cid) in deck_ids.iter().enumerate() {
         let meta = content.card_meta(cid).unwrap();
         let h = CardHandle((idx + 1) as u32);
@@ -129,7 +129,8 @@ fn build_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let player = PlayerInst {
@@ -148,13 +149,14 @@ fn build_battle(
         phase: PlayerTurnPhase::None,
         turn_number: 1,
         counters: PlayerCounters::default(),
-        hand: SmallVec::new(),
-        draw: SmallVec::new(),
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
+        hand: Vec::new(),
+        draw: Vec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
         deck: deck_handles,
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: 0,
         orbs: SmallVec::new(),
         arrows: SmallVec::<[ArrowSlotInst; 4]>::new(),
@@ -166,7 +168,7 @@ fn build_battle(
                 is_melted: false,
                 stack_count: 1,
                 floor_added_to_deck: None,
-                private_fields: BTreeMap::new(),
+                private_fields: Default::default(),
             })
             .collect(),
         card_or_potion_effect_depth: 0,
@@ -184,11 +186,17 @@ fn build_battle(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 2,
             total_floor: 40,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -212,8 +220,8 @@ fn build_battle(
         card_extensions: Vec::new(),
         creatures: vec![player_creature],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
-        enemy_handles: SmallVec::new(),
+        ally_handles: vec![pc_handle],
+        enemy_handles: Vec::new(),
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::new(),
@@ -222,6 +230,8 @@ fn build_battle(
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
 
     let mut enemy_handles = Vec::new();
@@ -235,7 +245,7 @@ fn build_battle(
             handle,
             combat_id: Some(combat_id),
             side: CombatSide::Enemy,
-            slot_name: slot.map(str::to_owned),
+            slot_name: slot.map(|s| Cow::Owned(s.to_owned())),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(mid),
@@ -249,16 +259,17 @@ fn build_battle(
                 rng: Rng::from_seed(state.run_rngs.seed + (idx as u64) + 1),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: String::new(),
+                current_state_id: Cow::Borrowed(""),
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
                 state_log_ids: SmallVec::new(),
                 transient_move_follow_up_state_id: None,
-                setup_fields: BTreeMap::new(),
-                private_fields: BTreeMap::new(),
+                setup_fields: Default::default(),
+                private_fields: Default::default(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
         state.enemy_handles.push(handle);
         state.spawned_enemy_handles.push(handle);

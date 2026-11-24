@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use sts2_kernel::commands::card_select::SelectResult;
 use sts2_kernel::commands::{
@@ -15,7 +16,7 @@ use sts2_types::generated_ids::CARD_POOL_REGENT;
 use sts2_types::{
     generated_card_meta, CardId, CardKeywords, CardMeta, CardPilePosition, CardRarity,
     CardStaticFlags, CardType, Dec, HookSlot, LocalEnergyModifierKind, PileType, PowerId,
-    RunRngType, TargetType, ValueProp, CARD_POOL_COLORLESS,
+    RunRngType, TargetType, ValueProp,
 };
 
 const REGENT_CARD_COUNT: usize = 91;
@@ -211,7 +212,7 @@ fn hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     let mut out = SmallVec::new();
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
@@ -358,7 +359,7 @@ fn create_quasar_offer(
     let handle = card_pile::create_card_in_combat(state, content, card_id, if upgrade { 1 } else { 0 })?;
     if let Some(ext) = state.card_ext_mut(handle) {
         ext.private_fields
-            .insert(QUASAR_OFFER_MARKER.to_owned(), FieldValue::Bool(true));
+            .insert(Cow::Borrowed(QUASAR_OFFER_MARKER), FieldValue::Bool(true));
     }
     Ok(handle)
 }
@@ -382,6 +383,7 @@ fn finish_quasar_choice(
             if let Some(c) = state.card_mut(cand) {
                 c.removed_from_state = true;
             }
+            state.invalidate_hook_cache();
         }
     }
     if let Some(h) = chosen {
@@ -421,7 +423,7 @@ fn select_from_hand(
     candidates: &[CardHandle],
     min_count: usize,
     max_count: usize,
-    source_id: &str,
+    source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_over_or_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -445,7 +447,7 @@ fn select_from_pile(
     content: &dyn ContentDispatcher,
     pile: PileType,
     count: usize,
-    source_id: &str,
+    source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -480,9 +482,10 @@ fn generate_distinct_colorless(
     upgrade_generated: bool,
 ) -> Result<(), KernelError> {
     let creator = Some(state.player.creature_handle);
+    let pool = card_factory::colorless_card_pool_candidates(state);
     let chosen = card_factory::get_distinct_for_combat(
         state,
-        CARD_POOL_COLORLESS,
+        &pool,
         count,
         RunRngType::CombatCardGeneration,
     );
@@ -622,7 +625,7 @@ pub fn on_play(
             if !has_replayed {
                 if let Some(ext) = state.card_ext_mut(ctx.card) {
                     ext.private_fields
-                        .insert(BOMBARDMENT_HAS_REPLAYED_KEY.to_owned(), FieldValue::Bool(true));
+                        .insert(Cow::Borrowed(BOMBARDMENT_HAS_REPLAYED_KEY), FieldValue::Bool(true));
                 }
                 AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
                     .execute(state, content)?;
@@ -862,7 +865,7 @@ pub fn on_play(
         }
         CardId::DecisionsDecisions => {
             let _ = card_pile::draw(state, content, if upg { 5 } else { 3 }, false)?;
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let mut cands: SmallVec<[CardHandle; 16]> = SmallVec::new();
             for h in hand {
                 if h == ctx.card {
@@ -1289,7 +1292,7 @@ pub fn on_play(
                     };
                     state.power_extensions[ext_idx]
                         .private_fields
-                        .insert(MONOLOGUE_STRENGTH_KEY.to_owned(), FieldValue::Decimal(Dec::ONE));
+                        .insert(Cow::Borrowed(MONOLOGUE_STRENGTH_KEY), FieldValue::Decimal(Dec::ONE));
                 }
             }
             Ok(CardPlayOutcome::default())
@@ -1363,7 +1366,7 @@ pub fn on_play(
         }
         CardId::Plot => {
             let amt = Dec::from_i32(if upg { 3 } else { 2 });
-            let allies = state.ally_handles.clone();
+            let allies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.ally_handles);
             for ah in allies {
                 if state
                     .creature(ah)
@@ -1397,9 +1400,10 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Quasar => {
+            let pool = card_factory::colorless_card_pool_candidates(state);
             let chosen_ids = card_factory::get_distinct_for_combat(
                 state,
-                CARD_POOL_COLORLESS,
+                &pool,
                 3,
                 RunRngType::CombatCardGeneration,
             );
@@ -1698,7 +1702,7 @@ pub fn on_play_resume(
                     if let StepOutcome::NeedsChoice(req) = outcome {
                         return Err(KernelError::Unsupported {
                             kind: "CardAutoplayChoice",
-                            id: req.source_id,
+                            id: req.source_id.into_owned(),
                         });
                     }
                 }
@@ -1795,7 +1799,7 @@ pub fn on_upgrade(state: &mut BattleState, card: CardHandle) -> Result<(), Kerne
             let next = cur.checked_add(Dec::TWO)?;
             if let Some(ext) = state.card_ext_mut(card) {
                 ext.private_fields
-                    .insert(KINGLY_PUNCH_DAMAGE_KEY.to_owned(), FieldValue::Decimal(next));
+                    .insert(Cow::Borrowed(KINGLY_PUNCH_DAMAGE_KEY), FieldValue::Decimal(next));
             }
         }
         _ => {}
@@ -1840,7 +1844,7 @@ pub fn dispatch_hook(
                 if let StepOutcome::NeedsChoice(req) = outcome {
                     return Err(KernelError::Unsupported {
                         kind: "CardHookChoice",
-                        id: req.source_id,
+                        id: req.source_id.into_owned(),
                     });
                 }
             }
@@ -1865,7 +1869,7 @@ pub fn dispatch_hook(
                         let next = cur.checked_add(inc)?;
                         if let Some(ext) = state.card_ext_mut(card) {
                             ext.private_fields.insert(
-                                KINGLY_PUNCH_DAMAGE_KEY.to_owned(),
+                                Cow::Borrowed(KINGLY_PUNCH_DAMAGE_KEY),
                                 FieldValue::Decimal(next),
                             );
                         }

@@ -1,4 +1,5 @@
 use smallvec::{SmallVec, smallvec};
+use std::borrow::Cow;
 use sts2_kernel::commands::{arrow, block, card_pile, creature as creature_cmd, damage::AttackBuilder, power};
 use sts2_kernel::{
     BattleState, CardHandle, CardInst, CardTempFlags, ChoiceRequest, ChoiceTiming,
@@ -52,20 +53,20 @@ fn read_monster_int(state: &BattleState, creature: CreatureHandle, key1: &str, k
     0
 }
 
-fn set_monster_bool(state: &mut BattleState, creature: CreatureHandle, key: &str, val: bool) {
+fn set_monster_bool(state: &mut BattleState, creature: CreatureHandle, key: &'static str, val: bool) {
     if let Some(c) = state.creature_mut(creature) {
         if let Some(m) = &mut c.monster {
             m.private_fields
-                .insert(key.to_owned(), FieldValue::Bool(val));
+                .insert(Cow::Borrowed(key), FieldValue::Bool(val));
         }
     }
 }
 
-fn set_monster_int(state: &mut BattleState, creature: CreatureHandle, key: &str, val: i32) {
+fn set_monster_int(state: &mut BattleState, creature: CreatureHandle, key: &'static str, val: i32) {
     if let Some(c) = state.creature_mut(creature) {
         if let Some(m) = &mut c.monster {
             m.private_fields
-                .insert(key.to_owned(), FieldValue::Int(val));
+                .insert(Cow::Borrowed(key), FieldValue::Int(val));
         }
     }
 }
@@ -74,7 +75,7 @@ fn set_power_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     val: FieldValue,
 ) {
     let existing_ext = state
@@ -95,7 +96,7 @@ fn set_power_field(
         }
     };
     if let Some(ext) = state.power_extensions.get_mut(ext_idx) {
-        ext.private_fields.insert(key.to_owned(), val);
+        ext.private_fields.insert(Cow::Borrowed(key), val);
     }
 }
 
@@ -105,14 +106,19 @@ enum RepeatRule {
     CanRepeatXTimes(usize),
 }
 
-fn branch_weight(state_log_ids: &[String], state_id: &str, rule: RepeatRule, weight: f32) -> f32 {
+fn branch_weight(
+    state_log_ids: &[Cow<'static, str>],
+    state_id: &str,
+    rule: RepeatRule,
+    weight: f32,
+) -> f32 {
     let limit = match rule {
         RepeatRule::CannotRepeat => 1,
         RepeatRule::CanRepeatXTimes(n) => n,
     };
     if limit > 0 && state_log_ids.len() >= limit {
         let tail = &state_log_ids[state_log_ids.len() - limit..];
-        if tail.iter().all(|id| id == state_id) {
+        if tail.iter().all(|id| id.as_ref() == state_id) {
             return 0.0_f32;
         }
     }
@@ -121,15 +127,22 @@ fn branch_weight(state_log_ids: &[String], state_id: &str, rule: RepeatRule, wei
 
 fn pick_random_branch(
     state: &mut BattleState,
-    state_log_ids: &[String],
+    creature: CreatureHandle,
     branches: &[(&'static str, RepeatRule, f32)],
-) -> Result<String, KernelError> {
+) -> Result<&'static str, KernelError> {
     let mut weights: SmallVec<[f32; 4]> = SmallVec::with_capacity(branches.len());
     let mut total_weight = 0.0_f32;
-    for &(id, rule, base_weight) in branches {
-        let w = branch_weight(state_log_ids, id, rule, base_weight);
-        weights.push(w);
-        total_weight += w;
+    {
+        let log = &state
+            .creature(creature)
+            .and_then(|c| c.monster.as_ref())
+            .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?
+            .state_log_ids;
+        for &(id, rule, base_weight) in branches {
+            let w = branch_weight(log, id, rule, base_weight);
+            weights.push(w);
+            total_weight += w;
+        }
     }
     let mut random_weight = state
         .run_rngs
@@ -139,7 +152,7 @@ fn pick_random_branch(
     for (idx, &(id, _, _)) in branches.iter().enumerate() {
         random_weight -= weights[idx];
         if random_weight <= 0.0_f32 {
-            return Ok(id.to_owned());
+            return Ok(id);
         }
     }
     Err(KernelError::InvalidState(
@@ -224,11 +237,13 @@ fn escape_creature(
 
     if let Some(c) = state.creature_mut(creature) {
         c.powers.clear();
+        c.has_minion_power = false;
         c.is_detached = true;
     }
     state.ally_handles.retain(|h| *h != creature);
     state.enemy_handles.retain(|h| *h != creature);
     state.escaped_handles.push(creature);
+    state.invalidate_hook_cache();
     Ok(())
 }
 
@@ -459,9 +474,9 @@ pub fn monster_setup_for_combat(
     if let Some(c) = state.creature_mut(creature) {
         if let Some(m) = &mut c.monster {
             if m.current_state_id.is_empty() {
-                m.current_state_id = initial_state.to_owned();
+                m.current_state_id = Cow::Borrowed(initial_state);
                 if initial_logged && m.state_log_ids.is_empty() {
-                    m.state_log_ids.push(initial_state.to_owned());
+                    m.state_log_ids.push(Cow::Borrowed(initial_state));
                 }
             }
         }
@@ -620,7 +635,7 @@ pub fn monster_after_added_to_room(
             )?;
         }
         MonsterId::Rocket => {
-            let allies = state.ally_handles.clone();
+            let allies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.ally_handles);
             for ally in allies {
                 power::apply(
                     state,
@@ -715,129 +730,164 @@ pub fn monster_roll_move(
     state: &mut BattleState,
     creature: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let is_off_balance =
-        read_monster_bool(state, creature, "BowlbugRock._isOffBalance", "IsOffBalance");
-    let curse_counter =
-        read_monster_int(state, creature, "KnowledgeDemon._curseCounter", "CurseCounter");
+    enum InlineStateStr {
+        Borrowed(&'static str),
+        Stack([u8; 64], u8),
+        Heap(String),
+    }
+    impl InlineStateStr {
+        #[inline]
+        fn from_cow(s: &Cow<'static, str>) -> Self {
+            match s {
+                Cow::Borrowed(b) => Self::Borrowed(b),
+                Cow::Owned(o) if o.len() <= 64 => {
+                    let mut buf = [0u8; 64];
+                    buf[..o.len()].copy_from_slice(o.as_bytes());
+                    Self::Stack(buf, o.len() as u8)
+                }
+                Cow::Owned(o) => Self::Heap(o.clone()),
+            }
+        }
+        #[inline]
+        fn as_str(&self) -> &str {
+            match self {
+                Self::Borrowed(s) => s,
+                Self::Stack(buf, len) => {
+                    std::str::from_utf8(&buf[..*len as usize]).unwrap_or("")
+                }
+                Self::Heap(s) => s.as_str(),
+            }
+        }
+    }
 
-    let (
-        mid,
-        cur_state,
-        next_move_id,
-        next_move_can_transition_away,
-        performed_first_move,
-        state_log_ids,
-        slot_name,
-        side,
-        has_slumber,
-    ) = {
+    let (mid, can_transition_away, performed_first_move, cur_is_move, next_is_none) = {
         let Some(c) = state.creature(creature) else {
             return Ok(());
         };
         let Some(m) = &c.monster else {
             return Ok(());
         };
+        let cur = m.next_move_id.as_deref().unwrap_or(m.current_state_id.as_ref());
+        let cur_is_move = cur != "INIT_MOVE" && cur != "SLEEP_CHECK";
+        let effective_can_transition_away = m.next_move_can_transition_away || cur == "DEAD_MOVE";
         (
             m.monster_id,
-            m.current_state_id.clone(),
-            m.next_move_id.clone(),
-            m.next_move_can_transition_away,
+            effective_can_transition_away,
             m.performed_first_move,
-            m.state_log_ids.clone(),
-            c.slot_name.clone(),
-            c.side,
-            c.powers.iter().any(|p| p.id == PowerId::SlumberPower),
+            cur_is_move,
+            m.next_move_id.is_none(),
         )
     };
 
-    let cur = next_move_id
-        .as_deref()
-        .unwrap_or(cur_state.as_str());
-    let cur_is_move = cur != "INIT_MOVE" && cur != "SLEEP_CHECK";
-    let effective_can_transition_away = next_move_can_transition_away || cur == "DEAD_MOVE";
-
-    if !effective_can_transition_away || (!performed_first_move && cur_is_move) {
-        if cur_is_move && next_move_id.is_none() {
-            if let Some(c_mut) = state.creature_mut(creature) {
-                if let Some(m_mut) = &mut c_mut.monster {
-                    m_mut.next_move_id = Some(cur_state);
-                }
+    if !can_transition_away || (!performed_first_move && cur_is_move) {
+        if cur_is_move && next_is_none {
+            if let Some(m_mut) = state.creature_mut(creature).and_then(|c| c.monster.as_mut()) {
+                m_mut.next_move_id = Some(m_mut.current_state_id.clone());
             }
         }
         return Ok(());
     }
 
-    let next_id = match mid {
-        MonsterId::BowlbugEgg => "BITE_MOVE".to_owned(),
+    let is_off_balance =
+        read_monster_bool(state, creature, "BowlbugRock._isOffBalance", "IsOffBalance");
+    let curse_counter =
+        read_monster_int(state, creature, "KnowledgeDemon._curseCounter", "CurseCounter");
+
+    let (cur_inline, slot_tag, side, has_slumber) = {
+        let Some(c) = state.creature(creature) else {
+            return Ok(());
+        };
+        let Some(m) = &c.monster else {
+            return Ok(());
+        };
+        let cur_cow = m.next_move_id.as_ref().unwrap_or(&m.current_state_id);
+        let slot_tag = match c.slot_name.as_deref() {
+            Some("first") => 1u8,
+            Some("second") => 2u8,
+            Some("third") => 3u8,
+            _ => 0u8,
+        };
+        (
+            InlineStateStr::from_cow(cur_cow),
+            slot_tag,
+            c.side,
+            c.powers.iter().any(|p| p.id == PowerId::SlumberPower),
+        )
+    };
+
+    let cur = cur_inline.as_str();
+
+    let next_id: &'static str = match mid {
+        MonsterId::BowlbugEgg => "BITE_MOVE",
         MonsterId::BowlbugNectar => match cur {
-            "THRASH_MOVE" => "BUFF_MOVE".to_owned(),
-            "BUFF_MOVE" => "THRASH2_MOVE".to_owned(),
-            _ => "THRASH2_MOVE".to_owned(),
+            "THRASH_MOVE" => "BUFF_MOVE",
+            "BUFF_MOVE" => "THRASH2_MOVE",
+            _ => "THRASH2_MOVE",
         },
         MonsterId::BowlbugRock => match cur {
             "HEADBUTT_MOVE" => {
                 if is_off_balance {
-                    "DIZZY_MOVE".to_owned()
+                    "DIZZY_MOVE"
                 } else {
-                    "HEADBUTT_MOVE".to_owned()
+                    "HEADBUTT_MOVE"
                 }
             }
-            _ => "HEADBUTT_MOVE".to_owned(),
+            _ => "HEADBUTT_MOVE",
         },
         MonsterId::BowlbugSilk => match cur {
-            "TOXIC_SPIT_MOVE" => "THRASH_MOVE".to_owned(),
-            _ => "TOXIC_SPIT_MOVE".to_owned(),
+            "TOXIC_SPIT_MOVE" => "THRASH_MOVE",
+            _ => "TOXIC_SPIT_MOVE",
         },
         MonsterId::Chomper => match cur {
-            "CLAMP_MOVE" => "SCREECH_MOVE".to_owned(),
-            _ => "CLAMP_MOVE".to_owned(),
+            "CLAMP_MOVE" => "SCREECH_MOVE",
+            _ => "CLAMP_MOVE",
         },
         MonsterId::Crusher => match cur {
-            "THRASH_MOVE" => "ENLARGING_STRIKE_MOVE".to_owned(),
-            "ENLARGING_STRIKE_MOVE" => "BUG_STING_MOVE".to_owned(),
-            "BUG_STING_MOVE" => "ADAPT_MOVE".to_owned(),
-            "ADAPT_MOVE" => "GUARDED_STRIKE_MOVE".to_owned(),
-            _ => "THRASH_MOVE".to_owned(),
+            "THRASH_MOVE" => "ENLARGING_STRIKE_MOVE",
+            "ENLARGING_STRIKE_MOVE" => "BUG_STING_MOVE",
+            "BUG_STING_MOVE" => "ADAPT_MOVE",
+            "ADAPT_MOVE" => "GUARDED_STRIKE_MOVE",
+            _ => "THRASH_MOVE",
         },
         MonsterId::DecimillipedeSegmentBack
         | MonsterId::DecimillipedeSegmentFront
         | MonsterId::DecimillipedeSegmentMiddle => match cur {
-            "WRITHE_MOVE" => "CONSTRICT_MOVE".to_owned(),
-            "CONSTRICT_MOVE" => "BULK_MOVE".to_owned(),
-            "BULK_MOVE" => "WRITHE_MOVE".to_owned(),
-            "DEAD_MOVE" => "REATTACH_MOVE".to_owned(),
+            "WRITHE_MOVE" => "CONSTRICT_MOVE",
+            "CONSTRICT_MOVE" => "BULK_MOVE",
+            "BULK_MOVE" => "WRITHE_MOVE",
+            "DEAD_MOVE" => "REATTACH_MOVE",
             "REATTACH_MOVE" => pick_random_branch(
                 state,
-                &state_log_ids,
+                creature,
                 &[
                     ("WRITHE_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
                     ("BULK_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
                     ("CONSTRICT_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
                 ],
             )?,
-            _ => "WRITHE_MOVE".to_owned(),
+            _ => "WRITHE_MOVE",
         },
         MonsterId::Entomancer => match cur {
-            "BEES_MOVE" => "SPEAR_MOVE".to_owned(),
-            "SPEAR_MOVE" => "PHEROMONE_SPIT_MOVE".to_owned(),
-            _ => "BEES_MOVE".to_owned(),
+            "BEES_MOVE" => "SPEAR_MOVE",
+            "SPEAR_MOVE" => "PHEROMONE_SPIT_MOVE",
+            _ => "BEES_MOVE",
         },
         MonsterId::Exoskeleton => {
             let need_rand = match cur {
-                "INIT_MOVE" => match slot_name.as_deref() {
-                    Some("first") => Some("SKITTER_MOVE"),
-                    Some("second") => Some("MANDIBLES_MOVE"),
-                    Some("third") => Some("ENRAGE_MOVE"),
+                "INIT_MOVE" => match slot_tag {
+                    1 => Some("SKITTER_MOVE"),
+                    2 => Some("MANDIBLES_MOVE"),
+                    3 => Some("ENRAGE_MOVE"),
                     _ => None,
                 },
                 "MANDIBLES_MOVE" => Some("ENRAGE_MOVE"),
                 _ => None,
             };
             match need_rand {
-                Some(fixed) => fixed.to_owned(),
+                Some(fixed) => fixed,
                 None => pick_random_branch(
                     state,
-                    &state_log_ids,
+                    creature,
                     &[
                         ("SKITTER_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
                         ("MANDIBLES_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
@@ -847,51 +897,51 @@ pub fn monster_roll_move(
         }
         MonsterId::HunterKiller => pick_random_branch(
             state,
-            &state_log_ids,
+            creature,
             &[
                 ("BITE_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
                 ("PUNCTURE_MOVE", RepeatRule::CanRepeatXTimes(2), 1.0_f32),
             ],
         )?,
         MonsterId::InfestedPrism => match cur {
-            "JAB_MOVE" => "JAB_MOVE_2".to_owned(),
-            "JAB_MOVE_2" => "WHIRLWIND_MOVE".to_owned(),
-            "WHIRLWIND_MOVE" => "PULSATE_MOVE".to_owned(),
-            _ => "JAB_MOVE".to_owned(),
+            "JAB_MOVE" => "JAB_MOVE_2",
+            "JAB_MOVE_2" => "WHIRLWIND_MOVE",
+            "WHIRLWIND_MOVE" => "PULSATE_MOVE",
+            _ => "JAB_MOVE",
         },
         MonsterId::KnowledgeDemon => match cur {
-            "CURSE_OF_KNOWLEDGE_MOVE" => "SLAP_MOVE".to_owned(),
-            "SLAP_MOVE" => "KNOWLEDGE_OVERWHELMING_MOVE".to_owned(),
-            "KNOWLEDGE_OVERWHELMING_MOVE" => "PONDER_MOVE".to_owned(),
+            "CURSE_OF_KNOWLEDGE_MOVE" => "SLAP_MOVE",
+            "SLAP_MOVE" => "KNOWLEDGE_OVERWHELMING_MOVE",
+            "KNOWLEDGE_OVERWHELMING_MOVE" => "PONDER_MOVE",
             "PONDER_MOVE" => {
                 if curse_counter < 3 {
-                    "CURSE_OF_KNOWLEDGE_MOVE".to_owned()
+                    "CURSE_OF_KNOWLEDGE_MOVE"
                 } else {
-                    "SLAP_MOVE".to_owned()
+                    "SLAP_MOVE"
                 }
             }
-            _ => "CURSE_OF_KNOWLEDGE_MOVE".to_owned(),
+            _ => "CURSE_OF_KNOWLEDGE_MOVE",
         },
         MonsterId::LouseProgenitor => match cur {
-            "WEB_CANNON_MOVE" => "CURL_AND_GROW_MOVE".to_owned(),
-            "CURL_AND_GROW_MOVE" => "POUNCE_MOVE".to_owned(),
-            _ => "WEB_CANNON_MOVE".to_owned(),
+            "WEB_CANNON_MOVE" => "CURL_AND_GROW_MOVE",
+            "CURL_AND_GROW_MOVE" => "POUNCE_MOVE",
+            _ => "WEB_CANNON_MOVE",
         },
         MonsterId::Myte => match cur {
             "INIT_MOVE" => {
-                if slot_name.as_deref() == Some("second") {
-                    "SUCK_MOVE".to_owned()
+                if slot_tag == 2 {
+                    "SUCK_MOVE"
                 } else {
-                    "TOXIC_MOVE".to_owned()
+                    "TOXIC_MOVE"
                 }
             }
-            "TOXIC_MOVE" => "BITE_MOVE".to_owned(),
-            "BITE_MOVE" => "SUCK_MOVE".to_owned(),
-            _ => "TOXIC_MOVE".to_owned(),
+            "TOXIC_MOVE" => "BITE_MOVE",
+            "BITE_MOVE" => "SUCK_MOVE",
+            _ => "TOXIC_MOVE",
         },
         MonsterId::Ovicopter => match cur {
-            "LAY_EGGS_MOVE" | "NUTRITIONAL_PASTE_MOVE" => "SMASH_MOVE".to_owned(),
-            "SMASH_MOVE" => "TENDERIZER_MOVE".to_owned(),
+            "LAY_EGGS_MOVE" | "NUTRITIONAL_PASTE_MOVE" => "SMASH_MOVE",
+            "SMASH_MOVE" => "TENDERIZER_MOVE",
             "TENDERIZER_MOVE" => {
                 let side_handles: &[CreatureHandle] = if side == CombatSide::Enemy {
                     &state.enemy_handles
@@ -903,45 +953,45 @@ pub fn monster_roll_move(
                     .filter(|&&h| state.creature(h).is_some_and(|c| c.is_alive()))
                     .count();
                 if living_count <= 3 {
-                    "LAY_EGGS_MOVE".to_owned()
+                    "LAY_EGGS_MOVE"
                 } else {
-                    "NUTRITIONAL_PASTE_MOVE".to_owned()
+                    "NUTRITIONAL_PASTE_MOVE"
                 }
             }
-            _ => "LAY_EGGS_MOVE".to_owned(),
+            _ => "LAY_EGGS_MOVE",
         },
         MonsterId::Rocket => match cur {
-            "CALCULATING_MOVE" => "PRECISE_SMASH_MOVE".to_owned(),
-            "PRECISE_SMASH_MOVE" | "PRECISE_SMASH_MOVE_2" => "CHARGE_UP_MOVE".to_owned(),
-            "CHARGE_UP_MOVE" => "ROCKET_CLAW_MOVE".to_owned(),
-            "ROCKET_CLAW_MOVE" => "RECHARGE_MOVE".to_owned(),
-            _ => "CALCULATING_MOVE".to_owned(),
+            "CALCULATING_MOVE" => "PRECISE_SMASH_MOVE",
+            "PRECISE_SMASH_MOVE" | "PRECISE_SMASH_MOVE_2" => "CHARGE_UP_MOVE",
+            "CHARGE_UP_MOVE" => "ROCKET_CLAW_MOVE",
+            "ROCKET_CLAW_MOVE" => "RECHARGE_MOVE",
+            _ => "CALCULATING_MOVE",
         },
         MonsterId::SlumberingBeetle => match cur {
             "SLEEP_CHECK" | "SNORE_MOVE" => {
                 if has_slumber {
-                    "SNORE_MOVE".to_owned()
+                    "SNORE_MOVE"
                 } else {
-                    "ROLL_OUT_MOVE".to_owned()
+                    "ROLL_OUT_MOVE"
                 }
             }
-            _ => "ROLL_OUT_MOVE".to_owned(),
+            _ => "ROLL_OUT_MOVE",
         },
         MonsterId::SpinyToad => match cur {
-            "PROTRUDING_SPIKES_MOVE" => "SPIKE_EXPLOSION_MOVE".to_owned(),
-            "SPIKE_EXPLOSION_MOVE" => "TONGUE_LASH_MOVE".to_owned(),
-            _ => "PROTRUDING_SPIKES_MOVE".to_owned(),
+            "PROTRUDING_SPIKES_MOVE" => "SPIKE_EXPLOSION_MOVE",
+            "SPIKE_EXPLOSION_MOVE" => "TONGUE_LASH_MOVE",
+            _ => "PROTRUDING_SPIKES_MOVE",
         },
         MonsterId::TheInsatiable => match cur {
-            "LIQUIFY_GROUND_MOVE" | "THRASH_MOVE_2" => "THRASH_MOVE".to_owned(),
-            "THRASH_MOVE" => "LUNGING_BITE_MOVE".to_owned(),
-            "LUNGING_BITE_MOVE" => "SALIVATE_MOVE".to_owned(),
-            "SALIVATE_MOVE" => "THRASH_MOVE_2".to_owned(),
-            _ => "LIQUIFY_GROUND_MOVE".to_owned(),
+            "LIQUIFY_GROUND_MOVE" | "THRASH_MOVE_2" => "THRASH_MOVE",
+            "THRASH_MOVE" => "LUNGING_BITE_MOVE",
+            "LUNGING_BITE_MOVE" => "SALIVATE_MOVE",
+            "SALIVATE_MOVE" => "THRASH_MOVE_2",
+            _ => "LIQUIFY_GROUND_MOVE",
         },
         MonsterId::TheObscura => pick_random_branch(
             state,
-            &state_log_ids,
+            creature,
             &[
                 ("PIERCING_GAZE_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
                 ("SAIL_MOVE", RepeatRule::CannotRepeat, 1.0_f32),
@@ -949,14 +999,14 @@ pub fn monster_roll_move(
             ],
         )?,
         MonsterId::ThievingHopper => match cur {
-            "THIEVERY_MOVE" => "FLUTTER_MOVE".to_owned(),
-            "FLUTTER_MOVE" => "HAT_TRICK_MOVE".to_owned(),
-            "HAT_TRICK_MOVE" => "NAB_MOVE".to_owned(),
-            _ => "ESCAPE_MOVE".to_owned(),
+            "THIEVERY_MOVE" => "FLUTTER_MOVE",
+            "FLUTTER_MOVE" => "HAT_TRICK_MOVE",
+            "HAT_TRICK_MOVE" => "NAB_MOVE",
+            _ => "ESCAPE_MOVE",
         },
         MonsterId::Tunneler => match cur {
-            "BITE_MOVE" => "BURROW_MOVE".to_owned(),
-            _ => "FROM_BELOW_MOVE".to_owned(),
+            "BITE_MOVE" => "BURROW_MOVE",
+            _ => "FROM_BELOW_MOVE",
         },
         _ => {
             return Err(KernelError::Unsupported {
@@ -969,10 +1019,10 @@ pub fn monster_roll_move(
     let can_transition = next_id != "REATTACH_MOVE";
     if let Some(c_mut) = state.creature_mut(creature) {
         if let Some(m_mut) = &mut c_mut.monster {
-            m_mut.current_state_id = next_id.clone();
-            m_mut.next_move_id = Some(next_id.clone());
+            m_mut.current_state_id = Cow::Borrowed(next_id);
+            m_mut.next_move_id = Some(Cow::Borrowed(next_id));
             m_mut.next_move_can_transition_away = can_transition;
-            m_mut.state_log_ids.push(next_id);
+            m_mut.state_log_ids.push(Cow::Borrowed(next_id));
         }
     }
     Ok(())
@@ -983,7 +1033,7 @@ pub fn monster_perform_move(
     state: &mut BattleState,
     creature: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let (mid, move_id, side) = {
+    let (mid, move_id) = {
         let Some(c) = state.creature_mut(creature) else {
             return Ok(());
         };
@@ -996,8 +1046,13 @@ pub fn monster_perform_move(
             .clone()
             .unwrap_or_else(|| m.current_state_id.clone());
         m.is_performing_move = true;
-        (mid, mv, c.side)
+        (mid, mv)
     };
+    let _ = monster_meta(mid)?;
+    let side = state
+        .creature(creature)
+        .map_or(CombatSide::Enemy, |c| c.side);
+    let _ = side;
 
     if move_id == "STUNNED" {
         match mid {
@@ -1024,7 +1079,7 @@ pub fn monster_perform_move(
         return Ok(());
     }
 
-    match (mid, move_id.as_str()) {
+    match (mid, move_id.as_ref()) {
         (MonsterId::BowlbugEgg, "BITE_MOVE") => {
             let amt = Dec::from_i32(state.ascension_value(AscensionLevel::DeadlyEnemies, 8, 7));
             AttackBuilder::from_monster(creature, amt).execute(state, content)?;
@@ -1368,7 +1423,7 @@ pub fn monster_perform_move(
                 let dis_h = create_ephemeral_choice_card(state, CardId::Disintegration);
                 if let Some(ext) = state.card_ext_mut(dis_h) {
                     ext.private_fields.insert(
-                        "Disintegration.<PowerAmount>k__BackingField".to_owned(),
+                        Cow::Borrowed("Disintegration.<PowerAmount>k__BackingField"),
                         FieldValue::Int(dis_amt),
                     );
                 }
@@ -1381,7 +1436,7 @@ pub fn monster_perform_move(
                 state.pending = Some(PendingContinuation {
                     request: ChoiceRequest {
                         timing: ChoiceTiming::EnemyTurn,
-                        source_id: MonsterId::KnowledgeDemon.model_id_str().to_owned(),
+                        source_id: MonsterId::KnowledgeDemon.model_id_str().into(),
                         source_pile: PileType::None,
                         min_count: 1,
                         max_count: 1,
@@ -1521,7 +1576,7 @@ pub fn monster_perform_move(
                     content,
                     MonsterId::ToughEgg,
                     side,
-                    Some(slot.to_owned()),
+                    Some(Cow::Borrowed(slot)),
                 )?;
                 power::apply(
                     state,
@@ -1711,7 +1766,7 @@ pub fn monster_perform_move(
                 content,
                 MonsterId::Parafright,
                 side,
-                Some("illusion".to_owned()),
+                Some(Cow::Borrowed("illusion")),
             )?;
         }
         (MonsterId::TheObscura, "PIERCING_GAZE_MOVE") => {
@@ -1720,9 +1775,9 @@ pub fn monster_perform_move(
         }
         (MonsterId::TheObscura, "SAIL_MOVE") => {
             let teammates: SmallVec<[CreatureHandle; 8]> = if side == CombatSide::Enemy {
-                state.enemy_handles.clone()
+                SmallVec::from_slice(&state.enemy_handles)
             } else {
-                state.ally_handles.iter().copied().collect()
+                SmallVec::from_slice(&state.ally_handles)
             };
             for teammate in teammates {
                 if state.creature(teammate).is_some_and(|c| c.is_alive()) {
@@ -1806,10 +1861,12 @@ pub fn monster_perform_move(
                             "SwipePower.<StolenCard>k__BackingField",
                             FieldValue::CardHandle(deck_h.0 as i32),
                         );
+                        state.deck_dirty.0 = true;
                         state.player.deck.retain(|h| *h != deck_h);
                         if let Some(dc) = state.card_mut(deck_h) {
                             dc.pile = PileType::None;
                         }
+                        state.invalidate_hook_cache();
                     }
                 }
             }
@@ -1943,6 +2000,7 @@ pub fn monster_resume_move_choice(
             c.removed_from_state = true;
         }
     }
+    state.invalidate_hook_cache();
 
     if let Some((chosen_handle, power_id, amt)) = chosen_power {
         let pc = state.player.creature_handle;
@@ -2023,7 +2081,7 @@ pub fn monster_attack_intent_hits(
     let move_id = m
         .next_move_id
         .as_deref()
-        .unwrap_or(m.current_state_id.as_str());
+        .unwrap_or(m.current_state_id.as_ref());
     if move_id == "STUNNED" {
         return Ok(SmallVec::new());
     }

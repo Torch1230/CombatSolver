@@ -176,7 +176,20 @@ impl StreamingHasher128 {
         self.v4 = round64(self.v4, x3);
     }
 
-    #[inline]
+    #[inline(always)]
+    fn flush_full_block(&mut self) {
+        let x0 = read_u64_le(&self.buf, 0);
+        let x1 = read_u64_le(&self.buf, 8);
+        let x2 = read_u64_le(&self.buf, 16);
+        let x3 = read_u64_le(&self.buf, 24);
+        self.v1 = round64(self.v1, x0);
+        self.v2 = round64(self.v2, x1);
+        self.v3 = round64(self.v3, x2);
+        self.v4 = round64(self.v4, x3);
+        self.pos = 0;
+    }
+
+    #[inline(always)]
     pub fn write_bytes(&mut self, mut data: &[u8]) {
         self.total_len = self.total_len.wrapping_add(data.len() as u64);
         if self.pos > 0 {
@@ -185,15 +198,7 @@ impl StreamingHasher128 {
             self.pos += take;
             data = &data[take..];
             if self.pos == 32 {
-                let x0 = read_u64_le(&self.buf, 0);
-                let x1 = read_u64_le(&self.buf, 8);
-                let x2 = read_u64_le(&self.buf, 16);
-                let x3 = read_u64_le(&self.buf, 24);
-                self.v1 = round64(self.v1, x0);
-                self.v2 = round64(self.v2, x1);
-                self.v3 = round64(self.v3, x2);
-                self.v4 = round64(self.v4, x3);
-                self.pos = 0;
+                self.flush_full_block();
             }
         }
         while data.len() >= 32 {
@@ -208,15 +213,11 @@ impl StreamingHasher128 {
 
     #[inline(always)]
     pub fn write_u8(&mut self, v: u8) {
-        if self.pos < 32 {
-            self.buf[self.pos] = v;
-            self.pos += 1;
-            self.total_len = self.total_len.wrapping_add(1);
-            if self.pos == 32 {
-                self.write_bytes(&[]);
-            }
-        } else {
-            self.write_bytes(&[v]);
+        self.buf[self.pos] = v;
+        self.pos += 1;
+        self.total_len = self.total_len.wrapping_add(1);
+        if self.pos == 32 {
+            self.flush_full_block();
         }
     }
 
@@ -233,7 +234,7 @@ impl StreamingHasher128 {
             self.pos += 2;
             self.total_len = self.total_len.wrapping_add(2);
             if self.pos == 32 {
-                self.write_bytes(&[]);
+                self.flush_full_block();
             }
         } else {
             self.write_bytes(&bytes);
@@ -248,7 +249,7 @@ impl StreamingHasher128 {
             self.pos += 4;
             self.total_len = self.total_len.wrapping_add(4);
             if self.pos == 32 {
-                self.write_bytes(&[]);
+                self.flush_full_block();
             }
         } else {
             self.write_bytes(&bytes);
@@ -268,14 +269,14 @@ impl StreamingHasher128 {
             self.pos += 8;
             self.total_len = self.total_len.wrapping_add(8);
             if self.pos == 32 {
-                self.write_bytes(&[]);
+                self.flush_full_block();
             }
         } else {
             self.write_bytes(&bytes);
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn write_str(&mut self, s: &str) {
         self.write_u32(s.len() as u32);
         self.write_bytes(s.as_bytes());
@@ -319,9 +320,170 @@ impl StreamingHasher128 {
     }
 }
 
+/// Direct word-accumulator 128-bit hasher eliminating intermediate `[u8; 32]` staging buffers.
+#[derive(Clone, Copy)]
+pub struct WordHasher128 {
+    v0: u64,
+    v1: u64,
+    v2: u64,
+    v3: u64,
+    len: u64,
+}
+
+impl Default for WordHasher128 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl WordHasher128 {
+    #[inline(always)]
+    pub const fn new() -> Self {
+        Self {
+            v0: PRIME64_1.wrapping_add(PRIME64_2),
+            v1: PRIME64_2,
+            v2: 0,
+            v3: 0u64.wrapping_sub(PRIME64_1),
+            len: 0,
+        }
+    }
+
+    #[inline(always)]
+    pub fn mix_u64(&mut self, w: u64) {
+        let next = round64(self.v0, w);
+        self.v0 = self.v1;
+        self.v1 = self.v2;
+        self.v2 = self.v3;
+        self.v3 = next;
+        self.len = self.len.wrapping_add(8);
+    }
+
+    #[inline(always)]
+    pub fn mix_u64x2(&mut self, a: u64, b: u64) {
+        let n0 = round64(self.v0, a);
+        let n1 = round64(self.v1, b);
+        self.v0 = self.v2;
+        self.v1 = self.v3;
+        self.v2 = n0;
+        self.v3 = n1;
+        self.len = self.len.wrapping_add(16);
+    }
+
+    #[inline(always)]
+    pub fn mix_u64x4(&mut self, a: u64, b: u64, c: u64, d: u64) {
+        self.v0 = round64(self.v0, a);
+        self.v1 = round64(self.v1, b);
+        self.v2 = round64(self.v2, c);
+        self.v3 = round64(self.v3, d);
+        self.len = self.len.wrapping_add(32);
+    }
+
+    #[inline(always)]
+    pub fn mix_u32(&mut self, v: u32) {
+        self.mix_u64(v as u64);
+    }
+
+    #[inline(always)]
+    pub fn mix_i32(&mut self, v: i32) {
+        self.mix_u64(v as u32 as u64);
+    }
+
+    #[inline(always)]
+    pub fn mix_bool(&mut self, v: bool) {
+        self.mix_u64(u64::from(v));
+    }
+
+    #[inline(always)]
+    pub fn mix_bytes(&mut self, mut data: &[u8]) {
+        self.len = self.len.wrapping_add(data.len() as u64);
+        while data.len() >= 32 {
+            let x0 = read_u64_le(data, 0);
+            let x1 = read_u64_le(data, 8);
+            let x2 = read_u64_le(data, 16);
+            let x3 = read_u64_le(data, 24);
+            self.v0 = round64(self.v0, x0);
+            self.v1 = round64(self.v1, x1);
+            self.v2 = round64(self.v2, x2);
+            self.v3 = round64(self.v3, x3);
+            data = &data[32..];
+        }
+        while data.len() >= 8 {
+            let w = read_u64_le(data, 0);
+            let next = round64(self.v0, w);
+            self.v0 = self.v1;
+            self.v1 = self.v2;
+            self.v2 = self.v3;
+            self.v3 = next;
+            data = &data[8..];
+        }
+        if !data.is_empty() {
+            let len = data.len();
+            let mut tail = 0u64;
+            let mut off = 0usize;
+            if (len & 4) != 0 {
+                tail = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as u64;
+                off = 4;
+            }
+            if (len & 2) != 0 {
+                tail |= (u16::from_le_bytes([data[off], data[off + 1]]) as u64) << (off * 8);
+                off += 2;
+            }
+            if (len & 1) != 0 {
+                tail |= (data[off] as u64) << (off * 8);
+            }
+            let tagged = tail ^ ((len as u64) << 56) ^ PRIME64_5;
+            let next = round64(self.v0, tagged);
+            self.v0 = self.v1;
+            self.v1 = self.v2;
+            self.v2 = self.v3;
+            self.v3 = next;
+        }
+    }
+
+    #[inline(always)]
+    pub fn mix_str(&mut self, s: &str) {
+        self.mix_bytes(s.as_bytes());
+    }
+
+    #[inline(always)]
+    pub fn finish(self) -> StateHash {
+        let lo = self
+            .v0
+            .rotate_left(1)
+            .wrapping_add(self.v1.rotate_left(7))
+            .wrapping_add(self.v2.rotate_left(12))
+            .wrapping_add(self.v3.rotate_left(18))
+            .wrapping_add(self.len.wrapping_mul(PRIME64_5));
+        let hi = (self.v0 ^ PRIME64_3)
+            .rotate_left(13)
+            .wrapping_add((self.v1 ^ PRIME64_4).rotate_left(29))
+            .wrapping_add(self.v2.wrapping_add(PRIME64_1).rotate_left(37))
+            .wrapping_add(self.v3.wrapping_add(PRIME64_2).rotate_left(47))
+            .wrapping_add(self.len ^ PRIME64_4);
+        let f0 = avalanche64(lo ^ hi);
+        let f1 = avalanche64(hi ^ f0.rotate_left(23));
+        StateHash::from_parts(f1, f0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn word_hasher_sensitive_to_length_and_single_bit() {
+        let mut a = WordHasher128::new();
+        a.mix_str("abc");
+        let mut b = WordHasher128::new();
+        b.mix_str("abc\0");
+        assert_ne!(a.finish(), b.finish());
+
+        let mut c = WordHasher128::new();
+        c.mix_u64x4(1, 2, 3, 4);
+        let mut d = WordHasher128::new();
+        d.mix_u64x4(1, 2, 3, 5);
+        assert_ne!(c.finish(), d.finish());
+    }
 
     #[test]
     fn streaming_hasher_matches_hash_bytes_128_across_lengths() {

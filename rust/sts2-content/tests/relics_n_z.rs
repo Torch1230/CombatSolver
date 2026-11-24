@@ -1,5 +1,6 @@
 use smallvec::SmallVec;
-use std::collections::{BTreeMap, BTreeSet};
+use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use sts2_content::relics::batch_n_z;
 use sts2_content::Sts2Content;
@@ -8,8 +9,8 @@ use sts2_kernel::content_dispatch::{CardPlayContext, CardPlayOutcome};
 use sts2_kernel::continuation::StepOutcome;
 use sts2_kernel::{
     ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine,
-    ContentDispatcher, CreatureHandle, CreatureInst, FieldValue, HookArgs, HookListener,
-    HookResult, KernelError, MonsterInst, PlayerCounters, PlayerInst, RelicInst,
+    ContentDispatcher, CreatureHandle, CreatureInst, FieldMap, FieldValue, HookArgs,
+    HookListener, HookResult, KernelError, MonsterInst, PlayerCounters, PlayerInst, RelicInst,
     RootStaticContext, SemanticHistory,
 };
 use sts2_types::{
@@ -56,7 +57,7 @@ fn make_relic(id: RelicId) -> RelicInst {
         is_melted: false,
         stack_count: 1,
         floor_added_to_deck: None,
-        private_fields: BTreeMap::new(),
+        private_fields: FieldMap::new(),
     }
 }
 
@@ -64,7 +65,7 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
     let run_rngs = RunRngSet::from_string_seed("RELIC_NZ_SEED");
     let player_rngs = PlayerRngSet::from_seed(run_rngs.seed);
     let mut cards = Vec::new();
-    let mut deck = SmallVec::new();
+    let mut deck = Vec::new();
     let mut next_h = 1u32;
     for cid in deck_cards {
         let ch = CardHandle(next_h);
@@ -89,13 +90,14 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
     let enemy_creature = CreatureInst {
         handle: enemy_h,
         combat_id: Some(2),
         side: CombatSide::Enemy,
-        slot_name: Some("monster".to_owned()),
+        slot_name: Some(Cow::Borrowed("monster")),
         is_player: false,
         pet_owner_player_index: None,
         monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -109,16 +111,17 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
             rng: Rng::from_seed(run_rngs.seed ^ 99),
             is_performing_move: false,
             spawned_this_turn: false,
-            current_state_id: String::new(),
+            current_state_id: Cow::Borrowed(""),
             next_move_id: None,
             next_move_can_transition_away: true,
             performed_first_move: false,
             state_log_ids: SmallVec::new(),
             transient_move_follow_up_state_id: None,
-            setup_fields: BTreeMap::new(),
-            private_fields: BTreeMap::new(),
+            setup_fields: FieldMap::new(),
+            private_fields: FieldMap::new(),
         }),
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     BattleState {
@@ -160,13 +163,14 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
             phase: PlayerTurnPhase::Play,
             turn_number: 1,
             counters: PlayerCounters::default(),
-            hand: SmallVec::new(),
-            draw: SmallVec::new(),
-            discard: SmallVec::new(),
-            exhaust: SmallVec::new(),
-            play: SmallVec::new(),
+            hand: Vec::new(),
+            draw: Vec::new(),
+            discard: Vec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
             deck,
             potion_slots: smallvec::smallvec![None, None, None],
+            combat_generated_potion_mask: 0,
             orb_capacity: 3,
             orbs: SmallVec::new(),
             arrows: SmallVec::new(),
@@ -177,8 +181,8 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
         card_extensions: Vec::new(),
         creatures: vec![player_creature, enemy_creature],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![player_h],
-        enemy_handles: smallvec::smallvec![enemy_h],
+        ally_handles: vec![player_h],
+        enemy_handles: vec![enemy_h],
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::new(),
@@ -187,6 +191,8 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     }
 }
 
@@ -1553,7 +1559,7 @@ fn card_gen_choices_extra_turn_and_merge_ready_helpers_n_z() {
         fn enchantment_damage_additive(&self, state: &BattleState, card: CardHandle, amount: Dec, props: ValueProp) -> Result<Dec, KernelError> { Sts2Content.enchantment_damage_additive(state, card, amount, props) }
         fn enchantment_damage_multiplicative(&self, state: &BattleState, card: CardHandle, amount: Dec, props: ValueProp) -> Result<Dec, KernelError> { Sts2Content.enchantment_damage_multiplicative(state, card, amount, props) }
         fn enchantment_should_start_at_bottom(&self, id: EnchantmentId) -> Result<bool, KernelError> { Sts2Content.enchantment_should_start_at_bottom(id) }
-        fn enchantment_modify_shuffle_order(&self, state: &BattleState, card: CardHandle, cards: &mut Vec<CardHandle>, is_initial_shuffle: bool) -> Result<(), KernelError> { Sts2Content.enchantment_modify_shuffle_order(state, card, cards, is_initial_shuffle) }
+        fn enchantment_modify_shuffle_order(&self, state: &BattleState, card: CardHandle, cards: &mut [CardHandle], is_initial_shuffle: bool) -> Result<(), KernelError> { Sts2Content.enchantment_modify_shuffle_order(state, card, cards, is_initial_shuffle) }
         fn listener_hook_mask(&self, state: &BattleState, listener: HookListener) -> Result<HookMask, KernelError> { Sts2Content.listener_hook_mask(state, listener) }
         fn dispatch_hook(&self, state: &mut BattleState, listener: HookListener, slot: HookSlot, args: &HookArgs<'_>) -> Result<HookResult, KernelError> { Sts2Content.dispatch_hook(state, listener, slot, args) }
     }

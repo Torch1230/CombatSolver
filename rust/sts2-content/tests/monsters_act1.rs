@@ -1,14 +1,14 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sts2_content::monsters::act1;
 use sts2_content::Sts2Content;
 use sts2_kernel::commands::{creature as creature_cmd, damage::AttackBuilder};
 use sts2_kernel::{
     ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine,
-    ContentDispatcher, CreatureHandle, CreatureInst, FieldValue, HookArgs, HookListener,
-    MonsterInst, PlayerCounters, PlayerInst, RelicInst, RootStaticContext, SemanticHistory,
-    StepOutcome,
+    ContentDispatcher, CreatureHandle, CreatureInst, FieldMap, FieldValue, HookArgs,
+    HookListener, MonsterInst, PlayerCounters, PlayerInst, RelicInst, RootStaticContext,
+    SemanticHistory, StepOutcome,
 };
 use sts2_types::{
     CardId, CardKeywords, CharacterId, CombatSide, Dec, GameMode, HookSlot, MonsterId, PileType,
@@ -68,7 +68,7 @@ fn build_battle(
     seed: &str,
     game_mode: GameMode,
     ascension: u8,
-    enemies: &[(MonsterId, Option<&str>, BTreeMap<String, FieldValue>)],
+    enemies: &[(MonsterId, Option<&str>, FieldMap)],
 ) -> (BattleState, SmallVec<[CreatureHandle; 8]>) {
     let run_rngs = RunRngSet::from_string_seed(seed);
     let player_rngs = PlayerRngSet::from_seed(run_rngs.seed);
@@ -77,7 +77,7 @@ fn build_battle(
     let content = Sts2Content;
 
     let mut cards = Vec::new();
-    let mut deck_handles = SmallVec::new();
+    let mut deck_handles = Vec::new();
     let deck_ids = [
         CardId::StrikeIronclad,
         CardId::StrikeIronclad,
@@ -130,7 +130,8 @@ fn build_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let player = PlayerInst {
@@ -149,13 +150,14 @@ fn build_battle(
         phase: PlayerTurnPhase::None,
         turn_number: 1,
         counters: PlayerCounters::default(),
-        hand: SmallVec::new(),
-        draw: SmallVec::new(),
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
+        hand: Vec::new(),
+        draw: Vec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
         deck: deck_handles,
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: 0,
         orbs: SmallVec::new(),
         arrows: SmallVec::<[ArrowSlotInst; 4]>::new(),
@@ -179,11 +181,17 @@ fn build_battle(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -207,8 +215,8 @@ fn build_battle(
         card_extensions: Vec::new(),
         creatures: vec![player_creature],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
-        enemy_handles: SmallVec::new(),
+        ally_handles: vec![pc_handle],
+        enemy_handles: Vec::new(),
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::new(),
@@ -217,6 +225,8 @@ fn build_battle(
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
 
     let mut enemy_handles = SmallVec::new();
@@ -227,7 +237,7 @@ fn build_battle(
             handle: eh,
             combat_id: Some((1 + idx) as u32),
             side: CombatSide::Enemy,
-            slot_name: Some((*slot).unwrap_or("slot_0").to_owned()),
+            slot_name: Some(Cow::Owned((*slot).unwrap_or("slot_0").to_owned())),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(*mid),
@@ -241,16 +251,17 @@ fn build_battle(
                 rng: Rng::from_seed(state.run_rngs.seed + 1 + idx as u64),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: String::new(),
+                current_state_id: Cow::Borrowed(""),
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
                 state_log_ids: SmallVec::new(),
                 transient_move_follow_up_state_id: None,
                 setup_fields: setup_fields.clone(),
-                private_fields: BTreeMap::new(),
+                private_fields: FieldMap::new(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
         state.enemy_handles.push(eh);
         state.spawned_enemy_handles.push(eh);
@@ -260,8 +271,8 @@ fn build_battle(
     (state, enemy_handles)
 }
 
-fn default_setup_for(mid: MonsterId) -> (Option<&'static str>, BTreeMap<String, FieldValue>) {
-    let mut setup = BTreeMap::new();
+fn default_setup_for(mid: MonsterId) -> (Option<&'static str>, FieldMap) {
+    let mut setup = FieldMap::new();
     let slot = match mid {
         MonsterId::PhantasmalGardener => Some("first"),
         _ => Some("slot_0"),
@@ -290,11 +301,11 @@ fn all_46_act1_monsters_meta_hp_setup_and_5_turn_combat() {
         }
 
         let (slot, setup) = default_setup_for(mid);
-        let enemy_specs: Vec<(MonsterId, Option<&str>, BTreeMap<String, FieldValue>)> =
+        let enemy_specs: Vec<(MonsterId, Option<&str>, FieldMap)> =
             if mid == MonsterId::KinFollower {
                 vec![
                     (mid, slot, setup),
-                    (MonsterId::KinPriest, Some("slot_1"), BTreeMap::new()),
+                    (MonsterId::KinPriest, Some("slot_1"), FieldMap::new()),
                 ]
             } else {
                 vec![(mid, slot, setup)]
@@ -325,7 +336,7 @@ fn all_46_act1_monsters_meta_hp_setup_and_5_turn_combat() {
                 "VINE_ROT",
                 GameMode::Standard,
                 0,
-                &[(MonsterId::VineShambler, Some("slot_0"), BTreeMap::new())],
+                &[(MonsterId::VineShambler, Some("slot_0"), FieldMap::new())],
             );
             let veh = venemies[0];
             CombatEngine::start_combat(&mut vstate, &content).unwrap();
@@ -404,7 +415,7 @@ fn waterfall_giant_full_cycle_explosion_and_doom_hook() {
         "WATERFALL_CYCLE",
         GameMode::Standard,
         0,
-        &[(MonsterId::WaterfallGiant, Some("slot_0"), BTreeMap::new())],
+        &[(MonsterId::WaterfallGiant, Some("slot_0"), FieldMap::new())],
     );
     let wg = enemies[0];
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -513,7 +524,7 @@ fn lagavulin_matriarch_sleep_wake_and_shell_awake_hook() {
         "LAGAVULIN_TEST",
         GameMode::Dread,
         10,
-        &[(MonsterId::LagavulinMatriarch, Some("slot_0"), BTreeMap::new())],
+        &[(MonsterId::LagavulinMatriarch, Some("slot_0"), FieldMap::new())],
     );
     let lag = enemies[0];
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -566,7 +577,7 @@ fn ceremonial_beast_plow_break_and_second_phase() {
         "BEAST_TEST",
         GameMode::Dread,
         10,
-        &[(MonsterId::CeremonialBeast, Some("slot_0"), BTreeMap::new())],
+        &[(MonsterId::CeremonialBeast, Some("slot_0"), FieldMap::new())],
     );
     let beast = enemies[0];
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -639,7 +650,7 @@ fn random_branch_state_rules_and_cooldowns() {
         "MAWLER_RNG",
         GameMode::Standard,
         0,
-        &[(MonsterId::Mawler, Some("slot_0"), BTreeMap::new())],
+        &[(MonsterId::Mawler, Some("slot_0"), FieldMap::new())],
     );
     let mawler = enemies[0];
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -659,7 +670,7 @@ fn random_branch_state_rules_and_cooldowns() {
         if mv == "ROAR_MOVE" {
             roar_count += 1;
         }
-        prev = mv;
+        prev = mv.into_owned();
         CombatEngine::end_player_turn(&mut state, &content).unwrap();
     }
     assert!(roar_count <= 1, "ROAR_MOVE used {roar_count} times");
@@ -669,13 +680,13 @@ fn random_branch_state_rules_and_cooldowns() {
         "FLYCONID_RNG",
         GameMode::Standard,
         0,
-        &[(MonsterId::Flyconid, Some("slot_0"), BTreeMap::new())],
+        &[(MonsterId::Flyconid, Some("slot_0"), FieldMap::new())],
     );
     let fly = fenemies[0];
     CombatEngine::start_combat(&mut fstate, &content).unwrap();
     let log0 = fstate.creature(fly).unwrap().monster.as_ref().unwrap().state_log_ids.clone();
     assert_eq!(log0.len(), 1);
-    assert!(matches!(log0[0].as_str(), "FRAIL_SPORES_MOVE" | "SMASH_MOVE"));
+    assert!(matches!(log0[0].as_ref(), "FRAIL_SPORES_MOVE" | "SMASH_MOVE"));
     for _ in 0..8 {
         CombatEngine::end_player_turn(&mut fstate, &content).unwrap();
     }
@@ -717,7 +728,7 @@ fn gremlin_merc_steal_and_blitz_and_terror_eel_shriek() {
             "GREMLIN_STD",
             GameMode::Standard,
             8, // ToughEnemies active
-            &[(MonsterId::GremlinMerc, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::GremlinMerc, Some("slot_0"), FieldMap::new())],
         );
         let gm = enemies[0];
         CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -734,7 +745,7 @@ fn gremlin_merc_steal_and_blitz_and_terror_eel_shriek() {
             "GREMLIN_BLITZ",
             GameMode::Blitz,
             0,
-            &[(MonsterId::GremlinMerc, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::GremlinMerc, Some("slot_0"), FieldMap::new())],
         );
         CombatEngine::start_combat(&mut state, &content).unwrap();
         CombatEngine::end_player_turn(&mut state, &content).unwrap();
@@ -746,7 +757,7 @@ fn gremlin_merc_steal_and_blitz_and_terror_eel_shriek() {
             "TERROR_EEL",
             GameMode::Standard,
             0,
-            &[(MonsterId::TerrorEel, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::TerrorEel, Some("slot_0"), FieldMap::new())],
         );
         let eel = enemies[0];
         CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -792,10 +803,10 @@ fn two_tailed_rat_summon_and_corpse_slug_ravenous_and_status_generators() {
     let content = Sts2Content;
     // TwoTailedRat: 2 rats in slots "first", "second"; force turnsUntilSummonable=0 -> CallForBackup spawns in "fifth" with unique HP & Niche RNG draw
     {
-        let mut s0 = BTreeMap::new();
+        let mut s0 = FieldMap::new();
         s0.insert("TwoTailedRat._starterMoveIndex".to_owned(), FieldValue::Int(0));
         s0.insert("TwoTailedRat._turnsUntilSummonable".to_owned(), FieldValue::Int(0));
-        let mut s1 = BTreeMap::new();
+        let mut s1 = FieldMap::new();
         s1.insert("TwoTailedRat._starterMoveIndex".to_owned(), FieldValue::Int(1));
         let (mut state, enemies) = build_battle(
             "RATS_SUMMON",
@@ -820,7 +831,7 @@ fn two_tailed_rat_summon_and_corpse_slug_ravenous_and_status_generators() {
         let niche_before = state.run_rngs.get(sts2_types::RunRngType::Niche).counter;
         // Force rat[0] to CALL_FOR_BACKUP_MOVE to verify spawn + unique HP + Niche RNG
         state.creature_mut(enemies[0]).unwrap().monster.as_mut().unwrap().next_move_id =
-            Some("CALL_FOR_BACKUP_MOVE".to_owned());
+            Some(Cow::Borrowed("CALL_FOR_BACKUP_MOVE"));
         CombatEngine::end_player_turn(&mut state, &content).unwrap();
         assert_eq!(state.enemy_handles.len(), 3);
         assert!(state.run_rngs.get(sts2_types::RunRngType::Niche).counter > niche_before);
@@ -837,9 +848,9 @@ fn two_tailed_rat_summon_and_corpse_slug_ravenous_and_status_generators() {
 
     // CorpseSlug: ally death triggers RavenousPower -> STUNNED -> end_player_turn executes RavenousStunned
     {
-        let mut s0 = BTreeMap::new();
+        let mut s0 = FieldMap::new();
         s0.insert("CorpseSlug._starterMoveIdx".to_owned(), FieldValue::Int(0));
-        let mut s1 = BTreeMap::new();
+        let mut s1 = FieldMap::new();
         s1.insert("CorpseSlug._starterMoveIdx".to_owned(), FieldValue::Int(1));
         let (mut state, enemies) = build_battle(
             "SLUGS_RAV",
@@ -882,7 +893,7 @@ fn two_tailed_rat_summon_and_corpse_slug_ravenous_and_status_generators() {
             "SOUL_FYSH_DREAD",
             GameMode::Dread,
             0,
-            &[(MonsterId::SoulFysh, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::SoulFysh, Some("slot_0"), FieldMap::new())],
         );
         let sf = enemies[0];
         CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -905,7 +916,7 @@ fn two_tailed_rat_summon_and_corpse_slug_ravenous_and_status_generators() {
             "VANTOM_DREAD",
             GameMode::Dread,
             10,
-            &[(MonsterId::Vantom, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::Vantom, Some("slot_0"), FieldMap::new())],
         );
         let v = enemies[0];
         CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -942,15 +953,15 @@ fn stunned_move_callbacks_end_to_end() {
             "STUN_LAG",
             GameMode::Standard,
             0,
-            &[(MonsterId::LagavulinMatriarch, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::LagavulinMatriarch, Some("slot_0"), FieldMap::new())],
         );
         let lag = enemies[0];
         CombatEngine::start_combat(&mut state, &content).unwrap();
         {
             let m = state.creature_mut(lag).unwrap().monster.as_mut().unwrap();
-            m.current_state_id = "STUNNED".to_owned();
-            m.next_move_id = Some("STUNNED".to_owned());
-            m.transient_move_follow_up_state_id = Some("SLASH_MOVE".to_owned());
+            m.current_state_id = Cow::Borrowed("STUNNED");
+            m.next_move_id = Some(Cow::Borrowed("STUNNED"));
+            m.transient_move_follow_up_state_id = Some(Cow::Borrowed("SLASH_MOVE"));
             m.private_fields
                 .insert("LagavulinMatriarch._isAwake".to_owned(), FieldValue::Bool(false));
         }
@@ -974,15 +985,15 @@ fn stunned_move_callbacks_end_to_end() {
             "STUN_SLUG",
             GameMode::Standard,
             0,
-            &[(MonsterId::CorpseSlug, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::CorpseSlug, Some("slot_0"), FieldMap::new())],
         );
         let slug = enemies[0];
         CombatEngine::start_combat(&mut state, &content).unwrap();
         {
             let m = state.creature_mut(slug).unwrap().monster.as_mut().unwrap();
-            m.current_state_id = "STUNNED".to_owned();
-            m.next_move_id = Some("STUNNED".to_owned());
-            m.transient_move_follow_up_state_id = Some("WHIP_SLAP_MOVE".to_owned());
+            m.current_state_id = Cow::Borrowed("STUNNED");
+            m.next_move_id = Some(Cow::Borrowed("STUNNED"));
+            m.transient_move_follow_up_state_id = Some(Cow::Borrowed("WHIP_SLAP_MOVE"));
             m.private_fields
                 .insert("CorpseSlug._isRavenous".to_owned(), FieldValue::Bool(true));
         }
@@ -1006,15 +1017,15 @@ fn stunned_move_callbacks_end_to_end() {
             "STUN_BEAST",
             GameMode::Standard,
             0,
-            &[(MonsterId::CeremonialBeast, Some("slot_0"), BTreeMap::new())],
+            &[(MonsterId::CeremonialBeast, Some("slot_0"), FieldMap::new())],
         );
         let beast = enemies[0];
         CombatEngine::start_combat(&mut state, &content).unwrap();
         {
             let m = state.creature_mut(beast).unwrap().monster.as_mut().unwrap();
-            m.current_state_id = "STUNNED".to_owned();
-            m.next_move_id = Some("STUNNED".to_owned());
-            m.transient_move_follow_up_state_id = Some("BEAST_CRY_MOVE".to_owned());
+            m.current_state_id = Cow::Borrowed("STUNNED");
+            m.next_move_id = Some(Cow::Borrowed("STUNNED"));
+            m.transient_move_follow_up_state_id = Some(Cow::Borrowed("BEAST_CRY_MOVE"));
             m.private_fields.insert(
                 "CeremonialBeast._isStunnedByPlowRemoval".to_owned(),
                 FieldValue::Bool(true),

@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use sts2_kernel::commands::{
     autoplay, block, card, card_factory, card_pile, card_select, creature, damage, forge, gold,
     orb, osty, potion as potion_cmd, power,
@@ -11,10 +12,9 @@ use sts2_kernel::{
 };
 use sts2_types::generated_ids::generated_card_meta;
 use sts2_types::{
-    CARD_POOL_COLORLESS, CARD_POOL_FOOL, CardId, CardKeywords, CardPilePosition, CardRarity,
-    CardStaticFlags, CardTags, CardType, CharacterId, Dec, HookMask, HookSlot,
-    LocalEnergyModifierKind, PileType, PlayerRngType, PotionId, PotionMeta, PowerId, RunRngType,
-    TargetType, ValueProp,
+    CardId, CardKeywords, CardPilePosition, CardRarity, CardStaticFlags, CardTags, CardType,
+    CharacterId, Dec, HookMask, HookSlot, LocalEnergyModifierKind, PileType, PlayerRngType,
+    PotionId, PotionMeta, PowerId, RunRngType, TargetType, ValueProp,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -380,7 +380,7 @@ fn create_offer_card_instance(state: &mut BattleState, card_id: CardId) -> CardH
     });
     if let Some(ext) = state.card_ext_mut(handle) {
         ext.private_fields
-            .insert(POTION_OFFER_MARKER.to_owned(), FieldValue::Bool(true));
+            .insert(Cow::Borrowed(POTION_OFFER_MARKER), FieldValue::Bool(true));
     }
     handle
 }
@@ -501,7 +501,7 @@ fn collect_hittable_enemies(
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
     let mut out = SmallVec::new();
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
             && hooks::should_allow_hitting(state, content, eh)?
@@ -616,7 +616,7 @@ pub fn touch_of_insanity_candidates(
     {
         return Ok(SmallVec::new());
     }
-    let hand = state.player.hand.clone();
+    let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
     let mut out = SmallVec::new();
     for h in hand {
         let cid = state
@@ -657,9 +657,13 @@ pub fn card_choice_potion_candidates(
     state: &mut BattleState,
     potion_id: PotionId,
 ) -> Result<SmallVec<[CardHandle; 16]>, KernelError> {
+    let colorless_pool;
     let char_pool;
     let pool: &[CardId] = match potion_id {
-        PotionId::ColorlessPotion => CARD_POOL_COLORLESS,
+        PotionId::ColorlessPotion => {
+            colorless_pool = card_factory::colorless_card_pool_candidates(state);
+            &colorless_pool
+        }
         _ => {
             char_pool = card_factory::character_combat_pool(state);
             &char_pool
@@ -731,6 +735,7 @@ pub fn card_choice_potion_resume(
             if let Some(c) = state.card_mut(cand) {
                 c.removed_from_state = true;
             }
+            state.invalidate_hook_cache();
         }
     }
     if let Some(h) = chosen {
@@ -760,19 +765,43 @@ fn card_choice_potion_resume_from_pending(
     card_choice_potion_resume(content, state, &offer_handles, selected)
 }
 
-pub fn entropic_brew_roll_out_of_combat_potion(state: &mut BattleState) -> Option<PotionId> {
-    let mut out_of_combat_pool: Vec<PotionId> = Vec::new();
-    for &p in character_potion_pool(state.static_ctx.character_id) {
-        if !out_of_combat_pool.contains(&p) {
-            out_of_combat_pool.push(p);
+pub fn potion_generation_pool_candidates(
+    state: &BattleState,
+    in_combat_only: bool,
+) -> SmallVec<[PotionId; 64]> {
+    let mut pool = SmallVec::<[PotionId; 64]>::new();
+    let push_if_valid = |pool: &mut SmallVec<[PotionId; 64]>, p: PotionId| {
+        if in_combat_only
+            && matches!(
+                p,
+                PotionId::RegenPotion | PotionId::FruitJuice | PotionId::FairyInABottle
+            )
+        {
+            return;
         }
+        if !pool.contains(&p) {
+            pool.push(p);
+        }
+    };
+    if !state.static_ctx.potion_generation_pool.is_empty() {
+        for &p in &state.static_ctx.potion_generation_pool {
+            push_if_valid(&mut pool, p);
+        }
+        return pool;
+    }
+    for &p in character_potion_pool(state.static_ctx.character_id) {
+        push_if_valid(&mut pool, p);
     }
     for &p in SHARED_POTION_POOL {
-        if !out_of_combat_pool.contains(&p) {
-            out_of_combat_pool.push(p);
-        }
+        push_if_valid(&mut pool, p);
     }
-    let rng = state.player_rngs.get_mut(PlayerRngType::NonCombatGeneration);
+    pool
+}
+
+fn roll_potion_by_rarity(
+    rng: &mut sts2_types::Rng,
+    pool: &[PotionId],
+) -> Option<PotionId> {
     let roll = rng
         .next_f32_range(0.0_f32, 1.0_f32)
         .expect("0..1 f32 range is valid");
@@ -783,11 +812,33 @@ pub fn entropic_brew_roll_out_of_combat_potion(state: &mut BattleState) -> Optio
     } else {
         PotionRarity::Common
     };
-    let matching: Vec<PotionId> = out_of_combat_pool
-        .into_iter()
+    let matching: SmallVec<[PotionId; 64]> = pool
+        .iter()
+        .copied()
         .filter(|&p| potion_rarity(p) == rarity)
         .collect();
-    rng.next_item(&matching).copied()
+    if let Some(&picked) = rng.next_item(&matching) {
+        return Some(picked);
+    }
+    rng.next_item(pool).copied()
+}
+
+pub fn alchemize_roll_in_combat_potion(state: &mut BattleState) -> Option<PotionId> {
+    let pool = potion_generation_pool_candidates(state, true);
+    if pool.is_empty() {
+        return None;
+    }
+    let rng = state.run_rngs.get_mut(RunRngType::CombatPotionGeneration);
+    roll_potion_by_rarity(rng, &pool)
+}
+
+pub fn entropic_brew_roll_out_of_combat_potion(state: &mut BattleState) -> Option<PotionId> {
+    let pool = potion_generation_pool_candidates(state, false);
+    if pool.is_empty() {
+        return None;
+    }
+    let rng = state.player_rngs.get_mut(PlayerRngType::NonCombatGeneration);
+    roll_potion_by_rarity(rng, &pool)
 }
 
 pub fn potion_on_use(
@@ -887,7 +938,7 @@ pub fn potion_on_use(
         }
         PotionId::BlessingOfTheForge => {
             let _ = require_player_target(state, target, potion_id)?;
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 let Some(ci) = state.card(h) else {
                     continue;
@@ -931,7 +982,7 @@ pub fn potion_on_use(
         }
         PotionId::BottledPotential => {
             let _ = require_player_target(state, target, potion_id)?;
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 card_pile::add_sync(state, h, PileType::Draw, CardPilePosition::Bottom);
             }
@@ -941,13 +992,13 @@ pub fn potion_on_use(
         }
         PotionId::BottledSong => {
             let _ = require_player_target(state, target, potion_id)?;
-            let pool = CARD_POOL_FOOL;
+            let pool = card_factory::melody_card_pool_candidates(state);
             let tags = [CardTags::WAH, CardTags::CHO, CardTags::KI];
             let mut generated = SmallVec::<[CardHandle; 3]>::new();
             for tag in tags {
                 let picked = card_factory::get_distinct_for_combat_filtered(
                     state,
-                    pool,
+                    &pool,
                     1,
                     RunRngType::CombatCardGeneration,
                     |cid| generated_card_meta(cid).base_tags.contains(tag),
@@ -979,9 +1030,10 @@ pub fn potion_on_use(
         }
         PotionId::CosmicConcoction => {
             let _ = require_player_target(state, target, potion_id)?;
+            let pool = card_factory::colorless_card_pool_candidates(state);
             let chosen = card_factory::get_distinct_for_combat_filtered(
                 state,
-                CARD_POOL_COLORLESS,
+                &pool,
                 3,
                 RunRngType::CombatCardGeneration,
                 |_| true,
@@ -1063,7 +1115,7 @@ pub fn potion_on_use(
             if let StepOutcome::NeedsChoice(req) = outcome {
                 return Err(KernelError::Unsupported {
                     kind: "PotionAutoplayChoice",
-                    id: req.source_id,
+                    id: req.source_id.into_owned(),
                 });
             }
             Ok(CardPlayOutcome::default())
@@ -1328,7 +1380,7 @@ pub fn potion_on_use(
         }
         PotionId::GlowwaterPotion => {
             let _ = require_player_target(state, target, potion_id)?;
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 card_pile::exhaust(state, content, h, false)?;
             }
@@ -1628,7 +1680,7 @@ pub fn potion_on_use(
         PotionId::SneckoOil => {
             let _ = require_player_target(state, target, potion_id)?;
             let _ = card_pile::draw(state, content, 7, false)?;
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 let Some(ci) = state.card(h) else {
                     continue;

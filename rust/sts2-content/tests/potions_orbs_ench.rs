@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use sts2_content::orbs_enchantments_afflictions::{
     affliction_hook_mask, affliction_on_play, dispatch_affliction_hook, enchantment_damage_additive,
@@ -68,7 +67,7 @@ fn build_battle(
     let pc_handle = CreatureHandle(1);
 
     let mut cards = Vec::new();
-    let mut deck_handles = SmallVec::new();
+    let mut deck_handles = Vec::new();
     for (idx, &cid) in deck_ids.iter().enumerate() {
         let h = (idx + 1) as u32;
         deck_handles.push(CardHandle(h));
@@ -97,11 +96,12 @@ fn build_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let mut creatures = vec![player_creature];
-    let mut enemy_handles = SmallVec::new();
+    let mut enemy_handles = Vec::new();
     let mut slots = Vec::new();
     for (idx, &(mid, hp)) in enemies.iter().enumerate() {
         let eh = CreatureHandle((idx + 2) as u32);
@@ -112,7 +112,7 @@ fn build_battle(
             handle: eh,
             combat_id: Some((idx + 1) as u32),
             side: CombatSide::Enemy,
-            slot_name: Some(slot_name),
+            slot_name: Some(std::borrow::Cow::Owned(slot_name)),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(mid),
@@ -126,16 +126,17 @@ fn build_battle(
                 rng: Rng::from_seed(run_rngs.seed + (idx as u64) + 1),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: String::new(),
+                current_state_id: std::borrow::Cow::Borrowed(""),
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
                 state_log_ids: SmallVec::new(),
                 transient_move_follow_up_state_id: None,
-                setup_fields: BTreeMap::new(),
-                private_fields: BTreeMap::new(),
+                setup_fields: Default::default(),
+                private_fields: Default::default(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
     }
 
@@ -155,13 +156,14 @@ fn build_battle(
         phase: PlayerTurnPhase::None,
         turn_number: 1,
         counters: PlayerCounters::default(),
-        hand: SmallVec::new(),
-        draw: SmallVec::new(),
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
+        hand: Vec::new(),
+        draw: Vec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
         deck: deck_handles,
         potion_slots: SmallVec::from_slice(&potions),
+        combat_generated_potion_mask: 0,
         orb_capacity: character.base_orb_slot_count(),
         orbs: SmallVec::new(),
         arrows,
@@ -173,7 +175,7 @@ fn build_battle(
                 is_melted: false,
                 stack_count: 1,
                 floor_added_to_deck: None,
-                private_fields: BTreeMap::new(),
+                private_fields: Default::default(),
             })
             .collect(),
         card_or_potion_effect_depth: 0,
@@ -192,11 +194,17 @@ fn build_battle(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -220,16 +228,18 @@ fn build_battle(
         card_extensions: Vec::new(),
         creatures,
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
+        ally_handles: vec![pc_handle],
         enemy_handles: enemy_handles.clone(),
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
-        spawned_enemy_handles: enemy_handles,
+        spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     (state, enemy_vec)
 }
@@ -372,6 +382,7 @@ fn runnable_potions_and_fairy_death_prevention() {
     assert_eq!(state.creature(e0).unwrap().current_hp, 35);
 
     state.player.potion_slots[0] = Some(PotionId::FairyInABottle);
+    state.invalidate_hook_cache();
     state.player_creature_mut().unwrap().block = 0;
     state.sync_player_hp_to_creature();
     creature::kill(&mut state, &content, pc, None).unwrap();
@@ -380,6 +391,7 @@ fn runnable_potions_and_fairy_death_prevention() {
 
     state.player.potion_slots[0] = Some(PotionId::BloodPotion);
     state.player.potion_slots[1] = Some(PotionId::FruitJuice);
+    state.invalidate_hook_cache();
     CombatEngine::use_potion(&mut state, &content, 0, Some(pc), &mut choices).unwrap();
     assert_eq!(state.player.current_hp, 40);
     CombatEngine::use_potion(&mut state, &content, 1, Some(pc), &mut choices).unwrap();
@@ -388,6 +400,7 @@ fn runnable_potions_and_fairy_death_prevention() {
 
     state.player.potion_slots[0] = Some(PotionId::FoulPotion);
     state.player.potion_slots[1] = Some(PotionId::ExplosiveAmpoule);
+    state.invalidate_hook_cache();
     CombatEngine::use_potion(&mut state, &content, 0, None, &mut choices).unwrap();
     assert_eq!(state.player.current_hp, 33);
     assert_eq!(state.creature(e0).unwrap().current_hp, 23);
@@ -395,6 +408,7 @@ fn runnable_potions_and_fairy_death_prevention() {
     assert_eq!(state.creature(e0).unwrap().current_hp, 13);
 
     state.player.potion_slots[0] = Some(PotionId::SoldiersStew);
+    state.invalidate_hook_cache();
     CombatEngine::use_potion(&mut state, &content, 0, Some(pc), &mut choices).unwrap();
     let strike_replays: Vec<i32> = state
         .player
@@ -609,7 +623,7 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Imbued,
         amount: 1,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
     // Note: Imbued autoplays at turn 1 start; let's attach Imbued to a Defend so target=None works
     let defend_deck_h = *state
@@ -623,7 +637,7 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Imbued,
         amount: 1,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
 
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -661,8 +675,9 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Vigorous,
         amount: 4,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
+    state.invalidate_hook_cache();
     CombatEngine::play_card(&mut state, &content, s0, Some(e0), &mut choices).unwrap();
     assert_eq!(state.creature(e0).unwrap().current_hp, 200 - 10);
 
@@ -672,8 +687,9 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Glam,
         amount: 1,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
+    state.invalidate_hook_cache();
     CombatEngine::play_card(&mut state, &content, s1, Some(e0), &mut choices).unwrap();
     assert_eq!(state.creature(e0).unwrap().current_hp, 200 - 10 - 12);
 
@@ -682,8 +698,9 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Goopy,
         amount: 1,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
+    state.invalidate_hook_cache();
     CombatEngine::play_card(&mut state, &content, hand_defend, None, &mut choices).unwrap();
     assert_eq!(state.player.block, 5 + 5);
     assert_eq!(
@@ -703,8 +720,9 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Corrupted,
         amount: 1,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
+    state.invalidate_hook_cache();
     let hp_before = state.player.current_hp;
     let enemy_before = state.creature(e0).unwrap().current_hp;
     CombatEngine::play_card(&mut state, &content, hand_bash, Some(e0), &mut choices).unwrap();
@@ -716,8 +734,9 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Momentum,
         amount: 3,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
+    state.invalidate_hook_cache();
     let ctx_s0 = CardPlayContext {
         card: s0,
         target: Some(e0),
@@ -745,8 +764,9 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::Spiral,
         amount: 1,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
+    state.invalidate_hook_cache();
     assert_eq!(enchantment_play_count(&state, s0, 1).unwrap(), 2);
 
     // PerfectFit puts itself at top on non-initial shuffle via card_pile::shuffle
@@ -754,8 +774,9 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: EnchantmentId::PerfectFit,
         amount: 1,
         status: EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
+    state.invalidate_hook_cache();
     let mut order = vec![hand_bash, s0, hand_defend];
     enchantment_modify_shuffle_order(&state, s0, &mut order, false).unwrap();
     assert_eq!(order[0], s0);
@@ -787,6 +808,7 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         id: AfflictionId::Bound,
         amount: 1,
     });
+    state.invalidate_hook_cache();
     affliction_on_play(&content, &mut state, s0, &ctx_s0).unwrap();
     dispatch_affliction_hook(
         &content,

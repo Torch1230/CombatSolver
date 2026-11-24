@@ -5,7 +5,9 @@ use crate::content_dispatch::{AttackContextInfo, CardPlayContext, ContentDispatc
 use crate::error::KernelError;
 use crate::hooks::{self, HpLossPhase};
 pub use crate::hooks::ModifyDamageHookType;
-use crate::state::{BattleState, CardHandle, CreatureHandle, DamageHistoryEntry, DamageResult};
+use crate::state::{
+    BattleState, CardHandle, CreatureHandle, DamageHistoryEntry, DamageResult, InlineI32Vec4,
+};
 use smallvec::SmallVec;
 use sts2_types::{CombatSide, Dec, Rng, ValueProp};
 
@@ -88,12 +90,12 @@ impl AttackBuilder {
         self,
         state: &mut BattleState,
         content: &dyn ContentDispatcher,
-    ) -> Result<Vec<DamageResult>, KernelError> {
+    ) -> Result<SmallVec<[DamageResult; 16]>, KernelError> {
         let attacker_dead = state
             .creature(self.attacker)
             .map_or(true, |c| c.is_dead());
         if hooks::is_over_or_ending_checked(state, content)? || attacker_dead {
-            return Ok(Vec::new());
+            return Ok(SmallVec::new());
         }
 
         let attack_id = state.next_attack_id;
@@ -123,7 +125,8 @@ impl AttackBuilder {
         hooks::before_attack(state, content, info)?;
         let attack_count = hooks::modify_attack_hit_count(state, content, info, self.hit_count)?;
 
-        let mut all_results = Vec::with_capacity(attack_count.max(0) as usize);
+        let mut all_results: SmallVec<[DamageResult; 16]> =
+            SmallVec::with_capacity(attack_count.max(0) as usize);
         for _ in 0..attack_count {
             if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
                 break;
@@ -204,9 +207,9 @@ fn collect_valid_targets(state: &BattleState, builder: AttackBuilder) -> SmallVe
                     .creature(builder.attacker)
                     .map_or(CombatSide::Player, |c| c.side);
                 if attacker_side == CombatSide::Player {
-                    state.enemy_handles.clone()
+                    SmallVec::from_slice(&state.enemy_handles)
                 } else {
-                    state.ally_handles.iter().copied().collect()
+                    SmallVec::from_slice(&state.ally_handles)
                 }
             }
         }
@@ -225,7 +228,7 @@ pub fn damage_targets(
     dealer: Option<CreatureHandle>,
     card_source: Option<CardHandle>,
     card_play: Option<CardPlayContext>,
-) -> Result<Vec<DamageResult>, KernelError> {
+) -> Result<SmallVec<[DamageResult; 16]>, KernelError> {
     damage_targets_with_hook_mode(
         state,
         content,
@@ -250,7 +253,7 @@ pub fn damage_targets_with_hook_mode(
     card_source: Option<CardHandle>,
     card_play: Option<CardPlayContext>,
     hook_type: ModifyDamageHookType,
-) -> Result<Vec<DamageResult>, KernelError> {
+) -> Result<SmallVec<[DamageResult; 16]>, KernelError> {
     if let Some(d) = dealer {
         if state.creature(d).is_none_or(|c| c.is_dead()) {
             return Ok(targets
@@ -271,7 +274,7 @@ pub fn damage_targets_with_hook_mode(
         }
     }
 
-    let mut pending: SmallVec<[(DamageResult, bool); 4]> = SmallVec::with_capacity(targets.len());
+    let mut pending: SmallVec<[(DamageResult, bool); 8]> = SmallVec::with_capacity(targets.len());
     for &target in targets {
         if state.creature(target).is_none_or(|c| c.is_dead()) {
             continue;
@@ -290,7 +293,7 @@ pub fn damage_targets_with_hook_mode(
         pending.extend(singles);
     }
 
-    let mut killed: SmallVec<[DamageResult; 4]> = SmallVec::new();
+    let mut killed: SmallVec<[DamageResult; 16]> = SmallVec::new();
     for (result, prevented) in &pending {
         if *prevented {
             continue;
@@ -512,7 +515,7 @@ fn damage_single(
             card_source_handle: card_source,
             round_number: state.round_number,
             current_side: state.current_side,
-            player_turn_numbers: smallvec::smallvec![state.player.turn_number],
+            player_turn_numbers: InlineI32Vec4::one(state.player.turn_number),
         });
     }
 

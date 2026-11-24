@@ -3,6 +3,7 @@ use crate::error::KernelError;
 use crate::hooks;
 use crate::state::{BattleState, CardHandle};
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use sts2_types::PileType;
 
 pub enum SelectResult {
@@ -17,7 +18,7 @@ pub enum SelectResult {
 pub fn from_hand_for_discard(
     state: &BattleState,
     count: usize,
-    source_id: &str,
+    source_id: impl Into<Cow<'static, str>>,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_over_or_ending(state) {
@@ -44,7 +45,7 @@ pub fn select_cards(
     min_count: usize,
     max_count: usize,
     timing: ChoiceTiming,
-    source_id: &str,
+    source_id: impl Into<Cow<'static, str>>,
     source_pile: PileType,
     cancelable: bool,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
@@ -77,7 +78,7 @@ pub fn select_cards(
 
     Ok(SelectResult::NeedsChoice(ChoiceRequest {
         timing,
-        source_id: source_id.to_owned(),
+        source_id: source_id.into(),
         source_pile,
         min_count: effective_min,
         max_count: effective_max,

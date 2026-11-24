@@ -254,6 +254,8 @@ internal static class InCombatRustKernelResultMaterializer
 
         int expandedNodes = (int)Math.Clamp(rustResult.ExpandedNodes, 0L, int.MaxValue);
         int transitionCount = (int)Math.Clamp(rustResult.TransitionCount ?? rustResult.ExpandedNodes, 0L, int.MaxValue);
+        long choiceBranchesLong = Math.Max(0L, rustResult.ChoiceReplayAttempts ?? 0L);
+        int choiceBranches = (int)Math.Clamp(choiceBranchesLong, 0L, int.MaxValue);
         int searchedTurns = Math.Max(1, summary.Turn - root.StartTurnNumber + 1);
         TimeSpan searchElapsed = TimeSpan.FromMilliseconds(Math.Max(0d, rustResult.SearchElapsedMilliseconds));
 
@@ -262,8 +264,8 @@ internal static class InCombatRustKernelResultMaterializer
             TotalExpandedNodes: Math.Max(0L, rustResult.ExpandedNodes),
             TransitionCount: transitionCount,
             TotalTransitionCount: Math.Max(0L, rustResult.TransitionCount ?? rustResult.ExpandedNodes),
-            ChoiceBranchesEvaluated: 0,
-            TotalChoiceBranchesEvaluated: 0L,
+            ChoiceBranchesEvaluated: choiceBranches,
+            TotalChoiceBranchesEvaluated: choiceBranchesLong,
             DuplicateCardBranchesPruned: 0,
             TranspositionBranchesPruned: 0,
             PrimaryIncumbentBranchesPruned: 0,

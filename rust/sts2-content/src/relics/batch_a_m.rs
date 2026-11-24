@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use sts2_kernel::commands::{
     autoplay, block, card, card_factory, card_pile, creature, damage, forge, gold, melody, orb,
@@ -314,9 +315,10 @@ static AM_RELIC_META: LazyLock<[RelicMeta; AM_RELIC_COUNT]> = LazyLock::new(|| {
     })
 });
 
+#[inline(always)]
 pub fn relic_meta(id: RelicId) -> Result<&'static RelicMeta, KernelError> {
     let idx = id as usize;
-    if idx < AM_RELIC_COUNT && id.model_entry().as_bytes()[0] < b'N' {
+    if idx < AM_RELIC_COUNT {
         Ok(&AM_RELIC_META[idx])
     } else {
         Err(KernelError::Unsupported {
@@ -350,10 +352,10 @@ fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool 
         .unwrap_or(default)
 }
 
-fn set_bool(state: &mut BattleState, id: RelicId, key: &str, val: bool) {
+fn set_bool(state: &mut BattleState, id: RelicId, key: &'static str, val: bool) {
     if let Some(r) = relic_inst_mut(state, id) {
         r.private_fields
-            .insert(key.to_owned(), FieldValue::Bool(val));
+            .insert(Cow::Borrowed(key), FieldValue::Bool(val));
     }
 }
 
@@ -367,10 +369,10 @@ fn get_i32(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
         .unwrap_or(default)
 }
 
-fn set_i32(state: &mut BattleState, id: RelicId, key: &str, val: i32) {
+fn set_i32(state: &mut BattleState, id: RelicId, key: &'static str, val: i32) {
     if let Some(r) = relic_inst_mut(state, id) {
         r.private_fields
-            .insert(key.to_owned(), FieldValue::Int(val));
+            .insert(Cow::Borrowed(key), FieldValue::Int(val));
     }
 }
 
@@ -387,16 +389,16 @@ fn get_card_handle(state: &BattleState, id: RelicId, key: &str) -> Option<CardHa
         })
 }
 
-fn set_card_handle(state: &mut BattleState, id: RelicId, key: &str, val: Option<CardHandle>) {
+fn set_card_handle(state: &mut BattleState, id: RelicId, key: &'static str, val: Option<CardHandle>) {
     if let Some(r) = relic_inst_mut(state, id) {
         match val {
             Some(ch) => {
                 r.private_fields
-                    .insert(key.to_owned(), FieldValue::CardHandle(ch.0 as i32));
+                    .insert(Cow::Borrowed(key), FieldValue::CardHandle(ch.0 as i32));
             }
             None => {
                 r.private_fields
-                    .insert(key.to_owned(), FieldValue::NullableInt(None));
+                    .insert(Cow::Borrowed(key), FieldValue::NullableInt(None));
             }
         }
     }
@@ -407,7 +409,7 @@ fn collect_hittable_enemies(
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
     let mut out = SmallVec::new();
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
             && hooks::should_allow_hitting(state, content, eh)?
@@ -449,7 +451,7 @@ fn card_has_tag(
 fn create_offer_card_instance(
     state: &mut BattleState,
     card_id: CardId,
-    marker_key: &str,
+    marker_key: &'static str,
 ) -> CardHandle {
     let meta = generated_card_meta(card_id);
     let handle = CardHandle(state.next_card_handle);
@@ -485,7 +487,7 @@ fn create_offer_card_instance(
     });
     if let Some(ext) = state.card_ext_mut(handle) {
         ext.private_fields
-            .insert(marker_key.to_owned(), FieldValue::Bool(true));
+            .insert(Cow::Borrowed(marker_key), FieldValue::Bool(true));
     }
     handle
 }
@@ -805,13 +807,13 @@ fn mummified_hand_pick_card(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<Option<CardHandle>, KernelError> {
-    let hand: Vec<CardHandle> = state.player.hand.iter().copied().collect();
+    let hand: SmallVec<[CardHandle; 16]> = state.player.hand.iter().copied().collect();
     if hand.is_empty() {
         return Ok(None);
     }
-    let mut base_positive = Vec::new();
-    let mut costs_now = Vec::new();
-    let mut base_positive_and_costs_now = Vec::new();
+    let mut base_positive: SmallVec<[CardHandle; 16]> = SmallVec::new();
+    let mut costs_now: SmallVec<[CardHandle; 16]> = SmallVec::new();
+    let mut base_positive_and_costs_now: SmallVec<[CardHandle; 16]> = SmallVec::new();
     for h in &hand {
         let Some(c) = state.card(*h) else {
             continue;
@@ -1048,7 +1050,7 @@ pub fn dispatch_hook(
 
         RelicId::Bellows => {
             if slot == HookSlot::AfterPlayerTurnStart && state.player.turn_number <= 1 {
-                let hand = state.player.hand.clone();
+                let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
                 for h in hand {
                     card::upgrade(state, content, h)?;
                 }
@@ -1236,7 +1238,7 @@ pub fn dispatch_hook(
             if slot == HookSlot::AfterPlayerTurnStart {
                 let left = get_i32(state, id, "BoneTea._combatsLeft", 1);
                 if left > 0 && state.player.turn_number <= 1 {
-                    let hand = state.player.hand.clone();
+                    let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
                     for h in hand {
                         card::upgrade(state, content, h)?;
                     }
@@ -1444,7 +1446,7 @@ pub fn dispatch_hook(
                             Some(pc),
                             None,
                         )?;
-                        let enemies = state.enemy_handles.clone();
+                        let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
                         for eh in enemies {
                             if state.creature(eh).is_some_and(|c| c.is_alive()) {
                                 power::apply(
@@ -1649,7 +1651,7 @@ pub fn dispatch_hook(
                     5,
                     RunRngType::CombatCardGeneration,
                 );
-                let mut candidates = SmallVec::<[CardHandle; 16]>::new();
+                let mut candidates = SmallVec::<[CardHandle; 32]>::new();
                 for cid in cids {
                     let h = create_offer_card_instance(state, cid, CHOICES_PARADOX_OFFER_MARKER);
                     if let Some(c) = state.card_mut(h) {
@@ -1661,7 +1663,7 @@ pub fn dispatch_hook(
                     return Ok(HookResult {
                         needs_choice: Some(ChoiceRequest {
                             timing: ChoiceTiming::PlayerTurnStart,
-                            source_id: id.model_id_str().to_owned(),
+                            source_id: id.model_id_str().into(),
                             source_pile: PileType::None,
                             min_count: 1,
                             max_count: 1,
@@ -1956,11 +1958,12 @@ pub fn dispatch_hook(
         RelicId::EmotionChip => {
             if slot == HookSlot::AfterPlayerTurnStart {
                 let prev_turn = state.player.turn_number - 1;
-                let lost_last_turn = state.damage_history.iter().any(|entry| {
-                    entry.receiver_creature_handle == pc
-                        && !entry.was_fully_blocked
-                        && entry.player_turn_numbers.first() == Some(&prev_turn)
-                });
+                let lost_last_turn = state.semantic_history.prior_player_damaged_turn == prev_turn
+                    || state.damage_history.iter().any(|entry| {
+                        entry.receiver_creature_handle == pc
+                            && !entry.was_fully_blocked
+                            && entry.player_turn_numbers.first() == Some(&prev_turn)
+                    });
                 if lost_last_turn {
                     let orb_count = state.player.orbs.len();
                     for idx in 0..orb_count {
@@ -2319,13 +2322,13 @@ pub fn dispatch_hook(
 
         RelicId::GamblingChip => {
             if slot == HookSlot::AfterPlayerTurnStart && state.player.turn_number <= 1 {
-                let candidates: SmallVec<[CardHandle; 16]> =
+                let candidates: SmallVec<[CardHandle; 32]> =
                     state.player.hand.iter().copied().collect();
                 if !candidates.is_empty() {
                     return Ok(HookResult {
                         needs_choice: Some(ChoiceRequest {
                             timing: ChoiceTiming::PlayerTurnStart,
-                            source_id: id.model_id_str().to_owned(),
+                            source_id: id.model_id_str().into(),
                             source_pile: PileType::Hand,
                             min_count: 0,
                             max_count: candidates.len(),
@@ -3338,6 +3341,7 @@ pub fn resume_hook_choice(
                     if let Some(c) = state.card_mut(cand) {
                         c.removed_from_state = true;
                     }
+                    state.invalidate_hook_cache();
                 }
             }
             if let Some(h) = chosen {

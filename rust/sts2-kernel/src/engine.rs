@@ -94,27 +94,31 @@ impl CombatEngine {
         *state.run_rngs.get_mut(RunRngType::Shuffle) = shuffle_rng;
 
         // Initial shuffle order hook for enchantments
-        let mut initial_order: Vec<CardHandle> = state.player.draw.iter().copied().collect();
-        let enchanted_cards: Vec<CardHandle> = initial_order
-            .iter()
-            .copied()
-            .filter(|&h| {
-                state
-                    .card(h)
-                    .and_then(|c| state.card_ext(c.ext_index))
-                    .and_then(|e| e.enchantment.as_ref())
-                    .is_some()
-            })
-            .collect();
-        if !enchanted_cards.is_empty() {
-            for ch in enchanted_cards {
-                content.enchantment_modify_shuffle_order(state, ch, &mut initial_order, true)?;
+        let mut initial_order: SmallVec<[CardHandle; 64]> = state.player.draw.iter().copied().collect();
+        if !state.card_extensions.is_empty() {
+            let enchanted_cards: SmallVec<[CardHandle; 8]> = initial_order
+                .iter()
+                .copied()
+                .filter(|&h| {
+                    state
+                        .card(h)
+                        .and_then(|c| state.card_ext(c.ext_index))
+                        .and_then(|e| e.enchantment.as_ref())
+                        .is_some()
+                })
+                .collect();
+            if !enchanted_cards.is_empty() {
+                for ch in enchanted_cards {
+                    content.enchantment_modify_shuffle_order(state, ch, &mut initial_order, true)?;
+                }
+                state.player.draw = initial_order.into_iter().collect();
             }
-            state.player.draw = initial_order.into_iter().collect();
         }
+        state.invalidate_hook_cache();
 
         // Setup enemies
-        let enemy_handles = state.enemy_handles.clone();
+        let enemy_handles: SmallVec<[CreatureHandle; 8]> =
+            SmallVec::from_slice(&state.enemy_handles);
         for eh in &enemy_handles {
             content.monster_setup_for_combat(state, *eh)?;
         }
@@ -138,9 +142,9 @@ impl CombatEngine {
         let participants: SmallVec<[CreatureHandle; 8]> = if is_extra_turn {
             smallvec::smallvec![state.player.creature_handle]
         } else if state.current_side == CombatSide::Player {
-            state.ally_handles.iter().copied().collect()
+            SmallVec::from_slice(&state.ally_handles)
         } else {
-            state.enemy_handles.clone()
+            SmallVec::from_slice(&state.enemy_handles)
         };
 
         for &ch in &participants {
@@ -155,7 +159,8 @@ impl CombatEngine {
         hooks::before_side_turn_start(state, content, current_side, &participants)?;
 
         if current_side == CombatSide::Player && !is_extra_turn {
-            let enemies = state.enemy_handles.clone();
+            let enemies: SmallVec<[CreatureHandle; 8]> =
+                SmallVec::from_slice(&state.enemy_handles);
             for eh in enemies {
                 let alive = state.creature(eh).is_some_and(|c| c.is_alive());
                 let keep_dead = !hooks::should_creature_be_removed_after_death(state, content, eh)?;
@@ -416,6 +421,7 @@ impl CombatEngine {
             state.player.draw.retain(|x| *x != h);
             state.player.draw.insert(0, h);
         }
+        state.invalidate_hook_cache();
         Ok(innate.len())
     }
 
@@ -432,21 +438,117 @@ impl CombatEngine {
         content: &dyn ContentDispatcher,
         card_handle: CardHandle,
     ) -> Result<Option<(i32, i32)>, KernelError> {
-        let (card_id, pile) = match state.card(card_handle) {
-            Some(c) => (c.id, c.pile),
+        let active = !hooks::is_over_or_ending_checked(state, content)?;
+        Self::can_play_card_with_costs_inner(state, content, card_handle, active)
+    }
+
+    /// Fast variant for callers that already verified `!hooks::is_over_or_ending_checked(state, content)?`.
+    #[inline]
+    pub fn can_play_card_with_costs_in_progress(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+        card_handle: CardHandle,
+    ) -> Result<Option<(i32, i32)>, KernelError> {
+        #[cfg(debug_assertions)]
+        debug_assert!(!hooks::is_over_or_ending_checked(state, content)?);
+        Self::can_play_card_with_costs_inner(state, content, card_handle, true)
+    }
+
+    #[inline]
+    fn can_play_card_with_costs_inner(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+        card_handle: CardHandle,
+        active_combat: bool,
+    ) -> Result<Option<(i32, i32)>, KernelError> {
+        let (card_id, pile, base_kw) = match state.card(card_handle) {
+            Some(c) => (c.id, c.pile, c.effective_keywords_base()),
             None => return Ok(None),
         };
         if pile != PileType::Hand {
             return Ok(None);
         }
-        if card_pile::card_has_keyword(state, content, card_handle, CardKeywords::UNPLAYABLE)? {
+        if base_kw.contains(CardKeywords::UNPLAYABLE) {
             return Ok(None);
         }
-        if !hooks::should_play(state, content, card_handle)? {
+        state.ensure_hook_cache(content)?;
+        let cache_ok =
+            state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+        let comb = state.hook_cache.masks.combat_combined;
+        if (!cache_ok || comb.contains(HookSlot::TryModifyKeywordsInCombat))
+            && hooks::modify_keywords_in_combat_unchecked_active(
+                state,
+                content,
+                card_handle,
+                base_kw,
+            )?
+            .contains(CardKeywords::UNPLAYABLE)
+        {
             return Ok(None);
         }
-        let target_type = content.card_resolved_target_type(state, card_handle)?;
-        if target_type == sts2_types::TargetType::AnyAlly {
+
+        let meta = state.fast_card_meta(content, card_id)?;
+        let is_x_energy = meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST);
+        let local_energy = ordering::resolve_local_energy_cost(state, card_handle, is_x_energy);
+        let energy_cost = if is_x_energy {
+            local_energy
+        } else if active_combat
+            && (!cache_ok
+                || comb.contains(HookSlot::TryModifyEnergyCostInCombat)
+                || comb.contains(HookSlot::TryModifyEnergyCostInCombatLate))
+        {
+            let (modified, was_modified) =
+                hooks::modify_energy_cost_in_combat_unchecked_active(
+                    state,
+                    content,
+                    card_handle,
+                    Dec::from_i32(local_energy),
+                )?;
+            if was_modified {
+                modified.max(Dec::ZERO).to_i32_trunc()?
+            } else {
+                local_energy
+            }
+        } else {
+            local_energy
+        };
+        if state.player.energy < energy_cost {
+            return Ok(None);
+        }
+
+        let star_cost = if meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
+            state.player.stars
+        } else {
+            let local_star =
+                ordering::resolve_local_star_cost(state, card_handle, meta.canonical_star_cost);
+            if active_combat && (!cache_ok || comb.contains(HookSlot::TryModifyStarCostInCombat)) {
+                let (modified, was_modified) = hooks::modify_star_cost_in_combat_unchecked_active(
+                    state,
+                    content,
+                    card_handle,
+                    Dec::from_i32(local_star),
+                )?;
+                if was_modified {
+                    modified.max(Dec::ZERO).to_i32_trunc()?
+                } else {
+                    local_star
+                }
+            } else {
+                local_star
+            }
+        };
+        if state.player.stars < star_cost {
+            return Ok(None);
+        }
+
+        if active_combat
+            && (!cache_ok || comb.contains(HookSlot::ShouldPlay))
+            && !hooks::should_play_unchecked_active(state, content, card_handle)?
+        {
+            return Ok(None);
+        }
+
+        if meta.target_type == sts2_types::TargetType::AnyAlly {
             let has_ally = state.ally_handles.iter().any(|&h| {
                 h != state.player.creature_handle
                     && state.creature(h).is_some_and(|c| c.is_alive())
@@ -455,20 +557,55 @@ impl CombatEngine {
                 return Ok(None);
             }
         }
-        let _ = card_id;
-        let energy_cost = ordering::resolve_energy_cost(state, content, card_handle)?;
-        if state.player.energy < energy_cost {
-            return Ok(None);
-        }
-        let star_cost = ordering::resolve_star_cost(state, content, card_handle)?;
-        if state.player.stars < star_cost {
-            return Ok(None);
-        }
+
         if content.card_is_playable(state, card_handle)? {
             Ok(Some((energy_cost, star_cost)))
         } else {
             Ok(None)
         }
+    }
+
+    pub fn play_card_prechecked(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+        card_handle: CardHandle,
+        target: Option<CreatureHandle>,
+        choices: &mut SmallVec<[Vec<usize>; 2]>,
+    ) -> Result<StepOutcome, KernelError> {
+        if state.pending.is_some() {
+            return Err(KernelError::InvalidAction(
+                "cannot play card while a choice is pending".to_owned(),
+            ));
+        }
+        if !state.is_in_progress {
+            return Ok(StepOutcome::CombatEnded { won: state.won });
+        }
+        #[cfg(debug_assertions)]
+        debug_assert!(
+            Self::can_play_card(state, content, card_handle)?,
+            "play_card_prechecked called for unplayable {:?}",
+            card_handle
+        );
+
+        let card_id = state
+            .card(card_handle)
+            .ok_or_else(|| KernelError::InvalidAction("card does not exist in battle state".to_owned()))?
+            .id;
+        let base_meta = state.fast_card_meta(content, card_id)?;
+        let resolved_target_type =
+            state.fast_card_resolved_target_type(content, card_handle, card_id, base_meta)?;
+        if matches!(resolved_target_type, sts2_types::TargetType::AnyEnemy) {
+            let valid_enemy = target.is_some_and(|th| {
+                state.contains_creature(th) && state.creature(th).is_some_and(|c| c.is_alive())
+            });
+            if !valid_enemy {
+                return Err(KernelError::InvalidAction(
+                    "AnyEnemy card requires a living enemy target".to_owned(),
+                ));
+            }
+        }
+
+        Self::play_internal(state, content, card_handle, target, false, false, choices)
     }
 
     pub fn play_card(
@@ -493,7 +630,13 @@ impl CombatEngine {
             )));
         }
 
-        let resolved_target_type = content.card_resolved_target_type(state, card_handle)?;
+        let card_id = state
+            .card(card_handle)
+            .ok_or_else(|| KernelError::InvalidAction("card does not exist in battle state".to_owned()))?
+            .id;
+        let base_meta = state.fast_card_meta(content, card_id)?;
+        let resolved_target_type =
+            state.fast_card_resolved_target_type(content, card_handle, card_id, base_meta)?;
         if matches!(resolved_target_type, sts2_types::TargetType::AnyEnemy) {
             let valid_enemy = target.is_some_and(|th| {
                 state.enemy_handles.contains(&th)
@@ -1743,12 +1886,14 @@ impl CombatEngine {
         content: &dyn ContentDispatcher,
     ) -> Result<StepOutcome, KernelError> {
         if Self::check_win_condition(state, content)? {
+            state.ensure_hook_cache(content)?;
             return Ok(StepOutcome::CombatEnded { won: state.won });
         }
         if state.end_player_turn_requested {
             state.end_player_turn_requested = false;
             return Self::end_player_turn(state, content);
         }
+        state.ensure_hook_cache(content)?;
         Ok(StepOutcome::Completed)
     }
 
@@ -1792,7 +1937,7 @@ impl CombatEngine {
         }
 
         let retain_whole_hand = !hooks::should_flush(state, content)?;
-        let hand_snapshot: SmallVec<[CardHandle; 12]> = state.player.hand.clone();
+        let hand_snapshot: SmallVec<[CardHandle; 12]> = SmallVec::from_slice(&state.player.hand);
         let mut flushed: SmallVec<[CardHandle; 12]> = SmallVec::new();
         for h in hand_snapshot {
             let has_retain = card_pile::card_has_keyword(state, content, h, CardKeywords::RETAIN)?
@@ -1825,6 +1970,9 @@ impl CombatEngine {
                 Self::reset_melody_turn_counters(state);
                 state.current_side = CombatSide::Player;
                 state.player.turn_number += 1;
+                if state.static_ctx.compact_turn_history {
+                    state.compact_prior_turn_history();
+                }
                 Self::notify_side_switch(state);
                 return Self::start_turn(state, content, true);
             }
@@ -1846,7 +1994,7 @@ impl CombatEngine {
         if hooks::is_over_or_ending_checked(state, content)? {
             return Ok(());
         }
-        let hand_snapshot = state.player.hand.clone();
+        let hand_snapshot: SmallVec<[CardHandle; 12]> = SmallVec::from_slice(&state.player.hand);
         let mut turn_end_cards: SmallVec<[CardHandle; 4]> = SmallVec::new();
         let mut ethereal_cards: SmallVec<[CardHandle; 8]> = SmallVec::new();
         for h in hand_snapshot {
@@ -1903,7 +2051,7 @@ impl CombatEngine {
         state: &mut BattleState,
         content: &dyn ContentDispatcher,
     ) -> Result<StepOutcome, KernelError> {
-        let enemies = state.enemy_handles.clone();
+        let enemies = SmallVec::from_slice(&state.enemy_handles);
         Self::execute_enemy_turn_from(state, content, enemies)
     }
 
@@ -1964,7 +2112,7 @@ impl CombatEngine {
         state: &mut BattleState,
         content: &dyn ContentDispatcher,
     ) -> Result<StepOutcome, KernelError> {
-        let enemies = state.enemy_handles.clone();
+        let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
         hooks::before_side_turn_end_very_early(state, content, CombatSide::Enemy, &enemies)?;
         hooks::before_side_turn_end_early(state, content, CombatSide::Enemy, &enemies)?;
         hooks::before_side_turn_end(state, content, CombatSide::Enemy, &enemies)?;
@@ -1977,21 +2125,26 @@ impl CombatEngine {
         state.current_side = CombatSide::Player;
         state.round_number += 1;
         state.player.turn_number += 1;
+        if state.static_ctx.compact_turn_history {
+            state.compact_prior_turn_history();
+        }
         Self::notify_side_switch(state);
         Self::start_turn(state, content, false)
     }
 
     fn end_of_turn_cleanup(state: &mut BattleState) {
-        let card_handles: Vec<CardHandle> = state
-            .player
-            .hand
-            .iter()
-            .chain(state.player.draw.iter())
-            .chain(state.player.discard.iter())
-            .chain(state.player.exhaust.iter())
-            .chain(state.player.play.iter())
-            .copied()
-            .collect();
+        let mut card_handles: SmallVec<[CardHandle; 64]> = SmallVec::new();
+        card_handles.extend(
+            state
+                .player
+                .hand
+                .iter()
+                .chain(state.player.draw.iter())
+                .chain(state.player.discard.iter())
+                .chain(state.player.exhaust.iter())
+                .chain(state.player.play.iter())
+                .copied(),
+        );
         for h in card_handles {
             if let Some(c) = state.card_mut(h) {
                 c.temp_flags.remove(

@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use sts2_content::Sts2Content;
 use sts2_content::cards::ironclad;
@@ -61,9 +60,9 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
         h
     };
 
-    let mut hand = SmallVec::new();
-    let mut draw = SmallVec::new();
-    let mut discard = SmallVec::new();
+    let mut hand = Vec::new();
+    let mut draw = Vec::new();
+    let mut discard = Vec::new();
     let mut upgrade_list = Vec::new();
 
     for &(id, upg) in hand_ids {
@@ -102,14 +101,15 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let enemy_creature = CreatureInst {
         handle: enemy,
         combat_id: Some(1),
         side: CombatSide::Enemy,
-        slot_name: Some("slot_0".to_owned()),
+        slot_name: Some(std::borrow::Cow::Borrowed("slot_0")),
         is_player: false,
         pet_owner_player_index: None,
         monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -123,16 +123,17 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
             rng: Rng::from_seed(run_rngs.seed + 1),
             is_performing_move: false,
             spawned_this_turn: false,
-            current_state_id: "INIT_MOVE".to_owned(),
-            next_move_id: Some("ACID_GOOP".to_owned()),
+            current_state_id: std::borrow::Cow::Borrowed("INIT_MOVE"),
+            next_move_id: Some(std::borrow::Cow::Borrowed("ACID_GOOP")),
             next_move_can_transition_away: true,
             performed_first_move: false,
             state_log_ids: SmallVec::new(),
             transient_move_follow_up_state_id: None,
-            setup_fields: BTreeMap::new(),
-            private_fields: BTreeMap::new(),
+            setup_fields: Default::default(),
+            private_fields: Default::default(),
         }),
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let mut state = BattleState {
@@ -147,11 +148,17 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -189,10 +196,11 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
             hand,
             draw,
             discard,
-            exhaust: SmallVec::new(),
-            play: SmallVec::new(),
-            deck: SmallVec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
+            deck: Vec::new(),
             potion_slots: smallvec::smallvec![None, None, None],
+            combat_generated_potion_mask: 0,
             orb_capacity: 0,
             orbs: SmallVec::new(),
             arrows: SmallVec::new(),
@@ -203,8 +211,8 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
         card_extensions: Vec::new(),
         creatures: vec![player_creature, enemy_creature],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc],
-        enemy_handles: smallvec::smallvec![enemy],
+        ally_handles: vec![pc],
+        enemy_handles: vec![enemy],
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy],
@@ -213,6 +221,8 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
         semantic_history: Default::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
 
     for (h, levels) in upgrade_list {
@@ -456,7 +466,8 @@ fn ironclad_feed_fatal_vs_minion_and_rampage_thrash_comparison() {
 
     // Feed kills MinionPower enemy -> NO max HP gain
     let (mut state, enemy) = build_ironclad_battle(&[(CardId::Feed, 0)], &[], &[], 10);
-    state.creature_mut(enemy).unwrap().powers.push(PowerInst {
+    let enemy_c = state.creature_mut(enemy).unwrap();
+    enemy_c.powers.push(PowerInst {
         handle: 99,
         id: PowerId::MinionPower,
         amount: 1,
@@ -465,6 +476,7 @@ fn ironclad_feed_fatal_vs_minion_and_rampage_thrash_comparison() {
         applier_handle: None,
         ext_index: None,
     });
+    enemy_c.has_minion_power = true;
     assert_eq!(play_hand_idx(&mut state, 0, Some(enemy)), StepOutcome::CombatEnded { won: true });
     assert_eq!(state.player.max_hp, 80);
 

@@ -995,6 +995,18 @@ fn replay_solution_trace(
             potion_slot_i32,
             action_choices_vec,
         ) = match action {
+            PlannedAction::TurnSetup { choices } => (
+                "TurnSetup".to_owned(),
+                String::new(),
+                0,
+                0,
+                String::new(),
+                -1,
+                None,
+                String::new(),
+                -1,
+                choices.clone().unwrap_or_default(),
+            ),
             PlannedAction::PlayCard {
                 card_handle,
                 target_handle,
@@ -1076,6 +1088,12 @@ fn replay_solution_trace(
 
         let mut empty_q: SmallVec<[Vec<usize>; 2]> = SmallVec::new();
         let mut step_outcome = match action {
+            PlannedAction::TurnSetup { .. } => {
+                let Some(pending) = sim.pending.as_ref() else {
+                    return Err("TurnSetup action encountered with no pending choice".to_owned());
+                };
+                Ok(StepOutcome::NeedsChoice(pending.request.clone()))
+            }
             PlannedAction::PlayCard {
                 card_handle,
                 target_handle,
@@ -1123,7 +1141,7 @@ fn replay_solution_trace(
             let source_id = choice_req
                 .source_id
                 .rsplit_once('.')
-                .map_or(choice_req.source_id.as_str(), |(_, entry)| entry)
+                .map_or(choice_req.source_id.as_ref(), |(_, entry)| entry)
                 .to_owned();
             let (source_pile_name, matching_pile) = identify_source_pile(&sim, &choice_req);
             let mut card_tokens = Vec::with_capacity(sel_indices.len());
@@ -1179,9 +1197,10 @@ fn replay_solution_trace(
             let acc = turn_accs.entry(turn_before).or_default();
             acc.potion_count += 1;
             acc.potion_strategic_cost +=
-                PotionValuationRegistry::strategic_hp_cost_with_overrides(
+                PotionValuationRegistry::strategic_hp_cost_for_root(
                     *potion_id,
                     renewable_rock,
+                    root.player.max_hp,
                     potion_hp_threshold_overrides,
                 );
         }
@@ -1386,7 +1405,7 @@ fn replay_solution_trace(
         search_elapsed_milliseconds: sol.stats.elapsed_ms as f64,
         expanded_parents: Some(sol.nodes_expanded as i64),
         transition_count: Some(sol.stats.transition_count as i64),
-        choice_replay_attempts: Some(0),
+        choice_replay_attempts: Some(sol.stats.choice_replay_attempts as i64),
         observed_peak_parallelism: Some(effective_dop),
         active_phase_label: Some("RustKernel".to_owned()),
     })
@@ -1571,7 +1590,7 @@ pub fn solve_in_combat_host_v1_json(
                 current_best: None,
                 expanded_parents: Some(p.nodes_expanded as i64),
                 transition_count: Some(p.transition_count as i64),
-                choice_replay_attempts: Some(0),
+                choice_replay_attempts: Some(p.choice_replay_attempts as i64),
                 observed_peak_parallelism: Some(dop_i32),
                 active_phase_label: Some("RustKernel".to_owned()),
             });

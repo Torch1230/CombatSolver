@@ -303,7 +303,13 @@ internal sealed record RustKernelLiveStateDto(
     IReadOnlyList<int> SpawnedEnemyHandles,
     IReadOnlyList<int> PetHandles,
     IReadOnlyList<RustKernelDamageHistoryEntryDto> DamageHistory,
-    RustKernelSemanticHistoryDto SemanticHistory);
+    RustKernelSemanticHistoryDto SemanticHistory,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? UnlockedCharacterCards = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? UnlockedColorlessCards = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? UnlockedCurseCards = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? OtherCharacterCards = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? TarotCards = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? UnlockedPotions = null);
 
 internal sealed record RustKernelPotionDirectiveDto(
     int Slot,

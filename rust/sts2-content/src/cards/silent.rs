@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use sts2_kernel::commands::card_select::SelectResult;
 use sts2_kernel::commands::{
@@ -107,7 +107,7 @@ fn collect_hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     let mut out = SmallVec::new();
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
@@ -147,8 +147,9 @@ fn create_shivs_in_hand(
                     id: EnchantmentId::Inky,
                     amount: 1,
                     status: EnchantmentStatus::Normal,
-                    private_fields: BTreeMap::new(),
+                    private_fields: Default::default(),
                 });
+                state.invalidate_hook_cache();
             }
         }
         created.push(shiv_h);
@@ -284,7 +285,7 @@ fn apply_nightmare_to_selected(
 fn discard_from_hand_select(
     content: &dyn ContentDispatcher,
     state: &mut BattleState,
-    source_id: &str,
+    source_id: &'static str,
     count: usize,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<CardPlayOutcome, KernelError> {
@@ -427,7 +428,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::BulletTime => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 set_to_free_this_turn(state, content, h)?;
             }
@@ -440,7 +441,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::CalculatedGamble => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             discard_and_draw(state, content, &hand, hand.len())?;
             Ok(CardPlayOutcome::default())
         }
@@ -659,7 +660,7 @@ pub fn on_play(
             if hooks::is_over_or_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
                 return Ok(CardPlayOutcome::default());
             }
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let mut candidates: SmallVec<[CardHandle; 16]> = SmallVec::new();
             for h in hand {
                 if let Some(c) = state.card(h) {
@@ -833,7 +834,7 @@ pub fn on_play(
             if hooks::is_over_or_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
                 return Ok(CardPlayOutcome::default());
             }
-            let candidates = state.player.hand.clone();
+            let candidates: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             match card_select::select_cards(
                 state,
                 &candidates,
@@ -972,7 +973,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::ShadowStep => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             if !hand.is_empty() {
                 card_cmd::discard_batch(state, content, &hand)?;
             }
@@ -1015,7 +1016,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::StormOfSteel => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let count = hand.len();
             if !hand.is_empty() {
                 card_cmd::discard_batch(state, content, &hand)?;
@@ -1086,7 +1087,7 @@ pub fn on_play(
                         _ => 0,
                     };
                     ext.private_fields.insert(
-                        "TheHunt._pendingCardRewards".to_owned(),
+                        Cow::Borrowed("TheHunt._pendingCardRewards"),
                         FieldValue::Int(prev + 1),
                     );
                 }

@@ -55,7 +55,8 @@ pub fn add_and_notify(
     if cards.is_empty() || hooks::is_ending_checked(state, content)? || !state.is_live_combat() {
         return Ok(());
     }
-    let mut moved: SmallVec<[(CardHandle, PileType); 8]> = SmallVec::new();
+    let tables = content.hook_mask_tables();
+    let mut moved: SmallVec<[(CardHandle, PileType); 16]> = SmallVec::new();
     for &c in cards {
         let old = state.card(c).map_or(PileType::None, |ci| ci.pile);
         if matches!(old, PileType::None | PileType::Deck) || state.player_creature().is_none_or(|cr| cr.is_dead()) {
@@ -65,9 +66,9 @@ pub fn add_and_notify(
         if dest == PileType::Hand && state.player.hand.len() >= MAX_CARDS_IN_HAND {
             dest = PileType::Discard;
         }
-        state.remove_card_from_current_pile(c);
+        state.remove_card_from_current_pile_with_tables(c, tables);
         let idx = get_insertion_index(state, dest, pos);
-        state.add_card_to_pile_at(c, dest, Some(idx));
+        state.add_card_to_pile_at_with_tables(c, dest, Some(idx), tables);
         let new_pile = state.card(c).map_or(PileType::None, |ci| ci.pile);
         if old != new_pile {
             moved.push((c, old));
@@ -80,9 +81,12 @@ pub fn add_and_notify(
 }
 
 pub fn remove(state: &mut BattleState, card: CardHandle) {
-    state.remove_card_from_current_pile(card);
+    let old = state.remove_card_from_current_pile(card);
     if let Some(c) = state.card_mut(card) {
         c.removed_from_state = true;
+    }
+    if old == PileType::None {
+        state.invalidate_pile_hooks(crate::state::HOOK_DIRTY_PILES);
     }
 }
 
@@ -294,7 +298,7 @@ pub fn shuffle(
     if hooks::is_over_or_ending_checked(state, content)? {
         return Ok(());
     }
-    let mut combined: Vec<CardHandle> = state
+    let mut combined: SmallVec<[CardHandle; 64]> = state
         .player
         .discard
         .iter()
@@ -305,21 +309,28 @@ pub fn shuffle(
     ordering::stable_shuffle_cards(state, content, &mut combined, &mut shuffle_rng)?;
     *state.run_rngs.get_mut(sts2_types::RunRngType::Shuffle) = shuffle_rng;
 
-    let enchanted_cards: Vec<CardHandle> = combined
-        .iter()
-        .copied()
-        .filter(|&h| {
-            state
-                .card(h)
-                .and_then(|c| state.card_ext(c.ext_index))
-                .and_then(|e| e.enchantment.as_ref())
-                .is_some()
-        })
-        .collect();
-    for ch in enchanted_cards {
-        content.enchantment_modify_shuffle_order(state, ch, &mut combined, false)?;
+    if !state.card_extensions.is_empty() {
+        let enchanted_cards: SmallVec<[CardHandle; 8]> = combined
+            .iter()
+            .copied()
+            .filter(|&h| {
+                state
+                    .card(h)
+                    .and_then(|c| state.card_ext(c.ext_index))
+                    .and_then(|e| e.enchantment.as_ref())
+                    .is_some()
+            })
+            .collect();
+        for ch in enchanted_cards {
+            content.enchantment_modify_shuffle_order(state, ch, &mut combined, false)?;
+        }
     }
 
+    let had_hooked_cards = (state.hook_cache.dirty_mask
+        & (crate::state::HOOK_DIRTY_DRAW | crate::state::HOOK_DIRTY_DISCARD))
+        != 0
+        || !state.hook_cache.listener_discard.is_empty()
+        || !state.hook_cache.listener_draw.is_empty();
     state.player.discard.clear();
     state.player.draw.clear();
     for &c in &combined {
@@ -327,6 +338,11 @@ pub fn shuffle(
         if let Some(card) = state.card_mut(c) {
             card.pile = PileType::Draw;
         }
+    }
+    if had_hooked_cards {
+        state.invalidate_pile_hooks(
+            crate::state::HOOK_DIRTY_DRAW | crate::state::HOOK_DIRTY_DISCARD,
+        );
     }
     if let Some((req, paused_listener, remaining_listeners)) =
         hooks::after_shuffle(state, content)?
@@ -383,10 +399,17 @@ pub fn draw(
         if state.player.hand.len() >= MAX_CARDS_IN_HAND {
             break;
         }
+        let tables = content.hook_mask_tables();
+        let has_hook = tables.is_none_or(|t| state.card_has_any_hook(t, card));
         state.player.draw.remove(0);
         state.player.hand.push(card);
         if let Some(ci) = state.card_mut(card) {
             ci.pile = PileType::Hand;
+        }
+        if has_hook {
+            state.invalidate_pile_hooks(
+                crate::state::HOOK_DIRTY_DRAW | crate::state::HOOK_DIRTY_HAND,
+            );
         }
         state.player.counters.cards_drawn_this_combat += 1;
         if state.is_live_combat() {
@@ -418,6 +441,17 @@ pub fn card_has_keyword(
     let base = ci.effective_keywords_base();
     if base.contains(kw) {
         return Ok(true);
+    }
+    #[cfg(not(debug_assertions))]
+    if state.hook_cache.dirty_mask == 0
+        && state.hook_cache.cached_tables.is_some()
+        && !state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(sts2_types::HookSlot::TryModifyKeywordsInCombat)
+    {
+        return Ok(false);
     }
     let modified = hooks::modify_keywords_in_combat(state, content, card, base)?;
     Ok(modified.contains(kw))

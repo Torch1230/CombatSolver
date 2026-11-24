@@ -1,3 +1,4 @@
+use crate::eval::RootEvalBaseline;
 use crate::hash::hash_u64_slice;
 use smallvec::SmallVec;
 use sts2_kernel::continuation::ChoiceRequest;
@@ -298,10 +299,16 @@ pub fn dedup_playable_hand_cards(
 ) -> SmallVec<[CardHandle; 12]> {
     let hand = SmallVec::<[CardHandle; 16]>::from_slice(&state.player.hand);
     let mut playable = SmallVec::<[CardHandle; 12]>::new();
+    if hand.is_empty()
+        || sts2_kernel::hooks::is_over_or_ending_checked(state, content).unwrap_or(true)
+    {
+        return playable;
+    }
+    let _ = state.ensure_hook_cache(content);
     let mut seen = SmallVec::<[HandCardEquivKey; 12]>::new();
     for ch in hand {
         let Ok(Some((energy_cost, star_cost))) =
-            sts2_kernel::CombatEngine::can_play_card_with_costs(state, content, ch)
+            sts2_kernel::CombatEngine::can_play_card_with_costs_in_progress(state, content, ch)
         else {
             continue;
         };
@@ -331,34 +338,134 @@ pub fn has_any_playable_hand_card(
     false
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct PotionUseClassification {
+    pub is_generated: bool,
+    pub is_forced: bool,
+    pub optional_paid_cost_delta: i32,
+    pub optional_paid_count_delta: u16,
+    pub root_potion_slot_bit: u16,
+    pub forced_bit: Option<u32>,
+}
+
+/// Classifies a manual potion use at `slot` using `state.player.combat_generated_potion_mask`
+/// and root-frozen slot costs (`HotPotionPolicy.TryClassifyPotionUseForPass`).
 #[inline]
-fn is_usable_potion_slot(
+pub fn try_classify_potion_use_for_pass(
+    state: &BattleState,
     slot: usize,
     pid: PotionId,
     policy: &crate::SearchPolicy,
+    root: Option<&RootEvalBaseline>,
     allow_paid_optional: bool,
     renewable_potion_shaped_rock: bool,
-) -> (bool, bool) {
-    // FairyInABottle is passive-only (triggered on lethal damage).
-    if pid == PotionId::FairyInABottle {
-        return (false, false);
+) -> Option<PotionUseClassification> {
+    if pid == PotionId::FairyInABottle || !state.player.can_use_or_remove_potions {
+        return None;
     }
+    if slot >= state.player.potion_slots.len() || slot >= 16 {
+        return None;
+    }
+    let slot_bit = 1u16 << slot;
+    let is_generated = (state.player.combat_generated_potion_mask & slot_bit) != 0;
+    if is_generated {
+        // Mid-combat generated potions cost 0, ignore root Disabled, and never satisfy root Force.
+        if !policy.allow_potions || policy.potion_policy == crate::eval::SolverPotionPolicy::Disabled {
+            return None;
+        }
+        return Some(PotionUseClassification {
+            is_generated: true,
+            is_forced: false,
+            optional_paid_cost_delta: 0,
+            optional_paid_count_delta: 0,
+            root_potion_slot_bit: 0,
+            forced_bit: None,
+        });
+    }
+
     if !policy.allows_explicit_potion_use(slot, pid, false) {
-        return (false, false);
+        return None;
     }
     let directive = policy.potion_directive_for(slot, pid);
     let is_forced = directive == crate::eval::SolverPotionDirective::Force;
-    if !allow_paid_optional && !is_forced {
-        let cost = crate::eval::PotionValuationRegistry::strategic_hp_cost_with_overrides(
+    if is_forced {
+        return Some(PotionUseClassification {
+            is_generated: false,
+            is_forced: true,
+            optional_paid_cost_delta: 0,
+            optional_paid_count_delta: 0,
+            root_potion_slot_bit: slot_bit,
+            forced_bit: policy.forced_bit_for(slot, pid),
+        });
+    }
+
+    let slot_cost = match root {
+        Some(rb) if rb.root_slot_costs[slot] >= 0 => rb.root_slot_costs[slot] as i32,
+        Some(rb) => crate::eval::PotionValuationRegistry::strategic_hp_cost_for_root(
+            pid,
+            renewable_potion_shaped_rock,
+            rb.initial_player_max_hp,
+            &policy.potion_hp_threshold_overrides,
+        ),
+        None => crate::eval::PotionValuationRegistry::strategic_hp_cost_with_overrides(
             pid,
             renewable_potion_shaped_rock,
             &policy.potion_hp_threshold_overrides,
-        );
-        if cost > 0 {
-            return (false, false);
-        }
+        ),
+    };
+
+    if slot_cost == 0 {
+        return Some(PotionUseClassification {
+            is_generated: false,
+            is_forced: false,
+            optional_paid_cost_delta: 0,
+            optional_paid_count_delta: 0,
+            root_potion_slot_bit: slot_bit,
+            forced_bit: None,
+        });
     }
-    (true, is_forced)
+
+    if !allow_paid_optional {
+        return None;
+    }
+
+    Some(PotionUseClassification {
+        is_generated: false,
+        is_forced: false,
+        optional_paid_cost_delta: slot_cost,
+        optional_paid_count_delta: 1,
+        root_potion_slot_bit: slot_bit,
+        forced_bit: None,
+    })
+}
+
+/// Returns `true` when using `pid` in `state` is provably a zero-effect no-op,
+/// exempting forced directives and `OnPotionUsed` relics (`ReptileTrinket` / `BeltBuckle`).
+#[inline]
+pub fn is_provable_no_op_potion_use(
+    state: &BattleState,
+    pid: PotionId,
+    is_forced: bool,
+    has_on_potion_used_relic: bool,
+    has_sozu: bool,
+    any_heal_hook: bool,
+) -> bool {
+    if is_forced || has_on_potion_used_relic {
+        return false;
+    }
+    let pc = state.player_creature();
+    let player_hp = pc.map_or(state.player.current_hp, |c| c.current_hp);
+    let player_max_hp = pc.map_or(state.player.max_hp, |c| c.max_hp);
+    let player_block = pc.map_or(state.player.block, |c| c.block);
+    match pid {
+        PotionId::Fortifier => player_block <= 0,
+        PotionId::BloodPotion => player_hp >= player_max_hp && !any_heal_hook,
+        PotionId::DropletOfPrecognition => state.player.draw.is_empty(),
+        PotionId::LiquidMemories => state.player.discard.is_empty(),
+        PotionId::TouchOfInsanity => state.player.hand.is_empty(),
+        PotionId::EntropicBrew => has_sozu,
+        _ => false,
+    }
 }
 
 /// Short-circuit check for whether any potion slot can currently be used under this pass policy.
@@ -369,32 +476,70 @@ pub fn has_any_usable_potion_for_pass(
     allow_paid_optional: bool,
     renewable_potion_shaped_rock: bool,
 ) -> bool {
+    has_any_usable_potion_with_root(
+        state,
+        sensitivity,
+        policy,
+        None,
+        allow_paid_optional,
+        renewable_potion_shaped_rock,
+    )
+}
+
+pub fn has_any_usable_potion_with_root(
+    state: &BattleState,
+    sensitivity: &CombatOrderSensitivity,
+    policy: &crate::SearchPolicy,
+    root: Option<&RootEvalBaseline>,
+    allow_paid_optional: bool,
+    renewable_potion_shaped_rock: bool,
+) -> bool {
     if !state.player.can_use_or_remove_potions {
         return false;
     }
-    let player_hp = state
-        .player_creature()
-        .map_or(state.player.current_hp, |c| c.current_hp);
-    let player_max_hp = state
-        .player_creature()
-        .map_or(state.player.max_hp, |c| c.max_hp);
+    let has_on_potion_used_relic = root.map_or_else(
+        || {
+            state.player.relics.iter().any(|r| {
+                !r.is_melted
+                    && matches!(
+                        r.id,
+                        sts2_types::RelicId::ReptileTrinket | sts2_types::RelicId::BeltBuckle
+                    )
+            })
+        },
+        |rb| rb.has_on_potion_used_relic,
+    );
+    let has_sozu = root.map_or_else(
+        || {
+            state
+                .player
+                .relics
+                .iter()
+                .any(|r| !r.is_melted && r.id == sts2_types::RelicId::Sozu)
+        },
+        |rb| rb.has_sozu,
+    );
     for (slot, maybe_id) in state.player.potion_slots.iter().enumerate() {
         let Some(pid) = *maybe_id else { continue };
-        let (allowed, is_forced) = is_usable_potion_slot(
+        let Some(cls) = try_classify_potion_use_for_pass(
+            state,
             slot,
             pid,
             policy,
+            root,
             allow_paid_optional,
             renewable_potion_shaped_rock,
-        );
-        if !allowed {
+        ) else {
             continue;
-        }
-        if !is_forced
-            && pid == PotionId::BloodPotion
-            && player_hp >= player_max_hp
-            && !sensitivity.any_heal_hook
-        {
+        };
+        if is_provable_no_op_potion_use(
+            state,
+            pid,
+            cls.is_forced,
+            has_on_potion_used_relic,
+            has_sozu,
+            sensitivity.any_heal_hook,
+        ) {
             continue;
         }
         return true;
@@ -421,44 +566,86 @@ pub fn dedup_and_filter_potions_for_pass(
     allow_paid_optional: bool,
     renewable_potion_shaped_rock: bool,
 ) -> SmallVec<[(usize, PotionId); 5]> {
-    let mut out = SmallVec::<[(usize, PotionId); 5]>::new();
+    let items = dedup_and_filter_potions_with_root(
+        state,
+        sensitivity,
+        policy,
+        None,
+        enable_dedup,
+        allow_paid_optional,
+        renewable_potion_shaped_rock,
+    );
+    items.into_iter().map(|(slot, pid, _)| (slot, pid)).collect()
+}
+
+pub fn dedup_and_filter_potions_with_root(
+    state: &BattleState,
+    sensitivity: &CombatOrderSensitivity,
+    policy: &crate::SearchPolicy,
+    root: Option<&RootEvalBaseline>,
+    enable_dedup: bool,
+    allow_paid_optional: bool,
+    renewable_potion_shaped_rock: bool,
+) -> SmallVec<[(usize, PotionId, PotionUseClassification); 5]> {
+    let mut out = SmallVec::<[(usize, PotionId, PotionUseClassification); 5]>::new();
     if !state.player.can_use_or_remove_potions {
         return out;
     }
-    let player_hp = state
-        .player_creature()
-        .map_or(state.player.current_hp, |c| c.current_hp);
-    let player_max_hp = state
-        .player_creature()
-        .map_or(state.player.max_hp, |c| c.max_hp);
+    let has_on_potion_used_relic = root.map_or_else(
+        || {
+            state.player.relics.iter().any(|r| {
+                !r.is_melted
+                    && matches!(
+                        r.id,
+                        sts2_types::RelicId::ReptileTrinket | sts2_types::RelicId::BeltBuckle
+                    )
+            })
+        },
+        |rb| rb.has_on_potion_used_relic,
+    );
+    let has_sozu = root.map_or_else(
+        || {
+            state
+                .player
+                .relics
+                .iter()
+                .any(|r| !r.is_melted && r.id == sts2_types::RelicId::Sozu)
+        },
+        |rb| rb.has_sozu,
+    );
 
-    let mut non_forced_seen: SmallVec<[PotionId; 5]> = SmallVec::new();
+    let mut seen: SmallVec<[(PotionId, bool, bool, i32); 5]> = SmallVec::new();
     for (slot, maybe_id) in state.player.potion_slots.iter().enumerate() {
         let Some(pid) = *maybe_id else { continue };
-        let (allowed, is_forced) = is_usable_potion_slot(
+        let Some(cls) = try_classify_potion_use_for_pass(
+            state,
             slot,
             pid,
             policy,
+            root,
             allow_paid_optional,
             renewable_potion_shaped_rock,
-        );
-        if !allowed {
+        ) else {
+            continue;
+        };
+        if is_provable_no_op_potion_use(
+            state,
+            pid,
+            cls.is_forced,
+            has_on_potion_used_relic,
+            has_sozu,
+            sensitivity.any_heal_hook,
+        ) {
             continue;
         }
-        if enable_dedup && !is_forced {
-            if non_forced_seen.contains(&pid) {
+        if enable_dedup {
+            let key = (pid, cls.is_generated, cls.is_forced, cls.optional_paid_cost_delta);
+            if seen.contains(&key) {
                 continue;
             }
-            // BloodPotion / CureAll at full HP with no heal-listener hooks is a provable no-op.
-            if pid == PotionId::BloodPotion
-                && player_hp >= player_max_hp
-                && !sensitivity.any_heal_hook
-            {
-                continue;
-            }
-            non_forced_seen.push(pid);
+            seen.push(key);
         }
-        out.push((slot, pid));
+        out.push((slot, pid, cls));
     }
     out
 }
@@ -499,6 +686,8 @@ pub fn choice_candidate_quality(
             CardRarity::Common | CardRarity::Event => 20,
             _ => 10,
         };
+        let setup_weight = state.fast_card_rollout_profile(content, card.id).setup_weight as i32;
+        q += (setup_weight * 4).min(140);
         if card.base_energy_cost == 0 {
             q += 40;
         } else if card.base_energy_cost == 1 {
@@ -520,6 +709,12 @@ pub fn choice_candidate_quality(
     quality
 }
 
+#[derive(Default)]
+pub struct ChoiceEnumScratch {
+    flat: Vec<SmallVec<[usize; 8]>>,
+    ranges: SmallVec<[(usize, usize); 8]>,
+}
+
 /// Enumerates canonical multiset choice index selections for a `ChoiceRequest` without duplicate
 /// equivalent card combinations (e.g., picking 2 of 5 cards where 3 are identical `Strike+0`).
 pub fn enumerate_canonical_choices(
@@ -529,9 +724,52 @@ pub fn enumerate_canonical_choices(
     max_branches: usize,
     enable_multiset_dedup: bool,
 ) -> Vec<Vec<usize>> {
+    let mut buf = Vec::new();
+    enumerate_canonical_choices_into(
+        state,
+        content,
+        req,
+        max_branches,
+        enable_multiset_dedup,
+        &mut buf,
+    );
+    buf.into_iter().map(|v| v.into_vec()).collect()
+}
+
+pub fn enumerate_canonical_choices_into(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    req: &ChoiceRequest,
+    max_branches: usize,
+    enable_multiset_dedup: bool,
+    results: &mut Vec<SmallVec<[usize; 8]>>,
+) {
+    let mut scratch = ChoiceEnumScratch::default();
+    enumerate_canonical_choices_with_scratch(
+        state,
+        content,
+        req,
+        max_branches,
+        enable_multiset_dedup,
+        &mut scratch,
+        results,
+    );
+}
+
+pub fn enumerate_canonical_choices_with_scratch(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    req: &ChoiceRequest,
+    max_branches: usize,
+    enable_multiset_dedup: bool,
+    scratch: &mut ChoiceEnumScratch,
+    results: &mut Vec<SmallVec<[usize; 8]>>,
+) {
+    results.clear();
     let n = req.candidates.len();
     if n == 0 || req.max_count == 0 {
-        return vec![Vec::new()];
+        results.push(SmallVec::new());
+        return;
     }
 
     let cap = max_branches.max(1);
@@ -589,37 +827,43 @@ pub fn enumerate_canonical_choices(
         smallvec::smallvec![0]
     };
 
-    // For canonical multiset enumeration over `ordered`, an occurrence of a key may only be chosen
-    // when its immediately preceding occurrence in `ordered` is also chosen.
-    let mut prev_dup: SmallVec<[Option<usize>; 24]> = SmallVec::with_capacity(n);
+    let mut groups: SmallVec<[(HandCardEquivKey, SmallVec<[usize; 8]>); 24]> = SmallVec::new();
+    let mut group_suffix_avail: SmallVec<[usize; 25]> = SmallVec::new();
     if enable_multiset_dedup {
-        for pos in 0..n {
-            let key = equiv_keys[ordered[pos]];
-            let prev = (0..pos).rev().find(|&p| equiv_keys[ordered[p]] == key);
-            prev_dup.push(prev);
+        for &orig_idx in &ordered {
+            let key = equiv_keys[orig_idx];
+            if let Some((_, list)) = groups.iter_mut().find(|(k, _)| *k == key) {
+                list.push(orig_idx);
+            } else {
+                groups.push((key, smallvec::smallvec![orig_idx]));
+            }
+        }
+        group_suffix_avail.resize(groups.len() + 1, 0);
+        for i in (0..groups.len()).rev() {
+            group_suffix_avail[i] = group_suffix_avail[i + 1] + groups[i].1.len();
         }
     }
 
+    #[inline]
     fn push_normalized(
         ordered: &[usize],
         picked_positions: &[usize],
-        out: &mut Vec<Vec<usize>>,
+        out: &mut Vec<SmallVec<[usize; 8]>>,
     ) {
-        let mut sel: Vec<usize> = picked_positions.iter().map(|&p| ordered[p]).collect();
+        let mut sel: SmallVec<[usize; 8]> =
+            picked_positions.iter().map(|&p| ordered[p]).collect();
         sel.sort_unstable();
         out.push(sel);
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn dfs_prefix(
+    fn dfs_prefix_plain(
         start: usize,
         max_pos: usize,
         target_len: usize,
         ordered: &[usize],
-        prev_dup: &[Option<usize>],
-        enable_dedup: bool,
-        picked: &mut Vec<usize>,
-        out: &mut Vec<Vec<usize>>,
+        picked: &mut SmallVec<[usize; 8]>,
+        out: &mut Vec<SmallVec<[usize; 8]>>,
         len_cap: usize,
     ) {
         if out.len() >= len_cap {
@@ -634,25 +878,8 @@ pub fn enumerate_canonical_choices(
             return;
         }
         for pos in start..=max_pos - need {
-            if enable_dedup {
-                if let Some(prev) = prev_dup[pos] {
-                    if !picked.contains(&prev) {
-                        continue;
-                    }
-                }
-            }
             picked.push(pos);
-            dfs_prefix(
-                pos + 1,
-                max_pos,
-                target_len,
-                ordered,
-                prev_dup,
-                enable_dedup,
-                picked,
-                out,
-                len_cap,
-            );
+            dfs_prefix_plain(pos + 1, max_pos, target_len, ordered, picked, out, len_cap);
             picked.pop();
             if out.len() >= len_cap {
                 return;
@@ -660,95 +887,104 @@ pub fn enumerate_canonical_choices(
         }
     }
 
-    fn enumerate_for_len(
+    fn dfs_multiset_groups(
+        g_idx: usize,
+        need: usize,
+        groups: &[(HandCardEquivKey, SmallVec<[usize; 8]>)],
+        suffix_avail: &[usize],
+        picked: &mut SmallVec<[usize; 8]>,
+        out: &mut Vec<SmallVec<[usize; 8]>>,
+        len_cap: usize,
+    ) {
+        if out.len() >= len_cap {
+            return;
+        }
+        if need == 0 {
+            let mut sel = picked.clone();
+            sel.sort_unstable();
+            out.push(sel);
+            return;
+        }
+        if g_idx >= groups.len() || need > suffix_avail[g_idx] {
+            return;
+        }
+        let avail_here = groups[g_idx].1.len();
+        let avail_after = suffix_avail[g_idx + 1];
+        let min_take = need.saturating_sub(avail_after);
+        let max_take = need.min(avail_here);
+        for take in (min_take..=max_take).rev() {
+            let base_len = picked.len();
+            for &orig_idx in groups[g_idx].1.iter().take(take) {
+                picked.push(orig_idx);
+            }
+            dfs_multiset_groups(
+                g_idx + 1,
+                need - take,
+                groups,
+                suffix_avail,
+                picked,
+                out,
+                len_cap,
+            );
+            picked.truncate(base_len);
+            if out.len() >= len_cap {
+                return;
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn enumerate_for_len_into(
         len: usize,
         n: usize,
         ordered: &[usize],
-        equiv_keys: &[HandCardEquivKey],
-        prev_dup: &[Option<usize>],
+        groups: &[(HandCardEquivKey, SmallVec<[usize; 8]>)],
+        group_suffix_avail: &[usize],
         enable_dedup: bool,
         len_cap: usize,
-    ) -> Vec<Vec<usize>> {
-        let mut out = Vec::new();
+        out: &mut Vec<SmallVec<[usize; 8]>>,
+    ) {
         if len == 0 {
-            out.push(Vec::new());
-            return out;
+            out.push(SmallVec::new());
+            return;
         }
         if len == 1 {
-            let mut seen: SmallVec<[HandCardEquivKey; 16]> = SmallVec::new();
-            for &orig_idx in ordered {
-                if enable_dedup {
-                    let k = equiv_keys[orig_idx];
-                    if seen.contains(&k) {
-                        continue;
+            if enable_dedup {
+                for (_, idxs) in groups {
+                    out.push(smallvec::smallvec![idxs[0]]);
+                    if out.len() >= len_cap {
+                        break;
                     }
-                    seen.push(k);
                 }
-                out.push(vec![orig_idx]);
-                if out.len() >= len_cap {
-                    break;
+            } else {
+                for &orig_idx in ordered {
+                    out.push(smallvec::smallvec![orig_idx]);
+                    if out.len() >= len_cap {
+                        break;
+                    }
                 }
             }
-            return out;
+            return;
         }
 
-        let mut picked = Vec::with_capacity(len);
+        let mut picked: SmallVec<[usize; 8]> = SmallVec::with_capacity(len);
+        if enable_dedup {
+            dfs_multiset_groups(0, len, groups, group_suffix_avail, &mut picked, out, len_cap);
+            return;
+        }
+
         for max_pos in (len - 1)..n {
             if out.len() >= len_cap {
                 break;
             }
-            if !enable_dedup {
-                picked.clear();
-                picked.push(max_pos);
-                dfs_prefix(
-                    0,
-                    max_pos,
-                    len,
-                    ordered,
-                    prev_dup,
-                    false,
-                    &mut picked,
-                    &mut out,
-                    len_cap,
-                );
-                continue;
-            }
-
-            let mut chain: SmallVec<[usize; 8]> = SmallVec::new();
-            let mut cur_p = Some(max_pos);
-            while let Some(p) = cur_p {
-                chain.push(p);
-                if chain.len() > len {
-                    break;
-                }
-                cur_p = prev_dup[p];
-            }
-            if chain.len() > len {
-                continue;
-            }
             picked.clear();
-            for &p in chain.iter().rev() {
-                picked.push(p);
-            }
-            let prefix_limit = chain[chain.len() - 1];
-            dfs_prefix(
-                0,
-                prefix_limit,
-                len,
-                ordered,
-                prev_dup,
-                true,
-                &mut picked,
-                &mut out,
-                len_cap,
-            );
+            picked.push(max_pos);
+            dfs_prefix_plain(0, max_pos, len, ordered, &mut picked, out, len_cap);
         }
-        out
     }
 
-    let mut results = Vec::new();
     if req.can_skip && req.min_count == 0 {
-        results.push(Vec::new());
+        results.push(SmallVec::new());
     }
 
     let min_pick = req.min_count.max(usize::from(req.can_skip));
@@ -756,56 +992,59 @@ pub fn enumerate_canonical_choices(
 
     if min_pick > max_pick {
         if results.is_empty() {
-            results.push(Vec::new());
+            results.push(SmallVec::new());
         }
-        return results;
+        return;
     }
 
     if min_pick == max_pick {
-        let len_rem = cap.saturating_sub(results.len());
-        if len_rem > 0 {
-            results.extend(enumerate_for_len(
+        let rem_cap = results.len().saturating_add(cap);
+        if results.len() < rem_cap {
+            enumerate_for_len_into(
                 min_pick,
                 n,
                 &ordered,
-                &equiv_keys,
-                &prev_dup,
+                &groups,
+                &group_suffix_avail,
                 enable_multiset_dedup,
-                len_rem,
-            ));
+                rem_cap,
+                results,
+            );
         }
     } else {
-        let mut by_len: SmallVec<[Vec<Vec<usize>>; 8]> =
-            SmallVec::with_capacity(max_pick - min_pick + 1);
+        scratch.flat.clear();
+        scratch.ranges.clear();
         let mut total = results.len();
         for len in min_pick..=max_pick {
-            let group = enumerate_for_len(
+            let start = scratch.flat.len();
+            enumerate_for_len_into(
                 len,
                 n,
                 &ordered,
-                &equiv_keys,
-                &prev_dup,
+                &groups,
+                &group_suffix_avail,
                 enable_multiset_dedup,
-                cap,
+                start.saturating_add(cap),
+                &mut scratch.flat,
             );
-            total = total.saturating_add(group.len());
-            by_len.push(group);
+            let end = scratch.flat.len();
+            total = total.saturating_add(end - start);
+            scratch.ranges.push((start, end));
         }
         if total <= cap {
-            for group in by_len {
-                results.extend(group);
-            }
+            results.extend(scratch.flat.drain(..));
         } else {
-            let mut offsets: SmallVec<[usize; 8]> = smallvec::smallvec![0; by_len.len()];
+            let mut offsets: SmallVec<[usize; 8]> =
+                scratch.ranges.iter().map(|&(s, _)| s).collect();
             while results.len() < cap {
                 let mut progressed = false;
-                for (g_idx, group) in by_len.iter().enumerate() {
+                for (g_idx, &(_, end)) in scratch.ranges.iter().enumerate() {
                     if results.len() >= cap {
                         break;
                     }
                     let pos = offsets[g_idx];
-                    if pos < group.len() {
-                        results.push(group[pos].clone());
+                    if pos < end {
+                        results.push(std::mem::take(&mut scratch.flat[pos]));
                         offsets[g_idx] = pos + 1;
                         progressed = true;
                     }
@@ -814,11 +1053,100 @@ pub fn enumerate_canonical_choices(
                     break;
                 }
             }
+            scratch.flat.clear();
         }
     }
 
     if results.is_empty() {
-        results.push(Vec::new());
+        results.push(SmallVec::new());
     }
-    results
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::packer::empty_scratch_state;
+    use std::collections::BTreeSet;
+    use std::sync::Arc;
+    use sts2_content::Sts2Content;
+    use sts2_kernel::continuation::ChoiceTiming;
+    use sts2_kernel::state::{CardInst, CardTempFlags, RootStaticContext};
+
+    fn make_card(handle: u32, id: CardId, base_cost: i32) -> CardInst {
+        CardInst {
+            handle: CardHandle(handle),
+            id,
+            upgrade_level: 0,
+            canonical_base_energy_cost: base_cost,
+            base_energy_cost: base_cost,
+            captured_energy_x_value: 0,
+            base_replay_count: 0,
+            floor_added_to_deck: None,
+            deck_card_handle: None,
+            clone_of_handle: None,
+            temp_star_cost_override_this_turn: None,
+            temp_cost_override_this_turn: None,
+            temp_cost_override_this_turn_or_until_played: None,
+            temp_cost_override_this_combat: None,
+            local_keywords: CardKeywords::empty(),
+            keywords_added_from_outside: CardKeywords::empty(),
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags: CardTempFlags::empty(),
+            affliction: None,
+            ext_index: None,
+            pile: PileType::Hand,
+            removed_from_state: false,
+            transform_into_after_play: None,
+        }
+    }
+
+    #[test]
+    fn multiset_choice_dedup_handles_interleaved_duplicates() {
+        // [A, Dup1, B, C, Dup2] pick 3 in Hand (which interleaves low/high quality):
+        // Cards A=Strike (60), Dup1=Defend (60), B=Armaments (200+), C=BattleTrance (200+), Dup2=Strike (60)
+        // Expected distinct multisets of size 3 over {S(2), D(1), Arm(1), BT(1)}:
+        // - {S, S, D}, {S, S, Arm}, {S, S, BT} (3)
+        // - {S, D, Arm}, {S, D, BT}, {S, Arm, BT} (3)
+        // - {D, Arm, BT} (1) -> total 7 distinct multisets!
+        let mut state = empty_scratch_state(Arc::new(RootStaticContext::default()));
+        let cards = [
+            make_card(1, CardId::StrikeIronclad, 1),   // S
+            make_card(2, CardId::DefendIronclad, 1),   // D
+            make_card(3, CardId::Armaments, 1),        // Arm
+            make_card(4, CardId::BattleTrance, 0),     // BT
+            make_card(5, CardId::StrikeIronclad, 1),   // S (dup)
+        ];
+        state.cards.extend_from_slice(&cards);
+        let handles: SmallVec<[CardHandle; 32]> = cards.iter().map(|c| c.handle).collect();
+        state.player.hand = handles.to_vec();
+
+        let req = ChoiceRequest {
+            timing: ChoiceTiming::Action,
+            source_id: "TEST".into(),
+            source_pile: PileType::Hand,
+            min_count: 3,
+            max_count: 3,
+            candidates: handles,
+            can_skip: false,
+        };
+        let results = enumerate_canonical_choices(&mut state, &Sts2Content, &req, 64, true);
+        let mut seen_multisets: BTreeSet<Vec<(CardId, i32)>> = BTreeSet::new();
+        for sel in &results {
+            assert_eq!(sel.len(), 3);
+            let mut m: Vec<(CardId, i32)> = sel
+                .iter()
+                .map(|&idx| (cards[idx].id, cards[idx].upgrade_level))
+                .collect();
+            m.sort_by_key(|&(id, upg)| (id as u16, upg));
+            assert!(
+                seen_multisets.insert(m),
+                "duplicate canonical choice multiset emitted: {sel:?}"
+            );
+        }
+        assert_eq!(
+            seen_multisets.len(),
+            7,
+            "dropped valid interleaved multiset combinations: {results:?}"
+        );
+    }
 }

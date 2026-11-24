@@ -23,8 +23,10 @@ pub use snapshot::{
     export_live_state, import_live_state, LiveStateJson,
 };
 pub use state::{
-    ArrowSlotInst, BattleState, CardExtension, CardHandle, CardInst, CardTempFlags, CreatureHandle,
-    CreatureInst, DamageHistoryEntry, DamageResult, EnchantmentInst, FieldValue, GrowthCounters,
-    GrowthSource, LocalEnergyModifier, MonsterInst, OrbInst, PlayerCounters, PlayerInst,
-    PowerExtension, PowerInst, RelicInst, RootStaticContext, SemanticHistory,
+    ActiveHookCache, ActiveHookMasks, ArrowSlotInst, BattleState, CardExtension, CardHandle,
+    CardInst, CardTempFlags, CreatureHandle, CreatureInst, DamageHistoryEntry, DamageResult,
+    DeckDirtyFlag, EnchantmentInst, FieldMap, FieldValue, GrowthCounters, GrowthSource,
+    InlineI32Vec4, InlineOptI32Vec4, LocalEnergyModifier, MonsterInst, OrbInst, PlayerCounters,
+    PlayerInst, PowerExtension, PowerInst, RelicInst, RootStaticContext, SYM_FALLBACK_ID,
+    SemanticHistory, intern_static, intern_str, sym_cow, sym_str,
 };

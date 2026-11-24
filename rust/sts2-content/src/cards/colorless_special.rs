@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use sts2_kernel::commands::card_select::SelectResult;
 use sts2_kernel::commands::{
@@ -14,10 +15,9 @@ use sts2_kernel::{
 };
 use sts2_types::generated_ids::{CARD_META_TABLE, generated_card_meta};
 use sts2_types::{
-    CARD_POOL_COLORLESS, CardId, CardKeywords, CardMeta, CardPartition, CardPilePosition,
-    CardRarity, CardStaticFlags, CardType, CharacterId, CombatSide, Dec, HookSlot,
-    LocalEnergyModifierKind, PileType, PotionId, PowerId, PowerStaticFlags, PowerType, RunRngType,
-    TargetType, ValueProp, card_partition, character_card_pool,
+    CardId, CardKeywords, CardMeta, CardPartition, CardPilePosition, CardRarity, CardStaticFlags,
+    CardType, CombatSide, Dec, HookSlot, LocalEnergyModifierKind, PileType, PotionId, PowerId,
+    PowerStaticFlags, PowerType, RunRngType, TargetType, ValueProp, card_partition,
 };
 
 const DISCOVERY_OFFER_MARKER: &str = "__discovery_offer";
@@ -641,11 +641,12 @@ pub fn on_play(
                     generate_existing_card_into_hand(content, state, h)?;
                 } else if let Some(c) = state.card_mut(h) {
                     c.removed_from_state = true;
+                    state.invalidate_hook_cache();
                 }
             }
             if let Some(ext) = state.card_ext_mut(ctx.card) {
                 ext.private_fields.insert(
-                    "Abundance._generatedCandidates".to_owned(),
+                    Cow::Borrowed("Abundance._generatedCandidates"),
                     FieldValue::CardHandleArray(gen_handles),
                 );
             }
@@ -745,7 +746,7 @@ pub fn on_play(
         CardId::BeatDown => {
             let count = if upg { 4 } else { 3 };
             let mut candidates: Vec<CardHandle> = Vec::new();
-            let discard = state.player.discard.clone();
+            let discard: SmallVec<[CardHandle; 32]> = SmallVec::from_slice(&state.player.discard);
             for h in discard {
                 if let Some(c) = state.card(h) {
                     if resolved_card_type(state, c) == CardType::Attack
@@ -811,7 +812,7 @@ pub fn on_play(
             let turn = state.player.turn_number;
             if let Some(ext) = state.card_ext_mut(ctx.card) {
                 ext.private_fields.insert(
-                    "Bolas._playedOnTurnNumber".to_owned(),
+                    Cow::Borrowed("Bolas._playedOnTurnNumber"),
                     FieldValue::NullableInt(Some(turn)),
                 );
             }
@@ -860,7 +861,7 @@ pub fn on_play(
             let count = if upg { 3 } else { 2 };
             for _ in 0..count {
                 let mut candidates: Vec<CardHandle> = Vec::new();
-                let draw = state.player.draw.clone();
+                let draw: SmallVec<[CardHandle; 32]> = SmallVec::from_slice(&state.player.draw);
                 for h in draw {
                     if !card_pile::card_has_keyword(state, content, h, CardKeywords::UNPLAYABLE)? {
                         candidates.push(h);
@@ -1034,7 +1035,7 @@ pub fn on_play(
             }
         }
         CardId::Enlightenment => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 let cost = ordering::resolve_energy_cost(state, content, h)?;
                 if cost > 1 {
@@ -1315,7 +1316,7 @@ pub fn on_play(
         }
         CardId::HiddenGem => {
             let mut eligible: Vec<CardHandle> = Vec::new();
-            let draw = state.player.draw.clone();
+            let draw: SmallVec<[CardHandle; 32]> = SmallVec::from_slice(&state.player.draw);
             for h in draw {
                 if card_pile::card_has_keyword(state, content, h, CardKeywords::UNPLAYABLE)? {
                     continue;
@@ -1401,9 +1402,10 @@ pub fn on_play(
         }
         CardId::JackOfAllTrades => {
             let count = if upg { 2 } else { 1 };
+            let pool = card_factory::colorless_card_pool_candidates(state);
             let chosen = card_factory::get_distinct_for_combat_filtered(
                 state,
-                CARD_POOL_COLORLESS,
+                &pool,
                 count,
                 RunRngType::CombatCardGeneration,
                 |cid| cid != CardId::JackOfAllTrades,
@@ -1426,33 +1428,41 @@ pub fn on_play(
             let dmg = Dec::from_i32(if upg { 30 } else { 25 });
             AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
                 .execute(state, content)?;
-            let pool: Vec<CardId> = card_factory::character_combat_pool(state)
-                .into_iter()
-                .filter(|&cid| {
-                    let meta = generated_card_meta(cid);
-                    !meta.flags.contains(CardStaticFlags::IS_COLORLESS)
-                        && meta.canonical_energy_cost == 0
-                        && !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST)
-                })
-                .collect();
-            if !pool.is_empty() {
-                for _ in 0..3 {
-                    let Some(&picked) = state
-                        .run_rngs
-                        .get_mut(RunRngType::CombatCardGeneration)
-                        .next_item(&pool)
-                    else {
-                        break;
-                    };
-                    let _ = card_pile::add_generated_card_to_combat(
-                        state,
-                        content,
-                        picked,
-                        PileType::Hand,
-                        CardPilePosition::Bottom,
-                        if upg { 1 } else { 0 },
-                        Some(owner),
-                    )?;
+            if !hooks::is_over_or_ending(state) {
+                let pool: SmallVec<[CardId; 64]> = card_factory::character_combat_pool(state)
+                    .into_iter()
+                    .filter(|&cid| {
+                        let meta = generated_card_meta(cid);
+                        !meta.flags.contains(CardStaticFlags::IS_COLORLESS)
+                            && meta.canonical_energy_cost == 0
+                            && !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST)
+                    })
+                    .collect();
+                if !pool.is_empty() {
+                    let mut rolled: SmallVec<[CardId; 3]> = SmallVec::new();
+                    {
+                        let rng = state.run_rngs.get_mut(RunRngType::CombatCardGeneration);
+                        for _ in 0..3 {
+                            if let Some(&picked) = rng.next_item(&pool) {
+                                rolled.push(picked);
+                            }
+                        }
+                    }
+                    let gen_upg = if upg { 1 } else { 0 };
+                    for picked in rolled {
+                        if hooks::is_over_or_ending(state) {
+                            break;
+                        }
+                        let _ = card_pile::add_generated_card_to_combat(
+                            state,
+                            content,
+                            picked,
+                            PileType::Hand,
+                            CardPilePosition::Bottom,
+                            gen_upg,
+                            Some(owner),
+                        )?;
+                    }
                 }
             }
             Ok(CardPlayOutcome::default())
@@ -1568,9 +1578,9 @@ pub fn on_play(
                 let next_extra = cur_extra.checked_add(inc)?;
                 if let Some(ext) = state.card_ext_mut(mh) {
                     ext.private_fields
-                        .insert("Maul._damage".to_owned(), FieldValue::Decimal(next_dmg));
+                        .insert(Cow::Borrowed("Maul._damage"), FieldValue::Decimal(next_dmg));
                     ext.private_fields.insert(
-                        "Maul._extraDamageFromMaulPlays".to_owned(),
+                        Cow::Borrowed("Maul._extraDamageFromMaulPlays"),
                         FieldValue::Decimal(next_extra),
                     );
                 }
@@ -1797,10 +1807,10 @@ pub fn on_play(
                     .creature(first.receiver)
                     .map_or(CombatSide::Enemy, |c| c.side);
                 let mut teammates: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
-                let candidates = if target_side == CombatSide::Enemy {
-                    state.enemy_handles.clone()
+                let candidates: SmallVec<[CreatureHandle; 8]> = if target_side == CombatSide::Enemy {
+                    SmallVec::from_slice(&state.enemy_handles)
                 } else {
-                    state.ally_handles.iter().copied().collect()
+                    SmallVec::from_slice(&state.ally_handles)
                 };
                 for ch in candidates {
                     if ch != target
@@ -2416,7 +2426,7 @@ pub fn on_play(
             let next_dmg = dmg.checked_add(Dec::from_i32(if upg { 15 } else { 10 }))?;
             if let Some(ext) = state.card_ext_mut(ctx.card) {
                 ext.private_fields
-                    .insert("TheBall._damage".to_owned(), FieldValue::Decimal(next_dmg));
+                    .insert(Cow::Borrowed("TheBall._damage"), FieldValue::Decimal(next_dmg));
             }
             Ok(CardPlayOutcome::default())
         }
@@ -2442,7 +2452,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::TheDevil => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let count = hand.len();
             for h in hand {
                 card_pile::exhaust(state, content, h, false)?;
@@ -2488,7 +2498,7 @@ pub fn on_play(
             let count = if upg { 3 } else { 2 };
             for _ in 0..count {
                 let mut candidates: Vec<CardHandle> = Vec::new();
-                let hand = state.player.hand.clone();
+                let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
                 for h in hand {
                     if !card_pile::card_has_keyword(state, content, h, CardKeywords::UNPLAYABLE)? {
                         candidates.push(h);
@@ -2573,9 +2583,10 @@ pub fn on_play(
         }
         CardId::TheHierophant => {
             let count = if upg { 4 } else { 3 };
+            let pool = card_factory::colorless_card_pool_candidates(state);
             let chosen = card_factory::get_distinct_for_combat_filtered(
                 state,
-                CARD_POOL_COLORLESS,
+                &pool,
                 count,
                 RunRngType::CombatCardGeneration,
                 |_| true,
@@ -2783,7 +2794,7 @@ pub fn on_play(
             let turn = state.player.turn_number;
             if let Some(ext) = state.card_ext_mut(ctx.card) {
                 ext.private_fields.insert(
-                    "ThrummingHatchet._playedOnTurnNumber".to_owned(),
+                    Cow::Borrowed("ThrummingHatchet._playedOnTurnNumber"),
                     FieldValue::NullableInt(Some(turn)),
                 );
             }
@@ -2860,7 +2871,9 @@ pub fn on_play(
         CardId::WheelOfFortune => {
             let draw_count = if upg { 9 } else { 7 };
             if !state.player.hand.is_empty() {
-                discard_and_draw(state, content, &state.player.hand.clone(), draw_count)?;
+                let hand_snapshot: SmallVec<[CardHandle; 16]> =
+                    SmallVec::from_slice(&state.player.hand);
+                discard_and_draw(state, content, &hand_snapshot, draw_count)?;
             } else {
                 let _ = card_pile::draw(state, content, draw_count, false)?;
             }
@@ -3422,10 +3435,10 @@ fn get_card_nullable_int_field(state: &BattleState, card: CardHandle, key: &str)
         })
 }
 
-fn set_card_int_field(state: &mut BattleState, card: CardHandle, key: &str, val: i32) {
+fn set_card_int_field(state: &mut BattleState, card: CardHandle, key: &'static str, val: i32) {
     if let Some(ext) = state.card_ext_mut(card) {
         ext.private_fields
-            .insert(key.to_owned(), FieldValue::Int(val));
+            .insert(Cow::Borrowed(key), FieldValue::Int(val));
     }
 }
 
@@ -3446,7 +3459,7 @@ fn set_power_dec_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     val: Dec,
 ) {
     let ext_idx = state
@@ -3472,7 +3485,7 @@ fn set_power_dec_field(
     };
     if let Some(ext) = state.power_extensions.get_mut(idx) {
         ext.private_fields
-            .insert(key.to_owned(), FieldValue::Decimal(val));
+            .insert(Cow::Borrowed(key), FieldValue::Decimal(val));
     }
 }
 
@@ -3481,7 +3494,7 @@ fn collect_hittable_enemies(
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
     let mut out = SmallVec::new();
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
             && hooks::should_allow_hitting(state, content, eh)?
@@ -3626,7 +3639,7 @@ fn create_offer_card_instance(
     state: &mut BattleState,
     card_id: CardId,
     upgrade_level: i32,
-    marker: &str,
+    marker: &'static str,
 ) -> CardHandle {
     let meta = generated_card_meta(card_id);
     let handle = CardHandle(state.next_card_handle);
@@ -3668,7 +3681,7 @@ fn create_offer_card_instance(
     }
     if let Some(ext) = state.card_ext_mut(handle) {
         ext.private_fields
-            .insert(marker.to_owned(), FieldValue::Bool(true));
+            .insert(Cow::Borrowed(marker), FieldValue::Bool(true));
     }
     handle
 }
@@ -3708,6 +3721,7 @@ fn finish_offer_choice(
             if let Some(c) = state.card_mut(cand) {
                 c.removed_from_state = true;
             }
+            state.invalidate_hook_cache();
         }
     }
     if let Some(h) = chosen {
@@ -3717,22 +3731,8 @@ fn finish_offer_choice(
     Ok(())
 }
 
-fn other_character_combat_pool(state: &BattleState) -> Vec<CardId> {
-    const ALL_CHARS: [CharacterId; 6] = [
-        CharacterId::Ironclad,
-        CharacterId::Silent,
-        CharacterId::Regent,
-        CharacterId::Necrobinder,
-        CharacterId::Defect,
-        CharacterId::Fool,
-    ];
-    let mut raw = Vec::new();
-    for c in ALL_CHARS {
-        if c != state.static_ctx.character_id {
-            raw.extend_from_slice(character_card_pool(c));
-        }
-    }
-    card_factory::ordered_combat_candidates(state, &raw)
+fn other_character_combat_pool(state: &BattleState) -> SmallVec<[CardId; 128]> {
+    card_factory::other_character_combat_pool(state)
 }
 
 fn clone_card_for_combat(state: &mut BattleState, original: CardHandle) -> Result<CardHandle, KernelError> {
@@ -3855,7 +3855,7 @@ fn sort_draw_candidates(
 fn select_from_draw_pile<F>(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
-    source_id: &str,
+    source_id: &'static str,
     resume_step: u8,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
     mut filter: F,
@@ -3987,111 +3987,7 @@ fn discard_and_draw(
 }
 
 fn roll_alchemize_potion(state: &mut BattleState) -> Option<PotionId> {
-    const SHARED: &[PotionId] = &[
-        PotionId::AttackPotion,
-        PotionId::BeetleJuice,
-        PotionId::BlessingOfTheForge,
-        PotionId::BlockPotion,
-        PotionId::BottledPotential,
-        PotionId::Clarity,
-        PotionId::ColorlessPotion,
-        PotionId::CureAll,
-        PotionId::DexterityPotion,
-        PotionId::DistilledChaos,
-        PotionId::DropletOfPrecognition,
-        PotionId::Duplicator,
-        PotionId::EnergyPotion,
-        PotionId::EntropicBrew,
-        PotionId::ExplosiveAmpoule,
-        PotionId::FairyInABottle,
-        PotionId::FirePotion,
-        PotionId::FlexPotion,
-        PotionId::Fortifier,
-        PotionId::FruitJuice,
-        PotionId::FyshOil,
-        PotionId::GamblersBrew,
-        PotionId::GigantificationPotion,
-        PotionId::HeartOfIron,
-        PotionId::LiquidBronze,
-        PotionId::LiquidMemories,
-        PotionId::LuckyTonic,
-        PotionId::MazalethsGift,
-        PotionId::OrobicAcid,
-        PotionId::PotionOfBinding,
-        PotionId::PowderedDemise,
-        PotionId::PowerPotion,
-        PotionId::RadiantTincture,
-        PotionId::RegenPotion,
-        PotionId::ShacklingPotion,
-        PotionId::ShipInABottle,
-        PotionId::SkillPotion,
-        PotionId::SneckoOil,
-        PotionId::SpeedPotion,
-        PotionId::StableSerum,
-        PotionId::StrengthPotion,
-        PotionId::SwiftPotion,
-        PotionId::TouchOfInsanity,
-        PotionId::VulnerablePotion,
-        PotionId::WeakPotion,
-    ];
-    let char_potions: &[PotionId] = match state.static_ctx.character_id {
-        CharacterId::Ironclad => &[
-            PotionId::BloodPotion,
-            PotionId::SoldiersStew,
-            PotionId::Ashwater,
-        ],
-        CharacterId::Silent => &[
-            PotionId::PoisonPotion,
-            PotionId::GhostInAJar,
-            PotionId::CunningPotion,
-        ],
-        CharacterId::Defect => &[
-            PotionId::FocusPotion,
-            PotionId::EssenceOfDarkness,
-            PotionId::PotionOfCapacity,
-        ],
-        CharacterId::Regent => &[
-            PotionId::StarPotion,
-            PotionId::CosmicConcoction,
-            PotionId::KingsCourage,
-        ],
-        CharacterId::Necrobinder => &[
-            PotionId::PotionOfDoom,
-            PotionId::PotOfGhouls,
-            PotionId::BoneBrew,
-        ],
-        CharacterId::Fool => &[
-            PotionId::PrecisionPotion,
-            PotionId::BottledSong,
-            PotionId::CrystallineEuphoria,
-        ],
-    };
-
-    let mut pool = Vec::with_capacity(char_potions.len() + SHARED.len());
-    for &p in char_potions.iter().chain(SHARED.iter()) {
-        if !matches!(
-            p,
-            PotionId::RegenPotion | PotionId::FruitJuice | PotionId::FairyInABottle
-        ) && !pool.contains(&p)
-        {
-            pool.push(p);
-        }
-    }
-
-    let rng = state.run_rngs.get_mut(RunRngType::CombatPotionGeneration);
-    let roll = rng.next_f32_range(0.0_f32, 1.0_f32).ok()?;
-    let target_rarity = if roll <= 0.1_f32 {
-        crate::potions::PotionRarity::Rare
-    } else if roll <= 0.35_f32 {
-        crate::potions::PotionRarity::Uncommon
-    } else {
-        crate::potions::PotionRarity::Common
-    };
-    let matching: Vec<PotionId> = pool
-        .into_iter()
-        .filter(|&p| crate::potions::potion_rarity(p) == target_rarity)
-        .collect();
-    rng.next_item(&matching).copied()
+    crate::potions::alchemize_roll_in_combat_potion(state)
 }
 
 pub fn resolved_type(state: &BattleState, card: CardHandle) -> Result<sts2_types::CardType, KernelError> {
@@ -4113,10 +4009,30 @@ pub fn resolved_target_type(
         .card(card)
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
         .id;
-    if id == CardId::MadScience {
-        return Ok(mad_science_resolved_target_type(state, card));
+    match id {
+        CardId::Shiv => {
+            let has_fan = state
+                .player_creature()
+                .is_some_and(|c| c.powers.iter().any(|p| p.id == PowerId::FanOfKnivesPower && p.amount > 0));
+            Ok(if has_fan {
+                TargetType::AllEnemies
+            } else {
+                TargetType::AnyEnemy
+            })
+        }
+        CardId::SovereignBlade => {
+            let seeking_edge = state
+                .player_creature()
+                .is_some_and(|c| c.powers.iter().any(|p| p.id == PowerId::SeekingEdgePower && p.amount > 0));
+            Ok(if seeking_edge {
+                TargetType::AllEnemies
+            } else {
+                TargetType::AnyEnemy
+            })
+        }
+        CardId::MadScience => Ok(mad_science_resolved_target_type(state, card)),
+        _ => Ok(card_meta(id)?.target_type),
     }
-    Ok(card_meta(id)?.target_type)
 }
 
 pub fn thrash_damage_variable(state: &BattleState, card: CardHandle) -> Result<Dec, KernelError> {

@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use sts2_kernel::commands::card_select::SelectResult;
 use sts2_kernel::commands::{
@@ -79,9 +80,10 @@ const fn is_temporary_power_index(i: usize) -> bool {
         || i == PowerId::MonarchsGazeStrengthDownPower as usize
 }
 
+#[inline(always)]
 pub fn power_meta(id: PowerId) -> Result<&'static PowerMeta, KernelError> {
     let idx = id as usize;
-    if idx < AM_POWER_COUNT && id.model_entry().as_bytes()[0] < b'N' {
+    if idx < AM_POWER_COUNT {
         Ok(&AM_POWER_META[idx])
     } else {
         Err(KernelError::Unsupported {
@@ -96,19 +98,11 @@ pub fn dispatch_hook(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
+    p: PowerInst,
+    owner_side: CombatSide,
     slot: HookSlot,
     args: &HookArgs<'_>,
 ) -> Result<HookResult, KernelError> {
-    let p = state
-        .creature(creature)
-        .and_then(|c| c.powers.get(power_idx))
-        .copied()
-        .ok_or_else(|| KernelError::InvalidState("missing power".to_owned()))?;
-    let owner_side = state
-        .creature(creature)
-        .map(|c| c.side)
-        .ok_or_else(|| KernelError::InvalidState("missing power owner".to_owned()))?;
-
     match p.id {
         PowerId::AccelerantPower
         | PowerId::BackAttackLeftPower
@@ -166,6 +160,513 @@ pub fn dispatch_hook(
             Ok(HookResult::default())
         }
 
+        PowerId::AfterimagePower => match slot {
+            HookSlot::BeforeCardPlayed => {
+                if let HookArgs::CardPlay(ctx) = args {
+                    if creature == state.player.creature_handle {
+                        push_card_int_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "AfterimagePower._amountsForPlayedCards",
+                            ctx.card.0 as i32,
+                            p.amount,
+                        );
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterCardPlayed => {
+                if let HookArgs::CardPlay(ctx) = args {
+                    if let Some(amount) = take_card_int_field(
+                        state,
+                        creature,
+                        power_idx,
+                        "AfterimagePower._amountsForPlayedCards",
+                        ctx.card.0 as i32,
+                    ) {
+                        if amount > 0 {
+                            block::gain_block(
+                                state,
+                                content,
+                                creature,
+                                Dec::from_i32(amount),
+                                ValueProp::UNPOWERED,
+                                None,
+                                None,
+                            )?;
+                        }
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::ArtifactPower => match slot {
+            HookSlot::TryModifyPowerAmountReceived => {
+                if let HookArgs::PowerChanged {
+                    power_id,
+                    owner,
+                    amount,
+                    ..
+                } = args
+                {
+                    if *owner == creature
+                        && get_power_type_for_amount(content, *power_id, *amount)?
+                            == PowerType::Debuff
+                    {
+                        return Ok(HookResult {
+                            dec_val: Some(Dec::ZERO),
+                            modified: true,
+                            ..Default::default()
+                        });
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterModifyingPowerAmountReceived => {
+                power::modify_amount_by_handle(
+                    state,
+                    content,
+                    creature,
+                    p.handle,
+                    Dec::from_i32(-1),
+                    None,
+                    None,
+                )?;
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::BarricadePower => {
+            if slot == HookSlot::ShouldClearBlock {
+                if let HookArgs::Creature(target) = args {
+                    return Ok(bool_result(*target != creature));
+                }
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::BlockNextTurnPower => {
+            if slot == HookSlot::AfterBlockCleared {
+                if let HookArgs::Creature(target) = args {
+                    if *target == creature {
+                        block::gain_block(
+                            state,
+                            content,
+                            creature,
+                            Dec::from_i32(p.amount),
+                            ValueProp::UNPOWERED,
+                            None,
+                            None,
+                        )?;
+                        let _ = power::remove_by_handle(state, content, creature, p.handle)?;
+                    }
+                }
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::BlurPower => match slot {
+            HookSlot::ShouldClearBlock => {
+                if let HookArgs::Creature(target) = args {
+                    return Ok(bool_result(*target != creature));
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterSideTurnStart => {
+                if let HookArgs::SideTurn { participants, .. } = args {
+                    if participants.contains(&creature) {
+                        power::tick_down_duration_by_handle(state, content, creature, p.handle)?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::BufferPower => match slot {
+            HookSlot::ModifyHpLostAfterOstyLate => {
+                if let HookArgs::ModifyHpLost {
+                    target,
+                    card_source,
+                    ..
+                } = args
+                {
+                    let is_brightest = card_source
+                        .and_then(|h| state.card(h))
+                        .is_some_and(|c| c.id == CardId::BrightestFlame);
+                    if *target == creature && !is_brightest {
+                        return Ok(dec_result(Dec::ZERO));
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterModifyingHpLostAfterOsty => {
+                power::modify_amount_by_handle(
+                    state,
+                    content,
+                    creature,
+                    p.handle,
+                    Dec::from_i32(-1),
+                    None,
+                    None,
+                )?;
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::DarkEmbracePower => match slot {
+            HookSlot::AfterCardExhausted => {
+                if let HookArgs::CardExhausted {
+                    caused_by_ethereal, ..
+                } = args
+                {
+                    dark_embrace_after_card_exhausted(
+                        state,
+                        content,
+                        creature,
+                        p.amount,
+                        *caused_by_ethereal,
+                        p.handle,
+                    )?;
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterSideTurnEnd => {
+                if let HookArgs::SideTurn { participants, .. } = args {
+                    if participants.contains(&creature) && creature == state.player.creature_handle {
+                        let deferred = get_int_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "DarkEmbracePower._etherealExhausts",
+                            0,
+                        );
+                        set_int_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "DarkEmbracePower._etherealExhausts",
+                            0,
+                        );
+                        let _ = card_pile::draw(state, content, p.amount * deferred, false)?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::DemonFormPower => {
+            if slot == HookSlot::AfterSideTurnStart {
+                if let HookArgs::SideTurn { participants, .. } = args {
+                    if participants.contains(&creature) {
+                        power::apply(
+                            state,
+                            content,
+                            PowerId::StrengthPower,
+                            creature,
+                            Dec::from_i32(p.amount),
+                            Some(creature),
+                            None,
+                        )?;
+                    }
+                }
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::DexterityPower => {
+            if slot == HookSlot::ModifyBlockAdditive {
+                if let HookArgs::ModifyBlock {
+                    target,
+                    props,
+                    card_source,
+                    ..
+                } = args
+                {
+                    let owned_source = if card_source.is_some() {
+                        creature == state.player.creature_handle
+                    } else {
+                        *target == creature
+                    };
+                    if owned_source && !props.contains(ValueProp::UNPOWERED) {
+                        return Ok(dec_result(Dec::from_i32(p.amount)));
+                    }
+                }
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::DoomPower => {
+            if matches!(slot, HookSlot::BeforeSideTurnEnd | HookSlot::AfterSideTurnEnd) {
+                if let HookArgs::SideTurn { side, participants } = args {
+                    let trigger = (*side != CombatSide::Player
+                        && slot == HookSlot::BeforeSideTurnEnd)
+                        || (*side != CombatSide::Enemy && slot == HookSlot::AfterSideTurnEnd);
+                    if trigger && !hooks::is_over_or_ending(state) && participants.contains(&creature)
+                    {
+                        let doomed = get_doomed_creatures(state, owner_side);
+                        if doomed.first().copied() == Some(creature) {
+                            for ch in &doomed {
+                                creature_cmd::kill(state, content, *ch, None)?;
+                            }
+                            for ch in doomed {
+                                hooks::after_died_to_doom(state, content, ch)?;
+                            }
+                        }
+                    }
+                }
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::DrawCardsNextTurnPower => match slot {
+            HookSlot::ModifyHandDraw => {
+                if let HookArgs::ModifyHandDraw { original_count } = args {
+                    if creature == state.player.creature_handle && p.amount_on_turn_start != 0 {
+                        return Ok(dec_result(
+                            original_count.checked_add(Dec::from_i32(p.amount))?,
+                        ));
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterModifyingHandDraw => {
+                let _ = power::remove_by_handle(state, content, creature, p.handle)?;
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::EnergyNextTurnPower => {
+            if slot == HookSlot::AfterEnergyReset && creature == state.player.creature_handle {
+                gold::gain_energy(state, Dec::from_i32(p.amount))?;
+                let _ = power::remove_by_handle(state, content, creature, p.handle)?;
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::EnvenomPower => {
+            if slot == HookSlot::AfterDamageGiven {
+                if let HookArgs::DamageResult {
+                    target,
+                    dealer,
+                    props,
+                    unblocked_damage,
+                    ..
+                } = args
+                {
+                    if *dealer == Some(creature)
+                        && props.is_powered_attack()
+                        && *unblocked_damage > 0
+                    {
+                        power::apply(
+                            state,
+                            content,
+                            PowerId::PoisonPower,
+                            *target,
+                            Dec::from_i32(p.amount),
+                            Some(creature),
+                            None,
+                        )?;
+                    }
+                }
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::FeelNoPainPower => {
+            if slot == HookSlot::AfterCardExhausted && creature == state.player.creature_handle {
+                block::gain_block(
+                    state,
+                    content,
+                    creature,
+                    Dec::from_i32(p.amount),
+                    ValueProp::UNPOWERED,
+                    None,
+                    None,
+                )?;
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::FlameBarrierPower => match slot {
+            HookSlot::AfterDamageReceived => {
+                if let HookArgs::DamageResult {
+                    target,
+                    dealer,
+                    props,
+                    ..
+                } = args
+                {
+                    if *target == creature && props.is_powered_attack() {
+                        if let Some(attacker) = *dealer {
+                            sts2_kernel::commands::damage::damage_targets(
+                                state,
+                                content,
+                                &[attacker],
+                                Dec::from_i32(p.amount),
+                                ValueProp::UNPOWERED,
+                                Some(creature),
+                                None,
+                                None,
+                            )?;
+                        }
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterSideTurnEnd => {
+                if let HookArgs::SideTurn { side, .. } = args {
+                    if *side != owner_side {
+                        let _ = power::remove_by_handle(state, content, creature, p.handle)?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::FocusPower => {
+            if slot == HookSlot::ModifyOrbValue {
+                if let HookArgs::ModifyOrbValue { amount, .. } = args {
+                    if creature == state.player.creature_handle {
+                        let next = amount.checked_add(Dec::from_i32(p.amount))?.max(Dec::ZERO);
+                        return Ok(dec_result(next));
+                    }
+                }
+            }
+            Ok(HookResult::default())
+        }
+
+        PowerId::FrailPower => match slot {
+            HookSlot::ModifyBlockMultiplicative => {
+                if let HookArgs::ModifyBlock { target, props, .. } = args {
+                    if *target == creature && props.is_powered_block() {
+                        return Ok(dec_result(Dec::THREE_QUARTERS));
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterSideTurnEnd => {
+                if let HookArgs::SideTurn { side, .. } = args {
+                    if *side == CombatSide::Enemy {
+                        power::tick_down_duration_by_handle(state, content, creature, p.handle)?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::HardenedShellPower => match slot {
+            HookSlot::ModifyHpLostBeforeOstyLate => {
+                if let HookArgs::ModifyHpLost { target, amount, .. } = args {
+                    if *target == creature && !amount.is_zero() {
+                        let dmg_received = get_decimal_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "HardenedShellPower._damageReceivedThisTurn",
+                            Dec::ZERO,
+                        );
+                        let cap = Dec::from_i32(p.amount)
+                            .checked_sub(dmg_received)?
+                            .max(Dec::ZERO);
+                        return Ok(dec_result((*amount).min(cap)));
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterDamageReceived => {
+                if let HookArgs::DamageResult {
+                    target,
+                    unblocked_damage,
+                    ..
+                } = args
+                {
+                    if *target == creature && *unblocked_damage > 0 {
+                        let cur = get_decimal_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "HardenedShellPower._damageReceivedThisTurn",
+                            Dec::ZERO,
+                        );
+                        set_decimal_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "HardenedShellPower._damageReceivedThisTurn",
+                            cur.checked_add(Dec::from_i32(*unblocked_damage))?,
+                        );
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::BeforeSideTurnStart => {
+                set_decimal_field(
+                    state,
+                    creature,
+                    power_idx,
+                    "HardenedShellPower._damageReceivedThisTurn",
+                    Dec::ZERO,
+                );
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::IntangiblePower => match slot {
+            HookSlot::ModifyHpLostAfterOsty => {
+                if let HookArgs::ModifyHpLost { target, amount, .. } = args {
+                    if *target == creature && *amount >= Dec::ONE {
+                        return Ok(dec_result(Dec::ONE));
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::ModifyDamageCap => {
+                if let HookArgs::ModifyDamage { target, .. } = args {
+                    if *target == Some(creature) {
+                        return Ok(dec_result(Dec::ONE));
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterSideTurnEnd => {
+                if let HookArgs::SideTurn { side, .. } = args {
+                    if *side == CombatSide::Enemy {
+                        power::tick_down_duration_by_handle(state, content, creature, p.handle)?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        _ => dispatch_hook_cold(content, state, creature, power_idx, p, owner_side, slot, args),
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn dispatch_hook_cold(
+    content: &dyn ContentDispatcher,
+    state: &mut BattleState,
+    creature: CreatureHandle,
+    power_idx: usize,
+    p: PowerInst,
+    owner_side: CombatSide,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<HookResult, KernelError> {
+    match p.id {
         PowerId::AdaptablePower => match slot {
             HookSlot::AfterDeath => {
                 if let HookArgs::AfterDeath { target, .. } = args {
@@ -188,8 +689,8 @@ pub fn dispatch_hook(
                         );
                         if let Some(c) = state.creature_mut(creature) {
                             if let Some(m) = &mut c.monster {
-                                m.current_state_id = "RESPAWN_MOVE".to_owned();
-                                m.next_move_id = Some("RESPAWN_MOVE".to_owned());
+                            m.current_state_id = std::borrow::Cow::Borrowed("RESPAWN_MOVE");
+                            m.next_move_id = Some(std::borrow::Cow::Borrowed("RESPAWN_MOVE"));
                                 m.next_move_can_transition_away = false;
                             }
                         }
@@ -234,49 +735,6 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-
-        PowerId::AfterimagePower => match slot {
-            HookSlot::BeforeCardPlayed => {
-                if let HookArgs::CardPlay(ctx) = args {
-                    if creature == state.player.creature_handle {
-                        push_card_int_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "AfterimagePower._amountsForPlayedCards",
-                            ctx.card.0 as i32,
-                            p.amount,
-                        );
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterCardPlayed => {
-                if let HookArgs::CardPlay(ctx) = args {
-                    if let Some(amount) = take_card_int_field(
-                        state,
-                        creature,
-                        power_idx,
-                        "AfterimagePower._amountsForPlayedCards",
-                        ctx.card.0 as i32,
-                    ) {
-                        if amount > 0 {
-                            block::gain_block(
-                                state,
-                                content,
-                                creature,
-                                Dec::from_i32(amount),
-                                ValueProp::UNPOWERED,
-                                None,
-                                None,
-                            )?;
-                        }
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
 
         PowerId::AggressionPower => {
             if slot == HookSlot::BeforeSideTurnStart {
@@ -451,43 +909,6 @@ pub fn dispatch_hook(
             Ok(HookResult::default())
         }
 
-        PowerId::ArtifactPower => match slot {
-            HookSlot::TryModifyPowerAmountReceived => {
-                if let HookArgs::PowerChanged {
-                    power_id,
-                    owner,
-                    amount,
-                    ..
-                } = args
-                {
-                    if *owner == creature
-                        && get_power_type_for_amount(content, *power_id, *amount)?
-                            == PowerType::Debuff
-                    {
-                        return Ok(HookResult {
-                            dec_val: Some(Dec::ZERO),
-                            modified: true,
-                            ..Default::default()
-                        });
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterModifyingPowerAmountReceived => {
-                power::modify_amount_by_handle(
-                    state,
-                    content,
-                    creature,
-                    p.handle,
-                    Dec::from_i32(-1),
-                    None,
-                    None,
-                )?;
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
         PowerId::AsleepPower => match slot {
             HookSlot::AfterDamageReceived => {
                 if let HookArgs::DamageResult {
@@ -506,14 +927,14 @@ pub fn dispatch_hook(
                         if let Some(c) = state.creature_mut(creature) {
                             if let Some(m) = &mut c.monster {
                                 m.private_fields.insert(
-                                    "LagavulinMatriarch._isAwake".to_owned(),
+                                    Cow::Borrowed("LagavulinMatriarch._isAwake"),
                                     FieldValue::Bool(true),
                                 );
-                                m.current_state_id = "STUNNED".to_owned();
-                                m.next_move_id = Some("STUNNED".to_owned());
+                                m.current_state_id = Cow::Borrowed("STUNNED");
+                                m.next_move_id = Some(Cow::Borrowed("STUNNED"));
                                 m.next_move_can_transition_away = false;
                                 m.transient_move_follow_up_state_id =
-                                    Some("SLASH_MOVE".to_owned());
+                                    Some(Cow::Borrowed("SLASH_MOVE"));
                             }
                         }
                         let _ = power::remove_by_handle(state, content, creature, p.handle)?;
@@ -550,7 +971,7 @@ pub fn dispatch_hook(
                             if let Some(c) = state.creature_mut(creature) {
                                 if let Some(m) = &mut c.monster {
                                     m.private_fields.insert(
-                                        "LagavulinMatriarch._isAwake".to_owned(),
+                                        Cow::Borrowed("LagavulinMatriarch._isAwake"),
                                         FieldValue::Bool(true),
                                     );
                                 }
@@ -579,15 +1000,6 @@ pub fn dispatch_hook(
                         "AutomationPower._cardsLeft",
                         left,
                     );
-                }
-            }
-            Ok(HookResult::default())
-        }
-
-        PowerId::BarricadePower => {
-            if slot == HookSlot::ShouldClearBlock {
-                if let HookArgs::Creature(target) = args {
-                    return Ok(bool_result(*target != creature));
                 }
             }
             Ok(HookResult::default())
@@ -748,44 +1160,6 @@ pub fn dispatch_hook(
             _ => Ok(HookResult::default()),
         },
 
-        PowerId::BlockNextTurnPower => {
-            if slot == HookSlot::AfterBlockCleared {
-                if let HookArgs::Creature(target) = args {
-                    if *target == creature {
-                        block::gain_block(
-                            state,
-                            content,
-                            creature,
-                            Dec::from_i32(p.amount),
-                            ValueProp::UNPOWERED,
-                            None,
-                            None,
-                        )?;
-                        let _ = power::remove_by_handle(state, content, creature, p.handle)?;
-                    }
-                }
-            }
-            Ok(HookResult::default())
-        }
-
-        PowerId::BlurPower => match slot {
-            HookSlot::ShouldClearBlock => {
-                if let HookArgs::Creature(target) = args {
-                    return Ok(bool_result(*target != creature));
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterSideTurnStart => {
-                if let HookArgs::SideTurn { participants, .. } = args {
-                    if participants.contains(&creature) {
-                        power::tick_down_duration_by_handle(state, content, creature, p.handle)?;
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
         PowerId::BorrowedTimePower => match slot {
             HookSlot::TryModifyEnergyCostInCombat => {
                 if let HookArgs::CardCost { cost, .. } = args {
@@ -810,38 +1184,6 @@ pub fn dispatch_hook(
             _ => Ok(HookResult::default()),
         },
 
-        PowerId::BufferPower => match slot {
-            HookSlot::ModifyHpLostAfterOstyLate => {
-                if let HookArgs::ModifyHpLost {
-                    target,
-                    card_source,
-                    ..
-                } = args
-                {
-                    let is_brightest = card_source
-                        .and_then(|h| state.card(h))
-                        .is_some_and(|c| c.id == CardId::BrightestFlame);
-                    if *target == creature && !is_brightest {
-                        return Ok(dec_result(Dec::ZERO));
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterModifyingHpLostAfterOsty => {
-                power::modify_amount_by_handle(
-                    state,
-                    content,
-                    creature,
-                    p.handle,
-                    Dec::from_i32(-1),
-                    None,
-                    None,
-                )?;
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
         PowerId::BurrowedPower => match slot {
             HookSlot::ShouldClearBlock => {
                 if let HookArgs::Creature(target) = args {
@@ -857,7 +1199,7 @@ pub fn dispatch_hook(
                         if let Some(c) = state.creature_mut(creature) {
                             if let Some(m) = &mut c.monster {
                                 m.private_fields.insert(
-                                    "Tunneler._isStunned".to_owned(),
+                                    Cow::Borrowed("Tunneler._isStunned"),
                                     FieldValue::Bool(true),
                                 );
                             }
@@ -1108,7 +1450,7 @@ pub fn dispatch_hook(
                             false,
                         );
                         if creature == state.player.creature_handle {
-                            let bound_cards: Vec<CardHandle> = state
+                            let bound_cards: SmallVec<[CardHandle; 16]> = state
                                 .cards
                                 .iter()
                                 .filter(|c| {
@@ -1787,7 +2129,7 @@ pub fn dispatch_hook(
                     let map_entries: Vec<(i32, i32)> =
                         upgraded.iter().map(|&(ch, lvl)| (ch.0 as i32, lvl)).collect();
                     state.power_extensions[ext_idx].private_fields.insert(
-                        "DampenPower._downgraded".to_owned(),
+                        Cow::Borrowed("DampenPower._downgraded"),
                         FieldValue::CardIntMap(map_entries),
                     );
                     for (ch, _) in upgraded {
@@ -1852,48 +2194,6 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-
-        PowerId::DarkEmbracePower => match slot {
-            HookSlot::AfterCardExhausted => {
-                if let HookArgs::CardExhausted {
-                    caused_by_ethereal, ..
-                } = args
-                {
-                    dark_embrace_after_card_exhausted(
-                        state,
-                        content,
-                        creature,
-                        p.amount,
-                        *caused_by_ethereal,
-                        p.handle,
-                    )?;
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterSideTurnEnd => {
-                if let HookArgs::SideTurn { participants, .. } = args {
-                    if participants.contains(&creature) && creature == state.player.creature_handle {
-                        let deferred = get_int_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "DarkEmbracePower._etherealExhausts",
-                            0,
-                        );
-                        set_int_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "DarkEmbracePower._etherealExhausts",
-                            0,
-                        );
-                        let _ = card_pile::draw(state, content, p.amount * deferred, false)?;
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
 
         PowerId::DebilitatePower => match slot {
             HookSlot::ModifyVulnerableMultiplier => {
@@ -1992,25 +2292,6 @@ pub fn dispatch_hook(
             Ok(HookResult::default())
         }
 
-        PowerId::DemonFormPower => {
-            if slot == HookSlot::AfterSideTurnStart {
-                if let HookArgs::SideTurn { participants, .. } = args {
-                    if participants.contains(&creature) {
-                        power::apply(
-                            state,
-                            content,
-                            PowerId::StrengthPower,
-                            creature,
-                            Dec::from_i32(p.amount),
-                            Some(creature),
-                            None,
-                        )?;
-                    }
-                }
-            }
-            Ok(HookResult::default())
-        }
-
         PowerId::DevourLifePower => {
             if slot == HookSlot::AfterCardPlayed {
                 if let HookArgs::CardPlay(ctx) = args {
@@ -2018,28 +2299,6 @@ pub fn dispatch_hook(
                         && state.card(ctx.card).is_some_and(|c| c.id == CardId::Soul)
                     {
                         let _ = osty::summon(state, content, Dec::from_i32(p.amount))?;
-                    }
-                }
-            }
-            Ok(HookResult::default())
-        }
-
-        PowerId::DexterityPower => {
-            if slot == HookSlot::ModifyBlockAdditive {
-                if let HookArgs::ModifyBlock {
-                    target,
-                    props,
-                    card_source,
-                    ..
-                } = args
-                {
-                    let owned_source = if card_source.is_some() {
-                        creature == state.player.creature_handle
-                    } else {
-                        *target == creature
-                    };
-                    if owned_source && !props.contains(ValueProp::UNPOWERED) {
-                        return Ok(dec_result(Dec::from_i32(p.amount)));
                     }
                 }
             }
@@ -2124,29 +2383,6 @@ pub fn dispatch_hook(
             _ => Ok(HookResult::default()),
         },
 
-        PowerId::DoomPower => {
-            if matches!(slot, HookSlot::BeforeSideTurnEnd | HookSlot::AfterSideTurnEnd) {
-                if let HookArgs::SideTurn { side, participants } = args {
-                    let trigger = (*side != CombatSide::Player
-                        && slot == HookSlot::BeforeSideTurnEnd)
-                        || (*side != CombatSide::Enemy && slot == HookSlot::AfterSideTurnEnd);
-                    if trigger && !hooks::is_over_or_ending(state) && participants.contains(&creature)
-                    {
-                        let doomed = get_doomed_creatures(state, owner_side);
-                        if doomed.first().copied() == Some(creature) {
-                            for ch in &doomed {
-                                creature_cmd::kill(state, content, *ch, None)?;
-                            }
-                            for ch in doomed {
-                                hooks::after_died_to_doom(state, content, ch)?;
-                            }
-                        }
-                    }
-                }
-            }
-            Ok(HookResult::default())
-        }
-
         PowerId::DoubleDamagePower => match slot {
             HookSlot::ModifyDamageMultiplicative => {
                 if let HookArgs::ModifyDamage {
@@ -2179,24 +2415,6 @@ pub fn dispatch_hook(
                         )?;
                     }
                 }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
-        PowerId::DrawCardsNextTurnPower => match slot {
-            HookSlot::ModifyHandDraw => {
-                if let HookArgs::ModifyHandDraw { original_count } = args {
-                    if creature == state.player.creature_handle && p.amount_on_turn_start != 0 {
-                        return Ok(dec_result(
-                            original_count.checked_add(Dec::from_i32(p.amount))?,
-                        ));
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterModifyingHandDraw => {
-                let _ = power::remove_by_handle(state, content, creature, p.handle)?;
                 Ok(HookResult::default())
             }
             _ => Ok(HookResult::default()),
@@ -2336,14 +2554,6 @@ pub fn dispatch_hook(
             _ => Ok(HookResult::default()),
         },
 
-        PowerId::EnergyNextTurnPower => {
-            if slot == HookSlot::AfterEnergyReset && creature == state.player.creature_handle {
-                gold::gain_energy(state, Dec::from_i32(p.amount))?;
-                let _ = power::remove_by_handle(state, content, creature, p.handle)?;
-            }
-            Ok(HookResult::default())
-        }
-
         PowerId::EnnuiPower => match slot {
             HookSlot::BeforeHandDraw => {
                 if creature == state.player.creature_handle {
@@ -2460,35 +2670,6 @@ pub fn dispatch_hook(
                             needs_choice: Some(req),
                             ..Default::default()
                         });
-                    }
-                }
-            }
-            Ok(HookResult::default())
-        }
-
-        PowerId::EnvenomPower => {
-            if slot == HookSlot::AfterDamageGiven {
-                if let HookArgs::DamageResult {
-                    target,
-                    dealer,
-                    props,
-                    unblocked_damage,
-                    ..
-                } = args
-                {
-                    if *dealer == Some(creature)
-                        && props.is_powered_attack()
-                        && *unblocked_damage > 0
-                    {
-                        power::apply(
-                            state,
-                            content,
-                            PowerId::PoisonPower,
-                            *target,
-                            Dec::from_i32(p.amount),
-                            Some(creature),
-                            None,
-                        )?;
                     }
                 }
             }
@@ -2621,21 +2802,6 @@ pub fn dispatch_hook(
             1,
         ),
 
-        PowerId::FeelNoPainPower => {
-            if slot == HookSlot::AfterCardExhausted && creature == state.player.creature_handle {
-                block::gain_block(
-                    state,
-                    content,
-                    creature,
-                    Dec::from_i32(p.amount),
-                    ValueProp::UNPOWERED,
-                    None,
-                    None,
-                )?;
-            }
-            Ok(HookResult::default())
-        }
-
         PowerId::FeralPower => match slot {
             HookSlot::AfterApplied => {
                 feral_after_applied(state, creature, p.handle);
@@ -2695,43 +2861,6 @@ pub fn dispatch_hook(
                             "FeralPower._zeroCostAttacksPlayed",
                             0,
                         );
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
-        PowerId::FlameBarrierPower => match slot {
-            HookSlot::AfterDamageReceived => {
-                if let HookArgs::DamageResult {
-                    target,
-                    dealer,
-                    props,
-                    ..
-                } = args
-                {
-                    if *target == creature && props.is_powered_attack() {
-                        if let Some(attacker) = *dealer {
-                            sts2_kernel::commands::damage::damage_targets(
-                                state,
-                                content,
-                                &[attacker],
-                                Dec::from_i32(p.amount),
-                                ValueProp::UNPOWERED,
-                                Some(creature),
-                                None,
-                                None,
-                            )?;
-                        }
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterSideTurnEnd => {
-                if let HookArgs::SideTurn { side, .. } = args {
-                    if *side != owner_side {
-                        let _ = power::remove_by_handle(state, content, creature, p.handle)?;
                     }
                 }
                 Ok(HookResult::default())
@@ -2803,7 +2932,7 @@ pub fn dispatch_hook(
                                 if let Some(m) = &mut c.monster {
                                     if m.monster_id == MonsterId::ThievingHopper {
                                         m.private_fields.insert(
-                                            "ThievingHopper._isHovering".to_owned(),
+                                            Cow::Borrowed("ThievingHopper._isHovering"),
                                             FieldValue::Bool(false),
                                         );
                                     }
@@ -2817,18 +2946,6 @@ pub fn dispatch_hook(
             }
             _ => Ok(HookResult::default()),
         },
-
-        PowerId::FocusPower => {
-            if slot == HookSlot::ModifyOrbValue {
-                if let HookArgs::ModifyOrbValue { amount, .. } = args {
-                    if creature == state.player.creature_handle {
-                        let next = amount.checked_add(Dec::from_i32(p.amount))?.max(Dec::ZERO);
-                        return Ok(dec_result(next));
-                    }
-                }
-            }
-            Ok(HookResult::default())
-        }
 
         PowerId::FocusedStrikePower | PowerId::HotfixPower => dispatch_temporary_stat_power(
             content,
@@ -2906,26 +3023,6 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-
-        PowerId::FrailPower => match slot {
-            HookSlot::ModifyBlockMultiplicative => {
-                if let HookArgs::ModifyBlock { target, props, .. } = args {
-                    if *target == creature && props.is_powered_block() {
-                        return Ok(dec_result(Dec::THREE_QUARTERS));
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterSideTurnEnd => {
-                if let HookArgs::SideTurn { side, .. } = args {
-                    if *side == CombatSide::Enemy {
-                        power::tick_down_duration_by_handle(state, content, creature, p.handle)?;
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
 
         PowerId::FreeAttackPower => dispatch_free_card_power(
             content,
@@ -3220,64 +3317,6 @@ pub fn dispatch_hook(
             Ok(HookResult::default())
         }
 
-        PowerId::HardenedShellPower => match slot {
-            HookSlot::ModifyHpLostBeforeOstyLate => {
-                if let HookArgs::ModifyHpLost { target, amount, .. } = args {
-                    if *target == creature && !amount.is_zero() {
-                        let dmg_received = get_decimal_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "HardenedShellPower._damageReceivedThisTurn",
-                            Dec::ZERO,
-                        );
-                        let cap = Dec::from_i32(p.amount)
-                            .checked_sub(dmg_received)?
-                            .max(Dec::ZERO);
-                        return Ok(dec_result((*amount).min(cap)));
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterDamageReceived => {
-                if let HookArgs::DamageResult {
-                    target,
-                    unblocked_damage,
-                    ..
-                } = args
-                {
-                    if *target == creature && *unblocked_damage > 0 {
-                        let cur = get_decimal_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "HardenedShellPower._damageReceivedThisTurn",
-                            Dec::ZERO,
-                        );
-                        set_decimal_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "HardenedShellPower._damageReceivedThisTurn",
-                            cur.checked_add(Dec::from_i32(*unblocked_damage))?,
-                        );
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::BeforeSideTurnStart => {
-                set_decimal_field(
-                    state,
-                    creature,
-                    power_idx,
-                    "HardenedShellPower._damageReceivedThisTurn",
-                    Dec::ZERO,
-                );
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
         PowerId::HatchPower => {
             if slot == HookSlot::AfterSideTurnEnd {
                 if let HookArgs::SideTurn { participants, .. } = args {
@@ -3566,10 +3605,11 @@ pub fn dispatch_hook(
                         if let Some(c) = state.creature_mut(creature) {
                             if let Some(m) = &mut c.monster {
                                 let next_follow = follow_up
+                                    .map(Cow::Owned)
                                     .or_else(|| m.state_log_ids.last().cloned())
                                     .unwrap_or_else(|| m.current_state_id.clone());
-                                m.current_state_id = "REVIVE_MOVE".to_owned();
-                                m.next_move_id = Some("REVIVE_MOVE".to_owned());
+                                m.current_state_id = Cow::Borrowed("REVIVE_MOVE");
+                                m.next_move_id = Some(Cow::Borrowed("REVIVE_MOVE"));
                                 m.next_move_can_transition_away = false;
                                 m.transient_move_follow_up_state_id = Some(next_follow);
                             }
@@ -3832,18 +3872,20 @@ pub fn dispatch_hook(
             HookSlot::AfterDeath => {
                 if let HookArgs::AfterDeath { target, .. } = args {
                     if *target == creature {
-                        for index in 0..4 {
+                        const WRIGGLER_SLOTS: [&str; 4] =
+                            ["wriggler1", "wriggler2", "wriggler3", "wriggler4"];
+                        for slot in WRIGGLER_SLOTS {
                             let wh = creature_cmd::spawn_monster_in_combat(
                                 state,
                                 content,
                                 MonsterId::Wriggler,
                                 owner_side,
-                                Some(format!("wriggler{}", index + 1)),
+                                Some(Cow::Borrowed(slot)),
                             )?;
                             if let Some(c) = state.creature_mut(wh) {
                                 if let Some(m) = &mut c.monster {
                                     m.setup_fields.insert(
-                                        "Wriggler._startStunned".to_owned(),
+                                        Cow::Borrowed("Wriggler._startStunned"),
                                         FieldValue::Bool(true),
                                     );
                                 }
@@ -3895,34 +3937,6 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-
-        PowerId::IntangiblePower => match slot {
-            HookSlot::ModifyHpLostAfterOsty => {
-                if let HookArgs::ModifyHpLost { target, amount, .. } = args {
-                    if *target == creature && *amount >= Dec::ONE {
-                        return Ok(dec_result(Dec::ONE));
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::ModifyDamageCap => {
-                if let HookArgs::ModifyDamage { target, .. } = args {
-                    if *target == Some(creature) {
-                        return Ok(dec_result(Dec::ONE));
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterSideTurnEnd => {
-                if let HookArgs::SideTurn { side, .. } = args {
-                    if *side == CombatSide::Enemy {
-                        power::tick_down_duration_by_handle(state, content, creature, p.handle)?;
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
 
         PowerId::IterationPower => {
             if slot == HookSlot::AfterCardDrawn {
@@ -4513,7 +4527,7 @@ pub fn dispatch_hook(
 
         PowerId::MythicFormPower => {
             if slot == HookSlot::BeforeHandDraw && creature == state.player.creature_handle {
-                let tarot_pool: Vec<CardId> = card_factory::tarot_cards()
+                let tarot_pool: Vec<CardId> = card_factory::tarot_card_pool_raw(state)
                     .iter()
                     .copied()
                     .filter(|&id| card_factory::is_card_allowed_in_run(state, id))
@@ -4961,7 +4975,7 @@ fn hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let candidates = state.enemy_handles.clone();
+    let candidates: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     let mut out = SmallVec::new();
     for eh in candidates {
         if state.creature(eh).is_some_and(|c| c.is_alive())
@@ -5141,13 +5155,13 @@ fn set_int_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     val: i32,
 ) {
     let ext_idx = ensure_power_ext(state, creature, power_idx);
     state.power_extensions[ext_idx]
         .private_fields
-        .insert(key.to_owned(), FieldValue::Int(val));
+        .insert(Cow::Borrowed(key), FieldValue::Int(val));
 }
 
 fn get_decimal_field(
@@ -5175,13 +5189,13 @@ fn set_decimal_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     val: Dec,
 ) {
     let ext_idx = ensure_power_ext(state, creature, power_idx);
     state.power_extensions[ext_idx]
         .private_fields
-        .insert(key.to_owned(), FieldValue::Decimal(val));
+        .insert(Cow::Borrowed(key), FieldValue::Decimal(val));
 }
 
 fn get_bool_field(
@@ -5208,13 +5222,13 @@ fn set_bool_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     val: bool,
 ) {
     let ext_idx = ensure_power_ext(state, creature, power_idx);
     state.power_extensions[ext_idx]
         .private_fields
-        .insert(key.to_owned(), FieldValue::Bool(val));
+        .insert(Cow::Borrowed(key), FieldValue::Bool(val));
 }
 
 fn get_optional_string_field(
@@ -5261,12 +5275,12 @@ fn set_optional_card_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     val: Option<CardHandle>,
 ) {
     let ext_idx = ensure_power_ext(state, creature, power_idx);
     state.power_extensions[ext_idx].private_fields.insert(
-        key.to_owned(),
+        Cow::Borrowed(key),
         match val {
             Some(ch) => FieldValue::CardHandle(ch.0 as i32),
             None => FieldValue::NullableInt(None),
@@ -5319,14 +5333,14 @@ fn push_card_int_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     card_handle: i32,
     val: i32,
 ) {
     let ext_idx = ensure_power_ext(state, creature, power_idx);
     let entry = state.power_extensions[ext_idx]
         .private_fields
-        .entry(key.to_owned())
+        .entry(Cow::Borrowed(key))
         .or_insert_with(|| FieldValue::CardIntMap(Vec::new()));
     if let FieldValue::CardIntMap(map) = entry {
         if let Some(pair) = map.iter_mut().find(|(k, _)| *k == card_handle) {
@@ -5370,14 +5384,14 @@ fn push_card_pair_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     orig_h: i32,
     clone_h: i32,
 ) {
     let ext_idx = ensure_power_ext(state, creature, power_idx);
     let entry = state.power_extensions[ext_idx]
         .private_fields
-        .entry(key.to_owned())
+        .entry(Cow::Borrowed(key))
         .or_insert_with(|| FieldValue::CardPairArray(Vec::new()));
     if let FieldValue::CardPairArray(arr) = entry {
         arr.push((orig_h, clone_h));
@@ -5408,13 +5422,13 @@ fn push_card_handle_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     card_handle: i32,
 ) {
     let ext_idx = ensure_power_ext(state, creature, power_idx);
     let entry = state.power_extensions[ext_idx]
         .private_fields
-        .entry(key.to_owned())
+        .entry(Cow::Borrowed(key))
         .or_insert_with(|| FieldValue::CardHandleArray(Vec::new()));
     match entry {
         FieldValue::CardHandleArray(arr) | FieldValue::IntArray(arr) => arr.push(card_handle),
@@ -5617,7 +5631,7 @@ pub fn feral_after_applied(state: &mut BattleState, creature: CreatureHandle, po
         let count = state.player.counters.zero_cost_attacks_started_this_turn;
         state.power_extensions[ext_idx]
             .private_fields
-            .insert("FeralPower._zeroCostAttacksPlayed".to_owned(), FieldValue::Int(count));
+            .insert(Cow::Borrowed("FeralPower._zeroCostAttacksPlayed"), FieldValue::Int(count));
     }
 }
 
@@ -5667,7 +5681,7 @@ pub fn juggling_after_applied(state: &mut BattleState, creature: CreatureHandle,
     if let Some(ext_idx) = ensure_power_ext_by_handle(state, creature, power_handle) {
         let count = state.player.counters.attack_cards_started_this_turn;
         state.power_extensions[ext_idx].private_fields.insert(
-            "JugglingPower._attacksPlayedThisTurn".to_owned(),
+            Cow::Borrowed("JugglingPower._attacksPlayedThisTurn"),
             FieldValue::Int(count),
         );
     }
@@ -5678,7 +5692,7 @@ pub fn lullaby_after_applied(state: &mut BattleState, creature: CreatureHandle, 
         if let Some(ext_idx) = ensure_power_ext_by_handle(state, creature, power_handle) {
             state.power_extensions[ext_idx]
                 .private_fields
-                .insert("LullabyPower._proccdThisTurn".to_owned(), FieldValue::Bool(true));
+                .insert(Cow::Borrowed("LullabyPower._proccdThisTurn"), FieldValue::Bool(true));
         }
     }
 }
@@ -5761,7 +5775,7 @@ pub fn dampen_add_caster(
     if let Some(ext_idx) = ensure_power_ext_by_handle(state, creature, power_handle) {
         let entry = state.power_extensions[ext_idx]
             .private_fields
-            .entry("DampenPower._casters".to_owned())
+            .entry(Cow::Borrowed("DampenPower._casters"))
             .or_insert_with(|| FieldValue::CreatureHandleArray(Vec::new()));
         if let FieldValue::CreatureHandleArray(arr) | FieldValue::IntArray(arr) = entry {
             let v = caster.0 as i32;
@@ -5852,7 +5866,7 @@ pub fn dark_embrace_after_card_exhausted(
             };
             state.power_extensions[ext_idx]
                 .private_fields
-                .insert("DarkEmbracePower._etherealExhausts".to_owned(), FieldValue::Int(cur + 1));
+                .insert(Cow::Borrowed("DarkEmbracePower._etherealExhausts"), FieldValue::Int(cur + 1));
         }
     } else {
         let _ = card_pile::draw(state, content, amount, false)?;
@@ -5873,7 +5887,7 @@ pub fn imbalanced_after_damage_given(
             if let Some(c) = state.creature_mut(creature) {
                 if let Some(m) = &mut c.monster {
                     m.private_fields
-                        .insert("BowlbugRock._isOffBalance".to_owned(), FieldValue::Bool(true));
+                        .insert(Cow::Borrowed("BowlbugRock._isOffBalance"), FieldValue::Bool(true));
                 }
             }
         } else {
@@ -5955,7 +5969,7 @@ pub fn adaptable_do_revive(state: &mut BattleState, creature: CreatureHandle, po
     if let Some(ext_idx) = ensure_power_ext_by_handle(state, creature, power_handle) {
         state.power_extensions[ext_idx]
             .private_fields
-            .insert("AdaptablePower._isReviving".to_owned(), FieldValue::Bool(false));
+            .insert(Cow::Borrowed("AdaptablePower._isReviving"), FieldValue::Bool(false));
     }
 }
 
@@ -5973,7 +5987,7 @@ pub fn crimson_mantle_increment_self_damage(
             _ => Dec::ZERO,
         };
         state.power_extensions[ext_idx].private_fields.insert(
-            "CrimsonMantlePower._selfDamage".to_owned(),
+            Cow::Borrowed("CrimsonMantlePower._selfDamage"),
             FieldValue::Decimal(cur.checked_add(Dec::ONE)?),
         );
     }
@@ -5994,7 +6008,7 @@ pub fn inferno_increment_self_damage(
             _ => Dec::ZERO,
         };
         state.power_extensions[ext_idx].private_fields.insert(
-            "InfernoPower._selfDamage".to_owned(),
+            Cow::Borrowed("InfernoPower._selfDamage"),
             FieldValue::Decimal(cur.checked_add(Dec::ONE)?),
         );
     }
@@ -6016,7 +6030,7 @@ pub fn ennui_increment_sadness_amount(
         };
         state.power_extensions[ext_idx]
             .private_fields
-            .insert("EnnuiPower._sadnessAmount".to_owned(), FieldValue::Int(cur + 1));
+            .insert(Cow::Borrowed("EnnuiPower._sadnessAmount"), FieldValue::Int(cur + 1));
     }
 }
 
@@ -6035,6 +6049,6 @@ pub fn mythic_form_increment_upgraded(
         };
         state.power_extensions[ext_idx]
             .private_fields
-            .insert("MythicFormPower._upgradedCount".to_owned(), FieldValue::Int(cur + 1));
+            .insert(Cow::Borrowed("MythicFormPower._upgradedCount"), FieldValue::Int(cur + 1));
     }
 }

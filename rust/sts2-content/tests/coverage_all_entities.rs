@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sts2_content::{Sts2Content, dread_blitz, orbs_enchantments_afflictions};
 use sts2_kernel::{
@@ -30,11 +30,17 @@ fn build_probe_state() -> BattleState {
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 1,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -69,13 +75,14 @@ fn build_probe_state() -> BattleState {
             phase: PlayerTurnPhase::Play,
             turn_number: 1,
             counters: PlayerCounters::default(),
-            hand: SmallVec::new(),
-            draw: SmallVec::new(),
-            discard: SmallVec::new(),
-            exhaust: SmallVec::new(),
-            play: SmallVec::new(),
-            deck: SmallVec::new(),
+            hand: Vec::new(),
+            draw: Vec::new(),
+            discard: Vec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
+            deck: Vec::new(),
             potion_slots: smallvec::smallvec![None, None, None],
+            combat_generated_potion_mask: 0,
             orb_capacity: 3,
             orbs: SmallVec::new(),
             arrows: SmallVec::new(),
@@ -99,13 +106,14 @@ fn build_probe_state() -> BattleState {
                 cumulative_hp_lost: 0,
                 is_detached: false,
                 monster: None,
-                powers: SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
             CreatureInst {
                 handle: ec,
                 combat_id: Some(1),
                 side: CombatSide::Enemy,
-                slot_name: Some("slot_0".to_owned()),
+                slot_name: Some(Cow::Borrowed("slot_0")),
                 is_player: false,
                 pet_owner_player_index: None,
                 monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -119,21 +127,22 @@ fn build_probe_state() -> BattleState {
                     rng: Rng::from_seed(42),
                     is_performing_move: false,
                     spawned_this_turn: false,
-                    current_state_id: String::new(),
+                    current_state_id: Cow::Borrowed(""),
                     next_move_id: None,
                     next_move_can_transition_away: true,
                     performed_first_move: false,
                     state_log_ids: SmallVec::new(),
                     transient_move_follow_up_state_id: None,
-                    setup_fields: BTreeMap::new(),
-                    private_fields: BTreeMap::new(),
+                    setup_fields: Default::default(),
+                    private_fields: Default::default(),
                 }),
-                powers: SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
         ],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc],
-        enemy_handles: smallvec::smallvec![ec],
+        ally_handles: vec![pc],
+        enemy_handles: vec![ec],
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![ec],
@@ -142,6 +151,8 @@ fn build_probe_state() -> BattleState {
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     }
 }
 
@@ -218,7 +229,7 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
             is_melted: false,
             stack_count: 1,
             floor_added_to_deck: None,
-            private_fields: BTreeMap::new(),
+            private_fields: Default::default(),
         });
         let res = content.dispatch_hook(&mut s, HookListener::Relic(0), HookSlot::AfterCombatEnd, &HookArgs::None);
         assert!(
@@ -260,10 +271,10 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
                 id,
                 amount: 1,
                 status: EnchantmentStatus::Normal,
-                private_fields: BTreeMap::new(),
+                private_fields: Default::default(),
             }),
             local_energy_modifiers: SmallVec::new(),
-            private_fields: BTreeMap::new(),
+            private_fields: Default::default(),
         });
         s.cards.push(CardInst {
             handle: CardHandle(1),
@@ -343,11 +354,11 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
         let mut s = build_probe_state();
         let eh = CreatureHandle(2);
         s.creatures[1].monster_id = Some(id);
-        s.creatures[1].slot_name = Some(match id {
-            MonsterId::PhantasmalGardener => "first".to_owned(),
-            MonsterId::Wriggler => "wriggler1".to_owned(),
-            _ => "slot_0".to_owned(),
-        });
+        s.creatures[1].slot_name = Some(Cow::Borrowed(match id {
+            MonsterId::PhantasmalGardener => "first",
+            MonsterId::Wriggler => "wriggler1",
+            _ => "slot_0",
+        }));
         s.creatures[1].monster.as_mut().unwrap().monster_id = id;
         if id == MonsterId::Nibbit {
             s.creatures[1]

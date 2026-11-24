@@ -2,8 +2,11 @@ use crate::commands::power;
 use crate::content_dispatch::ContentDispatcher;
 use crate::error::KernelError;
 use crate::hooks;
-use crate::state::{BattleState, CardHandle, CreatureHandle, CreatureInst, DamageResult, MonsterInst};
+use crate::state::{
+    BattleState, CardHandle, CreatureHandle, CreatureInst, DamageResult, MonsterInst, PowerInst,
+};
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::collections::BTreeSet;
 use sts2_types::{CombatSide, Dec, MonsterId, Rng, RunRngType, ValueProp};
 
@@ -144,7 +147,7 @@ pub fn stun(
         return Ok(());
     }
     let follow_up = match next_move_id {
-        Some(id) if !id.is_empty() => id.to_owned(),
+        Some(id) if !id.is_empty() => Cow::Owned(id.to_owned()),
         _ => m
             .state_log_ids
             .last()
@@ -152,8 +155,8 @@ pub fn stun(
             .unwrap_or_else(|| m.current_state_id.clone()),
     };
     if m.next_move_id.is_none() || m.next_move_can_transition_away {
-        m.current_state_id = "STUNNED".to_owned();
-        m.next_move_id = Some("STUNNED".to_owned());
+        m.current_state_id = Cow::Borrowed("STUNNED");
+        m.next_move_id = Some(Cow::Borrowed("STUNNED"));
         m.next_move_can_transition_away = false;
         m.transient_move_follow_up_state_id = Some(follow_up);
     }
@@ -252,18 +255,17 @@ pub fn kill(
     creature: CreatureHandle,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let hp = match state.creature(creature) {
-        Some(c) if c.is_alive() => c.current_hp,
+    let hp = match state.creature_mut(creature) {
+        Some(c) if c.is_alive() => {
+            let cur = c.current_hp;
+            c.current_hp = 0;
+            cur
+        }
         _ => return Ok(()),
     };
-    let res = lose_hp_internal(
-        state,
-        creature,
-        Dec::from_i32(hp),
-        ValueProp::UNBLOCKABLE | ValueProp::UNPOWERED,
-    )?;
-    if res.unblocked_damage > 0 {
-        hooks::after_current_hp_changed(state, content, creature, -res.unblocked_damage)?;
+    state.sync_player_hp_to_creature();
+    if hp > 0 {
+        hooks::after_current_hp_changed(state, content, creature, -hp)?;
     }
     resolve_potential_death(state, content, creature, card_source)
 }
@@ -329,11 +331,11 @@ fn resolve_confirmed_death(
         .filter(|&h| h != target && state.creature(h).is_some_and(|c| c.is_alive()))
         .collect();
 
-    let powers_snapshot = state
+    let powers_snapshot: SmallVec<[PowerInst; 16]> = state
         .creature(target)
-        .map(|c| c.powers.clone())
+        .map(|c| c.powers.iter().copied().collect())
         .unwrap_or_default();
-    let mut powers_to_remove: SmallVec<[u32; 8]> = SmallVec::new();
+    let mut powers_to_remove: SmallVec<[u32; 16]> = SmallVec::new();
     for p in powers_snapshot {
         let on_death = hooks::should_power_be_removed_on_death(state, content, target, p)?;
         let remove_after_owner = content
@@ -355,6 +357,7 @@ fn resolve_confirmed_death(
         if let Some(c) = state.creature_mut(target) {
             c.is_detached = true;
         }
+        state.invalidate_creature_hooks();
     }
 
     for ph in powers_to_remove {
@@ -365,6 +368,8 @@ fn resolve_confirmed_death(
         state.player.orbs.clear();
         state.player.orb_capacity = 0;
         state.player.is_active_for_hooks = false;
+        state.invalidate_orb_hooks();
+        state.invalidate_creature_hooks();
     }
 
     if side == CombatSide::Enemy
@@ -413,7 +418,7 @@ pub fn spawn_monster_in_combat(
     content: &dyn ContentDispatcher,
     monster_id: MonsterId,
     side: CombatSide,
-    slot_name: Option<String>,
+    slot_name: Option<Cow<'static, str>>,
 ) -> Result<CreatureHandle, KernelError> {
     if !state.is_live_combat() {
         return Err(KernelError::InvalidAction(
@@ -465,7 +470,7 @@ pub fn create_monster_creature(
     content: &dyn ContentDispatcher,
     monster_id: MonsterId,
     side: CombatSide,
-    slot_name: Option<String>,
+    slot_name: Option<Cow<'static, str>>,
 ) -> Result<CreatureHandle, KernelError> {
     let combat_id = state.next_creature_id;
     state.next_creature_id += 1;
@@ -523,12 +528,13 @@ pub fn create_monster_creature(
         block: 0,
         cumulative_hp_lost: 0,
         is_detached: false,
+        has_minion_power: false,
         monster: Some(MonsterInst {
             monster_id,
             rng: Rng::from_seed(monster_seed),
             is_performing_move: false,
             spawned_this_turn: true,
-            current_state_id: String::new(),
+            current_state_id: Cow::Borrowed(""),
             next_move_id: None,
             next_move_can_transition_away: true,
             performed_first_move: false,
@@ -537,7 +543,7 @@ pub fn create_monster_creature(
             setup_fields: Default::default(),
             private_fields: Default::default(),
         }),
-        powers: SmallVec::new(),
+        powers: Vec::new(),
     };
 
     state.creatures.push(creature);
@@ -549,7 +555,7 @@ pub fn add_created_monster(
     content: &dyn ContentDispatcher,
     handle: CreatureHandle,
     side: CombatSide,
-    slot_name: Option<String>,
+    slot_name: Option<Cow<'static, str>>,
 ) -> Result<(), KernelError> {
     if side == CombatSide::Enemy {
         state.enemy_handles.push(handle);
@@ -557,11 +563,13 @@ pub fn add_created_monster(
     } else {
         state.ally_handles.push(handle);
     }
+    state.invalidate_creature_hooks();
 
     content.monster_setup_for_combat(state, handle)?;
     if slot_name.is_some() && !state.static_ctx.encounter_slots.is_empty() {
         let slots = state.static_ctx.encounter_slots.clone();
-        let mut sorted: SmallVec<[CreatureHandle; 8]> = state.enemy_handles.clone();
+        let mut sorted: SmallVec<[CreatureHandle; 8]> =
+            SmallVec::from_slice(&state.enemy_handles);
         sorted.sort_by_key(|&h| {
             let sname = state.creature(h).and_then(|c| c.slot_name.as_deref());
             slots
@@ -569,7 +577,8 @@ pub fn add_created_monster(
                 .position(|x| Some(x.as_str()) == sname)
                 .unwrap_or(usize::MAX)
         });
-        state.enemy_handles = sorted;
+        state.enemy_handles.clear();
+        state.enemy_handles.extend_from_slice(&sorted);
     }
     if side == CombatSide::Enemy {
         content.monster_after_added_to_room(state, handle)?;
@@ -585,7 +594,7 @@ pub fn create_and_add_monster(
     content: &dyn ContentDispatcher,
     monster_id: MonsterId,
     side: CombatSide,
-    slot_name: Option<String>,
+    slot_name: Option<Cow<'static, str>>,
 ) -> Result<CreatureHandle, KernelError> {
     let handle = create_monster_creature(state, content, monster_id, side, slot_name.clone())?;
     add_created_monster(state, content, handle, side, slot_name)?;

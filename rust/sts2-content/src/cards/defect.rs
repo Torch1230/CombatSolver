@@ -1,4 +1,5 @@
 use smallvec::{smallvec, SmallVec};
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use sts2_kernel::commands::card_select::SelectResult;
 use sts2_kernel::commands::{
@@ -158,11 +159,11 @@ fn buff_genetic_algorithm(state: &mut BattleState, handle: CardHandle, increase:
     let next_current = 1 + next_increased;
     if let Some(ext) = state.card_ext_mut(handle) {
         ext.private_fields.insert(
-            "GeneticAlgorithm._increasedBlock".to_owned(),
+            Cow::Borrowed("GeneticAlgorithm._increasedBlock"),
             FieldValue::Int(next_increased),
         );
         ext.private_fields.insert(
-            "GeneticAlgorithm._currentBlock".to_owned(),
+            Cow::Borrowed("GeneticAlgorithm._currentBlock"),
             FieldValue::Int(next_current),
         );
     }
@@ -296,7 +297,7 @@ fn collect_hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     let mut out = SmallVec::new();
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
@@ -373,7 +374,7 @@ pub fn on_play(
             if hooks::is_over_or_ending(state) {
                 return Ok(CardPlayOutcome::default());
             }
-            let discard = state.player.discard.clone();
+            let discard: SmallVec<[CardHandle; 32]> = SmallVec::from_slice(&state.player.discard);
             let mut to_move: SmallVec<[CardHandle; 8]> = SmallVec::new();
             for ch in discard {
                 let Some(ci) = state.card(ch) else {
@@ -594,7 +595,7 @@ pub fn on_play(
                 let next = read_claw_damage(state, ch).checked_add(inc)?;
                 if let Some(ext) = state.card_ext_mut(ch) {
                     ext.private_fields
-                        .insert("Claw._damage".to_owned(), FieldValue::Decimal(next));
+                        .insert(Cow::Borrowed("Claw._damage"), FieldValue::Decimal(next));
                 }
             }
             Ok(CardPlayOutcome::default())
@@ -620,7 +621,8 @@ pub fn on_play(
                 Some(ctx.card),
                 Some(*ctx),
             )?;
-            let hand_snapshot = state.player.hand.clone();
+            let hand_snapshot: SmallVec<[CardHandle; 16]> =
+                SmallVec::from_slice(&state.player.hand);
             let mut statuses: SmallVec<[CardHandle; 8]> = SmallVec::new();
             for h in hand_snapshot {
                 let Some(ci) = state.card(h) else {
@@ -1161,7 +1163,7 @@ pub fn on_play(
             {
                 let mut ext = PowerExtension::default();
                 ext.private_fields.insert(
-                    "ImitationLearningPower._playerTarget".to_owned(),
+                    Cow::Borrowed("ImitationLearningPower._playerTarget"),
                     FieldValue::CreatureHandle(target.0 as i32),
                 );
                 let _ = power::apply_new_with_extension(
@@ -1313,7 +1315,7 @@ pub fn on_play(
 
         CardId::OneForAll => {
             let amt = Dec::from_i32(if upg { 4 } else { 3 });
-            let allies = state.ally_handles.clone();
+            let allies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.ally_handles);
             for ah in allies {
                 if state.creature(ah).is_some_and(|c| c.is_player) {
                     power::apply(
@@ -1353,7 +1355,8 @@ pub fn on_play(
         }
 
         CardId::Reboot => {
-            let hand_snapshot = state.player.hand.clone();
+            let hand_snapshot: SmallVec<[CardHandle; 16]> =
+                SmallVec::from_slice(&state.player.hand);
             for ch in hand_snapshot {
                 card_pile::add_sync(state, ch, PileType::Draw, CardPilePosition::Bottom);
             }
@@ -1697,7 +1700,8 @@ pub fn on_play(
             AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
                 .with_hit_count(2)
                 .execute(state, content)?;
-            let draw_snapshot = state.player.draw.clone();
+            let draw_snapshot: SmallVec<[CardHandle; 32]> =
+                SmallVec::from_slice(&state.player.draw);
             let mut playable_attacks: Vec<CardHandle> = Vec::new();
             for ch in &draw_snapshot {
                 let Some(ci) = state.card(*ch) else {
@@ -1875,13 +1879,13 @@ pub fn on_upgrade(state: &mut BattleState, card_handle: CardHandle) -> Result<()
                 if let Some(ext_mut) = state.card_ext_mut(card_handle) {
                     if let Some(FieldValue::Decimal(d)) = cur_dmg {
                         ext_mut.private_fields.insert(
-                            "Claw._damage".to_owned(),
+                            Cow::Borrowed("Claw._damage"),
                             FieldValue::Decimal(d.checked_add(Dec::ONE)?),
                         );
                     }
                     if let Some(FieldValue::Decimal(i)) = cur_inc {
                         ext_mut.private_fields.insert(
-                            "Claw._increase".to_owned(),
+                            Cow::Borrowed("Claw._increase"),
                             FieldValue::Decimal(i.checked_add(Dec::ONE)?),
                         );
                     }
@@ -1893,7 +1897,7 @@ pub fn on_upgrade(state: &mut BattleState, card_handle: CardHandle) -> Result<()
                 if let Some(&FieldValue::Int(i)) = ext.private_fields.get("GeneticAlgorithm._increase") {
                     if let Some(ext_mut) = state.card_ext_mut(card_handle) {
                         ext_mut.private_fields.insert(
-                            "GeneticAlgorithm._increase".to_owned(),
+                            Cow::Borrowed("GeneticAlgorithm._increase"),
                             FieldValue::Int(i + 1),
                         );
                     }

@@ -4,9 +4,14 @@ pub mod batch_n_z;
 use sts2_kernel::{BattleState, CardHandle, ContentDispatcher, HookArgs, HookResult, KernelError};
 use sts2_types::{HookSlot, RelicId, RelicMeta};
 
-#[inline]
+const _: () = {
+    assert!(RelicId::MysticLighter as usize == 168);
+    assert!(RelicId::NeowsBones as usize == 169);
+};
+
+#[inline(always)]
 const fn is_batch_a_m(id: RelicId) -> bool {
-    id.model_entry().as_bytes()[0] < b'N'
+    (id as usize) < 169
 }
 
 pub fn relic_meta(id: RelicId) -> Result<&'static RelicMeta, KernelError> {

@@ -1,14 +1,13 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use sts2_content::powers::batch_a_m;
 use sts2_content::Sts2Content;
 use sts2_kernel::commands::{block, card, card_pile, damage, forge, gold, orb, power};
 use sts2_kernel::{
     hooks, ordering, ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags,
-    CombatEngine, ContentDispatcher, CreatureHandle, CreatureInst, FieldValue, KernelError,
-    MonsterInst, PlayerCounters, PlayerInst, PowerExtension, PowerInst, RootStaticContext,
-    SemanticHistory, StepOutcome,
+    CombatEngine, ContentDispatcher, CreatureHandle, CreatureInst, FieldMap, FieldValue,
+    KernelError, MonsterInst, PlayerCounters, PlayerInst, PowerExtension, PowerInst,
+    RootStaticContext, SemanticHistory, StepOutcome,
 };
 use sts2_types::{
     AfflictionId, ArrowStatus, CardId, CardKeywords, CharacterId, CombatSide, Dec, GameMode,
@@ -27,7 +26,7 @@ fn build_test_battle(
     let enemy_handle = CreatureHandle(2);
 
     let mut cards = Vec::new();
-    let mut deck_handles = SmallVec::new();
+    let mut deck_handles = Vec::new();
     let content = Sts2Content;
     for (idx, &cid) in deck_ids.iter().enumerate() {
         let meta = content.card_meta(cid).unwrap();
@@ -82,14 +81,15 @@ fn build_test_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let enemy_creature = CreatureInst {
         handle: enemy_handle,
         combat_id: Some(1),
         side: CombatSide::Enemy,
-        slot_name: Some("slot_0".to_owned()),
+        slot_name: Some(std::borrow::Cow::Borrowed("slot_0")),
         is_player: false,
         pet_owner_player_index: None,
         monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -103,16 +103,17 @@ fn build_test_battle(
             rng: Rng::from_seed(run_rngs.seed + 1),
             is_performing_move: false,
             spawned_this_turn: false,
-            current_state_id: String::new(),
+            current_state_id: std::borrow::Cow::Borrowed(""),
             next_move_id: None,
             next_move_can_transition_away: true,
             performed_first_move: false,
             state_log_ids: SmallVec::new(),
             transient_move_follow_up_state_id: None,
-            setup_fields: BTreeMap::new(),
-            private_fields: BTreeMap::new(),
+            setup_fields: FieldMap::new(),
+            private_fields: FieldMap::new(),
         }),
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let player = PlayerInst {
@@ -131,13 +132,14 @@ fn build_test_battle(
         phase: PlayerTurnPhase::None,
         turn_number: 1,
         counters: PlayerCounters::default(),
-        hand: SmallVec::new(),
-        draw: SmallVec::new(),
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
+        hand: Vec::new(),
+        draw: Vec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
         deck: deck_handles,
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: character.base_orb_slot_count(),
         orbs: SmallVec::new(),
         arrows,
@@ -157,11 +159,17 @@ fn build_test_battle(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -185,8 +193,8 @@ fn build_test_battle(
         card_extensions: Vec::new(),
         creatures: vec![player_creature, enemy_creature],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
-        enemy_handles: smallvec::smallvec![enemy_handle],
+        ally_handles: vec![pc_handle],
+        enemy_handles: vec![enemy_handle],
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy_handle],
@@ -195,6 +203,8 @@ fn build_test_battle(
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     (state, pc_handle, enemy_handle)
 }
@@ -592,7 +602,7 @@ fn artifact_confused_buffer_hardened_shell_and_automation() {
     .unwrap();
     // Automation triggers energy gain every 10 draws
     let ext = PowerExtension {
-        private_fields: BTreeMap::from([(
+        private_fields: FieldMap::from([(
             "AutomationPower._cardsLeft".to_owned(),
             FieldValue::Int(1),
         )]),
@@ -1010,18 +1020,22 @@ fn w0b_wired_lifecycle_choices_and_commands_end_to_end() {
         state.card(strike_h).unwrap().affliction.map(|a| a.id),
         Some(AfflictionId::Hexed)
     );
-    let hex_idx = state
+    let (hex_idx, hex_p, hex_side) = state
         .creature(pc)
         .unwrap()
         .powers
         .iter()
-        .position(|p| p.id == PowerId::HexPower)
+        .enumerate()
+        .find(|(_, p)| p.id == PowerId::HexPower)
+        .map(|(i, p)| (i, *p, state.creature(pc).unwrap().side))
         .unwrap();
     let kw_res = batch_a_m::dispatch_hook(
         &content,
         &mut state,
         pc,
         hex_idx,
+        hex_p,
+        hex_side,
         sts2_types::HookSlot::TryModifyKeywordsInCombat,
         &sts2_kernel::HookArgs::CardOnly(strike_h),
     )

@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::ffi::c_void;
 use std::ptr;
 use std::slice;
@@ -94,7 +93,7 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
         CardId::DefendIronclad,
     ];
     let mut cards = Vec::new();
-    let mut deck = smallvec::SmallVec::new();
+    let mut deck = Vec::new();
     for (i, &cid) in deck_ids.iter().enumerate() {
         let meta = content.card_meta(cid).unwrap();
         let h = CardHandle((i + 1) as u32);
@@ -137,11 +136,17 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 1,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -176,13 +181,14 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
             phase: PlayerTurnPhase::None,
             turn_number: 1,
             counters: PlayerCounters::default(),
-            hand: smallvec::SmallVec::new(),
-            draw: smallvec::SmallVec::new(),
-            discard: smallvec::SmallVec::new(),
-            exhaust: smallvec::SmallVec::new(),
-            play: smallvec::SmallVec::new(),
+            hand: Vec::new(),
+            draw: Vec::new(),
+            discard: Vec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
             deck,
             potion_slots: smallvec::smallvec![None, None, None],
+            combat_generated_potion_mask: 0,
             orb_capacity: 0,
             orbs: smallvec::SmallVec::new(),
             arrows: smallvec::SmallVec::new(),
@@ -192,7 +198,7 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
                 is_melted: false,
                 stack_count: 1,
                 floor_added_to_deck: None,
-                private_fields: BTreeMap::new(),
+                private_fields: Default::default(),
             }],
             card_or_potion_effect_depth: 0,
         },
@@ -213,13 +219,14 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
                 cumulative_hp_lost: 0,
                 is_detached: false,
                 monster: None,
-                powers: smallvec::SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
             CreatureInst {
                 handle: ec,
                 combat_id: Some(1),
                 side: CombatSide::Enemy,
-                slot_name: Some("slot_0".to_owned()),
+                slot_name: Some(std::borrow::Cow::Borrowed("slot_0")),
                 is_player: false,
                 pet_owner_player_index: None,
                 monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -233,21 +240,22 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
                     rng: Rng::from_seed(77),
                     is_performing_move: false,
                     spawned_this_turn: false,
-                    current_state_id: String::new(),
+                    current_state_id: std::borrow::Cow::Borrowed(""),
                     next_move_id: None,
                     next_move_can_transition_away: true,
                     performed_first_move: false,
                     state_log_ids: smallvec::SmallVec::new(),
                     transient_move_follow_up_state_id: None,
-                    setup_fields: BTreeMap::new(),
-                    private_fields: BTreeMap::new(),
+                    setup_fields: Default::default(),
+                    private_fields: Default::default(),
                 }),
-                powers: smallvec::SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
         ],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc],
-        enemy_handles: smallvec::smallvec![ec],
+        ally_handles: vec![pc],
+        enemy_handles: vec![ec],
         escaped_handles: smallvec::SmallVec::new(),
         removed_handles: smallvec::SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![ec],
@@ -256,6 +264,8 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     CombatEngine::start_combat(&mut state, &content).unwrap();
     export_live_state(&state).unwrap()
@@ -823,7 +833,7 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
     let ec = CreatureHandle(2);
     let defend_meta = content.card_meta(CardId::DefendIronclad).unwrap();
     let mut cards = Vec::new();
-    let mut deck = smallvec::SmallVec::new();
+    let mut deck = Vec::new();
     for i in 0..5 {
         let h = CardHandle((i + 1) as u32);
         deck.push(h);
@@ -865,11 +875,17 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 1,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -904,13 +920,14 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
             phase: PlayerTurnPhase::None,
             turn_number: 1,
             counters: PlayerCounters::default(),
-            hand: smallvec::SmallVec::new(),
-            draw: smallvec::SmallVec::new(),
-            discard: smallvec::SmallVec::new(),
-            exhaust: smallvec::SmallVec::new(),
-            play: smallvec::SmallVec::new(),
+            hand: Vec::new(),
+            draw: Vec::new(),
+            discard: Vec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
             deck,
             potion_slots: smallvec::smallvec![None, None, None],
+            combat_generated_potion_mask: 0,
             orb_capacity: 0,
             orbs: smallvec::SmallVec::new(),
             arrows: smallvec::SmallVec::new(),
@@ -934,13 +951,14 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
                 cumulative_hp_lost: 0,
                 is_detached: false,
                 monster: None,
-                powers: smallvec::SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
             CreatureInst {
                 handle: ec,
                 combat_id: Some(1),
                 side: CombatSide::Enemy,
-                slot_name: Some("slot_0".to_owned()),
+                slot_name: Some(std::borrow::Cow::Borrowed("slot_0")),
                 is_player: false,
                 pet_owner_player_index: None,
                 monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -954,21 +972,22 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
                     rng: Rng::from_seed(77),
                     is_performing_move: false,
                     spawned_this_turn: false,
-                    current_state_id: String::new(),
+                    current_state_id: std::borrow::Cow::Borrowed(""),
                     next_move_id: None,
                     next_move_can_transition_away: true,
                     performed_first_move: false,
                     state_log_ids: smallvec::SmallVec::new(),
                     transient_move_follow_up_state_id: None,
-                    setup_fields: BTreeMap::new(),
-                    private_fields: BTreeMap::new(),
+                    setup_fields: Default::default(),
+                    private_fields: Default::default(),
                 }),
-                powers: smallvec::SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
         ],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc],
-        enemy_handles: smallvec::smallvec![ec],
+        ally_handles: vec![pc],
+        enemy_handles: vec![ec],
         escaped_handles: smallvec::SmallVec::new(),
         removed_handles: smallvec::SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![ec],
@@ -977,6 +996,8 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     CombatEngine::start_combat(&mut death_state, &content).unwrap();
     let death_live = export_live_state(&death_state).unwrap();

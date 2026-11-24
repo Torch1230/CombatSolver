@@ -363,11 +363,394 @@ fn collect_creature_listeners_for_mask(
     Ok(())
 }
 
-fn collect_combat_only_listeners_for_mask(
+fn push_cached_piles(
+    entries: &[(HookListener, HookMask)],
+    mask: HookMask,
+    out: &mut SmallVec<[HookListener; 16]>,
+) {
+    for &(listener, lm) in entries {
+        if lm.intersects(mask) {
+            out.push(listener);
+        }
+    }
+}
+
+fn collect_combat_only_listeners_from_cache(
     state: &BattleState,
+    mask: HookMask,
+    out: &mut SmallVec<[HookListener; 16]>,
+) {
+    let cache = &state.hook_cache;
+    if !cache.masks.combat_combined.intersects(mask) {
+        return;
+    }
+    let [m0, m1, m2] = mask.0;
+    let len = cache.flat_listeners.len();
+    for i in 0..len {
+        let hit = (cache.flat_masks_w0[i] & m0)
+            | (cache.flat_masks_w1[i] & m1)
+            | (cache.flat_masks_w2[i] & m2);
+        if hit != 0 {
+            out.push(cache.flat_listeners[i]);
+        }
+    }
+}
+
+#[inline(always)]
+fn skip_combat_hook_mask(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    mask: HookMask,
+) -> Result<bool, KernelError> {
+    #[cfg(not(debug_assertions))]
+    if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
+        return Ok(!state.hook_cache.masks.combat_combined.intersects(mask));
+    }
+    if let Some(tables) = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables())
+    {
+        state.ensure_hook_cache_with_tables(content, tables)?;
+        return Ok(!state.hook_cache.masks.combat_combined.intersects(mask));
+    }
+    Ok(false)
+}
+
+#[inline(always)]
+fn skip_combat_hook_mask_checked(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    mask: HookMask,
+) -> Result<bool, KernelError> {
+    if skip_combat_hook_mask(state, content, mask)? {
+        return Ok(true);
+    }
+    Ok(!state.is_starting && is_over_or_ending_checked(state, content)?)
+}
+
+#[inline(always)]
+fn skip_run_combat_hook_mask(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    mask: HookMask,
+) -> Result<bool, KernelError> {
+    #[cfg(not(debug_assertions))]
+    if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
+        return Ok(!state.hook_cache.masks.run_combat_combined.intersects(mask));
+    }
+    if let Some(tables) = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables())
+    {
+        state.ensure_hook_cache_with_tables(content, tables)?;
+        return Ok(!state.hook_cache.masks.run_combat_combined.intersects(mask));
+    }
+    Ok(false)
+}
+
+fn collect_from_cache_slot(
+    state: &BattleState,
+    word: usize,
+    bit: u64,
+    include_deck: bool,
+    stack_buf: &mut [std::mem::MaybeUninit<HookListener>; 16],
+    stack_len: &mut usize,
+    spill: &mut Option<Vec<HookListener>>,
+) {
+    macro_rules! push_l {
+        ($l:expr) => {{
+            let l = $l;
+            if let Some(v) = spill.as_mut() {
+                v.push(l);
+            } else if *stack_len < 16 {
+                stack_buf[*stack_len].write(l);
+                *stack_len += 1;
+            } else {
+                let mut v = Vec::with_capacity(32);
+                let init_slice = unsafe {
+                    std::slice::from_raw_parts(stack_buf.as_ptr().cast::<HookListener>(), 16)
+                };
+                v.extend_from_slice(init_slice);
+                v.push(l);
+                *spill = Some(v);
+            }
+        }};
+    }
+    let cache = &state.hook_cache;
+    let m = &cache.masks;
+    if include_deck && state.player.is_active_for_hooks && m.cards_deck.contains_slot_parts(word, bit) {
+        for &(listener, lm) in &cache.listener_deck {
+            if lm.contains_slot_parts(word, bit) {
+                push_l!(listener);
+            }
+        }
+    }
+    if !m.combat_combined.contains_slot_parts(word, bit) {
+        return;
+    }
+    let mask_words = cache.flat_mask_word(word);
+    let listeners = &cache.flat_listeners;
+    for (i, &w) in mask_words.iter().enumerate() {
+        if (w & bit) != 0 {
+            push_l!(listeners[i]);
+        }
+    }
+}
+
+struct SlotListenerBuf {
+    stack: [std::mem::MaybeUninit<HookListener>; 16],
+    len: usize,
+    spill: Option<Vec<HookListener>>,
+}
+
+impl SlotListenerBuf {
+    #[inline]
+    fn collect(state: &BattleState, slot: HookSlot, include_deck: bool) -> Self {
+        let (word, bit) = HookMask::slot_parts(slot);
+        let mut stack = [const { std::mem::MaybeUninit::<HookListener>::uninit() }; 16];
+        let mut len = 0usize;
+        let mut spill = None;
+        collect_from_cache_slot(state, word, bit, include_deck, &mut stack, &mut len, &mut spill);
+        Self { stack, len, spill }
+    }
+
+    #[inline]
+    fn as_slice(&self) -> &[HookListener] {
+        match &self.spill {
+            Some(v) => v.as_slice(),
+            None => unsafe {
+                std::slice::from_raw_parts(self.stack.as_ptr().cast::<HookListener>(), self.len)
+            },
+        }
+    }
+}
+
+#[inline]
+fn dispatch_single_void_known_slot(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    listener: HookListener,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<(), KernelError> {
+    if let HookListener::Power {
+        creature,
+        power_handle,
+    } = listener
+    {
+        let resolved = state.creature(creature).and_then(|c| {
+            if c.is_detached
+                || !state.contains_creature(creature)
+                || (c.is_player && !state.player.is_active_for_hooks)
+            {
+                None
+            } else {
+                c.powers
+                    .iter()
+                    .enumerate()
+                    .find(|(_, p)| p.handle == power_handle)
+                    .map(|(idx, &p)| (idx, p, c.side))
+            }
+        });
+        #[cfg(debug_assertions)]
+        debug_assert!(
+            resolved.is_some(),
+            "first listener {:?} ineligible before void dispatch on {:?}",
+            listener,
+            slot
+        );
+        if let Some((power_idx, power, owner_side)) = resolved {
+            let _ = content.dispatch_power_hook_resolved(
+                state, creature, power_idx, power, owner_side, slot, args,
+            )?;
+        }
+    } else {
+        #[cfg(debug_assertions)]
+        debug_assert!(
+            is_eligible_hook_listener(state, listener),
+            "first listener {:?} ineligible before void dispatch on {:?}",
+            listener,
+            slot
+        );
+        let _ = content.dispatch_hook(state, listener, slot, args)?;
+    }
+    Ok(())
+}
+
+#[inline]
+fn dispatch_void_combat_slot(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+    check_ending: bool,
+) -> Result<(), KernelError> {
+    if check_ending && !state.is_in_progress && !state.is_starting {
+        return Ok(());
+    }
+    let (word, bit) = HookMask::slot_parts(slot);
+    #[cfg(not(debug_assertions))]
+    let cached_hit = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    #[cfg(debug_assertions)]
+    let cached_hit = {
+        state.ensure_hook_cache(content)?;
+        state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some()
+    };
+    if !cached_hit {
+        if let Some(tables) = state
+            .hook_cache
+            .cached_tables
+            .or_else(|| content.hook_mask_tables())
+        {
+            state.ensure_hook_cache_with_tables(content, tables)?;
+        } else {
+            if check_ending && is_over_or_ending_checked(state, content)? && !state.is_starting {
+                return Ok(());
+            }
+            let listeners =
+                collect_combat_only_listeners_for_mask(state, content, HookMask::EMPTY.with(slot))?;
+            return dispatch_void_list_known_slot(state, content, &listeners, slot, args);
+        }
+    }
+    if !state
+        .hook_cache
+        .masks
+        .combat_combined
+        .contains_slot_parts(word, bit)
+    {
+        return Ok(());
+    }
+    if check_ending && !state.is_starting && is_over_or_ending_checked(state, content)? {
+        return Ok(());
+    }
+    let mut first_idx = usize::MAX;
+    let mut multi = false;
+    for (i, &w) in state.hook_cache.flat_mask_word(word).iter().enumerate() {
+        if (w & bit) != 0 {
+            if first_idx == usize::MAX {
+                first_idx = i;
+            } else {
+                multi = true;
+                break;
+            }
+        }
+    }
+    if first_idx == usize::MAX {
+        return Ok(());
+    }
+    if !multi {
+        let listener = state.hook_cache.flat_listeners[first_idx];
+        return dispatch_single_void_known_slot(state, content, listener, slot, args);
+    }
+    let buf = SlotListenerBuf::collect(state, slot, false);
+    dispatch_void_list_known_slot(state, content, buf.as_slice(), slot, args)
+}
+
+#[inline]
+fn dispatch_void_run_combat_slot(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<(), KernelError> {
+    let (word, bit) = HookMask::slot_parts(slot);
+    #[cfg(not(debug_assertions))]
+    let cached_hit = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    #[cfg(debug_assertions)]
+    let cached_hit = {
+        state.ensure_hook_cache(content)?;
+        state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some()
+    };
+    if !cached_hit {
+        if let Some(tables) = state
+            .hook_cache
+            .cached_tables
+            .or_else(|| content.hook_mask_tables())
+        {
+            state.ensure_hook_cache_with_tables(content, tables)?;
+        } else {
+            let listeners =
+                collect_run_combat_listeners_for_mask(state, content, HookMask::EMPTY.with(slot))?;
+            return dispatch_void_list_known_slot(state, content, &listeners, slot, args);
+        }
+    }
+    if !state
+        .hook_cache
+        .masks
+        .run_combat_combined
+        .contains_slot_parts(word, bit)
+    {
+        return Ok(());
+    }
+    let mut first: Option<HookListener> = None;
+    let mut multi = false;
+    {
+        let cache = &state.hook_cache;
+        if state.player.is_active_for_hooks && cache.masks.cards_deck.contains_slot_parts(word, bit)
+        {
+            for &(l, lm) in &cache.listener_deck {
+                if lm.contains_slot_parts(word, bit) {
+                    if first.is_none() {
+                        first = Some(l);
+                    } else {
+                        multi = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if !multi && cache.masks.combat_combined.contains_slot_parts(word, bit) {
+            for (i, &w) in cache.flat_mask_word(word).iter().enumerate() {
+                if (w & bit) != 0 {
+                    if first.is_none() {
+                        first = Some(cache.flat_listeners[i]);
+                    } else {
+                        multi = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    let Some(first_listener) = first else {
+        return Ok(());
+    };
+    if !multi {
+        return dispatch_single_void_known_slot(state, content, first_listener, slot, args);
+    }
+    let buf = SlotListenerBuf::collect(state, slot, true);
+    dispatch_void_list_known_slot(state, content, buf.as_slice(), slot, args)
+}
+
+fn collect_combat_only_listeners_for_mask(
+    state: &mut BattleState,
     content: &dyn ContentDispatcher,
     mask: HookMask,
 ) -> Result<SmallVec<[HookListener; 16]>, KernelError> {
+    #[cfg(not(debug_assertions))]
+    if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
+        if !state.hook_cache.masks.combat_combined.intersects(mask) {
+            return Ok(SmallVec::new());
+        }
+        let mut out = SmallVec::new();
+        collect_combat_only_listeners_from_cache(state, mask, &mut out);
+        return Ok(out);
+    }
+    if let Some(tables) = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables())
+    {
+        state.ensure_hook_cache_with_tables(content, tables)?;
+        if !state.hook_cache.masks.combat_combined.intersects(mask) {
+            return Ok(SmallVec::new());
+        }
+        let mut out = SmallVec::new();
+        collect_combat_only_listeners_from_cache(state, mask, &mut out);
+        return Ok(out);
+    }
     let mut out = SmallVec::new();
     for &ally in &state.ally_handles {
         collect_creature_listeners_for_mask(state, content, ally, true, mask, &mut out)?;
@@ -391,10 +774,38 @@ fn collect_combat_only_listeners_for_mask(
 }
 
 fn collect_run_combat_listeners_for_mask(
-    state: &BattleState,
+    state: &mut BattleState,
     content: &dyn ContentDispatcher,
     mask: HookMask,
 ) -> Result<SmallVec<[HookListener; 16]>, KernelError> {
+    #[cfg(not(debug_assertions))]
+    if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
+        if !state.hook_cache.masks.run_combat_combined.intersects(mask) {
+            return Ok(SmallVec::new());
+        }
+        let mut out = SmallVec::new();
+        if state.player.is_active_for_hooks && state.hook_cache.masks.cards_deck.intersects(mask) {
+            push_cached_piles(&state.hook_cache.listener_deck, mask, &mut out);
+        }
+        collect_combat_only_listeners_from_cache(state, mask, &mut out);
+        return Ok(out);
+    }
+    if let Some(tables) = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables())
+    {
+        state.ensure_hook_cache_with_tables(content, tables)?;
+        if !state.hook_cache.masks.run_combat_combined.intersects(mask) {
+            return Ok(SmallVec::new());
+        }
+        let mut out = SmallVec::new();
+        if state.player.is_active_for_hooks && state.hook_cache.masks.cards_deck.intersects(mask) {
+            push_cached_piles(&state.hook_cache.listener_deck, mask, &mut out);
+        }
+        collect_combat_only_listeners_from_cache(state, mask, &mut out);
+        return Ok(out);
+    }
     let mut out = SmallVec::new();
     if state.player.is_active_for_hooks {
         if let Some(tables) = content.hook_mask_tables() {
@@ -528,7 +939,7 @@ fn collect_combat_hook_listeners_checked_for_mask(
     content: &dyn ContentDispatcher,
     mask: HookMask,
 ) -> Result<SmallVec<[HookListener; 16]>, KernelError> {
-    if is_over_or_ending_checked(state, content)? && !state.is_starting {
+    if skip_combat_hook_mask_checked(state, content, mask)? {
         return Ok(SmallVec::new());
     }
     collect_combat_only_listeners_for_mask(state, content, mask)
@@ -688,6 +1099,9 @@ pub fn is_ending_checked(
     if !state.is_in_progress {
         return Ok(false);
     }
+    if state.ally_handles.len() == 1 && state.player.current_hp <= 0 {
+        return Ok(true);
+    }
     if has_lost(state) {
         return Ok(true);
     }
@@ -697,12 +1111,12 @@ pub fn is_ending_checked(
     Ok(!should_stop_combat_from_ending(state, content)?)
 }
 
-#[inline]
+#[inline(always)]
 pub fn has_lost(state: &BattleState) -> bool {
     !state.has_living_player_creature()
 }
 
-#[inline]
+#[inline(always)]
 pub fn has_won_raw(state: &BattleState) -> bool {
     !state.enemy_handles.iter().any(|&h| {
         state
@@ -712,6 +1126,7 @@ pub fn has_won_raw(state: &BattleState) -> bool {
 }
 
 /// Exact `Hook.IsEligibleHookListener` check before each callback dispatch.
+#[inline(always)]
 pub fn is_eligible_hook_listener(state: &BattleState, listener: HookListener) -> bool {
     match listener {
         HookListener::Power {
@@ -762,6 +1177,7 @@ pub fn is_eligible_hook_listener(state: &BattleState, listener: HookListener) ->
     }
 }
 
+#[inline]
 fn dispatch_if_active(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
@@ -774,6 +1190,47 @@ fn dispatch_if_active(
     }
     let mask = content.listener_hook_mask(state, listener)?;
     if !mask.contains(slot) {
+        return Ok(None);
+    }
+    Ok(Some(content.dispatch_hook(state, listener, slot, args)?))
+}
+
+#[inline]
+fn dispatch_if_eligible_known_slot(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    listener: HookListener,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<Option<crate::content_dispatch::HookResult>, KernelError> {
+    if let HookListener::Power {
+        creature,
+        power_handle,
+    } = listener
+    {
+        let Some(c) = state.creature(creature) else {
+            return Ok(None);
+        };
+        if c.is_detached || !state.contains_creature(creature) {
+            return Ok(None);
+        }
+        if c.is_player && !state.player.is_active_for_hooks {
+            return Ok(None);
+        }
+        let Some((power_idx, &power)) = c
+            .powers
+            .iter()
+            .enumerate()
+            .find(|(_, p)| p.handle == power_handle)
+        else {
+            return Ok(None);
+        };
+        let owner_side = c.side;
+        return Ok(Some(content.dispatch_power_hook_resolved(
+            state, creature, power_idx, power, owner_side, slot, args,
+        )?));
+    }
+    if !is_eligible_hook_listener(state, listener) {
         return Ok(None);
     }
     Ok(Some(content.dispatch_hook(state, listener, slot, args)?))
@@ -792,25 +1249,244 @@ fn dispatch_void_list(
     Ok(())
 }
 
+#[inline]
+fn dispatch_void_list_known_slot(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    listeners: &[HookListener],
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<(), KernelError> {
+    if let Some((&first, rest)) = listeners.split_first() {
+        dispatch_single_void_known_slot(state, content, first, slot, args)?;
+        for &listener in rest {
+            let _ = dispatch_if_eligible_known_slot(state, content, listener, slot, args)?;
+        }
+    }
+    Ok(())
+}
+
+#[inline(always)]
+fn dispatch_query_known_slot(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    listener: HookListener,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<crate::content_dispatch::HookResult, KernelError> {
+    #[cfg(debug_assertions)]
+    debug_assert!(
+        is_eligible_hook_listener(state, listener),
+        "cached query listener {:?} ineligible on {:?}",
+        listener,
+        slot
+    );
+    if let HookListener::Power {
+        creature,
+        power_handle,
+    } = listener
+    {
+        let Some(c) = state.creature(creature) else {
+            return Ok(Default::default());
+        };
+        let Some((power_idx, &power)) = c
+            .powers
+            .iter()
+            .enumerate()
+            .find(|(_, p)| p.handle == power_handle)
+        else {
+            return Ok(Default::default());
+        };
+        let owner_side = c.side;
+        return content.dispatch_power_hook_resolved(
+            state, creature, power_idx, power, owner_side, slot, args,
+        );
+    }
+    content.dispatch_hook(state, listener, slot, args)
+}
+
+#[inline]
+fn dispatch_cached_query_listeners_slot<F>(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    slot: HookSlot,
+    mut on_listener: F,
+) -> Result<(), KernelError>
+where
+    F: FnMut(&mut BattleState, &dyn ContentDispatcher, HookListener) -> Result<bool, KernelError>,
+{
+    let (word, bit) = HookMask::slot_parts(slot);
+    #[cfg(not(debug_assertions))]
+    let cached_hit = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    #[cfg(debug_assertions)]
+    let cached_hit = {
+        state.ensure_hook_cache(content)?;
+        state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some()
+    };
+    if !cached_hit {
+        state.ensure_hook_cache(content)?;
+    }
+    if state.hook_cache.cached_tables.is_none() || state.hook_cache.dirty_mask != 0 {
+        let mask = HookMask::EMPTY.with(slot);
+        let listeners = collect_combat_only_listeners_for_mask(state, content, mask)?;
+        for listener in listeners {
+            if is_eligible_hook_listener(state, listener) && !on_listener(state, content, listener)?
+            {
+                break;
+            }
+        }
+        return Ok(());
+    }
+
+    if !state
+        .hook_cache
+        .masks
+        .combat_combined
+        .contains_slot_parts(word, bit)
+    {
+        return Ok(());
+    }
+
+    let len = state.hook_cache.flat_listeners.len();
+    for i in 0..len {
+        if (state.hook_cache.flat_mask_word(word)[i] & bit) != 0 {
+            let listener = state.hook_cache.flat_listeners[i];
+            #[cfg(debug_assertions)]
+            debug_assert!(
+                is_eligible_hook_listener(state, listener),
+                "cached query listener {:?} ineligible",
+                listener
+            );
+            let cont = on_listener(state, content, listener)?;
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                state.hook_cache.dirty_mask, 0,
+                "query hook mutated hook_cache during {:?}",
+                listener
+            );
+            if !cont {
+                return Ok(());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[inline]
+fn dispatch_cached_run_query_listeners_slot<F>(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    slot: HookSlot,
+    mut on_listener: F,
+) -> Result<(), KernelError>
+where
+    F: FnMut(&mut BattleState, &dyn ContentDispatcher, HookListener) -> Result<bool, KernelError>,
+{
+    let (word, bit) = HookMask::slot_parts(slot);
+    #[cfg(not(debug_assertions))]
+    let cached_hit = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    #[cfg(debug_assertions)]
+    let cached_hit = {
+        state.ensure_hook_cache(content)?;
+        state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some()
+    };
+    if !cached_hit {
+        state.ensure_hook_cache(content)?;
+    }
+    if state.hook_cache.cached_tables.is_none() || state.hook_cache.dirty_mask != 0 {
+        let mask = HookMask::EMPTY.with(slot);
+        let listeners = collect_run_combat_listeners_for_mask(state, content, mask)?;
+        for listener in listeners {
+            if is_eligible_hook_listener(state, listener) && !on_listener(state, content, listener)?
+            {
+                break;
+            }
+        }
+        return Ok(());
+    }
+
+    if !state
+        .hook_cache
+        .masks
+        .run_combat_combined
+        .contains_slot_parts(word, bit)
+    {
+        return Ok(());
+    }
+
+    if state.player.is_active_for_hooks
+        && state
+            .hook_cache
+            .masks
+            .cards_deck
+            .contains_slot_parts(word, bit)
+    {
+        let deck_len = state.hook_cache.listener_deck.len();
+        for i in 0..deck_len {
+            let (listener, lm) = state.hook_cache.listener_deck[i];
+            if lm.contains_slot_parts(word, bit) {
+                #[cfg(debug_assertions)]
+                debug_assert!(
+                    is_eligible_hook_listener(state, listener),
+                    "cached deck query listener {:?} ineligible",
+                    listener
+                );
+                let cont = on_listener(state, content, listener)?;
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(
+                    state.hook_cache.dirty_mask, 0,
+                    "deck query hook mutated hook_cache during {:?}",
+                    listener
+                );
+                if !cont {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    if state
+        .hook_cache
+        .masks
+        .combat_combined
+        .contains_slot_parts(word, bit)
+    {
+        let len = state.hook_cache.flat_listeners.len();
+        for i in 0..len {
+            if (state.hook_cache.flat_mask_word(word)[i] & bit) != 0 {
+                let listener = state.hook_cache.flat_listeners[i];
+                #[cfg(debug_assertions)]
+                debug_assert!(
+                    is_eligible_hook_listener(state, listener),
+                    "cached query listener {:?} ineligible",
+                    listener
+                );
+                let cont = on_listener(state, content, listener)?;
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(
+                    state.hook_cache.dirty_mask, 0,
+                    "query hook mutated hook_cache during {:?}",
+                    listener
+                );
+                if !cont {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub fn before_combat_start(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(state, content, HookSlot::BeforeCombatStart, &HookArgs::None)?;
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeCombatStart),
-    )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::BeforeCombatStart, &HookArgs::None)?;
-    let listeners_late = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::BeforeCombatStartLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_late,
         HookSlot::BeforeCombatStartLate,
         &HookArgs::None,
     )
@@ -820,54 +1496,27 @@ pub fn after_room_entered(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterRoomEntered),
-    )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterRoomEntered, &HookArgs::None)
+    dispatch_void_run_combat_slot(state, content, HookSlot::AfterRoomEntered, &HookArgs::None)
 }
 
 pub fn after_combat_victory(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let early = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCombatVictoryEarly),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &early,
         HookSlot::AfterCombatVictoryEarly,
         &HookArgs::None,
     )?;
-    let normal = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCombatVictory),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &normal,
-        HookSlot::AfterCombatVictory,
-        &HookArgs::None,
-    )
+    dispatch_void_run_combat_slot(state, content, HookSlot::AfterCombatVictory, &HookArgs::None)
 }
 
 pub fn after_combat_end(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCombatEnd),
-    )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterCombatEnd, &HookArgs::None)
+    dispatch_void_run_combat_slot(state, content, HookSlot::AfterCombatEnd, &HookArgs::None)
 }
 
 pub fn before_side_turn_start(
@@ -876,17 +1525,12 @@ pub fn before_side_turn_start(
     side: CombatSide,
     participants: &[CreatureHandle],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeSideTurnStart),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeSideTurnStart,
         &HookArgs::SideTurn { side, participants },
+        true,
     )
 }
 
@@ -908,7 +1552,7 @@ pub fn continue_after_player_turn_start(
     remaining: &[HookListener],
 ) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
     for (idx, &listener) in remaining.iter().enumerate() {
-        if let Some(res) = dispatch_if_active(
+        if let Some(res) = dispatch_if_eligible_known_slot(
             state,
             content,
             listener,
@@ -928,17 +1572,12 @@ pub fn after_player_turn_start_late(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterPlayerTurnStartLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterPlayerTurnStartLate,
         &HookArgs::Player,
+        true,
     )
 }
 
@@ -948,25 +1587,9 @@ pub fn after_side_turn_start(
     side: CombatSide,
     participants: &[CreatureHandle],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterSideTurnStart),
-    )?;
     let args = HookArgs::SideTurn { side, participants };
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterSideTurnStart, &args)?;
-    let listeners_late = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterSideTurnStartLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_late,
-        HookSlot::AfterSideTurnStartLate,
-        &args,
-    )
+    dispatch_void_combat_slot(state, content, HookSlot::AfterSideTurnStart, &args, true)?;
+    dispatch_void_combat_slot(state, content, HookSlot::AfterSideTurnStartLate, &args, true)
 }
 
 pub fn after_auto_pre_play_phase_entered(
@@ -993,7 +1616,7 @@ pub fn continue_after_auto_pre_play_phase_entered(
         HookSlot::AfterAutoPrePlayPhaseEntered
     };
     for (idx, &listener) in remaining.iter().enumerate() {
-        let _ = dispatch_if_active(state, content, listener, slot, &HookArgs::Player)?;
+        let _ = dispatch_if_eligible_known_slot(state, content, listener, slot, &HookArgs::Player)?;
         if let Some(pending) = state.pending.as_mut() {
             pending.frames.insert(
                 0,
@@ -1020,17 +1643,12 @@ pub fn after_auto_post_play_phase_entered(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterAutoPostPlayPhaseEntered),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterAutoPostPlayPhaseEntered,
         &HookArgs::Player,
+        true,
     )
 }
 
@@ -1040,17 +1658,12 @@ pub fn before_side_turn_end_very_early(
     side: CombatSide,
     participants: &[CreatureHandle],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeSideTurnEndVeryEarly),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeSideTurnEndVeryEarly,
         &HookArgs::SideTurn { side, participants },
+        true,
     )
 }
 
@@ -1060,17 +1673,12 @@ pub fn before_side_turn_end_early(
     side: CombatSide,
     participants: &[CreatureHandle],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeSideTurnEndEarly),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeSideTurnEndEarly,
         &HookArgs::SideTurn { side, participants },
+        true,
     )
 }
 
@@ -1080,17 +1688,12 @@ pub fn before_side_turn_end(
     side: CombatSide,
     participants: &[CreatureHandle],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeSideTurnEnd),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeSideTurnEnd,
         &HookArgs::SideTurn { side, participants },
+        true,
     )
 }
 
@@ -1100,25 +1703,9 @@ pub fn after_side_turn_end(
     side: CombatSide,
     participants: &[CreatureHandle],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterSideTurnEnd),
-    )?;
     let args = HookArgs::SideTurn { side, participants };
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterSideTurnEnd, &args)?;
-    let listeners_late = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterSideTurnEndLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_late,
-        HookSlot::AfterSideTurnEndLate,
-        &args,
-    )
+    dispatch_void_combat_slot(state, content, HookSlot::AfterSideTurnEnd, &args, true)?;
+    dispatch_void_combat_slot(state, content, HookSlot::AfterSideTurnEndLate, &args, true)
 }
 
 pub fn should_clear_block(
@@ -1126,28 +1713,20 @@ pub fn should_clear_block(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<Option<HookListener>, KernelError> {
-    if is_over_or_ending_checked(state, content)? && !state.is_starting {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldClearBlock);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
         return Ok(None);
     }
-    let listeners = collect_combat_only_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldClearBlock),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldClearBlock,
-            &HookArgs::Creature(creature),
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(Some(listener));
-            }
+    let mut preventer = None;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldClearBlock, |s, c, listener| {
+        let res = dispatch_query_known_slot(s, c, listener, HookSlot::ShouldClearBlock, &HookArgs::Creature(creature))?;
+        if res.bool_val == Some(false) {
+            preventer = Some(listener);
+            return Ok(false);
         }
-    }
-    Ok(None)
+        Ok(true)
+    })?;
+    Ok(preventer)
 }
 
 pub fn after_preventing_block_clear(
@@ -1171,17 +1750,12 @@ pub fn after_block_cleared(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterBlockCleared),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterBlockCleared,
         &HookArgs::Creature(creature),
+        true,
     )
 }
 
@@ -1189,25 +1763,20 @@ pub fn should_player_reset_energy(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldPlayerResetEnergy),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldPlayerResetEnergy,
-            &HookArgs::Player,
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(false);
-            }
-        }
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldPlayerResetEnergy);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
     }
-    Ok(true)
+    let mut should = true;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldPlayerResetEnergy, |s, c, listener| {
+        let res = dispatch_query_known_slot(s, c, listener, HookSlot::ShouldPlayerResetEnergy, &HookArgs::Player)?;
+        if res.bool_val == Some(false) {
+            should = false;
+            return Ok(false);
+        }
+        Ok(true)
+    })?;
+    Ok(should)
 }
 
 pub fn modify_x_value(
@@ -1216,28 +1785,27 @@ pub fn modify_x_value(
     card: CardHandle,
     original_value: i32,
 ) -> Result<i32, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyXValue);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(original_value);
+    }
     let mut result = original_value;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ModifyXValue),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ModifyXValue, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
             listener,
             HookSlot::ModifyXValue,
             &HookArgs::ModifyXValue {
                 card,
                 amount: result,
             },
-        )? {
-            if let Some(v) = res.int_val {
-                result = v;
-            }
+        )?;
+        if let Some(v) = res.int_val {
+            result = v;
         }
-    }
+        Ok(true)
+    })?;
     Ok(result)
 }
 
@@ -1246,27 +1814,26 @@ pub fn modify_max_energy(
     content: &dyn ContentDispatcher,
     base_max: Dec,
 ) -> Result<Dec, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyMaxEnergy);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(base_max);
+    }
     let mut amount = base_max;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ModifyMaxEnergy),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ModifyMaxEnergy, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
             listener,
             HookSlot::ModifyMaxEnergy,
             &HookArgs::ModifyHandDraw {
                 original_count: amount,
             },
-        )? {
-            if let Some(v) = res.dec_val {
-                amount = v;
-            }
+        )?;
+        if let Some(v) = res.dec_val {
+            amount = v;
         }
-    }
+        Ok(true)
+    })?;
     Ok(amount)
 }
 
@@ -1274,23 +1841,19 @@ pub fn after_energy_reset(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterEnergyReset),
+        HookSlot::AfterEnergyReset,
+        &HookArgs::Player,
+        true,
     )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterEnergyReset, &HookArgs::Player)?;
-    let listeners_late = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterEnergyResetLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_late,
         HookSlot::AfterEnergyResetLate,
         &HookArgs::Player,
+        true,
     )
 }
 
@@ -1304,7 +1867,7 @@ pub fn before_hand_draw(
         HookMask::EMPTY.with(HookSlot::BeforeHandDraw),
     )?;
     for (idx, &listener) in listeners.iter().enumerate() {
-        if let Some(res) = dispatch_if_active(
+        if let Some(res) = dispatch_if_eligible_known_slot(
             state,
             content,
             listener,
@@ -1326,7 +1889,7 @@ pub fn continue_before_hand_draw(
     remaining: &[HookListener],
 ) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
     for (idx, &listener) in remaining.iter().enumerate() {
-        if let Some(res) = dispatch_if_active(
+        if let Some(res) = dispatch_if_eligible_known_slot(
             state,
             content,
             listener,
@@ -1347,31 +1910,30 @@ pub fn modify_hand_draw(
     content: &dyn ContentDispatcher,
     base_count: Dec,
 ) -> Result<(Dec, SmallVec<[HookListener; 4]>), KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyHandDraw);
     let mut count = base_count;
     let mut modifiers = SmallVec::new();
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ModifyHandDraw),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((count, modifiers));
+    }
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ModifyHandDraw, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
             listener,
             HookSlot::ModifyHandDraw,
             &HookArgs::ModifyHandDraw {
                 original_count: count,
             },
-        )? {
-            if let Some(v) = res.dec_val {
-                if v != count {
-                    count = v;
-                    modifiers.push(listener);
-                }
+        )?;
+        if let Some(v) = res.dec_val {
+            if v != count {
+                count = v;
+                modifiers.push(listener);
             }
         }
-    }
+        Ok(true)
+    })?;
     Ok((count, modifiers))
 }
 
@@ -1394,73 +1956,65 @@ pub fn should_draw(
     content: &dyn ContentDispatcher,
     from_hand_draw: bool,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldDraw),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldDraw);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
+    }
+    let mut should = true;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldDraw, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
             listener,
             HookSlot::ShouldDraw,
             &HookArgs::ShouldDraw { from_hand_draw },
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(false);
-            }
+        )?;
+        if res.bool_val == Some(false) {
+            should = false;
+            return Ok(false);
         }
-    }
-    Ok(true)
+        Ok(true)
+    })?;
+    Ok(should)
 }
 
 pub fn should_flush(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldFlush),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldFlush,
-            &HookArgs::Player,
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(false);
-            }
-        }
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldFlush);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
     }
-    Ok(true)
+    let mut should = true;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldFlush, |s, c, listener| {
+        let res = dispatch_query_known_slot(s, c, listener, HookSlot::ShouldFlush, &HookArgs::Player)?;
+        if res.bool_val == Some(false) {
+            should = false;
+            return Ok(false);
+        }
+        Ok(true)
+    })?;
+    Ok(should)
 }
 
 pub fn before_flush(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeFlush),
+        HookSlot::BeforeFlush,
+        &HookArgs::Player,
+        true,
     )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::BeforeFlush, &HookArgs::Player)?;
-    let listeners_late = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeFlushLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_late,
         HookSlot::BeforeFlushLate,
         &HookArgs::Player,
+        true,
     )
 }
 
@@ -1468,12 +2022,13 @@ pub fn after_flush(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterFlush),
-    )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterFlush, &HookArgs::Player)
+        HookSlot::AfterFlush,
+        &HookArgs::Player,
+        true,
+    )
 }
 
 pub fn should_ethereal_trigger(
@@ -1481,65 +2036,81 @@ pub fn should_ethereal_trigger(
     content: &dyn ContentDispatcher,
     card: CardHandle,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldEtherealTrigger),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldEtherealTrigger);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
+    }
+    let mut should = true;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldEtherealTrigger, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
             listener,
             HookSlot::ShouldEtherealTrigger,
             &HookArgs::CardOnly(card),
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(false);
-            }
+        )?;
+        if res.bool_val == Some(false) {
+            should = false;
+            return Ok(false);
         }
-    }
-    Ok(true)
+        Ok(true)
+    })?;
+    Ok(should)
 }
 
 pub fn should_take_extra_turn(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<Option<HookListener>, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    const MASK: HookMask = HookMask::EMPTY
+        .with(HookSlot::ShouldTakeExtraTurnEarly)
+        .with(HookSlot::ShouldTakeExtraTurn);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(None);
+    }
+    let mut taker = None;
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY
-            .with(HookSlot::ShouldTakeExtraTurnEarly)
-            .with(HookSlot::ShouldTakeExtraTurn),
+        HookSlot::ShouldTakeExtraTurnEarly,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldTakeExtraTurnEarly,
+                &HookArgs::Player,
+            )?;
+            if res.bool_val == Some(true) {
+                taker = Some(listener);
+                return Ok(false);
+            }
+            Ok(true)
+        },
     )?;
-    for listener in &listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            *listener,
-            HookSlot::ShouldTakeExtraTurnEarly,
-            &HookArgs::Player,
-        )? {
-            if res.bool_val == Some(true) {
-                return Ok(Some(*listener));
-            }
-        }
+    if taker.is_some() {
+        return Ok(taker);
     }
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldTakeExtraTurn,
-            &HookArgs::Player,
-        )? {
+    dispatch_cached_query_listeners_slot(
+        state,
+        content,
+        HookSlot::ShouldTakeExtraTurn,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldTakeExtraTurn,
+                &HookArgs::Player,
+            )?;
             if res.bool_val == Some(true) {
-                return Ok(Some(listener));
+                taker = Some(listener);
+                return Ok(false);
             }
-        }
-    }
-    Ok(None)
+            Ok(true)
+        },
+    )?;
+    Ok(taker)
 }
 
 pub fn after_taking_extra_turn(
@@ -1566,31 +2137,99 @@ pub fn modify_vulnerable_multiplier(
     props: ValueProp,
     card_source: Option<CardHandle>,
 ) -> Result<Dec, KernelError> {
+    state.ensure_hook_cache(content)?;
+    let cache_valid = state.hook_cache.is_valid();
+    if cache_valid
+        && !state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::ModifyVulnerableMultiplier)
+    {
+        return Ok(base_multiplier);
+    }
     let mut mult = base_multiplier;
     let mut ordered: SmallVec<[HookListener; 16]> = SmallVec::new();
+    let tables = if cache_valid {
+        state.hook_cache.cached_tables.or_else(|| content.hook_mask_tables())
+    } else {
+        None
+    };
+    let check_relics = !cache_valid
+        || state
+            .hook_cache
+            .masks
+            .relics
+            .contains(HookSlot::ModifyVulnerableMultiplier);
+    let check_powers = !cache_valid
+        || state
+            .hook_cache
+            .masks
+            .powers
+            .contains(HookSlot::ModifyVulnerableMultiplier);
     if let Some(d) = dealer {
         let is_player_or_pet = state
             .creature(d)
             .is_some_and(|c| c.is_player || c.is_pet());
-        if is_player_or_pet && state.player.is_active_for_hooks {
-            for (i, relic) in state.player.relics.iter().enumerate() {
-                if !relic.is_melted {
-                    ordered.push(HookListener::Relic(i));
+        if check_relics && is_player_or_pet && state.player.is_active_for_hooks {
+            if cache_valid {
+                for &(i, r_mask) in &state.hook_cache.listener_relics {
+                    if r_mask.contains(HookSlot::ModifyVulnerableMultiplier) {
+                        ordered.push(HookListener::Relic(i));
+                    }
+                }
+            } else {
+                for (i, relic) in state.player.relics.iter().enumerate() {
+                    if !relic.is_melted {
+                        ordered.push(HookListener::Relic(i));
+                    }
                 }
             }
         }
-        if let Some(c) = state.creature(d) {
-            for p in &c.powers {
-                ordered.push(HookListener::Power {
-                    creature: d,
-                    power_handle: p.handle,
-                });
-            }
-            if c.is_pet() && d != state.player.creature_handle {
-                if let Some(pc) = state.player_creature() {
-                    for p in &pc.powers {
+        if check_powers {
+            if let Some(c) = state.creature(d) {
+                for p in &c.powers {
+                    if tables.is_none_or(|t| {
+                        t.powers
+                            .get(p.id as usize)
+                            .is_some_and(|m| m.contains(HookSlot::ModifyVulnerableMultiplier))
+                    }) {
                         ordered.push(HookListener::Power {
-                            creature: state.player.creature_handle,
+                            creature: d,
+                            power_handle: p.handle,
+                        });
+                    }
+                }
+                if c.is_pet() && d != state.player.creature_handle {
+                    if let Some(pc) = state.player_creature() {
+                        for p in &pc.powers {
+                            if tables.is_none_or(|t| {
+                                t.powers
+                                    .get(p.id as usize)
+                                    .is_some_and(|m| m.contains(HookSlot::ModifyVulnerableMultiplier))
+                            }) {
+                                ordered.push(HookListener::Power {
+                                    creature: state.player.creature_handle,
+                                    power_handle: p.handle,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if check_powers {
+        if let Some(t) = target {
+            if let Some(c) = state.creature(t) {
+                for p in &c.powers {
+                    if tables.is_none_or(|tbl| {
+                        tbl.powers
+                            .get(p.id as usize)
+                            .is_some_and(|m| m.contains(HookSlot::ModifyVulnerableMultiplier))
+                    }) {
+                        ordered.push(HookListener::Power {
+                            creature: t,
                             power_handle: p.handle,
                         });
                     }
@@ -1598,31 +2237,39 @@ pub fn modify_vulnerable_multiplier(
             }
         }
     }
-    if let Some(t) = target {
-        if let Some(c) = state.creature(t) {
-            for p in &c.powers {
-                ordered.push(HookListener::Power {
-                    creature: t,
-                    power_handle: p.handle,
-                });
-            }
-        }
-    }
     for listener in ordered {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyVulnerableMultiplier,
-            &HookArgs::ModifyDamage {
-                target,
-                dealer,
-                amount: mult,
-                props,
-                card_source,
-                card_play: None,
-            },
-        )? {
+        let res_opt = if tables.is_some() {
+            dispatch_if_eligible_known_slot(
+                state,
+                content,
+                listener,
+                HookSlot::ModifyVulnerableMultiplier,
+                &HookArgs::ModifyDamage {
+                    target,
+                    dealer,
+                    amount: mult,
+                    props,
+                    card_source,
+                    card_play: None,
+                },
+            )?
+        } else {
+            dispatch_if_active(
+                state,
+                content,
+                listener,
+                HookSlot::ModifyVulnerableMultiplier,
+                &HookArgs::ModifyDamage {
+                    target,
+                    dealer,
+                    amount: mult,
+                    props,
+                    card_source,
+                    card_play: None,
+                },
+            )?
+        };
+        if let Some(res) = res_opt {
             if let Some(next) = res.dec_val {
                 mult = next;
             }
@@ -1640,42 +2287,106 @@ pub fn modify_weak_multiplier(
     props: ValueProp,
     card_source: Option<CardHandle>,
 ) -> Result<Dec, KernelError> {
+    state.ensure_hook_cache(content)?;
+    let cache_valid = state.hook_cache.is_valid();
+    if cache_valid
+        && !state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::ModifyWeakMultiplier)
+    {
+        return Ok(base_multiplier);
+    }
     let mut mult = base_multiplier;
     let mut ordered: SmallVec<[HookListener; 16]> = SmallVec::new();
-    if let Some(t) = target {
-        if state.creature(t).is_some_and(|c| c.is_player) && state.player.is_active_for_hooks {
-            for (i, relic) in state.player.relics.iter().enumerate() {
-                if !relic.is_melted {
-                    ordered.push(HookListener::Relic(i));
+    let tables = if cache_valid {
+        state.hook_cache.cached_tables.or_else(|| content.hook_mask_tables())
+    } else {
+        None
+    };
+    let check_relics = !cache_valid
+        || state
+            .hook_cache
+            .masks
+            .relics
+            .contains(HookSlot::ModifyWeakMultiplier);
+    let check_powers = !cache_valid
+        || state
+            .hook_cache
+            .masks
+            .powers
+            .contains(HookSlot::ModifyWeakMultiplier);
+    if check_relics {
+        if let Some(t) = target {
+            if state.creature(t).is_some_and(|c| c.is_player) && state.player.is_active_for_hooks {
+                if cache_valid {
+                    for &(i, r_mask) in &state.hook_cache.listener_relics {
+                        if r_mask.contains(HookSlot::ModifyWeakMultiplier) {
+                            ordered.push(HookListener::Relic(i));
+                        }
+                    }
+                } else {
+                    for (i, relic) in state.player.relics.iter().enumerate() {
+                        if !relic.is_melted {
+                            ordered.push(HookListener::Relic(i));
+                        }
+                    }
                 }
             }
         }
     }
-    if let Some(d) = dealer {
-        if let Some(c) = state.creature(d) {
-            for p in &c.powers {
-                ordered.push(HookListener::Power {
-                    creature: d,
-                    power_handle: p.handle,
-                });
+    if check_powers {
+        if let Some(d) = dealer {
+            if let Some(c) = state.creature(d) {
+                for p in &c.powers {
+                    if tables.is_none_or(|tbl| {
+                        tbl.powers
+                            .get(p.id as usize)
+                            .is_some_and(|m| m.contains(HookSlot::ModifyWeakMultiplier))
+                    }) {
+                        ordered.push(HookListener::Power {
+                            creature: d,
+                            power_handle: p.handle,
+                        });
+                    }
+                }
             }
         }
     }
     for listener in ordered {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyWeakMultiplier,
-            &HookArgs::ModifyDamage {
-                target,
-                dealer,
-                amount: mult,
-                props,
-                card_source,
-                card_play: None,
-            },
-        )? {
+        let res_opt = if tables.is_some() {
+            dispatch_if_eligible_known_slot(
+                state,
+                content,
+                listener,
+                HookSlot::ModifyWeakMultiplier,
+                &HookArgs::ModifyDamage {
+                    target,
+                    dealer,
+                    amount: mult,
+                    props,
+                    card_source,
+                    card_play: None,
+                },
+            )?
+        } else {
+            dispatch_if_active(
+                state,
+                content,
+                listener,
+                HookSlot::ModifyWeakMultiplier,
+                &HookArgs::ModifyDamage {
+                    target,
+                    dealer,
+                    amount: mult,
+                    props,
+                    card_source,
+                    card_play: None,
+                },
+            )?
+        };
+        if let Some(res) = res_opt {
             if let Some(next) = res.dec_val {
                 mult = next;
             }
@@ -1689,25 +2400,20 @@ pub fn should_allow_hitting(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldAllowHitting),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldAllowHitting,
-            &HookArgs::Creature(creature),
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(false);
-            }
-        }
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldAllowHitting);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
     }
-    Ok(true)
+    let mut allowed = true;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldAllowHitting, |s, c, listener| {
+        let res = dispatch_query_known_slot(s, c, listener, HookSlot::ShouldAllowHitting, &HookArgs::Creature(creature))?;
+        if res.bool_val == Some(false) {
+            allowed = false;
+            return Ok(false);
+        }
+        Ok(true)
+    })?;
+    Ok(allowed)
 }
 
 pub fn modify_damage(
@@ -1780,92 +2486,113 @@ pub fn modify_damage_with_type(
     if mask == HookMask::EMPTY {
         return Ok(result.max(Dec::ZERO));
     }
-    let listeners = collect_run_combat_listeners_for_mask(state, content, mask)?;
+    if skip_run_combat_hook_mask(state, content, mask)? {
+        return Ok(result.max(Dec::ZERO));
+    }
 
     if hook_type.contains(ModifyDamageHookType::ADDITIVE) {
-        for &listener in &listeners {
-            if let Some(res) = dispatch_if_active(
-                state,
-                content,
-                listener,
-                HookSlot::ModifyDamageAdditive,
-                &HookArgs::ModifyDamage {
-                    target,
-                    dealer,
-                    amount: result,
-                    props,
-                    card_source,
-                    card_play,
-                },
-            )? {
+        dispatch_cached_run_query_listeners_slot(
+            state,
+            content,
+            HookSlot::ModifyDamageAdditive,
+            |s, c, listener| {
+                let res = dispatch_query_known_slot(
+                    s,
+                    c,
+                    listener,
+                    HookSlot::ModifyDamageAdditive,
+                    &HookArgs::ModifyDamage {
+                        target,
+                        dealer,
+                        amount: result,
+                        props,
+                        card_source,
+                        card_play,
+                    },
+                )?;
                 if let Some(delta) = res.dec_val {
                     result = result.checked_add(delta)?;
                 }
-            }
-        }
+                Ok(true)
+            },
+        )?;
     }
 
     if hook_type.contains(ModifyDamageHookType::MULTIPLICATIVE) {
-        for &listener in &listeners {
-            if let Some(res) = dispatch_if_active(
-                state,
-                content,
-                listener,
-                HookSlot::ModifyDamageMultiplicative,
-                &HookArgs::ModifyDamage {
-                    target,
-                    dealer,
-                    amount: result,
-                    props,
-                    card_source,
-                    card_play,
-                },
-            )? {
+        dispatch_cached_run_query_listeners_slot(
+            state,
+            content,
+            HookSlot::ModifyDamageMultiplicative,
+            |s, c, listener| {
+                let res = dispatch_query_known_slot(
+                    s,
+                    c,
+                    listener,
+                    HookSlot::ModifyDamageMultiplicative,
+                    &HookArgs::ModifyDamage {
+                        target,
+                        dealer,
+                        amount: result,
+                        props,
+                        card_source,
+                        card_play,
+                    },
+                )?;
                 if let Some(factor) = res.dec_val {
                     result = result.checked_mul(factor)?;
                 }
-            }
-        }
+                Ok(true)
+            },
+        )?;
 
-        for &listener in &listeners {
-            if let Some(res) = dispatch_if_active(
-                state,
-                content,
-                listener,
-                HookSlot::ModifyDamageMultiplicativeLate,
-                &HookArgs::ModifyDamage {
-                    target,
-                    dealer,
-                    amount: result,
-                    props,
-                    card_source,
-                    card_play,
-                },
-            )? {
+        dispatch_cached_run_query_listeners_slot(
+            state,
+            content,
+            HookSlot::ModifyDamageMultiplicativeLate,
+            |s, c, listener| {
+                let res = dispatch_query_known_slot(
+                    s,
+                    c,
+                    listener,
+                    HookSlot::ModifyDamageMultiplicativeLate,
+                    &HookArgs::ModifyDamage {
+                        target,
+                        dealer,
+                        amount: result,
+                        props,
+                        card_source,
+                        card_play,
+                    },
+                )?;
                 if let Some(factor) = res.dec_val {
                     result = result.checked_mul(factor)?;
                 }
-            }
-        }
+                Ok(true)
+            },
+        )?;
     }
 
     if hook_type.contains(ModifyDamageHookType::CAP) {
         let mut cap = Dec::MAX_VALUE;
-        for &listener in &listeners {
-            if let Some(res) = dispatch_if_active(
-                state,
-                content,
-                listener,
-                HookSlot::ModifyDamageCap,
-                &HookArgs::ModifyDamage {
-                    target,
-                    dealer,
-                    amount: result,
-                    props,
-                    card_source,
-                    card_play,
-                },
-            )? {
+        dispatch_cached_run_query_listeners_slot(
+            state,
+            content,
+            HookSlot::ModifyDamageCap,
+            |s, c, listener| {
+                let res = dispatch_query_known_slot(
+                    s,
+                    c,
+                    listener,
+                    HookSlot::ModifyDamageCap,
+                    &HookArgs::ModifyDamage {
+                        target,
+                        dealer,
+                        amount: result,
+                        props,
+                        card_source,
+                        card_play,
+                    },
+                )?;
                 if let Some(item_cap) = res.dec_val {
                     if item_cap < cap {
                         cap = item_cap;
@@ -1874,8 +2601,9 @@ pub fn modify_damage_with_type(
                         }
                     }
                 }
-            }
-        }
+                Ok(true)
+            },
+        )?;
     }
 
     Ok(result.max(Dec::ZERO))
@@ -1910,13 +2638,15 @@ pub fn modify_hp_lost(
         ],
     };
     let mask = HookMask::EMPTY.with(slots[0]).with(slots[1]);
-    let listeners = collect_run_combat_listeners_for_mask(state, content, mask)?;
+    if skip_run_combat_hook_mask(state, content, mask)? {
+        return Ok((result, changed));
+    }
     for slot in slots {
-        for &listener in &listeners {
+        dispatch_cached_run_query_listeners_slot(state, content, slot, |s, c, listener| {
             let before = result;
-            if let Some(res) = dispatch_if_active(
-                state,
-                content,
+            let res = dispatch_query_known_slot(
+                s,
+                c,
                 listener,
                 slot,
                 &HookArgs::ModifyHpLost {
@@ -1926,15 +2656,15 @@ pub fn modify_hp_lost(
                     dealer,
                     card_source,
                 },
-            )? {
-                if let Some(next) = res.dec_val {
-                    result = next;
-                    if before.trunc() != result.trunc() {
-                        changed.push(listener);
-                    }
+            )?;
+            if let Some(next) = res.dec_val {
+                result = next;
+                if before.trunc() != result.trunc() {
+                    changed.push(listener);
                 }
             }
-        }
+            Ok(true)
+        })?;
     }
     Ok((result, changed))
 }
@@ -1961,15 +2691,9 @@ pub fn before_damage_received(
     dealer: Option<CreatureHandle>,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeDamageReceived),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeDamageReceived,
         &HookArgs::ModifyHpLost {
             target,
@@ -1989,30 +2713,34 @@ pub fn modify_pre_block_damage_target(
     props: ValueProp,
     dealer: Option<CreatureHandle>,
 ) -> Result<Option<CreatureHandle>, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyPreBlockDamageTarget);
+    if skip_combat_hook_mask(state, content, MASK)? {
+        return Ok(None);
+    }
     let mut target = None;
-    let listeners = collect_combat_only_listeners_for_mask(
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifyPreBlockDamageTarget),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyPreBlockDamageTarget,
-            &HookArgs::ModifyUnblockedTarget {
-                target: original_target,
-                amount,
-                props,
-                dealer,
-            },
-        )? {
+        HookSlot::ModifyPreBlockDamageTarget,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyPreBlockDamageTarget,
+                &HookArgs::ModifyUnblockedTarget {
+                    target: original_target,
+                    amount,
+                    props,
+                    dealer,
+                },
+            )?;
             if res.creature_val.is_some() {
                 target = res.creature_val;
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok(target)
 }
 
@@ -2024,30 +2752,34 @@ pub fn modify_unblocked_damage_target(
     props: ValueProp,
     dealer: Option<CreatureHandle>,
 ) -> Result<CreatureHandle, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyUnblockedDamageTarget);
+    if skip_combat_hook_mask(state, content, MASK)? {
+        return Ok(original_target);
+    }
     let mut target = original_target;
-    let listeners = collect_combat_only_listeners_for_mask(
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifyUnblockedDamageTarget),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyUnblockedDamageTarget,
-            &HookArgs::ModifyUnblockedTarget {
-                target,
-                amount,
-                props,
-                dealer,
-            },
-        )? {
+        HookSlot::ModifyUnblockedDamageTarget,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyUnblockedDamageTarget,
+                &HookArgs::ModifyUnblockedTarget {
+                    target,
+                    amount,
+                    props,
+                    dealer,
+                },
+            )?;
             if let Some(next) = res.creature_val {
                 target = next;
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok(target)
 }
 
@@ -2057,17 +2789,12 @@ pub fn after_block_broken(
     target: CreatureHandle,
     breaker: Option<CreatureHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_only_listeners_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterBlockBroken),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterBlockBroken,
         &HookArgs::BlockBroken { target, breaker },
+        false,
     )
 }
 
@@ -2077,15 +2804,9 @@ pub fn after_current_hp_changed(
     creature: CreatureHandle,
     delta: i32,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCurrentHpChanged),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterCurrentHpChanged,
         &HookArgs::ModifyHpLost {
             target: creature,
@@ -2102,12 +2823,7 @@ pub fn after_damage_given(
     content: &dyn ContentDispatcher,
     args: &HookArgs<'_>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_only_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterDamageGiven),
-    )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterDamageGiven, args)
+    dispatch_void_combat_slot(state, content, HookSlot::AfterDamageGiven, args, false)
 }
 
 pub fn after_damage_received(
@@ -2115,12 +2831,7 @@ pub fn after_damage_received(
     content: &dyn ContentDispatcher,
     args: &HookArgs<'_>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterDamageReceived),
-    )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterDamageReceived, args)
+    dispatch_void_run_combat_slot(state, content, HookSlot::AfterDamageReceived, args)
 }
 
 pub fn before_attack(
@@ -2128,17 +2839,12 @@ pub fn before_attack(
     content: &dyn ContentDispatcher,
     info: crate::content_dispatch::AttackContextInfo,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeAttack),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeAttack,
         &HookArgs::Attack { info, results: &[] },
+        true,
     )
 }
 
@@ -2148,31 +2854,35 @@ pub fn modify_attack_hit_count(
     info: crate::content_dispatch::AttackContextInfo,
     original_hit_count: i32,
 ) -> Result<i32, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyAttackHitCount);
     let mut hit_count = original_hit_count;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(hit_count);
+    }
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifyAttackHitCount),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyAttackHitCount,
-            &HookArgs::Attack {
-                info: crate::content_dispatch::AttackContextInfo {
-                    hit_count,
-                    ..info
+        HookSlot::ModifyAttackHitCount,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyAttackHitCount,
+                &HookArgs::Attack {
+                    info: crate::content_dispatch::AttackContextInfo {
+                        hit_count,
+                        ..info
+                    },
+                    results: &[],
                 },
-                results: &[],
-            },
-        )? {
+            )?;
             if let Some(v) = res.int_val {
                 hit_count = v;
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok(hit_count)
 }
 
@@ -2182,17 +2892,12 @@ pub fn after_attack(
     info: crate::content_dispatch::AttackContextInfo,
     results: &[DamageResult],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterAttack),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterAttack,
         &HookArgs::Attack { info, results },
+        true,
     )
 }
 
@@ -2205,15 +2910,9 @@ pub fn before_block_gained(
     card_source: Option<CardHandle>,
     card_play: Option<crate::content_dispatch::CardPlayContext>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeBlockGained),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeBlockGained,
         &HookArgs::ModifyBlock {
             target,
@@ -2222,6 +2921,7 @@ pub fn before_block_gained(
             card_source,
             card_play,
         },
+        true,
     )
 }
 
@@ -2234,61 +2934,70 @@ pub fn modify_block(
     card_source: Option<CardHandle>,
     card_play: Option<crate::content_dispatch::CardPlayContext>,
 ) -> Result<(Dec, SmallVec<[HookListener; 4]>), KernelError> {
+    const MASK: HookMask = HookMask::EMPTY
+        .with(HookSlot::ModifyBlockAdditive)
+        .with(HookSlot::ModifyBlockMultiplicative);
     let mut result = block;
     let mut changed = SmallVec::new();
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((result.max(Dec::ZERO), changed));
+    }
+
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY
-            .with(HookSlot::ModifyBlockAdditive)
-            .with(HookSlot::ModifyBlockMultiplicative),
-    )?;
-
-    for &listener in &listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyBlockAdditive,
-            &HookArgs::ModifyBlock {
-                target,
-                amount: result,
-                props,
-                card_source,
-                card_play,
-            },
-        )? {
+        HookSlot::ModifyBlockAdditive,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyBlockAdditive,
+                &HookArgs::ModifyBlock {
+                    target,
+                    amount: result,
+                    props,
+                    card_source,
+                    card_play,
+                },
+            )?;
             if let Some(delta) = res.dec_val {
                 result = result.checked_add(delta)?;
                 if !delta.is_zero() {
                     changed.push(listener);
                 }
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
 
-    for &listener in &listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyBlockMultiplicative,
-            &HookArgs::ModifyBlock {
-                target,
-                amount: result,
-                props,
-                card_source,
-                card_play,
-            },
-        )? {
+    dispatch_cached_query_listeners_slot(
+        state,
+        content,
+        HookSlot::ModifyBlockMultiplicative,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyBlockMultiplicative,
+                &HookArgs::ModifyBlock {
+                    target,
+                    amount: result,
+                    props,
+                    card_source,
+                    card_play,
+                },
+            )?;
             if let Some(factor) = res.dec_val {
                 result = result.checked_mul(factor)?;
                 if factor != Dec::ONE {
                     changed.push(listener);
                 }
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
 
     Ok((result.max(Dec::ZERO), changed))
 }
@@ -2323,7 +3032,7 @@ pub fn after_modifying_block_amount(
         if !modifiers.contains(&listener) {
             continue;
         }
-        let _ = dispatch_if_active(
+        let _ = dispatch_if_eligible_known_slot(
             state,
             content,
             listener,
@@ -2342,15 +3051,9 @@ pub fn after_block_gained(
     props: ValueProp,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterBlockGained),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterBlockGained,
         &HookArgs::ModifyBlock {
             target,
@@ -2359,6 +3062,7 @@ pub fn after_block_gained(
             card_source,
             card_play: None,
         },
+        true,
     )
 }
 
@@ -2367,18 +3071,7 @@ pub fn before_death(
     content: &dyn ContentDispatcher,
     target: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::BeforeDeath),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
-        HookSlot::BeforeDeath,
-        &HookArgs::Creature(target),
-    )
+    dispatch_void_run_combat_slot(state, content, HookSlot::BeforeDeath, &HookArgs::Creature(target))
 }
 
 pub fn should_die(
@@ -2386,40 +3079,50 @@ pub fn should_die(
     content: &dyn ContentDispatcher,
     target: CreatureHandle,
 ) -> Result<Option<HookListener>, KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY
-            .with(HookSlot::ShouldDie)
-            .with(HookSlot::ShouldDieLate),
-    )?;
-    for &listener in &listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
+    const MASK: HookMask = HookMask::EMPTY
+        .with(HookSlot::ShouldDie)
+        .with(HookSlot::ShouldDieLate);
+    if skip_run_combat_hook_mask(state, content, MASK)? {
+        return Ok(None);
+    }
+    let mut preventer = None;
+    dispatch_cached_run_query_listeners_slot(state, content, HookSlot::ShouldDie, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
             listener,
             HookSlot::ShouldDie,
             &HookArgs::Creature(target),
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(Some(listener));
-            }
+        )?;
+        if res.bool_val == Some(false) {
+            preventer = Some(listener);
+            return Ok(false);
         }
+        Ok(true)
+    })?;
+    if preventer.is_some() {
+        return Ok(preventer);
     }
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldDieLate,
-            &HookArgs::Creature(target),
-        )? {
+    dispatch_cached_run_query_listeners_slot(
+        state,
+        content,
+        HookSlot::ShouldDieLate,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldDieLate,
+                &HookArgs::Creature(target),
+            )?;
             if res.bool_val == Some(false) {
-                return Ok(Some(listener));
+                preventer = Some(listener);
+                return Ok(false);
             }
-        }
-    }
-    Ok(None)
+            Ok(true)
+        },
+    )?;
+    Ok(preventer)
 }
 
 pub fn after_preventing_death(
@@ -2445,15 +3148,9 @@ pub fn after_death(
     card_source: Option<CardHandle>,
     was_removal_prevented: bool,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterDeath),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterDeath,
         &HookArgs::AfterDeath {
             target,
@@ -2468,25 +3165,32 @@ pub fn should_creature_be_removed_after_death(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_only_listeners_for_mask(
+    const MASK: HookMask =
+        HookMask::EMPTY.with(HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath);
+    if skip_combat_hook_mask(state, content, MASK)? {
+        return Ok(true);
+    }
+    let mut remove = true;
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath,
-            &HookArgs::Creature(creature),
-        )? {
+        HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath,
+                &HookArgs::Creature(creature),
+            )?;
             if res.bool_val == Some(false) {
+                remove = false;
                 return Ok(false);
             }
-        }
-    }
-    Ok(true)
+            Ok(true)
+        },
+    )?;
+    Ok(remove)
 }
 
 pub fn should_owner_death_trigger_fatal(
@@ -2494,29 +3198,33 @@ pub fn should_owner_death_trigger_fatal(
     content: &dyn ContentDispatcher,
     owner: CreatureHandle,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldOwnerDeathTriggerFatal);
+    if skip_run_combat_hook_mask(state, content, MASK)? {
+        return Ok(true);
+    }
+    let mut should = true;
+    dispatch_cached_run_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ShouldOwnerDeathTriggerFatal),
-    )?;
-    for listener in listeners {
-        if let HookListener::Power { creature, .. } = listener {
-            if creature == owner {
-                if let Some(res) = dispatch_if_active(
-                    state,
-                    content,
+        HookSlot::ShouldOwnerDeathTriggerFatal,
+        |s, c, listener| {
+            if matches!(listener, HookListener::Power { creature, .. } if creature == owner) {
+                let res = dispatch_query_known_slot(
+                    s,
+                    c,
                     listener,
                     HookSlot::ShouldOwnerDeathTriggerFatal,
                     &HookArgs::Creature(owner),
-                )? {
-                    if res.bool_val == Some(false) {
-                        return Ok(false);
-                    }
+                )?;
+                if res.bool_val == Some(false) {
+                    should = false;
+                    return Ok(false);
                 }
             }
-        }
-    }
-    Ok(true)
+            Ok(true)
+        },
+    )?;
+    Ok(should)
 }
 
 pub fn should_power_be_removed_on_death(
@@ -2525,7 +3233,11 @@ pub fn should_power_be_removed_on_death(
     power_owner: CreatureHandle,
     power: PowerInst,
 ) -> Result<bool, KernelError> {
-    let meta = content.power_meta(power.id)?;
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldPowerBeRemovedOnDeath);
+    if skip_combat_hook_mask(state, content, MASK)? {
+        return Ok(true);
+    }
+    let meta = state.fast_power_meta(content, power.id)?;
     let args = HookArgs::PowerQuery {
         owner: power_owner,
         power_id: power.id,
@@ -2533,50 +3245,58 @@ pub fn should_power_be_removed_on_death(
         power_type: meta.power_type,
         is_temporary: meta.flags.contains(PowerStaticFlags::IS_TEMPORARY),
     };
-    let listeners = collect_combat_only_listeners_for_mask(
+    let mut should = true;
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ShouldPowerBeRemovedOnDeath),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldPowerBeRemovedOnDeath,
-            &args,
-        )? {
+        HookSlot::ShouldPowerBeRemovedOnDeath,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldPowerBeRemovedOnDeath,
+                &args,
+            )?;
             if res.bool_val == Some(false) {
+                should = false;
                 return Ok(false);
             }
-        }
-    }
-    Ok(true)
+            Ok(true)
+        },
+    )?;
+    Ok(should)
 }
 
 pub fn should_stop_combat_from_ending(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_only_listeners_for_mask(
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldStopCombatFromEnding);
+    if skip_combat_hook_mask(state, content, MASK)? {
+        return Ok(false);
+    }
+    let mut stop = false;
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ShouldStopCombatFromEnding),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldStopCombatFromEnding,
-            &HookArgs::None,
-        )? {
+        HookSlot::ShouldStopCombatFromEnding,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldStopCombatFromEnding,
+                &HookArgs::None,
+            )?;
             if res.bool_val == Some(true) {
-                return Ok(true);
+                stop = true;
+                return Ok(false);
             }
-        }
-    }
-    Ok(false)
+            Ok(true)
+        },
+    )?;
+    Ok(stop)
 }
 
 pub fn before_power_amount_changed(
@@ -2589,15 +3309,9 @@ pub fn before_power_amount_changed(
     applier: Option<CreatureHandle>,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforePowerAmountChanged),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforePowerAmountChanged,
         &HookArgs::PowerChanged {
             power_id,
@@ -2607,6 +3321,7 @@ pub fn before_power_amount_changed(
             applier,
             card_source,
         },
+        true,
     )
 }
 
@@ -2620,54 +3335,63 @@ pub fn modify_power_amount_given(
     applier: CreatureHandle,
     card_source: Option<CardHandle>,
 ) -> Result<Dec, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY
+        .with(HookSlot::ModifyPowerAmountGivenAdditive)
+        .with(HookSlot::ModifyPowerAmountGivenMultiplicative);
     let mut num = amount;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(num);
+    }
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY
-            .with(HookSlot::ModifyPowerAmountGivenAdditive)
-            .with(HookSlot::ModifyPowerAmountGivenMultiplicative),
-    )?;
-    for &listener in &listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyPowerAmountGivenAdditive,
-            &HookArgs::PowerChanged {
-                power_id,
-                power_handle,
-                owner,
-                amount: num,
-                applier: Some(applier),
-                card_source,
-            },
-        )? {
+        HookSlot::ModifyPowerAmountGivenAdditive,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyPowerAmountGivenAdditive,
+                &HookArgs::PowerChanged {
+                    power_id,
+                    power_handle,
+                    owner,
+                    amount: num,
+                    applier: Some(applier),
+                    card_source,
+                },
+            )?;
             if let Some(delta) = res.dec_val {
                 num = num.checked_add(delta)?;
             }
-        }
-    }
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyPowerAmountGivenMultiplicative,
-            &HookArgs::PowerChanged {
-                power_id,
-                power_handle,
-                owner,
-                amount: num,
-                applier: Some(applier),
-                card_source,
-            },
-        )? {
+            Ok(true)
+        },
+    )?;
+    dispatch_cached_query_listeners_slot(
+        state,
+        content,
+        HookSlot::ModifyPowerAmountGivenMultiplicative,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyPowerAmountGivenMultiplicative,
+                &HookArgs::PowerChanged {
+                    power_id,
+                    power_handle,
+                    owner,
+                    amount: num,
+                    applier: Some(applier),
+                    card_source,
+                },
+            )?;
             if let Some(factor) = res.dec_val {
                 num = num.checked_mul(factor)?;
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok(num)
 }
 
@@ -2680,36 +3404,40 @@ pub fn modify_power_amount_received(
     amount: Dec,
     applier: Option<CreatureHandle>,
 ) -> Result<(Dec, SmallVec<[HookListener; 4]>), KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::TryModifyPowerAmountReceived);
     let mut num = amount;
     let mut modifiers = SmallVec::new();
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((num, modifiers));
+    }
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::TryModifyPowerAmountReceived),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::TryModifyPowerAmountReceived,
-            &HookArgs::PowerChanged {
-                power_id,
-                power_handle,
-                owner,
-                amount: num,
-                applier,
-                card_source: None,
-            },
-        )? {
+        HookSlot::TryModifyPowerAmountReceived,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::TryModifyPowerAmountReceived,
+                &HookArgs::PowerChanged {
+                    power_id,
+                    power_handle,
+                    owner,
+                    amount: num,
+                    applier,
+                    card_source: None,
+                },
+            )?;
             if res.modified {
                 if let Some(next) = res.dec_val {
                     num = next;
                 }
                 modifiers.push(listener);
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok((num, modifiers))
 }
 
@@ -2825,15 +3553,9 @@ pub fn after_power_amount_changed(
     applier: Option<CreatureHandle>,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterPowerAmountChanged),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterPowerAmountChanged,
         &HookArgs::PowerChanged {
             power_id,
@@ -2843,7 +3565,31 @@ pub fn after_power_amount_changed(
             applier,
             card_source,
         },
+        true,
     )
+}
+
+pub fn should_play_unchecked_active(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card: CardHandle,
+) -> Result<bool, KernelError> {
+    let mut allowed = true;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldPlay, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
+            listener,
+            HookSlot::ShouldPlay,
+            &HookArgs::CardOnly(card),
+        )?;
+        if res.bool_val == Some(false) {
+            allowed = false;
+            return Ok(false);
+        }
+        Ok(true)
+    })?;
+    Ok(allowed)
 }
 
 pub fn should_play(
@@ -2851,25 +3597,11 @@ pub fn should_play(
     content: &dyn ContentDispatcher,
     card: CardHandle,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldPlay),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldPlay,
-            &HookArgs::CardOnly(card),
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(false);
-            }
-        }
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldPlay);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
     }
-    Ok(true)
+    should_play_unchecked_active(state, content, card)
 }
 
 pub fn before_card_played(
@@ -2877,17 +3609,12 @@ pub fn before_card_played(
     content: &dyn ContentDispatcher,
     ctx: &crate::content_dispatch::CardPlayContext,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforeCardPlayed),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforeCardPlayed,
         &HookArgs::CardPlay(*ctx),
+        true,
     )
 }
 
@@ -2896,30 +3623,30 @@ pub fn after_card_played(
     content: &dyn ContentDispatcher,
     ctx: &crate::content_dispatch::CardPlayContext,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_only_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCardPlayed),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
-        HookSlot::AfterCardPlayed,
-        &HookArgs::CardPlay(*ctx),
-    )?;
-    let listeners_late = collect_combat_only_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCardPlayedLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_late,
-        HookSlot::AfterCardPlayedLate,
-        &HookArgs::CardPlay(*ctx),
-    )
+    const MASK_EARLY: HookMask = HookMask::EMPTY.with(HookSlot::AfterCardPlayed);
+    const MASK_LATE: HookMask = HookMask::EMPTY.with(HookSlot::AfterCardPlayedLate);
+    const MASK_BOTH: HookMask = MASK_EARLY.union(MASK_LATE);
+    if skip_combat_hook_mask(state, content, MASK_BOTH)? {
+        return Ok(());
+    }
+    let has_cache = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    let (run_early, run_late) = if has_cache {
+        let comb = state.hook_cache.masks.combat_combined;
+        (
+            comb.contains(HookSlot::AfterCardPlayed),
+            comb.contains(HookSlot::AfterCardPlayedLate),
+        )
+    } else {
+        (true, true)
+    };
+    let args = HookArgs::CardPlay(*ctx);
+    if run_early {
+        dispatch_void_combat_slot(state, content, HookSlot::AfterCardPlayed, &args, false)?;
+    }
+    if run_late {
+        dispatch_void_combat_slot(state, content, HookSlot::AfterCardPlayedLate, &args, false)?;
+    }
+    Ok(())
 }
 
 pub fn modify_card_play_count(
@@ -2929,33 +3656,37 @@ pub fn modify_card_play_count(
     target: Option<CreatureHandle>,
     play_count: i32,
 ) -> Result<(i32, SmallVec<[HookListener; 4]>), KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyCardPlayCount);
     let mut result = play_count;
     let mut modifiers = SmallVec::new();
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((result, modifiers));
+    }
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifyCardPlayCount),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyCardPlayCount,
-            &HookArgs::CardPlayCount {
-                card,
-                target,
-                play_count: result,
-            },
-        )? {
+        HookSlot::ModifyCardPlayCount,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyCardPlayCount,
+                &HookArgs::CardPlayCount {
+                    card,
+                    target,
+                    play_count: result,
+                },
+            )?;
             if let Some(next) = res.int_val {
                 if next != result {
                     result = next;
                     modifiers.push(listener);
                 }
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok((result, modifiers))
 }
 
@@ -2984,35 +3715,39 @@ pub fn modify_card_play_result_location(
     pile: PileType,
     position: CardPilePosition,
 ) -> Result<(PileType, CardPilePosition, SmallVec<[HookListener; 4]>), KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyCardPlayResultLocation);
     let mut result = (pile, position);
     let mut modifiers = SmallVec::new();
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((result.0, result.1, modifiers));
+    }
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifyCardPlayResultLocation),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyCardPlayResultLocation,
-            &HookArgs::CardPlayResultLocation {
-                card,
-                is_auto_play,
-                energy_value,
-                pile: result.0,
-                position: result.1,
-            },
-        )? {
+        HookSlot::ModifyCardPlayResultLocation,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyCardPlayResultLocation,
+                &HookArgs::CardPlayResultLocation {
+                    card,
+                    is_auto_play,
+                    energy_value,
+                    pile: result.0,
+                    position: result.1,
+                },
+            )?;
             if let Some(next) = res.location_val {
                 if next != result {
                     result = next;
                     modifiers.push(listener);
                 }
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok((result.0, result.1, modifiers))
 }
 
@@ -3042,7 +3777,7 @@ pub fn after_modifying_card_play_result_location(
     )
 }
 
-pub fn modify_energy_cost_in_combat(
+pub fn modify_energy_cost_in_combat_unchecked_active(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     card: CardHandle,
@@ -3050,45 +3785,110 @@ pub fn modify_energy_cost_in_combat(
 ) -> Result<(Dec, bool), KernelError> {
     let mut cost = original_cost;
     let mut modified = false;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    state.ensure_hook_cache(content)?;
+    let (check_early, check_late) =
+        if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
+            let comb = state.hook_cache.masks.combat_combined;
+            (
+                comb.contains(HookSlot::TryModifyEnergyCostInCombat),
+                comb.contains(HookSlot::TryModifyEnergyCostInCombatLate),
+            )
+        } else {
+            (true, true)
+        };
+    if check_early {
+        dispatch_cached_query_listeners_slot(
+            state,
+            content,
+            HookSlot::TryModifyEnergyCostInCombat,
+            |s, c, listener| {
+                let res = dispatch_query_known_slot(
+                    s,
+                    c,
+                    listener,
+                    HookSlot::TryModifyEnergyCostInCombat,
+                    &HookArgs::CardCost { card, cost },
+                )?;
+                if res.modified {
+                    modified = true;
+                    if let Some(next) = res.dec_val {
+                        cost = next;
+                    }
+                }
+                Ok(true)
+            },
+        )?;
+    }
+    if check_late {
+        dispatch_cached_query_listeners_slot(
+            state,
+            content,
+            HookSlot::TryModifyEnergyCostInCombatLate,
+            |s, c, listener| {
+                let res = dispatch_query_known_slot(
+                    s,
+                    c,
+                    listener,
+                    HookSlot::TryModifyEnergyCostInCombatLate,
+                    &HookArgs::CardCost { card, cost },
+                )?;
+                if res.modified {
+                    modified = true;
+                    if let Some(next) = res.dec_val {
+                        cost = next;
+                    }
+                }
+                Ok(true)
+            },
+        )?;
+    }
+    Ok((cost, modified))
+}
+
+pub fn modify_energy_cost_in_combat(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card: CardHandle,
+    original_cost: Dec,
+) -> Result<(Dec, bool), KernelError> {
+    const MASK_EARLY: HookMask = HookMask::EMPTY.with(HookSlot::TryModifyEnergyCostInCombat);
+    const MASK_LATE: HookMask = HookMask::EMPTY.with(HookSlot::TryModifyEnergyCostInCombatLate);
+    const MASK: HookMask = MASK_EARLY.union(MASK_LATE);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((original_cost, false));
+    }
+    modify_energy_cost_in_combat_unchecked_active(state, content, card, original_cost)
+}
+
+pub fn modify_star_cost_in_combat_unchecked_active(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card: CardHandle,
+    original_cost: Dec,
+) -> Result<(Dec, bool), KernelError> {
+    let mut cost = original_cost;
+    let mut modified = false;
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY
-            .with(HookSlot::TryModifyEnergyCostInCombat)
-            .with(HookSlot::TryModifyEnergyCostInCombatLate),
+        HookSlot::TryModifyStarCostInCombat,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::TryModifyStarCostInCombat,
+                &HookArgs::CardCost { card, cost },
+            )?;
+            if res.modified {
+                modified = true;
+                if let Some(next) = res.dec_val {
+                    cost = next;
+                }
+            }
+            Ok(true)
+        },
     )?;
-    for &listener in &listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::TryModifyEnergyCostInCombat,
-            &HookArgs::CardCost { card, cost },
-        )? {
-            if res.modified {
-                modified = true;
-                if let Some(next) = res.dec_val {
-                    cost = next;
-                }
-            }
-        }
-    }
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::TryModifyEnergyCostInCombatLate,
-            &HookArgs::CardCost { card, cost },
-        )? {
-            if res.modified {
-                modified = true;
-                if let Some(next) = res.dec_val {
-                    cost = next;
-                }
-            }
-        }
-    }
     Ok((cost, modified))
 }
 
@@ -3098,30 +3898,39 @@ pub fn modify_star_cost_in_combat(
     card: CardHandle,
     original_cost: Dec,
 ) -> Result<(Dec, bool), KernelError> {
-    let mut cost = original_cost;
-    let mut modified = false;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::TryModifyStarCostInCombat);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((original_cost, false));
+    }
+    modify_star_cost_in_combat_unchecked_active(state, content, card, original_cost)
+}
+
+pub fn modify_keywords_in_combat_unchecked_active(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card: CardHandle,
+    keywords: CardKeywords,
+) -> Result<CardKeywords, KernelError> {
+    let mut kw = keywords;
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::TryModifyStarCostInCombat),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::TryModifyStarCostInCombat,
-            &HookArgs::CardCost { card, cost },
-        )? {
-            if res.modified {
-                modified = true;
-                if let Some(next) = res.dec_val {
-                    cost = next;
-                }
+        HookSlot::TryModifyKeywordsInCombat,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::TryModifyKeywordsInCombat,
+                &HookArgs::CardOnly(card),
+            )?;
+            if let Some(next) = res.keywords {
+                kw |= next;
             }
-        }
-    }
-    Ok((cost, modified))
+            Ok(true)
+        },
+    )?;
+    Ok(kw)
 }
 
 pub fn modify_keywords_in_combat(
@@ -3130,26 +3939,11 @@ pub fn modify_keywords_in_combat(
     card: CardHandle,
     keywords: CardKeywords,
 ) -> Result<CardKeywords, KernelError> {
-    let mut kw = keywords;
-    let listeners = collect_combat_only_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::TryModifyKeywordsInCombat),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::TryModifyKeywordsInCombat,
-            &HookArgs::CardOnly(card),
-        )? {
-            if let Some(next) = res.keywords {
-                kw |= next;
-            }
-        }
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::TryModifyKeywordsInCombat);
+    if skip_combat_hook_mask(state, content, MASK)? {
+        return Ok(keywords);
     }
-    Ok(kw)
+    modify_keywords_in_combat_unchecked_active(state, content, card, keywords)
 }
 
 pub fn after_card_changed_piles(
@@ -3158,31 +3952,35 @@ pub fn after_card_changed_piles(
     card: CardHandle,
     old_pile: PileType,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCardChangedPiles),
-    )?;
+    const MASK_EARLY: HookMask = HookMask::EMPTY.with(HookSlot::AfterCardChangedPiles);
+    const MASK_LATE: HookMask = HookMask::EMPTY.with(HookSlot::AfterCardChangedPilesLate);
+    const MASK_BOTH: HookMask = MASK_EARLY.union(MASK_LATE);
+    if skip_run_combat_hook_mask(state, content, MASK_BOTH)? {
+        return Ok(());
+    }
+    let has_cache = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    let (run_early, run_late) = if has_cache {
+        let comb = state.hook_cache.masks.run_combat_combined;
+        (
+            comb.contains(HookSlot::AfterCardChangedPiles),
+            comb.contains(HookSlot::AfterCardChangedPilesLate),
+        )
+    } else {
+        (true, true)
+    };
     let args = HookArgs::CardPileChanged { card, old_pile };
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
-        HookSlot::AfterCardChangedPiles,
-        &args,
-    )?;
-    let listeners_late = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCardChangedPilesLate),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_late,
-        HookSlot::AfterCardChangedPilesLate,
-        &args,
-    )
+    if run_early {
+        dispatch_void_run_combat_slot(state, content, HookSlot::AfterCardChangedPiles, &args)?;
+    }
+    if run_late {
+        dispatch_void_run_combat_slot(
+            state,
+            content,
+            HookSlot::AfterCardChangedPilesLate,
+            &args,
+        )?;
+    }
+    Ok(())
 }
 
 pub fn after_card_drawn(
@@ -3191,36 +3989,33 @@ pub fn after_card_drawn(
     card: CardHandle,
     from_hand_draw: bool,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCardDrawnEarly),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
-        HookSlot::AfterCardDrawnEarly,
-        &HookArgs::CardDrawn {
-            card,
-            from_hand_draw,
-        },
-    )?;
-    let listeners_normal = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterCardDrawn),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners_normal,
-        HookSlot::AfterCardDrawn,
-        &HookArgs::CardDrawn {
-            card,
-            from_hand_draw,
-        },
-    )
+    const MASK_EARLY: HookMask = HookMask::EMPTY.with(HookSlot::AfterCardDrawnEarly);
+    const MASK_NORMAL: HookMask = HookMask::EMPTY.with(HookSlot::AfterCardDrawn);
+    const MASK_BOTH: HookMask = MASK_EARLY.union(MASK_NORMAL);
+    if skip_combat_hook_mask_checked(state, content, MASK_BOTH)? {
+        return Ok(());
+    }
+    let has_cache = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    let (run_early, run_normal) = if has_cache {
+        let comb = state.hook_cache.masks.combat_combined;
+        (
+            comb.contains(HookSlot::AfterCardDrawnEarly),
+            comb.contains(HookSlot::AfterCardDrawn),
+        )
+    } else {
+        (true, true)
+    };
+    let args = HookArgs::CardDrawn {
+        card,
+        from_hand_draw,
+    };
+    if run_early {
+        dispatch_void_combat_slot(state, content, HookSlot::AfterCardDrawnEarly, &args, true)?;
+    }
+    if run_normal {
+        dispatch_void_combat_slot(state, content, HookSlot::AfterCardDrawn, &args, true)?;
+    }
+    Ok(())
 }
 
 pub fn after_card_discarded(
@@ -3228,17 +4023,12 @@ pub fn after_card_discarded(
     content: &dyn ContentDispatcher,
     card: CardHandle,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCardDiscarded),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterCardDiscarded,
         &HookArgs::CardOnly(card),
+        true,
     )
 }
 
@@ -3248,20 +4038,15 @@ pub fn after_card_exhausted(
     card: CardHandle,
     caused_by_ethereal: bool,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCardExhausted),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterCardExhausted,
         &HookArgs::CardExhausted {
             card,
             caused_by_ethereal,
         },
+        true,
     )
 }
 
@@ -3270,17 +4055,12 @@ pub fn after_card_entered_combat(
     content: &dyn ContentDispatcher,
     card: CardHandle,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCardEnteredCombat),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterCardEnteredCombat,
         &HookArgs::CardOnly(card),
+        true,
     )
 }
 
@@ -3290,17 +4070,12 @@ pub fn after_card_generated(
     card: CardHandle,
     creator: Option<CreatureHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCardGenerated),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterCardGenerated,
         &HookArgs::CardGenerated { card, creator },
+        true,
     )
 }
 
@@ -3310,17 +4085,12 @@ pub fn after_card_generated_for_combat(
     card: CardHandle,
     creator: Option<CreatureHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCardGeneratedForCombat),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterCardGeneratedForCombat,
         &HookArgs::CardGenerated { card, creator },
+        true,
     )
 }
 
@@ -3328,12 +4098,13 @@ pub fn after_hand_emptied(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterHandEmptied),
-    )?;
-    dispatch_void_list(state, content, &listeners, HookSlot::AfterHandEmptied, &HookArgs::Player)
+        HookSlot::AfterHandEmptied,
+        &HookArgs::Player,
+        true,
+    )
 }
 
 pub fn after_shuffle(
@@ -3354,7 +4125,7 @@ pub fn continue_after_shuffle(
     remaining: &[HookListener],
 ) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
     for (idx, &listener) in remaining.iter().enumerate() {
-        if let Some(res) = dispatch_if_active(
+        if let Some(res) = dispatch_if_eligible_known_slot(
             state,
             content,
             listener,
@@ -3376,20 +4147,15 @@ pub fn after_energy_spent(
     card: CardHandle,
     amount: i32,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterEnergySpent),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterEnergySpent,
         &HookArgs::CardCost {
             card,
             cost: Dec::from_i32(amount),
         },
+        true,
     )
 }
 
@@ -3397,25 +4163,20 @@ pub fn should_gain_stars(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ShouldGainStars),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldGainStars,
-            &HookArgs::Player,
-        )? {
-            if res.bool_val == Some(false) {
-                return Ok(false);
-            }
-        }
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldGainStars);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
     }
-    Ok(true)
+    let mut should = true;
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ShouldGainStars, |s, c, listener| {
+        let res = dispatch_query_known_slot(s, c, listener, HookSlot::ShouldGainStars, &HookArgs::Player)?;
+        if res.bool_val == Some(false) {
+            should = false;
+            return Ok(false);
+        }
+        Ok(true)
+    })?;
+    Ok(should)
 }
 
 pub fn after_stars_gained(
@@ -3423,19 +4184,14 @@ pub fn after_stars_gained(
     content: &dyn ContentDispatcher,
     amount: i32,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterStarsGained),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterStarsGained,
         &HookArgs::ModifyHandDraw {
             original_count: Dec::from_i32(amount),
         },
+        true,
     )
 }
 
@@ -3444,19 +4200,14 @@ pub fn after_stars_spent(
     content: &dyn ContentDispatcher,
     amount: i32,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterStarsSpent),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterStarsSpent,
         &HookArgs::ModifyHandDraw {
             original_count: Dec::from_i32(amount),
         },
+        true,
     )
 }
 
@@ -3466,28 +4217,27 @@ pub fn modify_orb_value(
     orb: OrbId,
     amount: Dec,
 ) -> Result<Dec, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyOrbValue);
     let mut result = amount;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::ModifyOrbValue),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(result);
+    }
+    dispatch_cached_query_listeners_slot(state, content, HookSlot::ModifyOrbValue, |s, c, listener| {
+        let res = dispatch_query_known_slot(
+            s,
+            c,
             listener,
             HookSlot::ModifyOrbValue,
             &HookArgs::ModifyOrbValue {
                 orb,
                 amount: result,
             },
-        )? {
-            if let Some(v) = res.dec_val {
-                result = v;
-            }
+        )?;
+        if let Some(v) = res.dec_val {
+            result = v;
         }
-    }
+        Ok(true)
+    })?;
     Ok(result)
 }
 
@@ -3498,33 +4248,37 @@ pub fn modify_orb_passive_trigger_count(
     orb_idx: usize,
     trigger_count: i32,
 ) -> Result<(i32, SmallVec<[HookListener; 4]>), KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyOrbPassiveTriggerCounts);
     let mut result = trigger_count;
     let mut changed = SmallVec::new();
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok((result, changed));
+    }
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifyOrbPassiveTriggerCounts),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyOrbPassiveTriggerCounts,
-            &HookArgs::ModifyOrbPassiveTriggerCount {
-                orb,
-                orb_idx,
-                trigger_count: result,
-            },
-        )? {
+        HookSlot::ModifyOrbPassiveTriggerCounts,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyOrbPassiveTriggerCounts,
+                &HookArgs::ModifyOrbPassiveTriggerCount {
+                    orb,
+                    orb_idx,
+                    trigger_count: result,
+                },
+            )?;
             if let Some(v) = res.int_val {
                 if v != result {
                     result = v;
                     changed.push(listener);
                 }
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok((result, changed))
 }
 
@@ -3547,20 +4301,15 @@ pub fn after_orb_channeled(
     content: &dyn ContentDispatcher,
     orb: OrbId,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterOrbChanneled),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterOrbChanneled,
         &HookArgs::ModifyOrbValue {
             orb,
             amount: Dec::ZERO,
         },
+        true,
     )
 }
 
@@ -3570,17 +4319,12 @@ pub fn after_orb_evoked(
     orb: OrbId,
     targets: &[CreatureHandle],
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterOrbEvoked),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterOrbEvoked,
         &HookArgs::OrbEvoked { orb, targets },
+        true,
     )
 }
 
@@ -3590,20 +4334,15 @@ pub fn after_arrow_shot(
     arrow_idx: Option<usize>,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterArrowShot),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterArrowShot,
         &HookArgs::ArrowShot {
             arrow_idx,
             card_source,
         },
+        true,
     )
 }
 
@@ -3613,21 +4352,16 @@ pub fn after_arrow_impaled(
     target: CreatureHandle,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterArrowImpaled),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterArrowImpaled,
         &HookArgs::AfterDeath {
             target,
             card_source,
             was_removal_prevented: false,
         },
+        true,
     )
 }
 
@@ -3637,21 +4371,16 @@ pub fn after_arrow_dislodged(
     target: CreatureHandle,
     card_source: Option<CardHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterArrowDislodged),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterArrowDislodged,
         &HookArgs::AfterDeath {
             target,
             card_source,
             was_removal_prevented: false,
         },
+        true,
     )
 }
 
@@ -3660,25 +4389,29 @@ pub fn modify_summon_amount(
     content: &dyn ContentDispatcher,
     amount: Dec,
 ) -> Result<Dec, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifySummonAmount);
     let mut result = amount;
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(result);
+    }
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifySummonAmount),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifySummonAmount,
-            &HookArgs::ModifySummonAmount { amount: result },
-        )? {
+        HookSlot::ModifySummonAmount,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifySummonAmount,
+                &HookArgs::ModifySummonAmount { amount: result },
+            )?;
             if let Some(v) = res.dec_val {
                 result = v;
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok(result)
 }
 
@@ -3687,17 +4420,12 @@ pub fn after_summon(
     content: &dyn ContentDispatcher,
     amount: Dec,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterSummon),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterSummon,
         &HookArgs::ModifySummonAmount { amount },
+        true,
     )
 }
 
@@ -3706,17 +4434,12 @@ pub fn after_osty_revived(
     content: &dyn ContentDispatcher,
     osty: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterOstyRevived),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterOstyRevived,
         &HookArgs::Creature(osty),
+        true,
     )
 }
 
@@ -3725,17 +4448,12 @@ pub fn after_creature_added_to_combat(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_only_listeners_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterCreatureAddedToCombat),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterCreatureAddedToCombat,
         &HookArgs::Creature(creature),
+        false,
     )
 }
 
@@ -3744,17 +4462,12 @@ pub fn after_died_to_doom(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_only_listeners_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterDiedToDoom),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterDiedToDoom,
         &HookArgs::Creature(creature),
+        false,
     )
 }
 
@@ -3763,25 +4476,31 @@ pub fn should_disappear_from_doom(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldDisappearFromDoom);
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(true);
+    }
+    let mut should = true;
+    dispatch_cached_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ShouldDisappearFromDoom),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldDisappearFromDoom,
-            &HookArgs::Creature(creature),
-        )? {
+        HookSlot::ShouldDisappearFromDoom,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldDisappearFromDoom,
+                &HookArgs::Creature(creature),
+            )?;
             if res.bool_val == Some(false) {
+                should = false;
                 return Ok(false);
             }
-        }
-    }
-    Ok(true)
+            Ok(true)
+        },
+    )?;
+    Ok(should)
 }
 
 pub fn modify_gold_gained(
@@ -3789,25 +4508,29 @@ pub fn modify_gold_gained(
     content: &dyn ContentDispatcher,
     amount: Dec,
 ) -> Result<Dec, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyGoldGained);
     let mut result = amount;
-    let listeners = collect_run_combat_listeners_for_mask(
+    if skip_run_combat_hook_mask(state, content, MASK)? {
+        return Ok(result);
+    }
+    dispatch_cached_run_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ModifyGoldGained),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ModifyGoldGained,
-            &HookArgs::ModifySummonAmount { amount: result },
-        )? {
+        HookSlot::ModifyGoldGained,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyGoldGained,
+                &HookArgs::ModifySummonAmount { amount: result },
+            )?;
             if let Some(v) = res.dec_val {
                 result = v;
             }
-        }
-    }
+            Ok(true)
+        },
+    )?;
     Ok(result)
 }
 
@@ -3815,18 +4538,7 @@ pub fn after_gold_gained(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
-        state,
-        content,
-        HookMask::EMPTY.with(HookSlot::AfterGoldGained),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
-        HookSlot::AfterGoldGained,
-        &HookArgs::Player,
-    )
+    dispatch_void_run_combat_slot(state, content, HookSlot::AfterGoldGained, &HookArgs::Player)
 }
 
 pub fn should_procure_potion(
@@ -3834,28 +4546,34 @@ pub fn should_procure_potion(
     content: &dyn ContentDispatcher,
     potion_id: sts2_types::PotionId,
 ) -> Result<bool, KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldProcurePotion);
+    if skip_run_combat_hook_mask(state, content, MASK)? {
+        return Ok(true);
+    }
+    let mut should = true;
+    dispatch_cached_run_query_listeners_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::ShouldProcurePotion),
-    )?;
-    for listener in listeners {
-        if let Some(res) = dispatch_if_active(
-            state,
-            content,
-            listener,
-            HookSlot::ShouldProcurePotion,
-            &HookArgs::Potion {
-                potion_id,
-                target: None,
-            },
-        )? {
+        HookSlot::ShouldProcurePotion,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::ShouldProcurePotion,
+                &HookArgs::Potion {
+                    potion_id,
+                    target: None,
+                },
+            )?;
             if res.bool_val == Some(false) {
+                should = false;
                 return Ok(false);
             }
-        }
-    }
-    Ok(true)
+            Ok(true)
+        },
+    )?;
+    Ok(should)
 }
 
 pub fn before_potion_used(
@@ -3864,15 +4582,9 @@ pub fn before_potion_used(
     potion_id: sts2_types::PotionId,
     target: Option<CreatureHandle>,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::BeforePotionUsed),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::BeforePotionUsed,
         &HookArgs::Potion { potion_id, target },
     )
@@ -3883,15 +4595,9 @@ pub fn after_potion_used(
     content: &dyn ContentDispatcher,
     potion_id: sts2_types::PotionId,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterPotionUsed),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterPotionUsed,
         &HookArgs::Potion {
             potion_id,
@@ -3905,15 +4611,9 @@ pub fn after_potion_procured(
     content: &dyn ContentDispatcher,
     potion_id: sts2_types::PotionId,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterPotionProcured),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterPotionProcured,
         &HookArgs::Potion {
             potion_id,
@@ -3927,15 +4627,9 @@ pub fn after_potion_discarded(
     content: &dyn ContentDispatcher,
     potion_id: sts2_types::PotionId,
 ) -> Result<(), KernelError> {
-    let listeners = collect_run_combat_listeners_for_mask(
+    dispatch_void_run_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterPotionDiscarded),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterPotionDiscarded,
         &HookArgs::Potion {
             potion_id,
@@ -3949,16 +4643,11 @@ pub fn after_forge(
     content: &dyn ContentDispatcher,
     amount: Dec,
 ) -> Result<(), KernelError> {
-    let listeners = collect_combat_hook_listeners_checked_for_mask(
+    dispatch_void_combat_slot(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterForge),
-    )?;
-    dispatch_void_list(
-        state,
-        content,
-        &listeners,
         HookSlot::AfterForge,
         &HookArgs::Forge { amount },
+        true,
     )
 }

@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sts2_content::Sts2Content;
 use sts2_kernel::content_dispatch::CardPlayContext;
@@ -79,8 +79,8 @@ fn build_defect_battle_with(
     let enemy_handle = CreatureHandle(2);
 
     let mut cards = Vec::new();
-    let mut hand = SmallVec::new();
-    let mut draw = SmallVec::new();
+    let mut hand = Vec::new();
+    let mut draw = Vec::new();
     let mut next_h = 1u32;
 
     for &cid in hand_ids {
@@ -110,14 +110,15 @@ fn build_defect_battle_with(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let enemy_creature = CreatureInst {
         handle: enemy_handle,
         combat_id: Some(1),
         side: CombatSide::Enemy,
-        slot_name: Some("slot_0".to_owned()),
+        slot_name: Some(Cow::Borrowed("slot_0")),
         is_player: false,
         pet_owner_player_index: None,
         monster_id: Some(enemy_id),
@@ -131,16 +132,17 @@ fn build_defect_battle_with(
             rng: Rng::from_seed(run_rngs.seed + 1),
             is_performing_move: false,
             spawned_this_turn: false,
-            current_state_id: String::new(),
+            current_state_id: Cow::Borrowed(""),
             next_move_id: None,
             next_move_can_transition_away: true,
             performed_first_move: false,
             state_log_ids: SmallVec::new(),
             transient_move_follow_up_state_id: None,
-            setup_fields: BTreeMap::new(),
-            private_fields: BTreeMap::new(),
+            setup_fields: Default::default(),
+            private_fields: Default::default(),
         }),
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let player = PlayerInst {
@@ -161,11 +163,12 @@ fn build_defect_battle_with(
         counters: PlayerCounters::default(),
         hand,
         draw,
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
-        deck: SmallVec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
+        deck: Vec::new(),
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: 3,
         orbs: SmallVec::new(),
         arrows: SmallVec::new(),
@@ -185,11 +188,17 @@ fn build_defect_battle_with(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -213,8 +222,8 @@ fn build_defect_battle_with(
         card_extensions: Vec::new(),
         creatures: vec![player_creature, enemy_creature],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
-        enemy_handles: smallvec::smallvec![enemy_handle],
+        ally_handles: vec![pc_handle],
+        enemy_handles: vec![enemy_handle],
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy_handle],
@@ -223,6 +232,8 @@ fn build_defect_battle_with(
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
 
     (state, enemy_handle)
@@ -237,7 +248,7 @@ fn add_second_enemy(state: &mut BattleState, enemy_id: MonsterId, hp: i32) -> Cr
         handle: h,
         combat_id: Some(cid),
         side: CombatSide::Enemy,
-        slot_name: Some("slot_1".to_owned()),
+        slot_name: Some(Cow::Borrowed("slot_1")),
         is_player: false,
         pet_owner_player_index: None,
         monster_id: Some(enemy_id),
@@ -251,19 +262,21 @@ fn add_second_enemy(state: &mut BattleState, enemy_id: MonsterId, hp: i32) -> Cr
             rng: Rng::from_seed(99),
             is_performing_move: false,
             spawned_this_turn: false,
-            current_state_id: String::new(),
+            current_state_id: Cow::Borrowed(""),
             next_move_id: None,
             next_move_can_transition_away: true,
             performed_first_move: false,
             state_log_ids: SmallVec::new(),
             transient_move_follow_up_state_id: None,
-            setup_fields: BTreeMap::new(),
-            private_fields: BTreeMap::new(),
+            setup_fields: Default::default(),
+            private_fields: Default::default(),
         }),
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     });
     state.enemy_handles.push(h);
     state.spawned_enemy_handles.push(h);
+    state.invalidate_creature_hooks();
     h
 }
 
@@ -532,7 +545,7 @@ fn defect_reboot_scrape_ftl_helix_drill_sunder_and_go_for_the_eyes() {
     );
     // FuzzyWurmCrawler intends FIRST_ACID_GOOP (attack intent)
     if let Some(m) = state.creature_mut(enemy).and_then(|c| c.monster.as_mut()) {
-        m.next_move_id = Some("FIRST_ACID_GOOP".to_owned());
+        m.next_move_id = Some(Cow::Borrowed("FIRST_ACID_GOOP"));
     }
 
     // GoForTheEyes applies WeakPower(1) because FuzzyWurmCrawler intends FIRST_ACID_GOOP
@@ -578,6 +591,7 @@ fn defect_reboot_scrape_ftl_helix_drill_sunder_and_go_for_the_eyes() {
     state.next_card_handle += 1;
     state.cards.push(sunder_h);
     state.player.hand.push(sunder_h.handle);
+    state.invalidate_pile_hooks(sts2_kernel::state::HOOK_DIRTY_HAND);
     state.player.energy = 3;
     let sunder_idx = state.player.hand.len() - 1;
     play_hand_idx(&mut state, &content, sunder_idx, Some(second));

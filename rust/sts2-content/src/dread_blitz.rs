@@ -1,8 +1,8 @@
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 use sts2_kernel::commands::{card_pile, power};
 use sts2_kernel::{
     BattleState, CardHandle, CardInst, CardTempFlags, ChoiceRequest, ChoiceTiming,
-    ContentDispatcher, HookArgs, HookResult, KernelError,
+    ContentDispatcher, CreatureHandle, HookArgs, HookResult, KernelError,
 };
 use sts2_types::{
     CardId, CardKeywords, CardPilePosition, CardStaticFlags, CombatSide, Dec, DominionId, GameMode,
@@ -287,7 +287,8 @@ pub fn dispatch_dominion_hook(
         }
         DominionId::CeremonialBeastDominion => match slot {
             HookSlot::AfterRoomEntered => {
-                let enemies = state.enemy_handles.clone();
+                let enemies: SmallVec<[CreatureHandle; 8]> =
+                    SmallVec::from_slice(&state.enemy_handles);
                 for enemy in enemies {
                     let _ = power::apply(
                         state,
@@ -339,7 +340,8 @@ pub fn dispatch_dominion_hook(
         }
         DominionId::KaiserCrabDominion => match slot {
             HookSlot::AfterRoomEntered => {
-                let enemies = state.enemy_handles.clone();
+                let enemies: SmallVec<[CreatureHandle; 8]> =
+                    SmallVec::from_slice(&state.enemy_handles);
                 for enemy in enemies {
                     let _ = power::apply(
                         state,
@@ -410,7 +412,7 @@ pub fn dispatch_dominion_hook(
                 return Ok(HookResult {
                     needs_choice: Some(ChoiceRequest {
                         timing: ChoiceTiming::PlayerTurnStart,
-                        source_id: DominionId::KnowledgeDemonDominion.model_id_str().to_owned(),
+                        source_id: DominionId::KnowledgeDemonDominion.model_id_str().into(),
                         source_pile: PileType::None,
                         min_count: 1,
                         max_count: 1,
@@ -469,7 +471,8 @@ pub fn dispatch_dominion_hook(
         }
         DominionId::TestSubjectDominion => match slot {
             HookSlot::AfterRoomEntered => {
-                let enemies = state.enemy_handles.clone();
+                let enemies: SmallVec<[CreatureHandle; 8]> =
+                    SmallVec::from_slice(&state.enemy_handles);
                 for enemy in enemies {
                     let _ = power::apply(
                         state,
@@ -507,7 +510,8 @@ pub fn dispatch_dominion_hook(
         DominionId::VantomDominion => match slot {
             HookSlot::AfterRoomEntered => {
                 let amount = vantom_slippery_amount(state.static_ctx.room_type, true);
-                let enemies = state.enemy_handles.clone();
+                let enemies: SmallVec<[CreatureHandle; 8]> =
+                    SmallVec::from_slice(&state.enemy_handles);
                 for enemy in enemies {
                     let _ = power::apply(
                         state,
@@ -546,7 +550,8 @@ pub fn dispatch_dominion_hook(
         DominionId::WaterfallGiantDominion => match slot {
             HookSlot::AfterRoomEntered => {
                 let amount = waterfall_giant_amount_for_state(state);
-                let enemies = state.enemy_handles.clone();
+                let enemies: SmallVec<[CreatureHandle; 8]> =
+                    SmallVec::from_slice(&state.enemy_handles);
                 for enemy in enemies {
                     let _ = power::apply(
                         state,
@@ -599,6 +604,7 @@ pub fn resume_dominion_hook_choice(
                 c.removed_from_state = true;
             }
         }
+        state.invalidate_hook_cache();
         if let Some(&chosen_handle) = selected.first() {
             let chosen_id = state
                 .card(chosen_handle)

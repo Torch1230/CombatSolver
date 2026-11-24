@@ -1,4 +1,5 @@
 use smallvec::{smallvec, SmallVec};
+use std::borrow::Cow;
 use sts2_kernel::commands::{block, card_pile, creature as creature_cmd, damage::AttackBuilder, power};
 use sts2_kernel::{
     hooks, BattleState, CardHandle, ContentDispatcher, CreatureHandle, FieldValue, HookArgs,
@@ -141,24 +142,24 @@ fn has_monster_field(state: &BattleState, creature: CreatureHandle, key: &str) -
         .is_some_and(|m| m.private_fields.contains_key(key))
 }
 
-fn set_monster_bool(state: &mut BattleState, creature: CreatureHandle, key: &str, val: bool) {
+fn set_monster_bool(state: &mut BattleState, creature: CreatureHandle, key: &'static str, val: bool) {
     if let Some(m) = state.creature_mut(creature).and_then(|c| c.monster.as_mut()) {
         m.private_fields
-            .insert(key.to_owned(), FieldValue::Bool(val));
+            .insert(Cow::Borrowed(key), FieldValue::Bool(val));
     }
 }
 
-fn set_monster_int(state: &mut BattleState, creature: CreatureHandle, key: &str, val: i32) {
+fn set_monster_int(state: &mut BattleState, creature: CreatureHandle, key: &'static str, val: i32) {
     if let Some(m) = state.creature_mut(creature).and_then(|c| c.monster.as_mut()) {
         m.private_fields
-            .insert(key.to_owned(), FieldValue::Int(val));
+            .insert(Cow::Borrowed(key), FieldValue::Int(val));
     }
 }
 
-fn set_monster_string(state: &mut BattleState, creature: CreatureHandle, key: &str, val: &str) {
+fn set_monster_string(state: &mut BattleState, creature: CreatureHandle, key: &'static str, val: &str) {
     if let Some(m) = state.creature_mut(creature).and_then(|c| c.monster.as_mut()) {
         m.private_fields
-            .insert(key.to_owned(), FieldValue::String(val.to_owned()));
+            .insert(Cow::Borrowed(key), FieldValue::String(val.to_owned()));
     }
 }
 
@@ -588,9 +589,9 @@ pub fn monster_setup_for_combat(
     if let Some(c) = state.creature_mut(creature) {
         if let Some(m) = &mut c.monster {
             if m.current_state_id.is_empty() {
-                m.current_state_id = initial_state.to_owned();
+                m.current_state_id = Cow::Borrowed(initial_state);
                 if initial_logged && m.state_log_ids.is_empty() {
-                    m.state_log_ids.push(initial_state.to_owned());
+                    m.state_log_ids.push(Cow::Borrowed(initial_state));
                 }
             }
         }
@@ -674,7 +675,7 @@ pub fn monster_after_added_to_room(
                     state.power_extensions[ext_idx as usize]
                         .private_fields
                         .insert(
-                            "ThieveryPower.<Target>k__BackingField".to_owned(),
+                            Cow::Borrowed("ThieveryPower.<Target>k__BackingField"),
                             FieldValue::CreatureHandle(p_handle.0 as i32),
                         );
                 }
@@ -754,11 +755,11 @@ struct RandomBranch {
     weight: f32,
 }
 
-fn eval_branch_weight(state_log_ids: &[String], b: RandomBranch) -> f32 {
+fn eval_branch_weight(state_log_ids: &[Cow<'static, str>], b: RandomBranch) -> f32 {
     let mut repeat_weight = 1.0_f32;
     match b.repeat {
         RepeatRule::UseOnlyOnce => {
-            if state_log_ids.iter().any(|s| s == b.state_id) {
+            if state_log_ids.iter().any(|s| s.as_ref() == b.state_id) {
                 repeat_weight = 0.0;
             }
         }
@@ -773,7 +774,7 @@ fn eval_branch_weight(state_log_ids: &[String], b: RandomBranch) -> f32 {
             } else {
                 repeat_weight = 0.0;
                 for checked in 0..limit {
-                    if state_log_ids[state_log_ids.len() - 1 - checked] != b.state_id {
+                    if state_log_ids[state_log_ids.len() - 1 - checked].as_ref() != b.state_id {
                         repeat_weight = 1.0;
                         break;
                     }
@@ -788,7 +789,7 @@ fn eval_branch_weight(state_log_ids: &[String], b: RandomBranch) -> f32 {
             .iter()
             .rev()
             .take(b.cooldown)
-            .any(|s| s == b.state_id)
+            .any(|s| s.as_ref() == b.state_id)
     {
         return 0.0;
     }
@@ -1375,7 +1376,7 @@ pub fn monster_roll_move(
     state: &mut BattleState,
     creature: CreatureHandle,
 ) -> Result<(), KernelError> {
-    let (mid, cur_state, can_transition_away, performed_first_move) = {
+    let (mid, can_transition_away, performed_first_move, cur_is_move) = {
         let Some(c) = state.creature(creature) else {
             return Ok(());
         };
@@ -1384,33 +1385,68 @@ pub fn monster_roll_move(
         };
         (
             m.monster_id,
-            m.current_state_id.clone(),
             m.next_move_can_transition_away,
             m.performed_first_move,
+            is_move_state(m.monster_id, &m.current_state_id),
         )
     };
     let _ = monster_meta(mid)?;
 
-    let cur_is_move = is_move_state(mid, &cur_state);
     if !can_transition_away || (!performed_first_move && cur_is_move) {
         if cur_is_move {
             if let Some(m_mut) = state.creature_mut(creature).and_then(|c| c.monster.as_mut()) {
-                m_mut.next_move_id = Some(cur_state);
+                if m_mut.next_move_id.as_deref() != Some(m_mut.current_state_id.as_ref()) {
+                    m_mut.next_move_id = Some(m_mut.current_state_id.clone());
+                }
             }
         }
         return Ok(());
     }
 
-    let mut cur = cur_state;
+    enum InlineStateStr {
+        Borrowed(&'static str),
+        Stack([u8; 64], u8),
+        Heap(String),
+    }
+    impl InlineStateStr {
+        #[inline]
+        fn from_cow(s: &Cow<'static, str>) -> Self {
+            match s {
+                Cow::Borrowed(b) => Self::Borrowed(b),
+                Cow::Owned(o) if o.len() <= 64 => {
+                    let mut buf = [0u8; 64];
+                    buf[..o.len()].copy_from_slice(o.as_bytes());
+                    Self::Stack(buf, o.len() as u8)
+                }
+                Cow::Owned(o) => Self::Heap(o.clone()),
+            }
+        }
+        #[inline]
+        fn as_str(&self) -> &str {
+            match self {
+                Self::Borrowed(s) => s,
+                Self::Stack(buf, len) => {
+                    std::str::from_utf8(&buf[..*len as usize]).unwrap_or("")
+                }
+                Self::Heap(s) => s.as_str(),
+            }
+        }
+    }
+
+    let mut cur = state
+        .creature(creature)
+        .and_then(|c| c.monster.as_ref())
+        .map(|m| InlineStateStr::from_cow(&m.current_state_id))
+        .unwrap_or(InlineStateStr::Borrowed(""));
     let mut logged: Option<&'static str> = None;
     let final_state: &'static str;
     loop {
-        let next = next_state_step(state, creature, mid, &cur)?;
+        let next = next_state_step(state, creature, mid, cur.as_str())?;
         let next_is_move = is_move_state(mid, next);
         if logged.is_none() && next_is_move {
             logged = Some(next);
         }
-        cur = next.to_owned();
+        cur = InlineStateStr::Borrowed(next);
         if next_is_move {
             final_state = next;
             break;
@@ -1419,11 +1455,11 @@ pub fn monster_roll_move(
 
     let can_transition_next = !must_perform_once_before_transitioning(mid, final_state);
     if let Some(m_mut) = state.creature_mut(creature).and_then(|c| c.monster.as_mut()) {
-        m_mut.current_state_id = final_state.to_owned();
-        m_mut.next_move_id = Some(final_state.to_owned());
+        m_mut.current_state_id = Cow::Borrowed(final_state);
+        m_mut.next_move_id = Some(Cow::Borrowed(final_state));
         m_mut.next_move_can_transition_away = can_transition_next;
         if let Some(log_id) = logged {
-            m_mut.state_log_ids.push(log_id.to_owned());
+            m_mut.state_log_ids.push(Cow::Borrowed(log_id));
         }
     }
     Ok(())
@@ -1474,7 +1510,7 @@ pub fn monster_perform_move(
     let _ = monster_meta(mid)?;
 
     let dread = is_dread(state);
-    match (mid, move_id.as_str()) {
+    match (mid, move_id.as_ref()) {
         // Explicit STUNNED move callbacks (invoked by engine when STUNNED executes)
         (MonsterId::LagavulinMatriarch, "STUNNED") => {
             if !read_monster_bool(state, creature, "LagavulinMatriarch._isAwake", "IsAwake") {
@@ -1669,7 +1705,7 @@ pub fn monster_perform_move(
                     content,
                     MonsterId::EyeWithTeeth,
                     side,
-                    Some("illusion".to_owned()),
+                    Some(Cow::Borrowed("illusion")),
                 )?;
             }
         }
@@ -1888,7 +1924,7 @@ pub fn monster_perform_move(
                         content,
                         MonsterId::GasBomb,
                         CombatSide::Enemy,
-                        Some(slot.to_owned()),
+                        Some(Cow::Borrowed(slot)),
                     )?;
                 }
             }
@@ -2297,7 +2333,7 @@ pub fn monster_perform_move(
                         content,
                         MonsterId::TwoTailedRat,
                         CombatSide::Enemy,
-                        Some(slot.to_owned()),
+                        Some(Cow::Borrowed(slot)),
                     )?;
                 }
                 let rats: SmallVec<[CreatureHandle; 8]> = state
@@ -2483,6 +2519,7 @@ pub fn monster_perform_move(
         if let Some(c) = state.creature_mut(creature) {
             c.is_detached = true;
         }
+        state.invalidate_hook_cache();
     }
     Ok(())
 }
@@ -2583,7 +2620,7 @@ pub fn monster_attack_intent_hits(
     let move_id = m
         .next_move_id
         .as_deref()
-        .unwrap_or(m.current_state_id.as_str());
+        .unwrap_or(m.current_state_id.as_ref());
     let dread = is_dread(state);
 
     match (mid, move_id) {

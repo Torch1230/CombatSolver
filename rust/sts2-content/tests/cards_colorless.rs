@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use sts2_content::cards::colorless_special::{
     COLORLESS_SPECIAL_IDS, mad_science_resolved_target_type, mad_science_resolved_type,
@@ -65,9 +64,9 @@ fn build_battle(
     let pc_handle = CreatureHandle(1);
 
     let mut cards = Vec::new();
-    let mut hand = SmallVec::new();
-    let mut draw = SmallVec::new();
-    let mut discard = SmallVec::new();
+    let mut hand = Vec::new();
+    let mut draw = Vec::new();
+    let mut discard = Vec::new();
     let mut next_h = 1u32;
 
     for &cid in hand_ids {
@@ -111,11 +110,12 @@ fn build_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let mut creatures = vec![player_creature];
-    let mut enemy_handles = SmallVec::new();
+    let mut enemy_handles = Vec::new();
     let mut slots = Vec::new();
     for (idx, &(mid, hp)) in enemies.iter().enumerate() {
         let eh = CreatureHandle((idx + 2) as u32);
@@ -126,7 +126,7 @@ fn build_battle(
             handle: eh,
             combat_id: Some((idx + 1) as u32),
             side: CombatSide::Enemy,
-            slot_name: Some(slot_name),
+            slot_name: Some(std::borrow::Cow::Owned(slot_name)),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(mid),
@@ -140,16 +140,17 @@ fn build_battle(
                 rng: Rng::from_seed(run_rngs.seed + idx as u64 + 1),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: "INIT".to_owned(),
+                current_state_id: std::borrow::Cow::Borrowed("INIT"),
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
                 state_log_ids: SmallVec::new(),
                 transient_move_follow_up_state_id: None,
-                setup_fields: BTreeMap::new(),
-                private_fields: BTreeMap::new(),
+                setup_fields: Default::default(),
+                private_fields: Default::default(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
     }
 
@@ -165,11 +166,17 @@ fn build_battle(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -207,10 +214,11 @@ fn build_battle(
             hand,
             draw,
             discard,
-            exhaust: SmallVec::new(),
-            play: SmallVec::new(),
-            deck: SmallVec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
+            deck: Vec::new(),
             potion_slots: SmallVec::from_elem(None, 3),
+            combat_generated_potion_mask: 0,
             orb_capacity: character.base_orb_slot_count(),
             orbs: SmallVec::new(),
             arrows,
@@ -221,7 +229,7 @@ fn build_battle(
         card_extensions: Vec::new(),
         creatures,
         power_extensions: Vec::new(),
-        ally_handles: SmallVec::from_slice(&[pc_handle]),
+        ally_handles: vec![pc_handle],
         enemy_handles: enemy_handles.clone(),
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
@@ -231,8 +239,10 @@ fn build_battle(
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
-    (state, enemy_handles.to_vec())
+    (state, enemy_handles)
 }
 
 fn play_hand_card(
@@ -973,5 +983,111 @@ fn remaining_colorless_status_curse_and_token_cards_execute_cleanly() {
             .next_move_id
             .as_deref(),
         Some("STUNNED")
+    );
+}
+
+#[test]
+fn shiv_and_sovereign_blade_target_type_reflect_powers() {
+    let content = Sts2Content;
+    let (mut state, enemies) = build_battle(
+        CharacterId::Silent,
+        &[CardId::FanOfKnives, CardId::Shiv, CardId::SovereignBlade],
+        &[],
+        &[],
+        &[(MonsterId::FuzzyWurmCrawler, 40), (MonsterId::FuzzyWurmCrawler, 40)],
+    );
+    let shiv_h = state.player.hand[1];
+    let blade_h = state.player.hand[2];
+    assert_eq!(
+        content.card_resolved_target_type(&state, shiv_h).unwrap(),
+        sts2_types::TargetType::AnyEnemy
+    );
+    assert_eq!(
+        content.card_resolved_target_type(&state, blade_h).unwrap(),
+        sts2_types::TargetType::AnyEnemy
+    );
+
+    play_hand_card(&mut state, 0, None, vec![]).unwrap(); // FanOfKnives
+    assert_eq!(
+        content.card_resolved_target_type(&state, shiv_h).unwrap(),
+        sts2_types::TargetType::AllEnemies
+    );
+    play_hand_card(&mut state, 0, None, vec![]).unwrap(); // Shiv AoE with target=None
+    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, 36);
+    assert_eq!(state.creature(enemies[1]).unwrap().current_hp, 36);
+
+    let pc = state.player.creature_handle;
+    sts2_kernel::commands::power::apply(
+        &mut state,
+        &content,
+        sts2_types::PowerId::SeekingEdgePower,
+        pc,
+        Dec::ONE,
+        Some(pc),
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        content.card_resolved_target_type(&state, blade_h).unwrap(),
+        sts2_types::TargetType::AllEnemies
+    );
+    play_hand_card(&mut state, 0, None, vec![]).unwrap(); // SovereignBlade AoE with target=None
+    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, 26);
+    assert_eq!(state.creature(enemies[1]).unwrap().current_hp, 26);
+}
+
+#[test]
+fn frozen_pools_and_jackpot_roll_ordering_are_respected() {
+    let (mut state, enemies) = build_battle(
+        CharacterId::Ironclad,
+        &[CardId::Jackpot, CardId::JackOfAllTrades, CardId::Alchemize],
+        &[],
+        &[],
+        &[(MonsterId::FuzzyWurmCrawler, 80)],
+    );
+    {
+        let ctx = Arc::make_mut(&mut state.static_ctx);
+        ctx.card_generation_pools = vec![CardId::Anger];
+        ctx.colorless_card_pool = vec![CardId::Finesse];
+        ctx.potion_generation_pool = vec![sts2_types::PotionId::FirePotion];
+    }
+
+    let rng_before = state
+        .run_rngs
+        .get(sts2_types::RunRngType::CombatCardGeneration)
+        .counter;
+    play_hand_card(&mut state, 0, Some(enemies[0]), vec![]).unwrap(); // Jackpot
+    assert_eq!(
+        state
+            .run_rngs
+            .get(sts2_types::RunRngType::CombatCardGeneration)
+            .counter,
+        rng_before + 3
+    );
+    let anger_count = state
+        .player
+        .hand
+        .iter()
+        .filter(|&&h| state.card(h).is_some_and(|c| c.id == CardId::Anger))
+        .count();
+    assert_eq!(anger_count, 3);
+
+    play_hand_card(&mut state, 0, None, vec![]).unwrap(); // JackOfAllTrades -> Finesse
+    assert!(state
+        .player
+        .hand
+        .iter()
+        .any(|&h| state.card(h).is_some_and(|c| c.id == CardId::Finesse)));
+
+    let alch_idx = state
+        .player
+        .hand
+        .iter()
+        .position(|&h| state.card(h).is_some_and(|c| c.id == CardId::Alchemize))
+        .unwrap();
+    play_hand_card(&mut state, alch_idx, None, vec![]).unwrap();
+    assert_eq!(
+        state.player.potion_slots[0],
+        Some(sts2_types::PotionId::FirePotion)
     );
 }

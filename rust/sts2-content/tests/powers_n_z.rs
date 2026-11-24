@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sts2_content::powers::batch_n_z;
 use sts2_content::Sts2Content;
@@ -258,7 +258,7 @@ impl ContentDispatcher for NzTestDispatcher {
         &self,
         state: &BattleState,
         card: CardHandle,
-        cards: &mut Vec<CardHandle>,
+        cards: &mut [CardHandle],
         is_initial_shuffle: bool,
     ) -> Result<(), KernelError> {
         Sts2Content.enchantment_modify_shuffle_order(state, card, cards, is_initial_shuffle)
@@ -300,18 +300,27 @@ impl ContentDispatcher for NzTestDispatcher {
     ) -> Result<HookResult, KernelError> {
         match listener {
             HookListener::Power { creature, power_handle } => {
-                let (idx, id) = state
+                let (power_idx, p, owner_side) = state
                     .creature(creature)
                     .and_then(|c| {
                         c.powers
                             .iter()
                             .enumerate()
                             .find(|(_, p)| p.handle == power_handle)
-                            .map(|(i, p)| (i, p.id))
+                            .map(|(idx, &p)| (idx, p, c.side))
                     })
                     .ok_or_else(|| KernelError::InvalidState("missing power".to_owned()))?;
-                if id.model_entry().as_bytes()[0] >= b'N' {
-                    batch_n_z::dispatch_hook(self, state, creature, idx, slot, args)
+                if p.id.model_entry().as_bytes()[0] >= b'N' {
+                    batch_n_z::dispatch_hook(
+                        self,
+                        state,
+                        creature,
+                        power_idx,
+                        p,
+                        owner_side,
+                        slot,
+                        args,
+                    )
                 } else {
                     Sts2Content
                         .dispatch_hook(state, listener, slot, args)
@@ -513,7 +522,7 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
     let enemy_handle = CreatureHandle(2);
 
     let mut cards = Vec::new();
-    let mut hand = SmallVec::new();
+    let mut hand = Vec::new();
     for (idx, &cid) in hand_ids.iter().enumerate() {
         let h = (idx + 1) as u32;
         hand.push(CardHandle(h));
@@ -542,14 +551,15 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let enemy_creature = CreatureInst {
         handle: enemy_handle,
         combat_id: Some(1),
         side: CombatSide::Enemy,
-        slot_name: Some("slot_0".to_owned()),
+        slot_name: Some(Cow::Borrowed("slot_0")),
         is_player: false,
         pet_owner_player_index: None,
         monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -563,16 +573,17 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
             rng: Rng::from_seed(run_rngs.seed + 1),
             is_performing_move: false,
             spawned_this_turn: false,
-            current_state_id: "FIRST_ACID_GOOP".to_owned(),
-            next_move_id: Some("FIRST_ACID_GOOP".to_owned()),
+            current_state_id: Cow::Borrowed("FIRST_ACID_GOOP"),
+            next_move_id: Some(Cow::Borrowed("FIRST_ACID_GOOP")),
             next_move_can_transition_away: false,
             performed_first_move: false,
-            state_log_ids: smallvec::smallvec!["FIRST_ACID_GOOP".to_owned()],
+            state_log_ids: smallvec::smallvec![Cow::Borrowed("FIRST_ACID_GOOP")],
             transient_move_follow_up_state_id: None,
-            setup_fields: BTreeMap::new(),
-            private_fields: BTreeMap::new(),
+            setup_fields: Default::default(),
+            private_fields: Default::default(),
         }),
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let player = PlayerInst {
@@ -592,12 +603,13 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         turn_number: 1,
         counters: PlayerCounters::default(),
         hand,
-        draw: SmallVec::new(),
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
-        deck: SmallVec::new(),
+        draw: Vec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
+        deck: Vec::new(),
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: character.base_orb_slot_count(),
         orbs: SmallVec::new(),
         arrows,
@@ -617,11 +629,17 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -645,8 +663,8 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         card_extensions: Vec::new(),
         creatures: vec![player_creature, enemy_creature],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
-        enemy_handles: smallvec::smallvec![enemy_handle],
+        ally_handles: vec![pc_handle],
+        enemy_handles: vec![enemy_handle],
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy_handle],
@@ -655,6 +673,8 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     (state, enemy_handle)
 }
@@ -681,6 +701,9 @@ fn push_power(
         Some(idx)
     };
     let c = state.creature_mut(creature).unwrap();
+    if id == PowerId::MinionPower {
+        c.has_minion_power = true;
+    }
     c.powers.push(PowerInst {
         handle,
         id,
@@ -690,6 +713,7 @@ fn push_power(
         applier_handle: applier,
         ext_index,
     });
+    state.invalidate_hook_cache();
     handle
 }
 
@@ -1116,6 +1140,7 @@ fn shroud_sleight_of_flesh_vicious_tender_possess_and_paper_cuts() {
     e2.combat_id = Some(2);
     state.creatures.push(e2);
     state.enemy_handles.push(enemy2);
+    state.invalidate_creature_hooks();
     power::apply(&mut state, &content, PowerId::PossessStrengthPower, enemy, Dec::ONE, Some(enemy), None).unwrap();
     power::apply(&mut state, &content, PowerId::StrengthPower, pc, Dec::from_i32(-3), Some(enemy), None).unwrap();
     creature_cmd::kill(&mut state, &content, enemy, None).unwrap();

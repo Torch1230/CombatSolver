@@ -6,7 +6,10 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Rngs;
+using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.CardPools;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Encounters;
 using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
@@ -286,6 +289,58 @@ internal static partial class InCombatLiveStateCapturer
         bool isExtraTurn = CombatManager.Instance.PlayersTakingExtraTurn.Contains(player);
         int[] spawnedEnemyHandles = CaptureSpawnedEnemyHandles(state, creatureHandles);
 
+        bool isBlitz = concreteRun.GameMode == GameMode.Blitz;
+        CardMultiplayerConstraint mpConstraint = state.RunState.CardMultiplayerConstraint;
+        string[] CaptureCardPoolEntries(IEnumerable<CardModel> cards)
+        {
+            var entries = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (CardModel card in cards)
+            {
+                if (card.GetType().Assembly != typeof(AbstractModel).Assembly)
+                    continue;
+                if (isBlitz && !card.IsAllowedInBlitz)
+                    continue;
+                if (mpConstraint == CardMultiplayerConstraint.SingleplayerOnly
+                    && card.MultiplayerConstraint == CardMultiplayerConstraint.MultiplayerOnly)
+                    continue;
+                if (mpConstraint == CardMultiplayerConstraint.MultiplayerOnly
+                    && card.MultiplayerConstraint == CardMultiplayerConstraint.SingleplayerOnly)
+                    continue;
+                string entry = card.Id.Entry;
+                if (seen.Add(entry))
+                    entries.Add(entry);
+            }
+            return entries.ToArray();
+        }
+
+        List<CardPoolModel> otherCharPools = player.UnlockState.CharacterCardPools.ToList();
+        if (otherCharPools.Count > 1)
+            otherCharPools.Remove(player.Character.CardPool);
+
+        string[] unlockedCharacterCards = CaptureCardPoolEntries(
+            player.Character.CardPool.GetUnlockedCards(player.UnlockState, mpConstraint));
+        string[] unlockedColorlessCards = CaptureCardPoolEntries(
+            ModelDb.CardPool<ColorlessCardPool>().GetUnlockedCards(player.UnlockState, mpConstraint));
+        string[] unlockedCurseCards = CaptureCardPoolEntries(
+            ModelDb.CardPool<CurseCardPool>().GetUnlockedCards(player.UnlockState, mpConstraint));
+        string[] otherCharacterCards = CaptureCardPoolEntries(
+            otherCharPools.SelectMany(p => p.GetUnlockedCards(player.UnlockState, mpConstraint)));
+        string[] tarotCards = CaptureCardPoolEntries(
+            TarotCards.All.Where(card => card.IsAllowedInRun(state.RunState)));
+
+        var unlockedPotionList = new List<string>();
+        var seenPotions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (PotionModel potion in PotionFactory.GetPotionOptions(player))
+        {
+            if (potion.GetType().Assembly != typeof(AbstractModel).Assembly)
+                continue;
+            string entry = potion.Id.Entry;
+            if (seenPotions.Add(entry))
+                unlockedPotionList.Add(entry);
+        }
+        string[] unlockedPotions = unlockedPotionList.ToArray();
+
         var liveState = new RustKernelLiveStateDto(
             EncounterId: state.Encounter.Id.Entry,
             RoomType: state.Encounter.RoomType.ToString(),
@@ -310,7 +365,13 @@ internal static partial class InCombatLiveStateCapturer
             SpawnedEnemyHandles: spawnedEnemyHandles,
             PetHandles: pcs.Pets.Select(c => creatureHandles[c]).ToArray(),
             DamageHistory: damageDtos,
-            SemanticHistory: semanticDto);
+            SemanticHistory: semanticDto,
+            UnlockedCharacterCards: unlockedCharacterCards,
+            UnlockedColorlessCards: unlockedColorlessCards,
+            UnlockedCurseCards: unlockedCurseCards,
+            OtherCharacterCards: otherCharacterCards,
+            TarotCards: tarotCards,
+            UnlockedPotions: unlockedPotions);
 
         return (liveState, battleDamage.HpLostSoFar);
     }

@@ -273,7 +273,7 @@ fn collect_hittable_enemies(
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
     let mut candidates: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
             && sts2_kernel::hooks::should_allow_hitting(state, content, eh)?
@@ -373,7 +373,7 @@ pub fn enchantment_should_start_at_bottom(id: EnchantmentId) -> Result<bool, Ker
 pub fn enchantment_modify_shuffle_order(
     state: &BattleState,
     card: CardHandle,
-    cards: &mut Vec<CardHandle>,
+    cards: &mut [CardHandle],
     is_initial_shuffle: bool,
 ) -> Result<(), KernelError> {
     let id = state
@@ -385,8 +385,7 @@ pub fn enchantment_modify_shuffle_order(
         EnchantmentId::PerfectFit => {
             if !is_initial_shuffle {
                 if let Some(pos) = cards.iter().position(|&h| h == card) {
-                    cards.remove(pos);
-                    cards.insert(0, card);
+                    cards[..=pos].rotate_right(1);
                 }
             }
             Ok(())
@@ -617,7 +616,10 @@ pub fn enchantment_on_play(
                 .card_meta(card_id)
                 .unwrap_or_else(|_| sts2_types::generated_card_meta(card_id));
             let owner = state.player.creature_handle;
-            if meta.target_type == TargetType::AllEnemies {
+            let resolved_target = content
+                .card_resolved_target_type(state, card)
+                .unwrap_or(meta.target_type);
+            if resolved_target == TargetType::AllEnemies {
                 let targets = collect_hittable_enemies(state, content)?;
                 for target in targets {
                     power::apply(
@@ -651,7 +653,7 @@ pub fn enchantment_on_play(
                         _ => 0,
                     };
                     ench.private_fields.insert(
-                        "Momentum._extraDamage".to_owned(),
+                        "Momentum._extraDamage",
                         FieldValue::Int(prev + amount),
                     );
                 }

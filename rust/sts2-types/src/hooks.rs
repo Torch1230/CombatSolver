@@ -164,20 +164,31 @@ pub struct HookMask(pub [u64; 3]);
 impl HookMask {
     pub const EMPTY: Self = Self([0, 0, 0]);
 
-    #[inline]
+    #[inline(always)]
     pub const fn with(mut self, slot: HookSlot) -> Self {
         let idx = slot as usize;
         self.0[idx / 64] |= 1u64 << (idx % 64);
         self
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn contains(self, slot: HookSlot) -> bool {
         let idx = slot as usize;
         (self.0[idx / 64] & (1u64 << (idx % 64))) != 0
     }
 
-    #[inline]
+    #[inline(always)]
+    pub const fn slot_parts(slot: HookSlot) -> (usize, u64) {
+        let idx = slot as usize;
+        (idx >> 6, 1u64 << (idx & 63))
+    }
+
+    #[inline(always)]
+    pub const fn contains_slot_parts(self, word: usize, bit: u64) -> bool {
+        (self.0[word] & bit) != 0
+    }
+
+    #[inline(always)]
     pub const fn union(self, other: Self) -> Self {
         Self([
             self.0[0] | other.0[0],
@@ -186,12 +197,12 @@ impl HookMask {
         ])
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn intersects(self, other: Self) -> bool {
         ((self.0[0] & other.0[0]) | (self.0[1] & other.0[1]) | (self.0[2] & other.0[2])) != 0
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn is_empty(self) -> bool {
         (self.0[0] | self.0[1] | self.0[2]) == 0
     }

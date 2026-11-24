@@ -3,10 +3,10 @@ use crate::error::KernelError;
 use crate::state::{BattleState, CardHandle, CreatureHandle, PowerInst};
 use smallvec::SmallVec;
 use sts2_types::{
-    AfflictionId, CardId, CardKeywords, CardMeta, CardPilePosition, CardStaticFlags, CardType, Dec,
-    DominionId, EnchantmentId, HookMask, HookSlot, MonsterId, MonsterMeta, OrbId, OrbMeta,
-    PileType, PotionId, PotionMeta, PowerId, PowerMeta, RelicId, RelicMeta, RunModelId, TargetType,
-    ValueProp,
+    AfflictionId, CardId, CardKeywords, CardMeta, CardPilePosition, CardStaticFlags, CardType,
+    CombatSide, Dec, DominionId, EnchantmentId, HookMask, HookSlot, MonsterId, MonsterMeta, OrbId,
+    OrbMeta, PileType, PotionId, PotionMeta, PowerId, PowerMeta, RelicId, RelicMeta, RunModelId,
+    TargetType, ValueProp,
 };
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -33,6 +33,9 @@ pub struct HookMaskTableView {
     pub orbs: &'static [HookMask],
     pub enchantments: &'static [HookMask],
     pub afflictions: &'static [HookMask],
+    pub card_metas: &'static [&'static CardMeta],
+    pub power_metas: &'static [&'static PowerMeta],
+    pub card_rollout_profiles: &'static [CardRolloutProfile],
 }
 
 pub mod rollout_op_flags {
@@ -521,7 +524,7 @@ pub trait ContentDispatcher {
         &self,
         state: &BattleState,
         card: CardHandle,
-        cards: &mut Vec<CardHandle>,
+        cards: &mut [CardHandle],
         is_initial_shuffle: bool,
     ) -> Result<(), KernelError>;
 
@@ -544,7 +547,7 @@ pub trait ContentDispatcher {
         None
     }
 
-    fn hook_mask_tables(&self) -> Option<HookMaskTableView> {
+    fn hook_mask_tables(&self) -> Option<&'static HookMaskTableView> {
         None
     }
 
@@ -608,6 +611,28 @@ pub trait ContentDispatcher {
         state: &BattleState,
         listener: HookListener,
     ) -> Result<HookMask, KernelError>;
+
+    #[inline]
+    fn dispatch_power_hook_resolved(
+        &self,
+        state: &mut BattleState,
+        creature: CreatureHandle,
+        _power_idx: usize,
+        power: PowerInst,
+        _owner_side: CombatSide,
+        slot: HookSlot,
+        args: &HookArgs<'_>,
+    ) -> Result<HookResult, KernelError> {
+        self.dispatch_hook(
+            state,
+            HookListener::Power {
+                creature,
+                power_handle: power.handle,
+            },
+            slot,
+            args,
+        )
+    }
 
     fn dispatch_hook(
         &self,

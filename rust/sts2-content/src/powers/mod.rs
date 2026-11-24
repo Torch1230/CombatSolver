@@ -5,11 +5,16 @@ use sts2_kernel::{
     BattleState, CardHandle, ContentDispatcher, CreatureHandle, HookArgs, HookResult, KernelError,
     PowerInst,
 };
-use sts2_types::{HookSlot, PowerId, PowerMeta};
+use sts2_types::{CombatSide, HookSlot, PowerId, PowerMeta};
 
-#[inline]
+const _: () = {
+    assert!(PowerId::MythicFormPower as usize == 165);
+    assert!(PowerId::NecroMasteryPower as usize == 166);
+};
+
+#[inline(always)]
 const fn is_batch_a_m(id: PowerId) -> bool {
-    id.model_entry().as_bytes()[0] < b'N'
+    (id as usize) < 166
 }
 
 pub fn power_meta(id: PowerId) -> Result<&'static PowerMeta, KernelError> {
@@ -17,6 +22,25 @@ pub fn power_meta(id: PowerId) -> Result<&'static PowerMeta, KernelError> {
         batch_a_m::power_meta(id)
     } else {
         batch_n_z::power_meta(id)
+    }
+}
+
+#[inline]
+#[allow(clippy::too_many_arguments)]
+pub fn dispatch_hook_resolved(
+    content: &dyn ContentDispatcher,
+    state: &mut BattleState,
+    creature: CreatureHandle,
+    power_idx: usize,
+    p: PowerInst,
+    owner_side: CombatSide,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<HookResult, KernelError> {
+    if is_batch_a_m(p.id) {
+        batch_a_m::dispatch_hook(content, state, creature, power_idx, p, owner_side, slot, args)
+    } else {
+        batch_n_z::dispatch_hook(content, state, creature, power_idx, p, owner_side, slot, args)
     }
 }
 
@@ -28,19 +52,19 @@ pub fn dispatch_hook(
     slot: HookSlot,
     args: &HookArgs<'_>,
 ) -> Result<HookResult, KernelError> {
-    let (power_idx, id) = state
+    let (power_idx, p, owner_side) = state
         .creature(creature)
         .and_then(|c| {
             c.powers
                 .iter()
-                .position(|p| p.handle == power_handle)
-                .map(|idx| (idx, c.powers[idx].id))
+                .position(|pw| pw.handle == power_handle)
+                .map(|idx| (idx, c.powers[idx], c.side))
         })
         .ok_or_else(|| KernelError::InvalidState("missing power".to_owned()))?;
-    if is_batch_a_m(id) {
-        batch_a_m::dispatch_hook(content, state, creature, power_idx, slot, args)
+    if is_batch_a_m(p.id) {
+        batch_a_m::dispatch_hook(content, state, creature, power_idx, p, owner_side, slot, args)
     } else {
-        batch_n_z::dispatch_hook(content, state, creature, power_idx, slot, args)
+        batch_n_z::dispatch_hook(content, state, creature, power_idx, p, owner_side, slot, args)
     }
 }
 

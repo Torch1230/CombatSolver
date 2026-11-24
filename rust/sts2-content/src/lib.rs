@@ -11,13 +11,13 @@ use smallvec::SmallVec;
 use std::sync::LazyLock;
 use sts2_kernel::{
     BattleState, CardHandle, CardRolloutProfile, CategoryHookMasks, ContentDispatcher,
-    CreatureHandle, HookArgs, HookListener, HookMaskTableView, HookResult, KernelError,
+    CreatureHandle, HookArgs, HookListener, HookMaskTableView, HookResult, KernelError, PowerInst,
 };
 use sts2_kernel::content_dispatch::{CardPlayContext, CardPlayOutcome};
 use sts2_types::{
-    AfflictionId, CardId, CardMeta, CardPilePosition, CardType, Dec, EnchantmentId, HookMask,
-    HookSlot, MonsterId, MonsterMeta, OrbId, OrbMeta, PileType, PotionId, PotionMeta, PowerId,
-    PowerMeta, RelicId, RelicMeta, TargetType, ValueProp,
+    AfflictionId, CardId, CardMeta, CardPilePosition, CardType, CombatSide, Dec, EnchantmentId,
+    HookMask, HookSlot, MonsterId, MonsterMeta, OrbId, OrbMeta, PileType, PotionId, PotionMeta,
+    PowerId, PowerMeta, RelicId, RelicMeta, TargetType, ValueProp,
 };
 
 struct ContentMetaTables {
@@ -169,6 +169,21 @@ static CONTENT_TABLES: LazyLock<ContentMetaTables> = LazyLock::new(|| {
     }
 });
 
+static HOOK_MASK_TABLE_VIEW: LazyLock<HookMaskTableView> = LazyLock::new(|| HookMaskTableView {
+    categories: CONTENT_TABLES.categories,
+    cards: &CONTENT_TABLES.cards,
+    powers: &CONTENT_TABLES.powers,
+    relics: &CONTENT_TABLES.relics,
+    potions: &CONTENT_TABLES.potions,
+    monsters: &CONTENT_TABLES.monsters,
+    orbs: &CONTENT_TABLES.orbs,
+    enchantments: &CONTENT_TABLES.enchantments,
+    afflictions: &CONTENT_TABLES.afflictions,
+    card_metas: &CONTENT_TABLES.card_metas,
+    power_metas: &CONTENT_TABLES.power_metas,
+    card_rollout_profiles: &CONTENT_TABLES.card_rollout_profiles,
+});
+
 /// Authoritative Wave 0 content dispatcher; Wave 1/2 modules plug directly into the per-category routers.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Sts2Content;
@@ -248,20 +263,38 @@ impl ContentDispatcher for Sts2Content {
         cards::card_on_turn_end_in_hand(self, state, card)
     }
 
+    #[inline]
     fn card_resolved_type(
         &self,
         state: &BattleState,
         card: CardHandle,
     ) -> Result<CardType, KernelError> {
-        cards::card_resolved_type(state, card)
+        let id = state
+            .card(card)
+            .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
+            .id;
+        match id {
+            CardId::MadScience => cards::colorless_special::resolved_type(state, card),
+            _ => Ok(CONTENT_TABLES.card_metas[id as usize].card_type),
+        }
     }
 
+    #[inline]
     fn card_resolved_target_type(
         &self,
         state: &BattleState,
         card: CardHandle,
     ) -> Result<TargetType, KernelError> {
-        cards::card_resolved_target_type(state, card)
+        let id = state
+            .card(card)
+            .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
+            .id;
+        match id {
+            CardId::Shiv | CardId::SovereignBlade | CardId::MadScience => {
+                cards::colorless_special::resolved_target_type(state, card)
+            }
+            _ => Ok(CONTENT_TABLES.card_metas[id as usize].target_type),
+        }
     }
 
     fn card_default_result_location(
@@ -475,7 +508,7 @@ impl ContentDispatcher for Sts2Content {
         &self,
         state: &BattleState,
         card: CardHandle,
-        cards: &mut Vec<CardHandle>,
+        cards: &mut [CardHandle],
         is_initial_shuffle: bool,
     ) -> Result<(), KernelError> {
         orbs_enchantments_afflictions::enchantment_modify_shuffle_order(
@@ -492,18 +525,8 @@ impl ContentDispatcher for Sts2Content {
     }
 
     #[inline]
-    fn hook_mask_tables(&self) -> Option<HookMaskTableView> {
-        Some(HookMaskTableView {
-            categories: CONTENT_TABLES.categories,
-            cards: &CONTENT_TABLES.cards,
-            powers: &CONTENT_TABLES.powers,
-            relics: &CONTENT_TABLES.relics,
-            potions: &CONTENT_TABLES.potions,
-            monsters: &CONTENT_TABLES.monsters,
-            orbs: &CONTENT_TABLES.orbs,
-            enchantments: &CONTENT_TABLES.enchantments,
-            afflictions: &CONTENT_TABLES.afflictions,
-        })
+    fn hook_mask_tables(&self) -> Option<&'static HookMaskTableView> {
+        Some(&*HOOK_MASK_TABLE_VIEW)
     }
 
     #[inline]
@@ -639,6 +662,20 @@ impl ContentDispatcher for Sts2Content {
             HookListener::RunModel(id) => dread_blitz::run_model_hook_mask(id),
             HookListener::Dominion(id) => dread_blitz::dominion_hook_mask(id),
         }
+    }
+
+    #[inline]
+    fn dispatch_power_hook_resolved(
+        &self,
+        state: &mut BattleState,
+        creature: CreatureHandle,
+        power_idx: usize,
+        power: PowerInst,
+        owner_side: CombatSide,
+        slot: HookSlot,
+        args: &HookArgs<'_>,
+    ) -> Result<HookResult, KernelError> {
+        powers::dispatch_hook_resolved(self, state, creature, power_idx, power, owner_side, slot, args)
     }
 
     fn dispatch_hook(

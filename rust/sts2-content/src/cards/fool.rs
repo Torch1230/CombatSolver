@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use sts2_kernel::commands::card_select::SelectResult;
 use sts2_kernel::commands::damage::{AttackBuilder, AttackTargetSpec};
 use sts2_kernel::commands::{
@@ -234,7 +235,7 @@ fn from_combat_pile_select<F>(
     pile: PileType,
     min_count: usize,
     max_count: usize,
-    source_id: &str,
+    source_id: &'static str,
     mut predicate: F,
     cancelable: bool,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
@@ -315,7 +316,7 @@ fn set_power_card_handle_field(
     state: &mut BattleState,
     creature: CreatureHandle,
     power_idx: usize,
-    key: &str,
+    key: &'static str,
     card_handle: CardHandle,
 ) {
     let ext_idx_opt = state
@@ -337,7 +338,7 @@ fn set_power_card_handle_field(
     };
     state.power_extensions[ext_idx]
         .private_fields
-        .insert(key.to_owned(), FieldValue::CardHandle(card_handle.0 as i32));
+        .insert(Cow::Borrowed(key), FieldValue::CardHandle(card_handle.0 as i32));
 }
 
 fn show_off_current_aim(state: &BattleState, card: CardHandle) -> i32 {
@@ -563,7 +564,7 @@ pub fn on_play(
             let turn = state.player.turn_number;
             if let Some(ext) = state.card_ext_mut(ctx.card) {
                 ext.private_fields
-                    .insert("Bounce._lastFinishedPlayerTurn".to_owned(), FieldValue::Int(turn));
+                    .insert(Cow::Borrowed("Bounce._lastFinishedPlayerTurn"), FieldValue::Int(turn));
             }
             Ok(CardPlayOutcome::default())
         }
@@ -763,7 +764,7 @@ pub fn on_play(
             )?;
             if let Some(ext) = state.card_ext_mut(the_shot) {
                 ext.private_fields.insert(
-                    "TheShot._cardsExhaustedByFlorescence".to_owned(),
+                    Cow::Borrowed("TheShot._cardsExhaustedByFlorescence"),
                     FieldValue::Decimal(Dec::from_i32(count)),
                 );
             }
@@ -1114,7 +1115,7 @@ pub fn on_play(
                 hit_count: 0,
             };
             hooks::before_attack(state, content, info)?;
-            let mut all_results: Vec<DamageResult> = Vec::new();
+            let mut all_results: SmallVec<[DamageResult; 16]> = SmallVec::new();
             let dmg = Dec::from_i32(if upg { 15 } else { 12 });
             arrow::impale_target_with_action(
                 state,
@@ -1144,9 +1145,9 @@ pub fn on_play(
                             .map_or(CombatSide::Enemy, |cr| cr.side);
                         let side_handles: SmallVec<[CreatureHandle; 8]> =
                             if receiver_side == CombatSide::Enemy {
-                                s.enemy_handles.clone()
+                                SmallVec::from_slice(&s.enemy_handles)
                             } else {
-                                s.ally_handles.iter().copied().collect()
+                                SmallVec::from_slice(&s.ally_handles)
                             };
                         let mut others: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
                         for ch in side_handles {

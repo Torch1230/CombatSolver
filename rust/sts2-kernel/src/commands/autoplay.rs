@@ -95,7 +95,8 @@ pub fn from_prepaid_card(
         let candidates = match target_type {
             TargetType::AnyEnemy => {
                 let mut list: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
-                let enemies = state.enemy_handles.clone();
+                let enemies: SmallVec<[CreatureHandle; 8]> =
+                    SmallVec::from_slice(&state.enemy_handles);
                 for eh in enemies {
                     if state.creature(eh).is_some_and(|c| c.is_alive())
                         && hooks::should_allow_hitting(state, content, eh)?
@@ -297,7 +298,8 @@ fn play_cards_core(
             let mut candidates: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
             match target_type {
                 TargetType::AnyEnemy => {
-                    let enemies = state.enemy_handles.clone();
+                    let enemies: SmallVec<[CreatureHandle; 8]> =
+                        SmallVec::from_slice(&state.enemy_handles);
                     for eh in enemies {
                         if state.creature(eh).is_some_and(|c| c.is_alive())
                             && hooks::should_allow_hitting(state, content, eh)?

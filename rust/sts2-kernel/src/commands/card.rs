@@ -36,6 +36,9 @@ pub fn afflict(
             });
         }
     }
+    if !is_same {
+        state.invalidate_pile_hooks(crate::state::pile_dirty_bit(pile));
+    }
     if affliction_id == AfflictionId::Bound && state.is_live_combat() {
         state.record_actor_event("BoundAfflicted");
     }
@@ -43,8 +46,18 @@ pub fn afflict(
 }
 
 pub fn clear_affliction(state: &mut BattleState, card: CardHandle) {
-    if let Some(c) = state.card_mut(card) {
-        c.affliction = None;
+    let dirty = if let Some(c) = state.card_mut(card) {
+        let had = c.affliction.take().is_some();
+        if had {
+            crate::state::pile_dirty_bit(c.pile)
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+    if dirty != 0 {
+        state.invalidate_pile_hooks(dirty);
     }
 }
 
@@ -119,10 +132,12 @@ pub fn transform_with_upgrade(
         KernelError::InvalidState("Original card not found in its assigned pile.".to_owned())
     })?;
 
-    state.remove_card_from_current_pile(original);
+    let tables = content.hook_mask_tables();
+    let old_pile = state.remove_card_from_current_pile_with_tables(original, tables);
     if let Some(c) = state.card_mut(original) {
         c.removed_from_state = true;
     }
+    let _ = old_pile;
 
     let rep = card_pile::create_card_in_combat(state, content, replacement_id, upgrade_levels)?;
     if pile != PileType::Deck && state.is_live_combat() {

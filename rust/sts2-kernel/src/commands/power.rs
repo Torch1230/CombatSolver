@@ -169,7 +169,17 @@ fn apply_new(
             .ok_or_else(|| KernelError::InvalidState("missing power target".to_owned()))?;
         let idx = c.powers.len();
         c.powers.push(pending_power);
+        if power_id == PowerId::MinionPower {
+            c.has_minion_power = true;
+        }
         applied_idx = Some(idx);
+        if !state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.powers.get(power_id as usize).is_some_and(|m| m.is_empty()))
+        {
+            state.invalidate_creature_hooks();
+        }
 
         if power_id == PowerId::DoomPower {
             if applier.is_some_and(|a| state.creature(a).is_some_and(|cr| cr.is_player)) {
@@ -311,12 +321,23 @@ pub fn remove_by_index(
 ) -> Result<Option<PowerInst>, KernelError> {
     let removed = state.creature_mut(owner).and_then(|c| {
         if power_idx < c.powers.len() {
-            Some(c.powers.remove(power_idx))
+            let p = c.powers.remove(power_idx);
+            if p.id == PowerId::MinionPower {
+                c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
+            }
+            Some(p)
         } else {
             None
         }
     });
     if let Some(p) = removed {
+        if !state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.powers.get(p.id as usize).is_some_and(|m| m.is_empty()))
+        {
+            state.invalidate_creature_hooks();
+        }
         hooks::after_power_removed(state, content, owner, p)?;
     }
     Ok(removed)
@@ -329,12 +350,22 @@ pub fn remove_by_id(
     power_id: PowerId,
 ) -> Result<Option<PowerInst>, KernelError> {
     let removed = state.creature_mut(owner).and_then(|c| {
-        c.powers
-            .iter()
-            .position(|p| p.id == power_id)
-            .map(|idx| c.powers.remove(idx))
+        c.powers.iter().position(|p| p.id == power_id).map(|idx| {
+            let p = c.powers.remove(idx);
+            if p.id == PowerId::MinionPower {
+                c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
+            }
+            p
+        })
     });
     if let Some(p) = removed {
+        if !state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.powers.get(p.id as usize).is_some_and(|m| m.is_empty()))
+        {
+            state.invalidate_creature_hooks();
+        }
         hooks::after_power_removed(state, content, owner, p)?;
     }
     Ok(removed)
@@ -350,9 +381,22 @@ pub fn remove_by_handle(
         c.powers
             .iter()
             .position(|p| p.handle == power_handle)
-            .map(|idx| c.powers.remove(idx))
+            .map(|idx| {
+                let p = c.powers.remove(idx);
+                if p.id == PowerId::MinionPower {
+                    c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
+                }
+                p
+            })
     });
     if let Some(p) = removed {
+        if !state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.powers.get(p.id as usize).is_some_and(|m| m.is_empty()))
+        {
+            state.invalidate_creature_hooks();
+        }
         hooks::after_power_removed(state, content, owner, p)?;
     }
     Ok(removed)

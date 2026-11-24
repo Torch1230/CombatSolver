@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sts2_content::Sts2Content;
 use sts2_content::dread_blitz::{
@@ -38,7 +38,7 @@ fn build_battle(
     let pc_handle = CreatureHandle(1);
 
     let mut cards = Vec::new();
-    let mut deck_handles = SmallVec::new();
+    let mut deck_handles = Vec::new();
     let content = Sts2Content;
     for (idx, &cid) in deck_ids.iter().enumerate() {
         let meta = sts2_kernel::ContentDispatcher::card_meta(&content, cid).unwrap();
@@ -93,11 +93,12 @@ fn build_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
 
     let mut creatures = vec![player_creature];
-    let mut enemy_handles = SmallVec::new();
+    let mut enemy_handles = Vec::new();
     let mut encounter_slots = Vec::new();
     for (idx, &(monster_id, hp)) in enemies.iter().enumerate() {
         let eh = CreatureHandle((idx + 2) as u32);
@@ -108,7 +109,7 @@ fn build_battle(
             handle: eh,
             combat_id: Some((idx + 1) as u32),
             side: CombatSide::Enemy,
-            slot_name: Some(slot),
+            slot_name: Some(Cow::Owned(slot)),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(monster_id),
@@ -122,16 +123,17 @@ fn build_battle(
                 rng: Rng::from_seed(run_rngs.seed + (idx as u64) + 1),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: String::new(),
+                current_state_id: Cow::Borrowed(""),
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
                 state_log_ids: SmallVec::new(),
                 transient_move_follow_up_state_id: None,
-                setup_fields: BTreeMap::new(),
-                private_fields: BTreeMap::new(),
+                setup_fields: Default::default(),
+                private_fields: Default::default(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
     }
 
@@ -151,13 +153,14 @@ fn build_battle(
         phase: PlayerTurnPhase::None,
         turn_number: 1,
         counters: PlayerCounters::default(),
-        hand: SmallVec::new(),
-        draw: SmallVec::new(),
-        discard: SmallVec::new(),
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
+        hand: Vec::new(),
+        draw: Vec::new(),
+        discard: Vec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
         deck: deck_handles,
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: character.base_orb_slot_count(),
         orbs: SmallVec::new(),
         arrows,
@@ -178,11 +181,17 @@ fn build_battle(
             dominion_id,
             run_model_ids,
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -206,16 +215,18 @@ fn build_battle(
         card_extensions: Vec::new(),
         creatures,
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
+        ally_handles: vec![pc_handle],
         enemy_handles: enemy_handles.clone(),
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
-        spawned_enemy_handles: enemy_handles,
+        spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     (state, ret_enemies)
 }
@@ -401,7 +412,7 @@ fn test_subject_dominion_applies_strength_on_entry_and_mid_combat_summon() {
         &content,
         MonsterId::FuzzyWurmCrawler,
         CombatSide::Enemy,
-        Some("slot_2".to_owned()),
+        Some(Cow::Borrowed("slot_2")),
     )
     .unwrap();
     let se = state.creature(summoned_enemy).unwrap();
@@ -661,7 +672,8 @@ fn dominions_awaiting_wave1_powers_or_cards_dispatch_exact_downstream_targets() 
 
     // WaterfallGiantDominion skips enemies with MinionPower during AfterCreatureAddedToCombat
     let eh = state.enemy_handles[0];
-    state.creature_mut(eh).unwrap().powers.push(PowerInst {
+    let enemy_c = state.creature_mut(eh).unwrap();
+    enemy_c.powers.push(PowerInst {
         handle: 99,
         id: PowerId::MinionPower,
         amount: 1,
@@ -670,6 +682,7 @@ fn dominions_awaiting_wave1_powers_or_cards_dispatch_exact_downstream_targets() 
         applier_handle: None,
         ext_index: None,
     });
+    enemy_c.has_minion_power = true;
     dispatch_dominion_hook(
         &content,
         &mut state,

@@ -234,7 +234,7 @@ fn hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     let mut out = SmallVec::new();
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
@@ -324,7 +324,7 @@ fn add_the_scythe_increased_damage(
         .ok_or_else(|| KernelError::InvalidState("TheScythe damage overflow".to_owned()))?;
     if let Some(ext) = state.card_ext_mut(card) {
         ext.private_fields
-            .insert(SCYTHE_INCREASED_DAMAGE_KEY.to_owned(), FieldValue::Int(next));
+            .insert(SCYTHE_INCREASED_DAMAGE_KEY, FieldValue::Int(next));
     }
     Ok(())
 }
@@ -364,11 +364,11 @@ fn fetch_record_play_finished(state: &mut BattleState, card: CardHandle) {
     let turn = state.player.turn_number;
     if let Some(ext) = state.card_ext_mut(card) {
         ext.private_fields
-            .insert(FETCH_FINISHED_ROUND_KEY.to_owned(), FieldValue::Int(round));
+            .insert(FETCH_FINISHED_ROUND_KEY, FieldValue::Int(round));
         ext.private_fields
-            .insert(FETCH_FINISHED_SIDE_KEY.to_owned(), FieldValue::Int(side));
+            .insert(FETCH_FINISHED_SIDE_KEY, FieldValue::Int(side));
         ext.private_fields
-            .insert(FETCH_FINISHED_TURNS_KEY.to_owned(), FieldValue::IntArray(vec![turn]));
+            .insert(FETCH_FINISHED_TURNS_KEY, FieldValue::IntArray(vec![turn]));
     }
 }
 
@@ -532,7 +532,7 @@ fn select_from_hand(
     candidates: &[CardHandle],
     min_count: usize,
     max_count: usize,
-    source_id: &str,
+    source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_over_or_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -556,7 +556,7 @@ fn select_from_pile(
     content: &dyn ContentDispatcher,
     pile: PileType,
     count: usize,
-    source_id: &str,
+    source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -937,7 +937,7 @@ pub fn on_play(
             let dmg = Dec::from_i32(if upg { 12 } else { 10 });
             AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
                 .execute(state, content)?;
-            let mut cands: Vec<CardHandle> = Vec::new();
+            let mut cands: SmallVec<[CardHandle; 32]> = SmallVec::new();
             for &h in &state.player.discard {
                 if let Some(ci) = state.card(h) {
                     let max_upg = content.card_meta(ci.id)?.max_upgrade_level;
@@ -994,7 +994,7 @@ pub fn on_play(
                 if let StepOutcome::NeedsChoice(req) = outcome {
                     return Err(KernelError::Unsupported {
                         kind: "CardAutoplayChoice",
-                        id: req.source_id,
+                        id: req.source_id.into_owned(),
                     });
                 }
             }
@@ -1132,7 +1132,7 @@ pub fn on_play(
         }
         CardId::GlimpseBeyond => {
             let count = if upg { 4 } else { 3 };
-            let allies = state.ally_handles.clone();
+            let allies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.ally_handles);
             for ah in allies {
                 if state
                     .creature(ah)
@@ -1248,7 +1248,7 @@ pub fn on_play(
         }
         CardId::LegionOfBone => {
             let summon = Dec::from_i32(if upg { 8 } else { 6 });
-            let allies = state.ally_handles.clone();
+            let allies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.ally_handles);
             for ah in allies {
                 if state
                     .creature(ah)
@@ -1746,7 +1746,7 @@ pub fn on_play(
                 )
                 .execute(state, content)?;
             }
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let mut cands: SmallVec<[CardHandle; 16]> = SmallVec::new();
             for h in hand {
                 if !card_pile::card_has_keyword(state, content, h, CardKeywords::RETAIN)? {

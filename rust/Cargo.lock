@@ -497,6 +497,7 @@ dependencies = [
  "bitflags",
  "bumpalo",
  "hashbrown 0.15.5",
+ "parking_lot",
  "serde",
  "serde_json",
  "smallvec",

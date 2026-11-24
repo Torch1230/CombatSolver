@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use sts2_kernel::commands::card_select::SelectResult;
 use sts2_kernel::commands::{
@@ -173,7 +174,7 @@ fn attack_single(
     target: CreatureHandle,
     dmg: Dec,
     hits: i32,
-) -> Result<Vec<sts2_kernel::DamageResult>, KernelError> {
+) -> Result<SmallVec<[sts2_kernel::DamageResult; 16]>, KernelError> {
     AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
         .with_hit_count(hits)
         .execute(state, content)
@@ -187,7 +188,7 @@ fn attack_all(
     ctx: &CardPlayContext,
     dmg: Dec,
     hits: i32,
-) -> Result<Vec<sts2_kernel::DamageResult>, KernelError> {
+) -> Result<SmallVec<[sts2_kernel::DamageResult; 16]>, KernelError> {
     AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::AllOpponents)
         .with_hit_count(hits)
         .execute(state, content)
@@ -267,7 +268,7 @@ fn hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let enemies = state.enemy_handles.clone();
+    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     let mut out = SmallVec::new();
     for eh in enemies {
         if state.creature(eh).is_some_and(|c| c.is_alive())
@@ -304,11 +305,17 @@ fn lost_hp_this_turn(state: &BattleState, owner: CreatureHandle) -> bool {
 
 #[inline]
 fn count_unblocked_hp_loss_hits(state: &BattleState, owner: CreatureHandle) -> i32 {
-    state
-        .damage_history
-        .iter()
-        .filter(|e| e.receiver_creature_handle == owner && e.unblocked_damage > 0)
-        .count() as i32
+    let prior = if owner == state.player.creature_handle {
+        state.semantic_history.prior_player_unblocked_hits
+    } else {
+        0
+    };
+    prior
+        + state
+            .damage_history
+            .iter()
+            .filter(|e| e.receiver_creature_handle == owner && e.unblocked_damage > 0)
+            .count() as i32
 }
 
 fn count_strikes_in_combat(state: &BattleState) -> i32 {
@@ -428,22 +435,15 @@ fn add_local_energy_modifier(
     }
 }
 
-fn card_generation_pool(state: &BattleState) -> SmallVec<[CardId; 96]> {
-    if !state.static_ctx.card_generation_pools.is_empty() {
-        state.static_ctx.card_generation_pools.iter().copied().collect()
-    } else {
-        sts2_types::character_card_pool(state.static_ctx.character_id)
-            .iter()
-            .copied()
-            .collect()
-    }
+fn card_generation_pool(state: &BattleState) -> SmallVec<[CardId; 128]> {
+    card_factory::character_combat_pool(state)
 }
 
 fn select_from_hand(
     state: &BattleState,
     min_count: usize,
     max_count: usize,
-    source_id: &str,
+    source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_over_or_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -466,7 +466,7 @@ fn select_from_hand(
 fn select_from_hand_for_upgrade(
     state: &BattleState,
     content: &dyn ContentDispatcher,
-    source_id: &str,
+    source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_over_or_ending(state) {
@@ -497,7 +497,7 @@ fn select_from_discard(
     state: &BattleState,
     min_count: usize,
     max_count: usize,
-    source_id: &str,
+    source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
     if hooks::is_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -543,7 +543,7 @@ fn rampage_damage(state: &BattleState, card: CardHandle) -> Dec {
 fn set_rampage_damage(state: &mut BattleState, card: CardHandle, value: Dec) {
     if let Some(ext) = state.card_ext_mut(card) {
         ext.private_fields
-            .insert("Rampage._damage".to_owned(), FieldValue::Decimal(value));
+            .insert(Cow::Borrowed("Rampage._damage"), FieldValue::Decimal(value));
     }
 }
 
@@ -564,7 +564,7 @@ fn thrash_damage(state: &BattleState, card: CardHandle, upg_level: i32) -> Dec {
 fn set_thrash_damage(state: &mut BattleState, card: CardHandle, value: Dec) {
     if let Some(ext) = state.card_ext_mut(card) {
         ext.private_fields
-            .insert("Thrash._damage".to_owned(), FieldValue::Decimal(value));
+            .insert(Cow::Borrowed("Thrash._damage"), FieldValue::Decimal(value));
     }
 }
 
@@ -609,7 +609,7 @@ pub fn on_play(
         CardId::Armaments => {
             gain_block(state, content, owner, ctx, Dec::from_i32(5))?;
             if upg {
-                let hand = state.player.hand.clone();
+                let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
                 for h in hand {
                     card_cmd::upgrade(state, content, h)?;
                 }
@@ -880,7 +880,7 @@ pub fn on_play(
         CardId::ExpectAFight => {
             let blk = Dec::from_i32(if upg { 20 } else { 15 });
             gain_block(state, content, owner, ctx, blk)?;
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 let Some(ci) = state.card(h) else {
                     continue;
@@ -921,7 +921,7 @@ pub fn on_play(
         CardId::FiendFire => {
             let target = require_target(ctx, card.id)?;
             let dmg = Dec::from_i32(if upg { 10 } else { 7 });
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for &h in &hand {
                 card_pile::exhaust(state, content, h, false)?;
             }
@@ -1169,7 +1169,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::PrimalForce => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let upg_level = if upg { 1 } else { 0 };
             for h in hand {
                 let Some(ci) = state.card(h) else {
@@ -1212,7 +1212,7 @@ pub fn on_play(
         }
         CardId::SecondWind => {
             let blk = Dec::from_i32(if upg { 7 } else { 5 });
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
                 let Some(ci) = state.card(h) else {
                     continue;
@@ -1254,7 +1254,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Stoke => {
-            let hand = state.player.hand.clone();
+            let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for &h in &hand {
                 card_pile::exhaust(state, content, h, false)?;
             }
@@ -1642,7 +1642,8 @@ pub fn dispatch_hook(
                 HookSlot::AfterCardEnteredCombat => {
                     if let HookArgs::CardOnly(entered) = args {
                         if *entered == card && ci.clone_of_handle.is_none() {
-                            let exhausted = state.semantic_history.exhausts.len() as i32;
+                            let exhausted = state.semantic_history.prior_exhaust_count
+                                + state.semantic_history.exhausts.len() as i32;
                             add_local_energy_modifier(
                                 state,
                                 card,

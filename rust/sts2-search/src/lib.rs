@@ -44,7 +44,7 @@ impl Default for AccelerationFlags {
             enable_hand_potion_dedup: true,
             enable_multiset_choice_dedup: true,
             enable_end_turn_prefix_reuse: true,
-            enable_forced_end_turn_compression: true,
+            enable_forced_end_turn_compression: false,
             enable_closure_pruning: true,
         }
     }
@@ -153,6 +153,8 @@ pub struct SearchPolicy {
     pub max_pile_choice_branches_per_action: usize,
     #[serde(default = "default_max_hand_choice_branches")]
     pub max_hand_choice_branches_per_action: usize,
+    #[serde(default = "default_transposition_entry_limit")]
+    pub transposition_entry_limit: usize,
     #[serde(default)]
     pub accelerations: AccelerationFlags,
 }
@@ -179,6 +181,10 @@ fn default_max_pile_choice_branches() -> usize {
 
 fn default_max_hand_choice_branches() -> usize {
     24
+}
+
+fn default_transposition_entry_limit() -> usize {
+    1_000_000
 }
 
 impl SearchPolicy {
@@ -316,6 +322,7 @@ impl Default for SearchPolicy {
             max_card_branches_per_node: default_max_card_branches(),
             max_pile_choice_branches_per_action: default_max_pile_choice_branches(),
             max_hand_choice_branches_per_action: default_max_hand_choice_branches(),
+            transposition_entry_limit: default_transposition_entry_limit(),
             accelerations: AccelerationFlags::default(),
         }
     }
@@ -332,6 +339,10 @@ pub struct InCombatSolveRequest {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum PlannedAction {
+    #[serde(rename_all = "camelCase")]
+    TurnSetup {
+        choices: Option<Vec<Vec<usize>>>,
+    },
     #[serde(rename_all = "camelCase")]
     PlayCard {
         card_handle: i32,
@@ -359,6 +370,7 @@ pub struct SearchStatistics {
     pub hp_lost: i32,
     pub potion_count: usize,
     pub transition_count: u64,
+    pub choice_replay_attempts: u64,
     pub tt_branches_pruned: u64,
     pub incumbent_branches_pruned: u64,
     pub por_branches_pruned: u64,
@@ -374,6 +386,7 @@ pub struct SearchStatistics {
 pub struct SearchProgress {
     pub nodes_expanded: usize,
     pub transition_count: u64,
+    pub choice_replay_attempts: u64,
     pub current_turn: i32,
     pub best_won: bool,
     pub best_hp_lost: Option<i32>,

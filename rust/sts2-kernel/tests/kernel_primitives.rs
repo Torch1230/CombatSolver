@@ -1,5 +1,5 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 use std::sync::Arc;
 use sts2_kernel::commands::{autoplay, card, card_factory, card_pile, creature, damage, forge, orb, potion, power};
 use sts2_kernel::content_dispatch::{CardPlayContext, CardPlayOutcome};
@@ -174,8 +174,8 @@ impl ContentDispatcher for TestKernelContent {
     ) -> Result<(), KernelError> {
         if let Some(c) = state.creature_mut(creature) {
             if let Some(m) = &mut c.monster {
-                m.current_state_id = "IDLE".to_owned();
-                m.next_move_id = Some("IDLE".to_owned());
+                m.current_state_id = Cow::Borrowed("IDLE");
+                m.next_move_id = Some(Cow::Borrowed("IDLE"));
             }
         }
         Ok(())
@@ -245,7 +245,7 @@ impl ContentDispatcher for TestKernelContent {
                     needs_choice: Some((
                         ChoiceRequest {
                             timing: ChoiceTiming::Action,
-                            source_id: potion_id.model_id_str().to_owned(),
+                            source_id: potion_id.model_id_str().into(),
                             source_pile: PileType::Discard,
                             min_count: 1,
                             max_count: 1,
@@ -376,7 +376,7 @@ impl ContentDispatcher for TestKernelContent {
         &self,
         state: &BattleState,
         card: CardHandle,
-        cards: &mut Vec<CardHandle>,
+        cards: &mut [CardHandle],
         is_initial_shuffle: bool,
     ) -> Result<(), KernelError> {
         let is_perfect_fit = state
@@ -385,8 +385,9 @@ impl ContentDispatcher for TestKernelContent {
             .and_then(|e| e.enchantment.as_ref())
             .is_some_and(|e| e.id == EnchantmentId::PerfectFit);
         if is_perfect_fit && !is_initial_shuffle {
-            cards.retain(|&h| h != card);
-            cards.insert(0, card);
+            if let Some(pos) = cards.iter().position(|&h| h == card) {
+                cards[..=pos].rotate_right(1);
+            }
         }
         Ok(())
     }
@@ -419,11 +420,11 @@ impl ContentDispatcher for TestKernelContent {
     ) -> Result<HookResult, KernelError> {
         match (listener, slot) {
             (HookListener::Dominion(DominionId::KnowledgeDemonDominion), HookSlot::BeforeHandDraw) => {
-                let candidates: SmallVec<[CardHandle; 16]> = state.player.draw.iter().take(2).copied().collect();
+                let candidates: SmallVec<[CardHandle; 32]> = state.player.draw.iter().take(2).copied().collect();
                 Ok(HookResult {
                     needs_choice: Some(ChoiceRequest {
                         timing: ChoiceTiming::PlayerTurnStart,
-                        source_id: "DOMINION.KNOWLEDGE_DEMON_DOMINION".to_owned(),
+                        source_id: "DOMINION.KNOWLEDGE_DEMON_DOMINION".into(),
                         source_pile: PileType::Draw,
                         min_count: 1,
                         max_count: 1,
@@ -474,7 +475,7 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
     let pc = CreatureHandle(1);
     let enemy = CreatureHandle(2);
     let mut cards = Vec::new();
-    let mut deck = SmallVec::new();
+    let mut deck = Vec::new();
     for i in 0..deck_count {
         let h = CardHandle((i + 1) as u32);
         deck.push(h);
@@ -517,11 +518,17 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
             dominion_id: dominion,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -556,13 +563,14 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
             phase: PlayerTurnPhase::None,
             turn_number: 1,
             counters: PlayerCounters::default(),
-            hand: SmallVec::new(),
-            draw: SmallVec::new(),
-            discard: SmallVec::new(),
-            exhaust: SmallVec::new(),
-            play: SmallVec::new(),
+            hand: Vec::new(),
+            draw: Vec::new(),
+            discard: Vec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
             deck,
             potion_slots: smallvec::smallvec![Some(PotionId::LiquidMemories), None, None],
+            combat_generated_potion_mask: 0,
             orb_capacity: 0,
             orbs: SmallVec::new(),
             arrows: SmallVec::new(),
@@ -572,7 +580,7 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
                 is_melted: false,
                 stack_count: 1,
                 floor_added_to_deck: None,
-                private_fields: BTreeMap::new(),
+                private_fields: Default::default(),
             }],
             card_or_potion_effect_depth: 0,
         },
@@ -593,13 +601,14 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
                 cumulative_hp_lost: 0,
                 is_detached: false,
                 monster: None,
-                powers: SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
             CreatureInst {
                 handle: enemy,
                 combat_id: Some(1),
                 side: CombatSide::Enemy,
-                slot_name: Some("slot_0".to_owned()),
+                slot_name: Some(Cow::Borrowed("slot_0")),
                 is_player: false,
                 pet_owner_player_index: None,
                 monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -613,21 +622,22 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
                     rng: Rng::from_seed(7),
                     is_performing_move: false,
                     spawned_this_turn: false,
-                    current_state_id: "IDLE".to_owned(),
-                    next_move_id: Some("IDLE".to_owned()),
+                    current_state_id: Cow::Borrowed("IDLE"),
+                    next_move_id: Some(Cow::Borrowed("IDLE")),
                     next_move_can_transition_away: true,
                     performed_first_move: false,
                     state_log_ids: SmallVec::new(),
                     transient_move_follow_up_state_id: None,
-                    setup_fields: BTreeMap::new(),
-                    private_fields: BTreeMap::new(),
+                    setup_fields: Default::default(),
+                    private_fields: Default::default(),
                 }),
-                powers: SmallVec::new(),
+                has_minion_power: false,
+                powers: Vec::new(),
             },
         ],
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc],
-        enemy_handles: smallvec::smallvec![enemy],
+        ally_handles: vec![pc],
+        enemy_handles: vec![enemy],
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy],
@@ -636,6 +646,8 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     (state, enemy)
 }
@@ -696,7 +708,7 @@ fn forge_autoplay_card_entry_and_enchantment_hooks_work() {
             id: EnchantmentId::Imbued,
             amount: 1,
             status: EnchantmentStatus::Normal,
-            private_fields: BTreeMap::new(),
+            private_fields: Default::default(),
         }),
         ..Default::default()
     });
@@ -706,7 +718,7 @@ fn forge_autoplay_card_entry_and_enchantment_hooks_work() {
             id: EnchantmentId::Glam,
             amount: 1,
             status: EnchantmentStatus::Normal,
-            private_fields: BTreeMap::new(),
+            private_fields: Default::default(),
         }),
         ..Default::default()
     });
@@ -1034,8 +1046,8 @@ impl ContentDispatcher for PartBTestContent {
     ) -> Result<(), KernelError> {
         if let Some(c) = state.creature_mut(creature) {
             if let Some(m) = &mut c.monster {
-                m.current_state_id = "IDLE".to_owned();
-                m.next_move_id = Some("IDLE".to_owned());
+                m.current_state_id = Cow::Borrowed("IDLE");
+                m.next_move_id = Some(Cow::Borrowed("IDLE"));
             }
         }
         Ok(())
@@ -1187,7 +1199,7 @@ impl ContentDispatcher for PartBTestContent {
         &self,
         _state: &BattleState,
         _card: CardHandle,
-        _cards: &mut Vec<CardHandle>,
+        _cards: &mut [CardHandle],
         _is_initial_shuffle: bool,
     ) -> Result<(), KernelError> {
         Ok(())
@@ -1435,11 +1447,11 @@ impl ContentDispatcher for PartBTestContent {
             }
             HookSlot::AfterShuffle if self.pause_after_shuffle.get() && !state.player.draw.is_empty() => {
                 self.pause_after_shuffle.set(false);
-                let candidates: SmallVec<[CardHandle; 16]> = state.player.draw.iter().take(2).copied().collect();
+                let candidates: SmallVec<[CardHandle; 32]> = state.player.draw.iter().take(2).copied().collect();
                 return Ok(HookResult {
                     needs_choice: Some(ChoiceRequest {
                         timing: ChoiceTiming::Action,
-                        source_id: "POWER.STRATAGEM_POWER".to_owned(),
+                        source_id: "POWER.STRATAGEM_POWER".into(),
                         source_pile: PileType::Draw,
                         min_count: 1,
                         max_count: 1,
@@ -1453,11 +1465,11 @@ impl ContentDispatcher for PartBTestContent {
                 if self.pause_after_player_turn_start.get() && !state.player.hand.is_empty() =>
             {
                 self.pause_after_player_turn_start.set(false);
-                let candidates: SmallVec<[CardHandle; 16]> = state.player.hand.iter().take(3).copied().collect();
+                let candidates: SmallVec<[CardHandle; 32]> = state.player.hand.iter().take(3).copied().collect();
                 return Ok(HookResult {
                     needs_choice: Some(ChoiceRequest {
                         timing: ChoiceTiming::PlayerTurnStart,
-                        source_id: "POWER.TOOLS_OF_THE_TRADE_POWER".to_owned(),
+                        source_id: "POWER.TOOLS_OF_THE_TRADE_POWER".into(),
                         source_pile: PileType::Hand,
                         min_count: 1,
                         max_count: 1,
@@ -1910,7 +1922,7 @@ impl ContentDispatcher for FailOnMoveContent {
         &self,
         state: &BattleState,
         card: CardHandle,
-        cards: &mut Vec<CardHandle>,
+        cards: &mut [CardHandle],
         is_initial_shuffle: bool,
     ) -> Result<(), KernelError> {
         self.base
@@ -2172,7 +2184,7 @@ fn part_a_kernel_additions_verify() {
         is_melted: false,
         stack_count: 1,
         floor_added_to_deck: None,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
     CombatEngine::start_combat(&mut state, &content).unwrap();
 
@@ -2266,7 +2278,7 @@ fn part_a_kernel_additions_verify() {
         id: sts2_types::EnchantmentId::Vigorous,
         amount: 4,
         status: sts2_types::EnchantmentStatus::Normal,
-        private_fields: BTreeMap::new(),
+        private_fields: Default::default(),
     });
     card::afflict(&mut state, ench_card, sts2_types::AfflictionId::Bound, 1);
     assert!(sts2_kernel::hooks::is_eligible_hook_listener(

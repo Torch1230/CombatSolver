@@ -3,9 +3,9 @@ use crate::error::KernelError;
 use crate::ordering;
 use crate::state::{
     ArrowSlotInst, BattleState, CardExtension, CardHandle, CardInst, CardTempFlags, CreatureHandle,
-    CreatureInst, DamageHistoryEntry, EnchantmentInst, FieldValue, LocalEnergyModifier,
-    MonsterInst, OrbInst, PlayerCounters, PlayerInst, PowerExtension, PowerInst, RelicInst,
-    RootStaticContext, SemanticHistory, TurnKey,
+    CreatureInst, DamageHistoryEntry, DeckDirtyFlag, EnchantmentInst, FieldMap, FieldValue,
+    LocalEnergyModifier, MonsterInst, OrbInst, PlayerCounters, PlayerInst, PowerExtension,
+    PowerInst, RelicInst, RootStaticContext, SemanticHistory, TurnKey, sym_cow,
 };
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -378,6 +378,18 @@ pub struct LiveStateJson {
     pub damage_history: Vec<DamageHistoryEntryDto>,
     #[serde(default)]
     pub semantic_history: SemanticHistoryDto,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unlocked_character_cards: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unlocked_colorless_cards: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unlocked_curse_cards: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub other_character_cards: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tarot_cards: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unlocked_potions: Vec<String>,
 }
 
 /// Complete 10 combat RNG stream words for oracle diff checks.
@@ -855,23 +867,32 @@ pub fn import_live_state(
         run_model_ids.push(id);
     }
 
-    let static_ctx = Arc::new(RootStaticContext {
-        encounter_id: dto.encounter_id.clone(),
-        encounter_is_weak: dto.encounter_is_weak || dto.encounter_id.ends_with("_WEAK"),
-        room_type: parse_room_type(&dto.room_type)?,
-        encounter_slots: dto.encounter_slots.clone(),
-        game_mode,
-        ascension: dto.ascension,
-        character_id,
-        dominion_id,
-        run_model_ids,
-        card_generation_pools: Vec::new(),
-        transformation_pools: Vec::new(),
-        map_col: 0,
-        map_row: 0,
-        act_index: 0,
-        total_floor: dto.total_floor,
-    });
+    let parse_card_pool = |raw: &[String]| -> Result<Vec<CardId>, KernelError> {
+        let mut out = Vec::with_capacity(raw.len());
+        for entry in raw {
+            let id = CardId::from_model_id_str(entry).ok_or_else(|| KernelError::Unsupported {
+                kind: "Card",
+                id: entry.clone(),
+            })?;
+            let _ = content.card_meta(id)?;
+            out.push(id);
+        }
+        Ok(out)
+    };
+    let card_generation_pools = parse_card_pool(&dto.unlocked_character_cards)?;
+    let colorless_card_pool = parse_card_pool(&dto.unlocked_colorless_cards)?;
+    let curse_card_pool = parse_card_pool(&dto.unlocked_curse_cards)?;
+    let other_character_card_pool = parse_card_pool(&dto.other_character_cards)?;
+    let tarot_card_pool = parse_card_pool(&dto.tarot_cards)?;
+    let mut potion_generation_pool = Vec::with_capacity(dto.unlocked_potions.len());
+    for entry in &dto.unlocked_potions {
+        let pid = PotionId::from_model_id_str(entry).ok_or_else(|| KernelError::Unsupported {
+            kind: "Potion",
+            id: entry.clone(),
+        })?;
+        let _ = content.potion_meta(pid)?;
+        potion_generation_pool.push(pid);
+    }
 
     let mut run_rngs = RunRngSet::from_string_seed(&dto.run_rng_seed);
     for (k, words) in &dto.run_rngs {
@@ -956,9 +977,9 @@ pub fn import_live_state(
                         id: e.enchantment_id.clone(),
                     }
                 })?;
-                let mut pf = BTreeMap::new();
+                let mut pf = FieldMap::new();
                 for (pk, pv) in &e.private_fields {
-                    pf.insert(pk.clone(), parse_field_value(pv)?);
+                    pf.insert(sym_cow(pk), parse_field_value(pv)?);
                 }
                 Some(EnchantmentInst {
                     id: eid,
@@ -999,7 +1020,7 @@ pub fn import_live_state(
         }
         ext.enchantment = enchantment;
         for (pk, pv) in &c.private_fields {
-            ext.private_fields.insert(pk.clone(), parse_field_value(pv)?);
+            ext.private_fields.insert(sym_cow(pk), parse_field_value(pv)?);
         }
         let ext_index = if ext.local_energy_modifiers.is_empty()
             && ext.enchantment.is_none()
@@ -1055,9 +1076,9 @@ pub fn import_live_state(
             id: r.relic_id.clone(),
         })?;
         let _ = content.relic_meta(rid)?;
-        let mut pf = BTreeMap::new();
+        let mut pf = FieldMap::new();
         for (pk, pv) in &r.private_fields {
-            pf.insert(pk.clone(), parse_field_value(pv)?);
+            pf.insert(sym_cow(pk), parse_field_value(pv)?);
         }
         relics.push(RelicInst {
             id: rid,
@@ -1152,25 +1173,28 @@ pub fn import_live_state(
                     }
                 })?;
                 let _ = content.monster_meta(mid)?;
-                let mut setup_fields = BTreeMap::new();
+                let mut setup_fields = FieldMap::new();
                 for (k, v) in &m.setup_fields {
-                    setup_fields.insert(k.clone(), parse_field_value(v)?);
+                    setup_fields.insert(sym_cow(k), parse_field_value(v)?);
                 }
-                let mut private_fields = BTreeMap::new();
+                let mut private_fields = FieldMap::new();
                 for (k, v) in &m.private_fields {
-                    private_fields.insert(k.clone(), parse_field_value(v)?);
+                    private_fields.insert(sym_cow(k), parse_field_value(v)?);
                 }
                 Some(MonsterInst {
                     monster_id: mid,
                     rng: Rng::from_words(m.rng),
                     is_performing_move: m.is_performing_move,
                     spawned_this_turn: m.spawned_this_turn,
-                    current_state_id: m.current_state_id.clone(),
-                    next_move_id: m.next_move_id.clone(),
+                    current_state_id: sym_cow(&m.current_state_id),
+                    next_move_id: m.next_move_id.as_deref().map(sym_cow),
                     next_move_can_transition_away: m.next_move_can_transition_away,
                     performed_first_move: m.performed_first_move,
-                    state_log_ids: m.state_log_ids.iter().cloned().collect(),
-                    transient_move_follow_up_state_id: m.transient_move_follow_up_state_id.clone(),
+                    state_log_ids: m.state_log_ids.iter().map(|s| sym_cow(s)).collect(),
+                    transient_move_follow_up_state_id: m
+                        .transient_move_follow_up_state_id
+                        .as_deref()
+                        .map(sym_cow),
                     setup_fields,
                     private_fields,
                 })
@@ -1178,7 +1202,7 @@ pub fn import_live_state(
             None => None,
         };
 
-        let mut powers = SmallVec::new();
+        let mut powers = Vec::new();
         for p in &cr.powers {
             let pid = PowerId::from_model_id_str(&p.power_id).ok_or_else(|| {
                 KernelError::Unsupported {
@@ -1187,9 +1211,9 @@ pub fn import_live_state(
                 }
             })?;
             let _ = content.power_meta(pid)?;
-            let mut pf = BTreeMap::new();
+            let mut pf = FieldMap::new();
             for (k, v) in &p.private_fields {
-                pf.insert(k.clone(), parse_field_value(v)?);
+                pf.insert(sym_cow(k), parse_field_value(v)?);
             }
             let ext_index = if pid == PowerId::ImpaledPower || !pf.is_empty() {
                 let idx = power_extensions.len() as u32;
@@ -1235,11 +1259,12 @@ pub fn import_live_state(
             None => None,
         };
 
+        let has_minion_power = powers.iter().any(|p| p.id == PowerId::MinionPower);
         creatures.push(CreatureInst {
             handle: ch,
             combat_id: cr.combat_id,
             side: parse_side(&cr.side, "creatures[].side")?,
-            slot_name: cr.slot_name.clone(),
+            slot_name: cr.slot_name.as_deref().map(sym_cow),
             is_player: cr.is_player,
             pet_owner_player_index: cr.pet_owner_player_index,
             monster_id,
@@ -1248,6 +1273,7 @@ pub fn import_live_state(
             block: cr.block,
             cumulative_hp_lost: cr.cumulative_hp_lost,
             is_detached: cr.is_detached,
+            has_minion_power,
             monster,
             powers,
         });
@@ -1281,12 +1307,47 @@ pub fn import_live_state(
         play: dto.player.play_handles.iter().map(|&h| CardHandle(h as u32)).collect(),
         deck: dto.player.deck_handles.iter().map(|&h| CardHandle(h as u32)).collect(),
         potion_slots,
+        combat_generated_potion_mask: 0,
         orb_capacity: dto.player.orb_capacity,
         orbs,
         arrows,
         relics,
         card_or_potion_effect_depth: 0,
     };
+
+    let root_deck_prefix_len = cards.iter().take_while(|c| c.pile == PileType::Deck).count();
+    let root_deck_cards = cards[..root_deck_prefix_len].to_vec();
+    let root_deck_handles = player.deck.clone();
+    let static_ctx = Arc::new(RootStaticContext {
+        encounter_id: dto.encounter_id.clone(),
+        encounter_is_weak: dto.encounter_is_weak || dto.encounter_id.ends_with("_WEAK"),
+        room_type: parse_room_type(&dto.room_type)?,
+        encounter_slots: dto.encounter_slots.clone(),
+        game_mode,
+        ascension: dto.ascension,
+        character_id,
+        dominion_id,
+        run_model_ids,
+        card_generation_pools,
+        colorless_card_pool,
+        curse_card_pool,
+        other_character_card_pool,
+        tarot_card_pool,
+        potion_generation_pool,
+        transformation_pools: Vec::new(),
+        map_col: 0,
+        map_row: 0,
+        act_index: 0,
+        total_floor: dto.total_floor,
+        root_run_rng_string_seed: run_rngs.string_seed.clone(),
+        root_deck_prefix_len,
+        root_deck_cards,
+        root_deck_handles,
+        compact_turn_history: false,
+        has_root_rngs: true,
+        root_run_rngs: run_rngs.streams,
+        root_player_rngs: player_rngs.streams,
+    });
 
     let damage_history = dto
         .damage_history
@@ -1364,7 +1425,7 @@ pub fn import_live_state(
     }
     for ae in &dto.semantic_history.actor_events {
         semantic_history.actor_events.push((
-            ae.kind.clone(),
+            sym_cow(&ae.kind),
             parse_turn_key(&ae.turn, "semanticHistory.actorEvents[].turn.side")?,
             ae.actor_index,
         ));
@@ -1412,6 +1473,8 @@ pub fn import_live_state(
         semantic_history,
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: DeckDirtyFlag(false),
     })
 }
 
@@ -1511,7 +1574,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                         private_fields: en
                             .private_fields
                             .iter()
-                            .map(|(k, v)| (k.clone(), export_field_value(v)))
+                            .map(|(k, v)| (k.to_owned(), export_field_value(v)))
                             .collect(),
                     })
                 }),
@@ -1523,7 +1586,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                     .map(|e| {
                         e.private_fields
                             .iter()
-                            .map(|(k, v)| (k.clone(), export_field_value(v)))
+                            .map(|(k, v)| (k.to_owned(), export_field_value(v)))
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -1544,7 +1607,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
             private_fields: r
                 .private_fields
                 .iter()
-                .map(|(k, v)| (k.clone(), export_field_value(v)))
+                .map(|(k, v)| (k.to_owned(), export_field_value(v)))
                 .collect(),
         })
         .collect();
@@ -1556,7 +1619,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
             handle: cr.handle.0 as i32,
             combat_id: cr.combat_id,
             side: side_to_str(cr.side).to_owned(),
-            slot_name: cr.slot_name.clone(),
+            slot_name: cr.slot_name.as_deref().map(str::to_owned),
             is_player: cr.is_player,
             pet_owner_player_index: cr.pet_owner_player_index,
             monster_id: cr.monster_id.map(|m| m.model_id_str().to_owned()),
@@ -1569,21 +1632,24 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                 rng: m.rng.to_words(),
                 is_performing_move: m.is_performing_move,
                 spawned_this_turn: m.spawned_this_turn,
-                current_state_id: m.current_state_id.clone(),
-                next_move_id: m.next_move_id.clone(),
+                current_state_id: m.current_state_id.as_ref().to_owned(),
+                next_move_id: m.next_move_id.as_deref().map(str::to_owned),
                 next_move_can_transition_away: m.next_move_can_transition_away,
                 performed_first_move: m.performed_first_move,
-                state_log_ids: m.state_log_ids.iter().cloned().collect(),
-                transient_move_follow_up_state_id: m.transient_move_follow_up_state_id.clone(),
+                state_log_ids: m.state_log_ids.iter().map(|s| s.as_ref().to_owned()).collect(),
+                transient_move_follow_up_state_id: m
+                    .transient_move_follow_up_state_id
+                    .as_deref()
+                    .map(str::to_owned),
                 setup_fields: m
                     .setup_fields
                     .iter()
-                    .map(|(k, v)| (k.clone(), export_field_value(v)))
+                    .map(|(k, v)| (k.to_owned(), export_field_value(v)))
                     .collect(),
                 private_fields: m
                     .private_fields
                     .iter()
-                    .map(|(k, v)| (k.clone(), export_field_value(v)))
+                    .map(|(k, v)| (k.to_owned(), export_field_value(v)))
                     .collect(),
             }),
             powers: cr
@@ -1596,7 +1662,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                         .map(|ext| {
                             ext.private_fields
                                 .iter()
-                                .map(|(k, v)| (k.clone(), export_field_value(v)))
+                                .map(|(k, v)| (k.to_owned(), export_field_value(v)))
                                 .collect()
                         })
                         .unwrap_or_default();
@@ -1823,7 +1889,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                 .actor_events
                 .iter()
                 .map(|(kind, tk, actor)| ActorEventHistoryDto {
-                    kind: kind.clone(),
+                    kind: kind.as_ref().to_owned(),
                     turn: TurnKeyDto {
                         round_number: tk.round_number,
                         side: side_to_str(tk.side).to_owned(),
@@ -1833,6 +1899,42 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                 })
                 .collect(),
         },
+        unlocked_character_cards: state
+            .static_ctx
+            .card_generation_pools
+            .iter()
+            .map(|id| id.model_entry().to_owned())
+            .collect(),
+        unlocked_colorless_cards: state
+            .static_ctx
+            .colorless_card_pool
+            .iter()
+            .map(|id| id.model_entry().to_owned())
+            .collect(),
+        unlocked_curse_cards: state
+            .static_ctx
+            .curse_card_pool
+            .iter()
+            .map(|id| id.model_entry().to_owned())
+            .collect(),
+        other_character_cards: state
+            .static_ctx
+            .other_character_card_pool
+            .iter()
+            .map(|id| id.model_entry().to_owned())
+            .collect(),
+        tarot_cards: state
+            .static_ctx
+            .tarot_card_pool
+            .iter()
+            .map(|id| id.model_entry().to_owned())
+            .collect(),
+        unlocked_potions: state
+            .static_ctx
+            .potion_generation_pool
+            .iter()
+            .map(|id| id.model_entry().to_owned())
+            .collect(),
     })
 }
 
@@ -1875,7 +1977,10 @@ pub fn export_canonical_oracle_state(
             current_hp: cr.current_hp,
             max_hp: cr.max_hp,
             block: cr.block,
-            next_move_id: cr.monster.as_ref().and_then(|m| m.next_move_id.clone()),
+            next_move_id: cr
+                .monster
+                .as_ref()
+                .and_then(|m| m.next_move_id.as_deref().map(str::to_owned)),
             powers: cr
                 .powers
                 .iter()

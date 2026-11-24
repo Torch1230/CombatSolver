@@ -7,38 +7,43 @@ pub mod regent;
 pub mod silent;
 
 use smallvec::SmallVec;
+use std::sync::LazyLock;
 use sts2_kernel::content_dispatch::{CardPlayContext, CardPlayOutcome};
 use sts2_kernel::{BattleState, CardHandle, ContentDispatcher, HookArgs, HookResult, KernelError};
 use sts2_types::{
-    CardId, CardMeta, CardPartition, CardPilePosition, CardType, Dec, HookSlot, PileType,
-    TargetType, card_partition,
+    card_partition, CardId, CardMeta, CardPartition, CardPilePosition, CardType, Dec, HookSlot,
+    PileType, TargetType,
 };
 
+static CARD_META_BY_ID: LazyLock<[&'static CardMeta; CardId::COUNT]> = LazyLock::new(|| {
+    std::array::from_fn(|idx| {
+        let id: CardId = unsafe { core::mem::transmute(idx as u16) };
+        match card_partition(id) {
+            CardPartition::Ironclad => ironclad::card_meta(id),
+            CardPartition::Silent => silent::card_meta(id),
+            CardPartition::Defect => defect::card_meta(id),
+            CardPartition::Regent => regent::card_meta(id),
+            CardPartition::Necrobinder => necrobinder::card_meta(id),
+            CardPartition::Fool => fool::card_meta(id),
+            CardPartition::ColorlessSpecial => colorless_special::card_meta(id),
+        }
+        .expect("valid card meta")
+    })
+});
+
+#[inline(always)]
 pub fn card_meta(id: CardId) -> Result<&'static CardMeta, KernelError> {
-    match card_partition(id) {
-        CardPartition::Ironclad => ironclad::card_meta(id),
-        CardPartition::Silent => silent::card_meta(id),
-        CardPartition::Defect => defect::card_meta(id),
-        CardPartition::Regent => regent::card_meta(id),
-        CardPartition::Necrobinder => necrobinder::card_meta(id),
-        CardPartition::Fool => fool::card_meta(id),
-        CardPartition::ColorlessSpecial => colorless_special::card_meta(id),
-    }
+    Ok(CARD_META_BY_ID[id as usize])
 }
 
 pub fn card_is_playable(state: &BattleState, card: CardHandle) -> Result<bool, KernelError> {
-    let id = state
+    let ci = state
         .card(card)
-        .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
-        .id;
-    match card_partition(id) {
-        CardPartition::Ironclad => ironclad::is_playable(state, card),
-        CardPartition::Silent => silent::is_playable(state, card),
-        CardPartition::Defect => defect::is_playable(state, card),
-        CardPartition::Regent => regent::is_playable(state, card),
-        CardPartition::Necrobinder => necrobinder::is_playable(state, card),
-        CardPartition::Fool => fool::is_playable(state, card),
-        CardPartition::ColorlessSpecial => colorless_special::is_playable(state, card),
+        .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?;
+    match ci.id {
+        CardId::Clash => colorless_special::is_playable(state, card),
+        CardId::HighFive => necrobinder::is_playable(state, card),
+        _ => Ok(true),
     }
 }
 
@@ -177,22 +182,19 @@ pub fn card_on_turn_end_in_hand(
     }
 }
 
+#[inline]
 pub fn card_resolved_type(state: &BattleState, card: CardHandle) -> Result<CardType, KernelError> {
     let id = state
         .card(card)
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
         .id;
-    match card_partition(id) {
-        CardPartition::Ironclad => ironclad::resolved_type(state, card),
-        CardPartition::Silent => silent::resolved_type(state, card),
-        CardPartition::Defect => defect::resolved_type(state, card),
-        CardPartition::Regent => regent::resolved_type(state, card),
-        CardPartition::Necrobinder => necrobinder::resolved_type(state, card),
-        CardPartition::Fool => fool::resolved_type(state, card),
-        CardPartition::ColorlessSpecial => colorless_special::resolved_type(state, card),
+    match id {
+        CardId::MadScience => colorless_special::resolved_type(state, card),
+        _ => Ok(CARD_META_BY_ID[id as usize].card_type),
     }
 }
 
+#[inline]
 pub fn card_resolved_target_type(
     state: &BattleState,
     card: CardHandle,
@@ -201,14 +203,11 @@ pub fn card_resolved_target_type(
         .card(card)
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
         .id;
-    match card_partition(id) {
-        CardPartition::Ironclad => ironclad::resolved_target_type(state, card),
-        CardPartition::Silent => silent::resolved_target_type(state, card),
-        CardPartition::Defect => defect::resolved_target_type(state, card),
-        CardPartition::Regent => regent::resolved_target_type(state, card),
-        CardPartition::Necrobinder => necrobinder::resolved_target_type(state, card),
-        CardPartition::Fool => fool::resolved_target_type(state, card),
-        CardPartition::ColorlessSpecial => colorless_special::resolved_target_type(state, card),
+    match id {
+        CardId::Shiv | CardId::SovereignBlade | CardId::MadScience => {
+            colorless_special::resolved_target_type(state, card)
+        }
+        _ => Ok(CARD_META_BY_ID[id as usize].target_type),
     }
 }
 
@@ -231,6 +230,7 @@ pub fn card_thrash_damage_variable(
     }
 }
 
+#[inline]
 pub fn card_default_result_location(
     state: &BattleState,
     card: CardHandle,
@@ -240,17 +240,10 @@ pub fn card_default_result_location(
         .card(card)
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
         .id;
-    match card_partition(id) {
-        CardPartition::Ironclad => ironclad::default_result_location(state, card, is_auto_play),
-        CardPartition::Silent => silent::default_result_location(state, card, is_auto_play),
-        CardPartition::Defect => defect::default_result_location(state, card, is_auto_play),
-        CardPartition::Regent => regent::default_result_location(state, card, is_auto_play),
-        CardPartition::Necrobinder => {
-            necrobinder::default_result_location(state, card, is_auto_play)
+    match id {
+        CardId::MourningBlow | CardId::TrickShot => {
+            fool::default_result_location(state, card, is_auto_play)
         }
-        CardPartition::Fool => fool::default_result_location(state, card, is_auto_play),
-        CardPartition::ColorlessSpecial => {
-            colorless_special::default_result_location(state, card, is_auto_play)
-        }
+        _ => Ok(None),
     }
 }

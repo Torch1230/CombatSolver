@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use sts2_content::cards::fool;
 use sts2_content::Sts2Content;
@@ -64,12 +63,12 @@ fn build_fool_battle(
         h
     };
 
-    let hand: SmallVec<[CardHandle; 12]> = hand_ids.iter().map(|&id| make_card(id, PileType::Hand)).collect();
-    let draw: SmallVec<[CardHandle; 32]> = draw_ids.iter().map(|&id| make_card(id, PileType::Draw)).collect();
-    let discard: SmallVec<[CardHandle; 32]> = discard_ids.iter().map(|&id| make_card(id, PileType::Discard)).collect();
+    let hand: Vec<CardHandle> = hand_ids.iter().map(|&id| make_card(id, PileType::Hand)).collect();
+    let draw: Vec<CardHandle> = draw_ids.iter().map(|&id| make_card(id, PileType::Draw)).collect();
+    let discard: Vec<CardHandle> = discard_ids.iter().map(|&id| make_card(id, PileType::Discard)).collect();
 
     let mut creatures = Vec::new();
-    let mut enemy_handles = SmallVec::new();
+    let mut enemy_handles = Vec::new();
     let mut encounter_slots = Vec::new();
     let player_creature = CreatureInst {
         handle: pc_handle,
@@ -85,7 +84,8 @@ fn build_fool_battle(
         cumulative_hp_lost: 0,
         is_detached: false,
         monster: None,
-        powers: SmallVec::new(),
+        has_minion_power: false,
+        powers: Vec::new(),
     };
     creatures.push(player_creature);
 
@@ -98,7 +98,7 @@ fn build_fool_battle(
             handle: eh,
             combat_id: Some((idx + 1) as u32),
             side: CombatSide::Enemy,
-            slot_name: Some(slot),
+            slot_name: Some(std::borrow::Cow::Owned(slot)),
             is_player: false,
             pet_owner_player_index: None,
             monster_id: Some(MonsterId::FuzzyWurmCrawler),
@@ -112,16 +112,17 @@ fn build_fool_battle(
                 rng: Rng::from_seed(run_rngs.seed + idx as u64 + 1),
                 is_performing_move: false,
                 spawned_this_turn: false,
-                current_state_id: "ACID_GOOP".to_owned(),
-                next_move_id: Some("ACID_GOOP".to_owned()),
+                current_state_id: std::borrow::Cow::Borrowed("ACID_GOOP"),
+                next_move_id: Some(std::borrow::Cow::Borrowed("ACID_GOOP")),
                 next_move_can_transition_away: true,
                 performed_first_move: false,
-                state_log_ids: smallvec::smallvec!["ACID_GOOP".to_owned()],
+                state_log_ids: smallvec::smallvec![std::borrow::Cow::Borrowed("ACID_GOOP")],
                 transient_move_follow_up_state_id: None,
-                setup_fields: BTreeMap::new(),
-                private_fields: BTreeMap::new(),
+                setup_fields: Default::default(),
+                private_fields: Default::default(),
             }),
-            powers: SmallVec::new(),
+            has_minion_power: false,
+            powers: Vec::new(),
         });
     }
 
@@ -144,10 +145,11 @@ fn build_fool_battle(
         hand,
         draw,
         discard,
-        exhaust: SmallVec::new(),
-        play: SmallVec::new(),
-        deck: SmallVec::new(),
+        exhaust: Vec::new(),
+        play: Vec::new(),
+        deck: Vec::new(),
         potion_slots: smallvec::smallvec![None, None, None],
+        combat_generated_potion_mask: 0,
         orb_capacity: 0,
         orbs: SmallVec::new(),
         arrows: smallvec::smallvec![ArrowSlotInst {
@@ -171,11 +173,17 @@ fn build_fool_battle(
             dominion_id: None,
             run_model_ids: Vec::new(),
             card_generation_pools: Vec::new(),
+            colorless_card_pool: Vec::new(),
+            curse_card_pool: Vec::new(),
+            other_character_card_pool: Vec::new(),
+            tarot_card_pool: Vec::new(),
+            potion_generation_pool: Vec::new(),
             transformation_pools: Vec::new(),
             map_col: 0,
             map_row: 0,
             act_index: 0,
             total_floor: 0,
+            ..Default::default()
         }),
         current_side: CombatSide::Player,
         round_number: 1,
@@ -199,16 +207,18 @@ fn build_fool_battle(
         card_extensions: Vec::new(),
         creatures,
         power_extensions: Vec::new(),
-        ally_handles: smallvec::smallvec![pc_handle],
+        ally_handles: vec![pc_handle],
         enemy_handles: enemy_handles.clone(),
         escaped_handles: SmallVec::new(),
         removed_handles: SmallVec::new(),
-        spawned_enemy_handles: enemy_handles,
+        spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
     };
     (state, enemies_vec)
 }
@@ -222,6 +232,11 @@ fn add_card_to_hand(state: &mut BattleState, content: &dyn ContentDispatcher, id
         "hand full when adding {id:?}"
     );
     h
+}
+
+fn clear_hand(state: &mut BattleState) {
+    state.player.hand.clear();
+    state.invalidate_pile_hooks(sts2_kernel::state::HOOK_DIRTY_HAND);
 }
 
 fn play_hand_card(
@@ -491,7 +506,7 @@ fn impale_dislodge_cards_and_pile_selection_contracts() {
     assert_eq!(state.player.draw.first().copied(), Some(chosen_card));
 
     // ArrowStab chooses Shoot card from discard when arrow is available (keep hand < 10)
-    state.player.hand.clear();
+    clear_hand(&mut state);
     let arrow_stab = add_card_to_hand(&mut state, &content, CardId::ArrowStab, 0);
     let outcome = play_hand_card(&mut state, &content, arrow_stab, Some(enemy));
     if let StepOutcome::NeedsChoice(req) = outcome {
@@ -502,7 +517,7 @@ fn impale_dislodge_cards_and_pile_selection_contracts() {
     }
 
     // EpicRetrieval: impale, hit twice to set counter=1, then EpicRetrieval triggers AfterArrowDislodged +3 energy
-    state.player.hand.clear();
+    clear_hand(&mut state);
     state.player.energy = 10;
     let quick5 = add_card_to_hand(&mut state, &content, CardId::QuickShot, 0);
     play_hand_card(&mut state, &content, quick5, Some(enemy));
@@ -590,7 +605,7 @@ fn melodies_coda_cholimbs_kichant_chochorus_and_powers() {
         CardId::LostLute,
         CardId::MythicForm,
     ] {
-        state.player.hand.clear();
+        clear_hand(&mut state);
         state.player.energy = 10;
         let upg = i32::from(cid == CardId::MythicForm);
         let h = add_card_to_hand(&mut state, &content, cid, upg);
@@ -609,20 +624,20 @@ fn melodies_coda_cholimbs_kichant_chochorus_and_powers() {
         CardId::WahChoKi,
         CardId::KiWhip,
     ] {
-        state.player.hand.clear();
+        clear_hand(&mut state);
         state.player.energy = 10;
         let h = add_card_to_hand(&mut state, &content, cid, 0);
         play_hand_card(&mut state, &content, h, Some(enemy));
     }
 
     for cid in [CardId::WahBlast, CardId::WahSweep, CardId::WahSymphony] {
-        state.player.hand.clear();
+        clear_hand(&mut state);
         state.player.energy = 10;
         let h = add_card_to_hand(&mut state, &content, cid, 0);
         play_hand_card(&mut state, &content, h, None);
     }
 
-    state.player.hand.clear();
+    clear_hand(&mut state);
     let _wah_in_hand = add_card_to_hand(&mut state, &content, CardId::WahSweep, 0);
     let cho_chorus = add_card_to_hand(&mut state, &content, CardId::ChoChorus, 0);
     state.player.energy = 10;
@@ -686,6 +701,7 @@ fn tarot_growth_showoff_bounce_florescence_mourning_and_all_remaining_cards() {
             .id
             != CardId::StrikeFool
     });
+    state.invalidate_pile_hooks(sts2_kernel::state::HOOK_DIRTY_HAND);
     let brighten = add_card_to_hand(&mut state, &content, CardId::BrightenUp, 0);
     play_hand_card(&mut state, &content, brighten, None);
     let growth = add_card_to_hand(&mut state, &content, CardId::Growth, 0);
@@ -694,7 +710,7 @@ fn tarot_growth_showoff_bounce_florescence_mourning_and_all_remaining_cards() {
     assert!(power_amount(&state, pc, PowerId::StretchPower) > stretch_before);
 
     // BlotOutTheSky generates a Shoot card set to free this turn
-    state.player.hand.clear();
+    clear_hand(&mut state);
     let blot = add_card_to_hand(&mut state, &content, CardId::BlotOutTheSky, 0);
     let hand_before = state.player.hand.len();
     play_hand_card(&mut state, &content, blot, None);
@@ -761,21 +777,21 @@ fn tarot_growth_showoff_bounce_florescence_mourning_and_all_remaining_cards() {
         CardId::Simpleton,
         CardId::Yoga,
     ] {
-        state.player.hand.clear();
+        clear_hand(&mut state);
         state.player.energy = 10;
         let h = add_card_to_hand(&mut state, &content, cid, 0);
         play_hand_card(&mut state, &content, h, None);
     }
 
     for cid in [CardId::DislikeYou, CardId::SorrowfulStrike, CardId::Vitriol] {
-        state.player.hand.clear();
+        clear_hand(&mut state);
         state.player.energy = 10;
         let h = add_card_to_hand(&mut state, &content, cid, 0);
         play_hand_card(&mut state, &content, h, Some(tank_enemy));
     }
 
     // Enrapture directly on player via on_play (TargetType::AnyAlly normally requires another ally)
-    state.player.hand.clear();
+    clear_hand(&mut state);
     let enrapture = add_card_to_hand(&mut state, &content, CardId::Enrapture, 0);
     let enr_ctx = CardPlayContext {
         card: enrapture,

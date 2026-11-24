@@ -8,8 +8,9 @@ use serde::{Deserialize, Serialize};
 use sts2_kernel::state::{BattleState, CardTempFlags, FieldValue, GrowthCounters};
 use sts2_kernel::{CombatEngine, ContentDispatcher};
 use sts2_types::{
-    CardId, CardKeywords, CardStaticFlags, CardType, GameMode, OrbId, PileType, PlayerRngType,
-    PotionId, PowerId, PowerStackType, PowerType, RelicId, RoomType,
+    CardId, CardKeywords, CardStaticFlags, CardType, GameMode, MonsterId, OrbId, PileType,
+    PlayerRngType, PotionId, PowerId, PowerStackType, PowerStaticFlags, PowerType, RelicId,
+    RelicStaticFlags, RoomType,
 };
 
 pub mod weights {
@@ -68,6 +69,11 @@ pub mod weights {
     pub const POTION_MINIMUM_HP_SAVED: i32 = 9;
     pub const POTION_HIGH_VALUE_HP_SAVED: i32 = POTION_MINIMUM_HP_SAVED * 2;
     pub const POTION_ELEVATED_VALUE_HP_SAVED: i32 = (POTION_MINIMUM_HP_SAVED * 3 + 1) / 2;
+    pub const HP_FIXED_SCALE: i32 = 100;
+    pub const MAX_HP_GAIN_WEIGHT_CENTI: i32 = 200;
+    pub const MAX_HP_LOSS_WEIGHT_CENTI: i32 = 100;
+    pub const RUN_ENDING_POTION_TIE_BREAK_CENTI: i32 = 50;
+    pub const REPLACED_POTION_FLOOR_CENTI: i32 = 50;
     pub const DEATH_SAVE_PREMIUM_PERCENT: i32 = 900;
 
     pub const SETUP_VALUE_HORIZON_TURNS: i32 = 16;
@@ -534,8 +540,8 @@ pub fn mad_science_upgrade_capacity(state: &BattleState, content: &dyn ContentDi
         .iter()
         .filter(|&&h| {
             state.card(h).is_some_and(|c| {
-                content
-                    .card_meta(c.id)
+                state
+                    .fast_card_meta(content, c.id)
                     .is_ok_and(|m| c.upgrade_level < m.max_upgrade_level)
             })
         })
@@ -562,12 +568,6 @@ pub fn predict_potion_replacement_hp_credit(
     state: &BattleState,
     policy: &crate::SearchPolicy,
 ) -> i32 {
-    if !policy.predict_potion_reward {
-        return 0;
-    }
-    if let Some(credit) = policy.potion_reward_replacement_hp_credit {
-        return credit.max(0);
-    }
     let belt_full = !state.player.potion_slots.is_empty()
         && state.player.potion_slots.iter().all(|s| s.is_some());
     let procure_blocked = state
@@ -585,22 +585,32 @@ pub fn predict_potion_replacement_hp_credit(
     if !matches!(room, RoomType::Monster | RoomType::Elite | RoomType::Boss) {
         return 0;
     }
-    let forced = state
+    let has_white_beast = state
         .player
         .relics
         .iter()
-        .any(|r| !r.is_melted && r.id == RelicId::WhiteBeastStatue)
-        || (state.static_ctx.game_mode == GameMode::Blitz
-            && (room == RoomType::Boss
-                || (room == RoomType::Monster && !state.static_ctx.encounter_is_weak)));
-    let drop = if forced {
-        true
-    } else {
-        let chance = (0.40f32 + if room == RoomType::Elite { 0.125 } else { 0.0 }).clamp(0.0, 1.0);
+        .any(|r| !r.is_melted && r.id == RelicId::WhiteBeastStatue);
+    if policy.predict_potion_reward {
+        if let Some(credit) = policy.potion_reward_replacement_hp_credit {
+            return credit.max(0);
+        }
+        let forced = has_white_beast
+            || (state.static_ctx.game_mode == GameMode::Blitz
+                && (room == RoomType::Boss
+                    || (room == RoomType::Monster && !state.static_ctx.encounter_is_weak)));
+        if forced {
+            return weights::POTION_MINIMUM_HP_SAVED;
+        }
+        let chance =
+            (0.40f32 + if room == RoomType::Elite { 0.125 } else { 0.0 }).clamp(0.0, 1.0);
         let mut rng = *state.player_rngs.get(PlayerRngType::Rewards);
-        rng.random.next_float() < chance
-    };
-    if drop {
+        return if rng.random.next_float() < chance {
+            weights::POTION_MINIMUM_HP_SAVED
+        } else {
+            0
+        };
+    }
+    if has_white_beast {
         weights::POTION_MINIMUM_HP_SAVED
     } else {
         0
@@ -701,6 +711,66 @@ impl ActEndingBossPolicy {
     }
 
     #[inline]
+    pub const fn persistent_hp_scale(relief: BossHpRelief) -> i32 {
+        match relief {
+            BossHpRelief::ActClearHeal => 20,
+            BossHpRelief::RunEnding => 0,
+            BossHpRelief::None => 100,
+        }
+    }
+
+    #[inline]
+    pub const fn round_centi_to_hp(centi: i32) -> i32 {
+        if centi >= 0 {
+            (centi + 50) / weights::HP_FIXED_SCALE
+        } else {
+            -((-centi + 50) / weights::HP_FIXED_SCALE)
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[inline]
+    pub fn compute_net_persistent_hp_delta_centi(
+        end_player_hp: i32,
+        post_combat_monotone_heal: i32,
+        initial_player_hp: i32,
+        end_player_max_hp: i32,
+        initial_player_max_hp: i32,
+        death_save_hp_restored: i32,
+        growth_hp_credit: i32,
+        boss_hp_relief: BossHpRelief,
+        ignore_long_term_rewards: bool,
+    ) -> i32 {
+        let hp_scale = Self::persistent_hp_scale(boss_hp_relief);
+        let death_save_hp = death_save_hp_restored.max(0);
+        let raw_hp_delta =
+            (end_player_hp + post_combat_monotone_heal - death_save_hp) - initial_player_hp;
+        let max_hp_gain = (end_player_max_hp - initial_player_max_hp).max(0);
+        let max_hp_loss = (initial_player_max_hp - end_player_max_hp).max(0);
+
+        let max_hp_gain_credit_centi =
+            if boss_hp_relief != BossHpRelief::RunEnding && !ignore_long_term_rewards {
+                max_hp_gain.saturating_mul(weights::MAX_HP_GAIN_WEIGHT_CENTI)
+            } else {
+                0
+            };
+        let max_hp_loss_penalty_centi = if boss_hp_relief != BossHpRelief::RunEnding {
+            max_hp_loss.saturating_mul(weights::MAX_HP_LOSS_WEIGHT_CENTI)
+        } else {
+            0
+        };
+        let death_save_penalty_centi =
+            Self::death_save_premium(death_save_hp).saturating_mul(weights::HP_FIXED_SCALE);
+
+        raw_hp_delta
+            .saturating_mul(hp_scale)
+            .saturating_add(max_hp_gain_credit_centi)
+            .saturating_sub(max_hp_loss_penalty_centi)
+            .saturating_add(growth_hp_credit.saturating_mul(weights::HP_FIXED_SCALE))
+            .saturating_sub(death_save_penalty_centi)
+    }
+
+    #[inline]
     pub fn raw_hp_required_for_persistent_value(persistent_hp_value: i32, relief: BossHpRelief) -> i32 {
         if persistent_hp_value <= 0 {
             return 0;
@@ -785,11 +855,14 @@ pub struct PotionValuationRegistry;
 impl PotionValuationRegistry {
     #[inline]
     pub fn strategic_hp_cost(id: PotionId, renewable_potion_shaped_rock: bool) -> i32 {
-        if renewable_potion_shaped_rock && id == PotionId::PotionShapedRock {
+        if id == PotionId::PotionShapedRock
+            || (renewable_potion_shaped_rock && id == PotionId::PotionShapedRock)
+        {
             return 0;
         }
         match id {
-            PotionId::GlowwaterPotion
+            PotionId::Ambergris
+            | PotionId::GlowwaterPotion
             | PotionId::SwiftPotion
             | PotionId::GamblersBrew
             | PotionId::Duplicator
@@ -812,11 +885,31 @@ impl PotionValuationRegistry {
         renewable_potion_shaped_rock: bool,
         overrides: &std::collections::BTreeMap<PotionId, i32>,
     ) -> i32 {
-        if renewable_potion_shaped_rock && id == PotionId::PotionShapedRock {
+        if let Some(&cost) = overrides.get(&id) {
+            return cost.clamp(0, 100);
+        }
+        Self::strategic_hp_cost(id, renewable_potion_shaped_rock)
+    }
+
+    #[inline]
+    pub fn strategic_hp_cost_for_root(
+        id: PotionId,
+        renewable_potion_shaped_rock: bool,
+        initial_player_max_hp: i32,
+        overrides: &std::collections::BTreeMap<PotionId, i32>,
+    ) -> i32 {
+        if let Some(&cost) = overrides.get(&id) {
+            return cost.clamp(0, 100);
+        }
+        if id == PotionId::PotionShapedRock
+            || (renewable_potion_shaped_rock && id == PotionId::PotionShapedRock)
+        {
             return 0;
         }
-        if let Some(&cost) = overrides.get(&id) {
-            return cost;
+        if id == PotionId::Ambergris {
+            let max_hp = initial_player_max_hp.max(1);
+            let ceil_40 = (max_hp * 4 + 9) / 10;
+            return weights::POTION_HIGH_VALUE_HP_SAVED.max(ceil_40);
         }
         Self::strategic_hp_cost(id, false)
     }
@@ -840,6 +933,136 @@ impl PotionValuationRegistry {
 pub struct PotionUsePolicy;
 
 impl PotionUsePolicy {
+    #[inline]
+    pub fn compute_net_potion_opportunity_cost_centi(
+        optional_paid_raw_hp_cost: i32,
+        optional_paid_count: i32,
+        alchemize_count: i32,
+        end_empty_potion_slots: i32,
+        root: &RootEvalBaseline,
+    ) -> i32 {
+        if optional_paid_count <= 0 || optional_paid_raw_hp_cost <= 0 {
+            return 0;
+        }
+        if root.encounter_boss_hp_relief == BossHpRelief::RunEnding {
+            return optional_paid_count.saturating_mul(weights::RUN_ENDING_POTION_TIE_BREAK_CENTI);
+        }
+        let raw_centi = optional_paid_raw_hp_cost.saturating_mul(weights::HP_FIXED_SCALE);
+        let mut replacement_centi = 0i32;
+        if !root.has_sozu {
+            let drop_lands = root.belt_full_at_root
+                && root.base_replacement_credit_centi > 0
+                && (end_empty_potion_slots > 0 || alchemize_count == 0);
+            let mut remaining_slots = optional_paid_count;
+            if drop_lands {
+                replacement_centi += root.base_replacement_credit_centi;
+                remaining_slots -= 1;
+            }
+            let alchemize_refills = remaining_slots
+                .min((alchemize_count - i32::from(root.empty_root_potion_slots)).max(0));
+            if alchemize_refills > 0 {
+                replacement_centi += alchemize_refills
+                    * (weights::POTION_MINIMUM_HP_SAVED * weights::HP_FIXED_SCALE);
+            }
+        }
+        let after_replacement_centi = raw_centi - replacement_centi;
+        if after_replacement_centi <= weights::REPLACED_POTION_FLOOR_CENTI {
+            weights::REPLACED_POTION_FLOOR_CENTI
+        } else {
+            after_replacement_centi
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[inline]
+    pub fn can_any_paid_potion_improve_on(
+        won: bool,
+        survives: bool,
+        death_save_use_count: i32,
+        end_player_hp: i32,
+        end_player_max_hp: i32,
+        used_potion_slot_mask: u16,
+        outstanding_stolen: i32,
+        forfeits_gold: bool,
+        theft_preserve_resources: bool,
+        root: &RootEvalBaseline,
+    ) -> bool {
+        let remaining_paid_mask = root.paid_optional_slot_mask & !used_potion_slot_mask;
+        if root.paid_optional_potion_count == 0 || remaining_paid_mask == 0 {
+            return false;
+        }
+        if !won || !survives || death_save_use_count > 0 {
+            return true;
+        }
+        if theft_preserve_resources && (outstanding_stolen > 0 || forfeits_gold) {
+            return true;
+        }
+        if root.effective_has_growth_targets || !root.active_relic_targets.is_empty() {
+            return true;
+        }
+
+        let hp_scale = ActEndingBossPolicy::persistent_hp_scale(root.boss_hp_relief);
+        if root.encounter_boss_hp_relief == BossHpRelief::RunEnding && hp_scale == 0 {
+            return false;
+        }
+
+        let min_alchemize_refill = i32::from(root.has_alchemize_in_deck && !root.has_sozu);
+        let min_net_cost_centi = Self::compute_net_potion_opportunity_cost_centi(
+            root.min_paid_potion_cost,
+            1,
+            min_alchemize_refill,
+            1,
+            root,
+        );
+
+        let has_remaining_heal = (remaining_paid_mask & root.paid_heal_potion_slot_mask) != 0;
+        let has_remaining_fruit_juice = (remaining_paid_mask & root.paid_fruit_juice_slot_mask) != 0;
+        let has_remaining_entropic = (remaining_paid_mask & root.paid_entropic_brew_slot_mask) != 0;
+
+        let end_max_hp = if end_player_max_hp > 0 {
+            end_player_max_hp
+        } else {
+            root.initial_player_max_hp
+        };
+        let end_post_heal_hp = end_player_hp
+            + ActEndingBossPolicy::ranked_post_combat_relic_heal(
+                root.post_combat_relic_heal,
+                won,
+                end_player_hp,
+                end_max_hp,
+            );
+
+        let max_raw_hp_gain =
+            if has_remaining_heal || has_remaining_entropic || root.has_any_heal_or_unknown_generation {
+                (root.initial_player_max_hp - end_post_heal_hp).max(0)
+            } else {
+                let best_unhealed_end_hp = root
+                    .initial_player_max_hp
+                    .min(root.initial_player_hp + root.post_combat_relic_heal.unconditional_heal);
+                (best_unhealed_end_hp - end_post_heal_hp).max(0)
+            };
+
+        let mut max_possible_gain_centi = (max_raw_hp_gain as i64) * (hp_scale as i64);
+
+        let max_hp_loss = (root.initial_player_max_hp - end_max_hp).max(0);
+        if max_hp_loss > 0 && root.boss_hp_relief != BossHpRelief::RunEnding {
+            max_possible_gain_centi +=
+                (max_hp_loss as i64) * (weights::MAX_HP_LOSS_WEIGHT_CENTI as i64);
+        }
+
+        if has_remaining_fruit_juice || has_remaining_entropic {
+            let max_hp_gain_bonus =
+                if root.boss_hp_relief != BossHpRelief::RunEnding && !root.ignore_long_term_rewards {
+                    5 * weights::MAX_HP_GAIN_WEIGHT_CENTI
+                } else {
+                    0
+                };
+            max_possible_gain_centi += 5 * (hp_scale as i64) + (max_hp_gain_bonus as i64);
+        }
+
+        max_possible_gain_centi >= (min_net_cost_centi as i64)
+    }
+
     #[inline]
     pub fn additional_required_use_strategic_hp_cost(strategic_hp_cost: i32) -> i32 {
         (strategic_hp_cost - weights::POTION_MINIMUM_HP_SAVED).max(0)
@@ -1217,6 +1440,227 @@ impl RouteQualityPolicy {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct RareNodeEval {
+    pub growth_rewards: GrowthCounters,
+    pub relic_eval: RelicCounterEvaluation,
+}
+
+impl RareNodeEval {
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.growth_rewards.is_zero() && self.relic_eval.target_mask == 0
+    }
+}
+
+pub const FAST_FLAG_PLAYER_DEAD: u8 = 1 << 0;
+pub const FAST_FLAG_ALL_ENEMIES_DEAD: u8 = 1 << 1;
+pub const FAST_FLAG_WON: u8 = 1 << 2;
+pub const FAST_FLAG_HAS_PENDING_CHOICE: u8 = 1 << 3;
+pub const FAST_FLAG_FORFEITS_GOLD: u8 = 1 << 4;
+
+/// Compact 40-byte per-node summary stored inline inside `SearchNode`.
+/// Infrequent `growth_rewards` and `relic_eval` spill to `NodeArena::rare_evals`.
+#[derive(Clone, Copy, Debug)]
+pub struct StoredFastEval {
+    pub enemy_hp: i32,
+    pub player_hp: i16,
+    pub player_max_hp: i16,
+    pub player_block: i16,
+    pub projected_player_hp: i16,
+    pub cumulative_hp_lost: i16,
+    pub recovered_hp: i16,
+    pub death_save_hp_restored: i16,
+    pub strategy_goal_hp_credit: i16,
+    pub strategic_hp_credit: i16,
+    pub energy: i16,
+    pub stars: i16,
+    pub outstanding_stolen: i16,
+    pub combat_ended_turn_encoded: u16,
+    pub alive_enemy_count: u8,
+    pub reviving_enemy_count: u8,
+    pub death_save_use_count: u8,
+    pub raw_growth_reward_count: u8,
+    pub strategy_goal_count: u8,
+    pub alchemize_count: u8,
+    pub empty_potion_slots: u8,
+    pub flags: u8,
+}
+
+const _: () = assert!(std::mem::size_of::<StoredFastEval>() <= 40);
+
+impl Default for StoredFastEval {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            enemy_hp: 0,
+            player_hp: 0,
+            player_max_hp: 0,
+            player_block: 0,
+            projected_player_hp: 0,
+            cumulative_hp_lost: 0,
+            recovered_hp: 0,
+            death_save_hp_restored: 0,
+            strategy_goal_hp_credit: 0,
+            strategic_hp_credit: 0,
+            energy: 0,
+            stars: 0,
+            outstanding_stolen: 0,
+            combat_ended_turn_encoded: u16::MAX,
+            alive_enemy_count: 0,
+            reviving_enemy_count: 0,
+            death_save_use_count: 0,
+            raw_growth_reward_count: 0,
+            strategy_goal_count: 0,
+            alchemize_count: 0,
+            empty_potion_slots: 0,
+            flags: 0,
+        }
+    }
+}
+
+impl From<&FastEvalSummary> for StoredFastEval {
+    #[inline]
+    fn from(f: &FastEvalSummary) -> Self {
+        let mut flags = 0u8;
+        if f.player_dead {
+            flags |= FAST_FLAG_PLAYER_DEAD;
+        }
+        if f.all_enemies_dead {
+            flags |= FAST_FLAG_ALL_ENEMIES_DEAD;
+        }
+        if f.won {
+            flags |= FAST_FLAG_WON;
+        }
+        if f.has_pending_choice {
+            flags |= FAST_FLAG_HAS_PENDING_CHOICE;
+        }
+        if f.forfeits_gold {
+            flags |= FAST_FLAG_FORFEITS_GOLD;
+        }
+        Self {
+            enemy_hp: f.enemy_hp,
+            player_hp: f.player_hp.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            player_max_hp: f.player_max_hp.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            player_block: f.player_block.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            projected_player_hp: f.projected_player_hp.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            cumulative_hp_lost: f.cumulative_hp_lost.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            recovered_hp: f.recovered_hp.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            death_save_hp_restored: f.death_save_hp_restored.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            strategy_goal_hp_credit: f.strategy_goal_hp_credit.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            strategic_hp_credit: f.strategic_hp_credit.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            energy: f.energy.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            stars: f.stars.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            outstanding_stolen: f.outstanding_stolen.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            combat_ended_turn_encoded: match f.combat_ended_turn {
+                Some(t) => t.clamp(0, (u16::MAX - 1) as i32) as u16,
+                None => u16::MAX,
+            },
+            alive_enemy_count: f.alive_enemy_count.clamp(0, u8::MAX as i32) as u8,
+            reviving_enemy_count: f.reviving_enemy_count.clamp(0, u8::MAX as i32) as u8,
+            death_save_use_count: f.death_save_use_count.clamp(0, u8::MAX as i32) as u8,
+            raw_growth_reward_count: f.raw_growth_reward_count.clamp(0, u8::MAX as i32) as u8,
+            strategy_goal_count: f.strategy_goal_count.clamp(0, u8::MAX as i32) as u8,
+            alchemize_count: f.alchemize_count,
+            empty_potion_slots: f.empty_potion_slots,
+            flags,
+        }
+    }
+}
+
+impl StoredFastEval {
+    #[inline(always)]
+    pub const fn player_dead(&self) -> bool {
+        (self.flags & FAST_FLAG_PLAYER_DEAD) != 0
+    }
+
+    #[inline(always)]
+    pub const fn all_enemies_dead(&self) -> bool {
+        (self.flags & FAST_FLAG_ALL_ENEMIES_DEAD) != 0
+    }
+
+    #[inline(always)]
+    pub const fn won(&self) -> bool {
+        (self.flags & FAST_FLAG_WON) != 0
+    }
+
+    #[inline(always)]
+    pub const fn has_pending_choice(&self) -> bool {
+        (self.flags & FAST_FLAG_HAS_PENDING_CHOICE) != 0
+    }
+
+    #[inline(always)]
+    pub const fn forfeits_gold(&self) -> bool {
+        (self.flags & FAST_FLAG_FORFEITS_GOLD) != 0
+    }
+
+    #[inline(always)]
+    pub const fn combat_ended_turn(&self) -> Option<i32> {
+        if self.combat_ended_turn_encoded == u16::MAX {
+            None
+        } else {
+            Some(self.combat_ended_turn_encoded as i32)
+        }
+    }
+
+    #[inline(always)]
+    pub fn set_won(&mut self, v: bool) {
+        if v {
+            self.flags |= FAST_FLAG_WON | FAST_FLAG_ALL_ENEMIES_DEAD;
+        } else {
+            self.flags &= !FAST_FLAG_WON;
+        }
+    }
+
+    #[inline(always)]
+    pub fn set_player_dead(&mut self, v: bool) {
+        if v {
+            self.flags |= FAST_FLAG_PLAYER_DEAD;
+        } else {
+            self.flags &= !FAST_FLAG_PLAYER_DEAD;
+        }
+    }
+
+    #[inline(always)]
+    pub fn set_forfeits_gold(&mut self, v: bool) {
+        if v {
+            self.flags |= FAST_FLAG_FORFEITS_GOLD;
+        } else {
+            self.flags &= !FAST_FLAG_FORFEITS_GOLD;
+        }
+    }
+
+    #[inline(always)]
+    pub fn set_combat_ended_turn(&mut self, v: Option<i32>) {
+        self.combat_ended_turn_encoded = match v {
+            Some(t) => t.clamp(0, (u16::MAX - 1) as i32) as u16,
+            None => u16::MAX,
+        };
+    }
+
+    #[inline]
+    pub fn transposition_label(
+        &self,
+        score: f64,
+        potion_count: u8,
+        potion_strategic_cost: i32,
+        future_sold_hp: i32,
+        action_count: u16,
+        forced_used_mask: u64,
+    ) -> TranspositionLabel {
+        TranspositionLabel::new(
+            forced_used_mask,
+            self.death_save_use_count as i32,
+            potion_count as u16,
+            potion_strategic_cost,
+            future_sold_hp,
+            self.cumulative_hp_lost as i32,
+            action_count,
+            score,
+        )
+    }
+}
+
 /// Stage-1 fast single-pass summary scanned directly from `BattleState` before heavy Stage-2 materialization.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct FastEvalSummary {
@@ -1252,6 +1696,10 @@ pub struct FastEvalSummary {
     pub hand_count: i32,
     pub live_deck_size: i32,
     pub live_deck_clutter: i32,
+    pub alchemize_count: u8,
+    pub empty_potion_slots: u8,
+    pub outstanding_stolen: i32,
+    pub forfeits_gold: bool,
     pub combat_ended_turn: Option<i32>,
     pub base_score: f64,
 }
@@ -1266,16 +1714,16 @@ impl FastEvalSummary {
         action_count: u16,
         forced_used_mask: u64,
     ) -> TranspositionLabel {
-        TranspositionLabel {
+        TranspositionLabel::new(
             forced_used_mask,
-            death_save_use_count: self.death_save_use_count,
-            potion_count: potion_count as i32,
+            self.death_save_use_count,
+            potion_count,
             potion_strategic_cost,
             future_sold_hp,
-            cumulative_player_hp_lost: self.cumulative_hp_lost,
-            action_count: action_count as i32,
-            score: self.base_score,
-        }
+            self.cumulative_hp_lost,
+            action_count,
+            self.base_score,
+        )
     }
 }
 
@@ -1352,7 +1800,7 @@ fn compute_stand_pat(
     }
 
     pack_state(state, pack_buf);
-    if unpack_state(pack_buf, state.static_ctx.clone(), scratch).is_err() {
+    if unpack_state(pack_buf, &state.static_ctx, scratch).is_err() {
         let hp = state
             .player_creature()
             .map_or(state.player.current_hp, |c| c.current_hp);
@@ -1391,7 +1839,7 @@ fn compute_stand_pat(
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RootEvalBaseline {
     pub initial_player_hp: i32,
     pub initial_player_max_hp: i32,
@@ -1403,14 +1851,30 @@ pub struct RootEvalBaseline {
     pub initial_retained_attack_value: i32,
     pub initial_enemy_strength_suppression: i32,
     pub initial_enemy_weak_turns: i32,
+    pub encounter_boss_hp_relief: BossHpRelief,
     pub boss_hp_relief: BossHpRelief,
+    pub effective_potion_policy: SolverPotionPolicy,
+    pub theft_policy: SolverTheftPolicy,
     pub post_combat_relic_heal: PostCombatRelicHealProfile,
     pub is_act_ending_boss: bool,
     pub renewable_potion_shaped_rock: bool,
     pub has_gold_plated_cables: bool,
     pub has_paper_krane: bool,
     pub has_odd_mushroom: bool,
+    pub has_sozu: bool,
+    pub has_white_beast_statue: bool,
+    pub has_on_potion_used_relic: bool,
+    pub has_alchemize_in_deck: bool,
+    pub belt_full_at_root: bool,
+    pub empty_root_potion_slots: u8,
     pub potion_replacement_hp_credit: i32,
+    pub base_replacement_credit_centi: i32,
+    pub root_slot_costs: [i16; 16],
+    pub paid_optional_slot_mask: u16,
+    pub paid_heal_potion_slot_mask: u16,
+    pub paid_fruit_juice_slot_mask: u16,
+    pub paid_entropic_brew_slot_mask: u16,
+    pub has_any_heal_or_unknown_generation: bool,
     pub active_relic_targets: Vec<RelicCounterTarget>,
     pub ignore_long_term_rewards: bool,
     pub effective_growth_budgets: GrowthCounters,
@@ -1422,11 +1886,216 @@ pub struct RootEvalBaseline {
     pub root_state_brightest_flame_spent: i32,
     pub prior_battle_hp_lost: i32,
     pub all_forced_potion_mask: u64,
+    pub forced_directive_count: usize,
     pub minimum_required_potion_uses: usize,
     pub can_stop_at_hp_target: bool,
     pub paid_optional_potion_count: usize,
     pub min_paid_potion_cost: i32,
     pub has_paid_heal_or_growth_potion: bool,
+}
+
+impl Default for RootEvalBaseline {
+    fn default() -> Self {
+        Self {
+            initial_player_hp: 0,
+            initial_player_max_hp: 0,
+            initial_cumulative_hp_lost: 0,
+            initial_enemy_count: 0,
+            initial_live_deck_size: 0,
+            start_turn_number: 0,
+            initial_persistent_buff_value: 0,
+            initial_retained_attack_value: 0,
+            initial_enemy_strength_suppression: 0,
+            initial_enemy_weak_turns: 0,
+            encounter_boss_hp_relief: BossHpRelief::None,
+            boss_hp_relief: BossHpRelief::None,
+            effective_potion_policy: SolverPotionPolicy::Smart,
+            theft_policy: SolverTheftPolicy::Ignore,
+            post_combat_relic_heal: PostCombatRelicHealProfile::default(),
+            is_act_ending_boss: false,
+            renewable_potion_shaped_rock: false,
+            has_gold_plated_cables: false,
+            has_paper_krane: false,
+            has_odd_mushroom: false,
+            has_sozu: false,
+            has_white_beast_statue: false,
+            has_on_potion_used_relic: false,
+            has_alchemize_in_deck: false,
+            belt_full_at_root: false,
+            empty_root_potion_slots: 0,
+            potion_replacement_hp_credit: 0,
+            base_replacement_credit_centi: 0,
+            root_slot_costs: [-1; 16],
+            paid_optional_slot_mask: 0,
+            paid_heal_potion_slot_mask: 0,
+            paid_fruit_juice_slot_mask: 0,
+            paid_entropic_brew_slot_mask: 0,
+            has_any_heal_or_unknown_generation: false,
+            active_relic_targets: Vec::new(),
+            ignore_long_term_rewards: false,
+            effective_growth_budgets: GrowthCounters::default(),
+            growth_opportunity_targets: GrowthOpportunityTargets::default(),
+            effective_has_growth_targets: false,
+            mad_science_upgrade_capacity: 0,
+            initial_growth_rewards: GrowthCounters::default(),
+            initial_brightest_flame_max_hp_spent: 0,
+            root_state_brightest_flame_spent: 0,
+            prior_battle_hp_lost: 0,
+            all_forced_potion_mask: 0,
+            forced_directive_count: 0,
+            minimum_required_potion_uses: 0,
+            can_stop_at_hp_target: false,
+            paid_optional_potion_count: 0,
+            min_paid_potion_cost: 0,
+            has_paid_heal_or_growth_potion: false,
+        }
+    }
+}
+
+fn detect_any_heal_or_unknown_generation(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+) -> bool {
+    for c in &state.cards {
+        if c.removed_from_state || c.pile == PileType::Deck {
+            continue;
+        }
+        if state
+            .fast_card_meta(content, c.id)
+            .is_ok_and(|m| m.flags.contains(CardStaticFlags::MAY_HEAL))
+        {
+            return true;
+        }
+        if matches!(
+            c.id,
+            CardId::Abundance
+                | CardId::Alchemize
+                | CardId::BlotOutTheSky
+                | CardId::BundleOfJoy
+                | CardId::CreativeAi
+                | CardId::Discovery
+                | CardId::Distraction
+                | CardId::Feed
+                | CardId::HelloWorld
+                | CardId::InfernalBlade
+                | CardId::JackOfAllTrades
+                | CardId::Jackpot
+                | CardId::Largesse
+                | CardId::MadScience
+                | CardId::ManifestAuthority
+                | CardId::Metamorphosis
+                | CardId::NotYet
+                | CardId::Quasar
+                | CardId::Splash
+                | CardId::Spur
+                | CardId::Stoke
+                | CardId::TheHierophant
+                | CardId::TheLovers
+                | CardId::WhiteNoise
+        ) {
+            return true;
+        }
+    }
+
+    for cr in &state.creatures {
+        for pw in &cr.powers {
+            if state
+                .fast_power_meta(content, pw.id)
+                .is_ok_and(|m| m.flags.contains(PowerStaticFlags::MAY_HEAL))
+                || matches!(
+                    pw.id,
+                    PowerId::RegenPower | PowerId::ReattachPower | PowerId::IllusionPower
+                )
+            {
+                return true;
+            }
+        }
+    }
+
+    for r in &state.player.relics {
+        if r.is_melted {
+            continue;
+        }
+        if matches!(r.id, RelicId::BurningBlood | RelicId::BlackBlood) {
+            continue;
+        }
+        if content
+            .relic_meta(r.id)
+            .is_ok_and(|m| {
+                m.flags
+                    .intersects(RelicStaticFlags::MAY_HEAL | RelicStaticFlags::HAS_GROWTH)
+            })
+            || matches!(
+                r.id,
+                RelicId::AlchemicalCoffer
+                    | RelicId::ArcaneScroll
+                    | RelicId::Astrolabe
+                    | RelicId::BathRobes
+                    | RelicId::BathTowel
+                    | RelicId::BigHat
+                    | RelicId::BloodVial
+                    | RelicId::BookOfFiveRings
+                    | RelicId::BookRepairKnife
+                    | RelicId::ChoicesParadox
+                    | RelicId::Crossbow
+                    | RelicId::DelicateFrond
+                    | RelicId::DemonTongue
+                    | RelicId::EternalFeather
+                    | RelicId::FakeBloodVial
+                    | RelicId::FakeLeesWaffle
+                    | RelicId::HeftyTablet
+                    | RelicId::LastingCandy
+                    | RelicId::LeadPaperweight
+                    | RelicId::LeesWaffle
+                    | RelicId::LizardTail
+                    | RelicId::MassiveScroll
+                    | RelicId::MealTicket
+                    | RelicId::MeatOnTheBone
+                    | RelicId::Ocarina
+                    | RelicId::OrangeDough
+                    | RelicId::PandorasBox
+                    | RelicId::Pantograph
+                    | RelicId::PhialHolster
+                    | RelicId::Planisphere
+                    | RelicId::RegalPillow
+                    | RelicId::SeaGlass
+                    | RelicId::TeaOfDiscourtesy
+                    | RelicId::Toolbox
+                    | RelicId::VexingPuzzlebox
+                    | RelicId::Wuppy
+            )
+        {
+            return true;
+        }
+    }
+
+    for slot in &state.player.potion_slots {
+        let Some(pid) = *slot else { continue };
+        if content.potion_meta(pid).is_ok_and(|m| m.may_heal)
+            || matches!(
+                pid,
+                PotionId::Ambergris
+                    | PotionId::AttackPotion
+                    | PotionId::BloodPotion
+                    | PotionId::BottledSong
+                    | PotionId::ColorlessPotion
+                    | PotionId::CosmicConcoction
+                    | PotionId::DistilledChaos
+                    | PotionId::EntropicBrew
+                    | PotionId::FairyInABottle
+                    | PotionId::FruitJuice
+                    | PotionId::OrobicAcid
+                    | PotionId::PowerPotion
+                    | PotionId::RegenPotion
+                    | PotionId::SkillPotion
+                    | PotionId::SneckoOil
+            )
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 impl RootEvalBaseline {
@@ -1445,7 +2114,7 @@ impl RootEvalBaseline {
         let initial_player_max_hp = state
             .player_creature()
             .map_or(state.player.max_hp, |c| c.max_hp);
-        let encounter_relief = if state.static_ctx.room_type == RoomType::Boss {
+        let encounter_boss_hp_relief = if state.static_ctx.room_type == RoomType::Boss {
             if state.static_ctx.act_index < 2 {
                 BossHpRelief::ActClearHeal
             } else if policy.is_non_final_act3_boss {
@@ -1457,14 +2126,23 @@ impl RootEvalBaseline {
             BossHpRelief::None
         };
         let boss_hp_relief = ActEndingBossPolicy::resolve_strategic_hp_relief(
-            encounter_relief,
+            encounter_boss_hp_relief,
             policy.act_transition_boss_hp_strategy,
             policy.final_boss_hp_strategy,
         );
+        let effective_potion_policy = if policy.theft_policy == SolverTheftPolicy::PreserveResources
+        {
+            SolverPotionPolicy::Smart
+        } else {
+            policy.potion_policy
+        };
         let mut renewable_potion_shaped_rock = false;
         let mut has_gold_plated_cables = false;
         let mut has_paper_krane = false;
         let has_odd_mushroom = false;
+        let mut has_sozu = false;
+        let mut has_white_beast_statue = false;
+        let mut has_on_potion_used_relic = false;
         for r in &state.player.relics {
             if r.is_melted {
                 continue;
@@ -1473,49 +2151,89 @@ impl RootEvalBaseline {
                 RelicId::PetrifiedToad => renewable_potion_shaped_rock = true,
                 RelicId::GoldPlatedCables => has_gold_plated_cables = true,
                 RelicId::PaperKrane => has_paper_krane = true,
+                RelicId::Sozu => has_sozu = true,
+                RelicId::WhiteBeastStatue => has_white_beast_statue = true,
+                RelicId::ReptileTrinket | RelicId::BeltBuckle => has_on_potion_used_relic = true,
                 _ => {}
             }
         }
+        let has_alchemize_in_deck = state
+            .cards
+            .iter()
+            .any(|c| !c.removed_from_state && c.id == CardId::Alchemize);
+        let belt_full_at_root = !state.player.potion_slots.is_empty()
+            && state.player.potion_slots.iter().all(|s| s.is_some());
+        let empty_root_potion_slots = state
+            .player
+            .potion_slots
+            .iter()
+            .take(16)
+            .filter(|s| s.is_none())
+            .count() as u8;
         let potion_replacement_hp_credit = predict_potion_replacement_hp_credit(state, policy);
+        let base_replacement_credit_centi =
+            potion_replacement_hp_credit.saturating_mul(weights::HP_FIXED_SCALE);
+
+        let mut root_slot_costs = [-1i16; 16];
         let mut paid_optional_potion_count = 0usize;
+        let mut paid_optional_slot_mask = 0u16;
+        let mut paid_heal_potion_slot_mask = 0u16;
+        let mut paid_fruit_juice_slot_mask = 0u16;
+        let mut paid_entropic_brew_slot_mask = 0u16;
         let mut min_paid_potion_cost = i32::MAX;
         let mut has_paid_heal_or_growth_potion = false;
-        if policy.allow_potions && policy.potion_policy != SolverPotionPolicy::Disabled {
-            for (slot, maybe_pid) in state.player.potion_slots.iter().enumerate() {
-                let Some(pid) = *maybe_pid else { continue };
-                if pid == PotionId::FairyInABottle {
-                    continue;
-                }
-                if !policy.allows_explicit_potion_use(slot, pid, false) {
-                    continue;
-                }
-                if policy.forced_bit_for(slot, pid).is_some() {
-                    continue;
-                }
-                let cost = PotionValuationRegistry::strategic_hp_cost_with_overrides(
+        let allow_optional_at_root =
+            policy.allow_potions && effective_potion_policy != SolverPotionPolicy::Disabled;
+        for (slot, maybe_pid) in state.player.potion_slots.iter().enumerate().take(16) {
+            let Some(pid) = *maybe_pid else { continue };
+            let cost = PotionValuationRegistry::strategic_hp_cost_for_root(
+                pid,
+                renewable_potion_shaped_rock,
+                initial_player_max_hp,
+                &policy.potion_hp_threshold_overrides,
+            );
+            root_slot_costs[slot] = cost.clamp(0, i16::MAX as i32) as i16;
+            if pid == PotionId::FairyInABottle || !allow_optional_at_root {
+                continue;
+            }
+            if !policy.allows_explicit_potion_use(slot, pid, false) {
+                continue;
+            }
+            if policy.forced_bit_for(slot, pid).is_some() {
+                continue;
+            }
+            if cost > 0 {
+                let slot_bit = 1u16 << slot;
+                paid_optional_potion_count += 1;
+                paid_optional_slot_mask |= slot_bit;
+                min_paid_potion_cost = min_paid_potion_cost.min(cost);
+                let is_heal_pot = matches!(
                     pid,
-                    renewable_potion_shaped_rock,
-                    &policy.potion_hp_threshold_overrides,
-                );
-                if cost > 0 {
-                    paid_optional_potion_count += 1;
-                    min_paid_potion_cost = min_paid_potion_cost.min(cost);
-                    if matches!(
-                        pid,
-                        PotionId::BloodPotion
-                            | PotionId::FruitJuice
-                            | PotionId::RegenPotion
-                            | PotionId::EntropicBrew
-                    ) || content.potion_meta(pid).is_ok_and(|m| m.may_heal)
-                    {
-                        has_paid_heal_or_growth_potion = true;
-                    }
+                    PotionId::BloodPotion
+                        | PotionId::RegenPotion
+                        | PotionId::Ambergris
+                        | PotionId::FruitJuice
+                ) || (content.potion_meta(pid).is_ok_and(|m| m.may_heal)
+                    && pid != PotionId::HeartOfIron);
+                if is_heal_pot {
+                    paid_heal_potion_slot_mask |= slot_bit;
+                    has_paid_heal_or_growth_potion = true;
+                }
+                if pid == PotionId::FruitJuice {
+                    paid_fruit_juice_slot_mask |= slot_bit;
+                    has_paid_heal_or_growth_potion = true;
+                }
+                if pid == PotionId::EntropicBrew {
+                    paid_entropic_brew_slot_mask |= slot_bit;
+                    has_paid_heal_or_growth_potion = true;
                 }
             }
         }
         if min_paid_potion_cost == i32::MAX {
             min_paid_potion_cost = 0;
         }
+        let has_any_heal_or_unknown_generation =
+            detect_any_heal_or_unknown_generation(state, content);
         let active_relic_targets = RelicCounterPolicy::capture_targets(
             state,
             policy.relic_strategy_enabled,
@@ -1547,14 +2265,30 @@ impl RootEvalBaseline {
             initial_retained_attack_value: 0,
             initial_enemy_strength_suppression: 0,
             initial_enemy_weak_turns: 0,
+            encounter_boss_hp_relief,
             boss_hp_relief,
+            effective_potion_policy,
+            theft_policy: policy.theft_policy,
             post_combat_relic_heal: PostCombatRelicHealProfile::from_state(state),
             is_act_ending_boss: state.static_ctx.room_type == RoomType::Boss,
             renewable_potion_shaped_rock,
             has_gold_plated_cables,
             has_paper_krane,
             has_odd_mushroom,
+            has_sozu,
+            has_white_beast_statue,
+            has_on_potion_used_relic,
+            has_alchemize_in_deck,
+            belt_full_at_root,
+            empty_root_potion_slots,
             potion_replacement_hp_credit,
+            base_replacement_credit_centi,
+            root_slot_costs,
+            paid_optional_slot_mask,
+            paid_heal_potion_slot_mask,
+            paid_fruit_juice_slot_mask,
+            paid_entropic_brew_slot_mask,
+            has_any_heal_or_unknown_generation,
             active_relic_targets,
             ignore_long_term_rewards: policy.ignore_long_term_rewards,
             effective_growth_budgets,
@@ -1566,6 +2300,7 @@ impl RootEvalBaseline {
             root_state_brightest_flame_spent: state.semantic_history.brightest_flame_max_hp_spent,
             prior_battle_hp_lost: policy.prior_battle_hp_lost,
             all_forced_potion_mask: policy.all_forced_potion_mask(),
+            forced_directive_count: policy.forced_directive_count(),
             minimum_required_potion_uses: policy.minimum_required_potion_uses(),
             can_stop_at_hp_target,
             paid_optional_potion_count,
@@ -1602,6 +2337,33 @@ impl RootEvalBaseline {
     }
 }
 
+#[inline]
+pub(crate) fn is_creature_reviving(
+    state: &BattleState,
+    ec: &sts2_kernel::state::CreatureInst,
+) -> bool {
+    if !state.is_in_progress || state.won || !ec.is_dead() {
+        return false;
+    }
+    for p in &ec.powers {
+        let key = match p.id {
+            PowerId::ReattachPower if p.amount > 0 => "ReattachPower._isReviving",
+            PowerId::AdaptablePower => "AdaptablePower._isReviving",
+            _ => continue,
+        };
+        if let Some(ext_idx) = p.ext_index {
+            if let Some(FieldValue::Bool(true)) = state
+                .power_extensions
+                .get(ext_idx as usize)
+                .and_then(|pe| pe.private_fields.get(key))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Fast single-pass scan over `BattleState` with zero heap allocations.
 pub fn evaluate_fast(
     state: &BattleState,
@@ -1621,6 +2383,7 @@ pub fn evaluate_fast(
     let mut alive_enemy_count = 0i32;
     let mut reviving_enemy_count = 0i32;
     let mut alive_enemy_mask = 0u64;
+    let mut outstanding_stolen = 0i32;
 
     for (idx, &eh) in state.enemy_handles.iter().enumerate() {
         if let Some(ec) = state.creature(eh) {
@@ -1633,14 +2396,33 @@ pub fn evaluate_fast(
                 if idx < 64 {
                     alive_enemy_mask |= 1u64 << idx;
                 }
-            } else if ec.is_dead()
-                && state.contains_creature(eh)
-                && ec.powers.iter().any(|p| p.id == PowerId::ReattachPower && p.amount > 0)
-            {
+                for p in &ec.powers {
+                    if p.id == PowerId::ThieveryPower {
+                        if let Some(ext_idx) = p.ext_index {
+                            if let Some(FieldValue::Int(gold)) = state
+                                .power_extensions
+                                .get(ext_idx as usize)
+                                .and_then(|pe| pe.private_fields.get("ThieveryPower._goldStolen"))
+                            {
+                                outstanding_stolen += (*gold).max(0);
+                            }
+                        }
+                    } else if p.id == PowerId::SwipePower && p.amount > 0 {
+                        outstanding_stolen += p.amount;
+                    }
+                }
+            } else if state.contains_creature(eh) && is_creature_reviving(state, ec) {
                 reviving_enemy_count += 1;
             }
         }
     }
+    let forfeits_gold = state.escaped_handles.iter().any(|&eh| {
+        state.creature(eh).is_some_and(|ec| {
+            ec.powers
+                .iter()
+                .any(|p| matches!(p.id, PowerId::ThieveryPower | PowerId::SwipePower))
+        })
+    });
 
     let has_pending_choice = state.pending.is_some();
     let player_dead = pc.is_none_or(|c| c.is_dead()) || (!state.is_in_progress && !state.won);
@@ -1661,7 +2443,7 @@ pub fn evaluate_fast(
         for &ch in pile {
             live_deck_size += 1;
             if let Some(card) = state.card(ch) {
-                if let Ok(meta) = content.card_meta(card.id) {
+                if let Ok(meta) = state.fast_card_meta(content, card.id) {
                     if matches!(meta.card_type, CardType::Status | CardType::Curse) {
                         live_deck_clutter += 1;
                     }
@@ -1734,6 +2516,15 @@ pub fn evaluate_fast(
         s
     };
 
+    let empty_potion_slots = state
+        .player
+        .potion_slots
+        .iter()
+        .take(16)
+        .filter(|s| s.is_none())
+        .count() as u8;
+    let alchemize_count = state.semantic_history.growth_rewards.alchemize.clamp(0, 255) as u8;
+
     FastEvalSummary {
         player_hp,
         player_max_hp,
@@ -1767,6 +2558,10 @@ pub fn evaluate_fast(
         hand_count: state.player.hand.len() as i32,
         live_deck_size,
         live_deck_clutter,
+        alchemize_count,
+        empty_potion_slots,
+        outstanding_stolen,
+        forfeits_gold,
         combat_ended_turn: if won {
             Some(state.player.turn_number)
         } else {
@@ -1807,8 +2602,15 @@ pub struct FullEvalDetails {
     pub focus_target_remaining_hp: i32,
     pub osty_hp: i32,
     pub osty_max_hp: i32,
+    pub wuppy_hp: i32,
+    pub min_sandpit_turns: i32,
+    pub furnace_power: i32,
+    pub retained_blade_bonus_base: i64,
+    pub ready_arrows: i32,
+    pub melody_cards_finished: i32,
     pub playable_attack_count: i32,
     pub incoming_damage: i32,
+    pub end_turn_block: i32,
     pub effective_defense: i32,
     pub unblocked_incoming: i32,
     pub reviving_hp_penalty: i32,
@@ -1826,10 +2628,58 @@ pub struct FullEvalDetails {
     pub best_power_priority: PowerRoutePriority,
     pub beam_rank_score: f64,
     pub rollout_score: Option<f64>,
+    pub choice_lookahead_score: Option<f64>,
     pub has_choice_lookahead: bool,
 }
 
+/// Compact Stage-2 fields retained in `NodeArena::full_evals` across waves.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct StoredNodeEval {
+    pub beam_rank_score: f64,
+    pub rollout_score: Option<f64>,
+    pub choice_lookahead_score: Option<f64>,
+    pub effective_defense: i32,
+    pub board_investment: i32,
+    pub setup_score: i32,
+    pub optionality_cards: i32,
+    pub persistent_buff_value: i32,
+    pub reachable_hand_value: i32,
+    pub max_dark_evoke: i32,
+    pub total_poison_and_doom: i32,
+    pub best_power_priority: PowerRoutePriority,
+    pub has_choice_lookahead: bool,
+}
+
+impl StoredNodeEval {
+    #[inline]
+    pub fn effective_turn_boundary_score(&self) -> f64 {
+        match self.rollout_score {
+            Some(rs) => 0.35 * self.beam_rank_score + 0.65 * rs,
+            None => self.beam_rank_score,
+        }
+    }
+}
+
 impl FullEvalDetails {
+    #[inline]
+    pub fn to_stored(&self) -> StoredNodeEval {
+        StoredNodeEval {
+            beam_rank_score: self.beam_rank_score,
+            rollout_score: self.rollout_score,
+            choice_lookahead_score: self.choice_lookahead_score,
+            effective_defense: self.effective_defense,
+            board_investment: self.board_investment,
+            setup_score: self.setup_score,
+            optionality_cards: self.playable_card_count + self.next_turn_draw,
+            persistent_buff_value: self.persistent_buff_value,
+            reachable_hand_value: self.reachable_hand_value,
+            max_dark_evoke: self.max_dark_evoke,
+            total_poison_and_doom: self.total_poison_and_doom,
+            best_power_priority: self.best_power_priority,
+            has_choice_lookahead: self.has_choice_lookahead,
+        }
+    }
+
     #[inline]
     pub fn effective_turn_boundary_score(&self) -> f64 {
         match self.rollout_score {
@@ -2058,6 +2908,8 @@ pub fn evaluate_full(
     let mut next_turn_draw = 0i32;
     let mut next_turn_stars = 0i32;
     let mut next_turn_summon = 0i32;
+    let mut furnace_power = 0i32;
+    let mut min_sandpit_turns = i32::MAX;
 
     if let Some(pc) = state.player_creature() {
         for p in &pc.powers {
@@ -2092,6 +2944,7 @@ pub fn evaluate_full(
                     is_one_turn_carryover = true;
                     next_turn_summon += amt;
                 }
+                PowerId::FurnacePower => furnace_power += p.amount,
                 PowerId::VulnerablePower => player_vuln += amt,
                 PowerId::IntangiblePower => player_intangible += amt,
                 PowerId::AccelerantPower => player_accelerant += amt,
@@ -2105,7 +2958,7 @@ pub fn evaluate_full(
                 }
                 _ => {}
             }
-            let meta = content.power_meta(p.id).ok();
+            let meta = state.fast_power_meta(content, p.id).ok();
             if !is_one_turn_carryover
                 && p.amount > 0
                 && meta.is_some_and(|m| m.power_type == PowerType::Buff)
@@ -2203,9 +3056,10 @@ pub fn evaluate_full(
     let mut zero_cost_playable_count = 0i32;
     let mut retained_cards = 0i32;
     let mut hand_clutter = 0i32;
+    let mut retained_blade_bonus_base = 0i64;
     for &ch in &state.player.hand {
         if let Some(card) = state.card(ch) {
-            if let Ok(meta) = content.card_meta(card.id) {
+            if let Ok(meta) = state.fast_card_meta(content, card.id) {
                 if matches!(meta.card_type, CardType::Status | CardType::Curse) {
                     hand_clutter += 1;
                     continue;
@@ -2214,6 +3068,21 @@ pub fn evaluate_full(
                     || card.temp_flags.contains(CardTempFlags::TEMPORARY_RETAIN_TURN);
                 if is_retained {
                     retained_cards += 1;
+                }
+                if card.id == CardId::SovereignBlade && is_retained && furnace_power > 0 {
+                    let blade_dmg = state
+                        .card_ext(card.ext_index)
+                        .and_then(|e| e.private_fields.get("SovereignBlade._damage"))
+                        .and_then(|fv| match fv {
+                            FieldValue::Decimal(d) => d.to_i32_trunc().ok(),
+                            FieldValue::Int(x) => Some(*x),
+                            _ => None,
+                        })
+                        .unwrap_or(10)
+                        .max(0);
+                    if fast.enemy_hp > blade_dmg.saturating_mul(2) {
+                        retained_blade_bonus_base += (blade_dmg + furnace_power).min(70) as i64;
+                    }
                 }
                 let val = card_base_heuristic_value(card.id, card.upgrade_level, meta.card_type);
                 reachable_hand_value += val;
@@ -2279,16 +3148,12 @@ pub fn evaluate_full(
             let in_roster = state.contains_creature(eh);
             let alive = ec.is_alive() && in_roster;
             if ec.is_dead() && in_roster {
-                if let Some(rp) = ec
-                    .powers
-                    .iter()
-                    .find(|p| p.id == PowerId::ReattachPower && p.amount > 0)
-                {
-                    let rev_hp = if rp.amount > 0 {
-                        rp.amount
-                    } else {
-                        15.max(ec.max_hp / 2)
-                    };
+                if is_creature_reviving(state, ec) {
+                    let rev_hp = ec
+                        .powers
+                        .iter()
+                        .find(|p| p.id == PowerId::ReattachPower && p.amount > 0)
+                        .map_or_else(|| 15.max(ec.max_hp / 2), |rp| rp.amount);
                     reviving_hp_penalty += rev_hp;
                 }
                 continue;
@@ -2300,7 +3165,6 @@ pub fn evaluate_full(
                 }
                 let mut enemy_str = 0i32;
                 let mut enemy_weak = 0i32;
-                let mut enemy_shrink = 0i32;
                 let mut enemy_poison = 0i32;
                 let mut enemy_doom = 0i32;
                 let mut has_reattach = false;
@@ -2311,7 +3175,7 @@ pub fn evaluate_full(
                         continue;
                     }
                     if p.amount > 0 {
-                        if let Ok(pm) = content.power_meta(p.id) {
+                        if let Ok(pm) = state.fast_power_meta(content, p.id) {
                             if matches!(pm.power_type, sts2_types::PowerType::Debuff) {
                                 let is_dot =
                                     matches!(p.id, PowerId::PoisonPower | PowerId::DoomPower);
@@ -2344,11 +3208,6 @@ pub fn evaluate_full(
                             enemy_weak_turns += p.amount;
                             enemy_debuff_value += p.amount.min(5) * 4;
                         }
-                        PowerId::ShrinkPower if p.amount > 0 => {
-                            enemy_shrink += p.amount;
-                            enemy_weak_turns += p.amount * 3;
-                            enemy_debuff_value += p.amount.min(5) * 8;
-                        }
                         PowerId::VulnerablePower if p.amount > 0 => {
                             enemy_vulnerable_turns += p.amount;
                             enemy_debuff_value += p.amount.min(5) * 5;
@@ -2358,13 +3217,15 @@ pub fn evaluate_full(
                             if p.amount < 0 {
                                 let sup = (-p.amount).min(16);
                                 enemy_strength_suppression += sup;
-                                enemy_debuff_value += sup * 3;
                             } else if p.amount > 0 {
                                 enemy_threat_power_penalty += p.amount.min(20) * 3;
                             }
                         }
                         PowerId::RitualPower if p.amount > 0 => {
                             enemy_threat_power_penalty += p.amount.min(10) * 5;
+                        }
+                        PowerId::SandpitPower if p.amount > 0 => {
+                            min_sandpit_turns = min_sandpit_turns.min(p.amount);
                         }
                         PowerId::ReattachPower if p.amount > 0 => {
                             has_reattach = true;
@@ -2417,9 +3278,6 @@ pub fn evaluate_full(
                                     (per_hit * 75) / 100
                                 };
                             }
-                            if enemy_shrink > 0 {
-                                per_hit = (per_hit * 7) / 10;
-                            }
                             if player_vuln > 0 {
                                 per_hit = if root.has_odd_mushroom {
                                     (per_hit * 125) / 100
@@ -2449,8 +3307,31 @@ pub fn evaluate_full(
     if osty_hp > 0 {
         persistent_buff_value += soft_cap_positive(osty_hp / 4, 12, 48);
     }
+    let wuppy_hp: i32 = state
+        .pet_handles
+        .iter()
+        .filter_map(|&h| state.creature(h))
+        .filter(|c| c.is_alive() && c.monster_id == Some(MonsterId::Wuppy))
+        .map(|c| c.current_hp.max(0))
+        .sum();
+    let ready_arrows = if state.player.arrows.is_empty() {
+        0
+    } else {
+        state
+            .player
+            .arrows
+            .iter()
+            .filter(|a| a.is_available())
+            .count() as i32
+    };
+    let melody_cards_finished = if state.player.arrows.is_empty() {
+        0
+    } else {
+        state.player.counters.melody_cards_finished_this_turn.max(0)
+    };
 
-    let effective_defense = fast.player_block + player_end_turn_block + frost_passive_block + osty_hp;
+    let end_turn_block = fast.player_block + player_end_turn_block + frost_passive_block;
+    let effective_defense = end_turn_block + osty_hp + wuppy_hp;
     let unblocked_incoming = (incoming_damage - effective_defense).max(0);
     let all_reattach_encounter = reattach_alive_count > 0
         && (reattach_alive_count + fast.reviving_enemy_count) >= fast.alive_enemy_count;
@@ -2466,7 +3347,8 @@ pub fn evaluate_full(
         + (dark_evoke_sum / 6)
         + (osty_hp / 4)
         + (retained_cards * 3)
-        + thin_deck_delta;
+        + thin_deck_delta
+        + melody_cards_finished;
 
     let mut details = FullEvalDetails {
         persistent_buff_value,
@@ -2497,8 +3379,15 @@ pub fn evaluate_full(
         focus_target_remaining_hp,
         osty_hp,
         osty_max_hp,
+        wuppy_hp,
+        min_sandpit_turns,
+        furnace_power,
+        retained_blade_bonus_base,
+        ready_arrows,
+        melody_cards_finished,
         playable_attack_count,
         incoming_damage,
+        end_turn_block,
         effective_defense,
         unblocked_incoming,
         reviving_hp_penalty,
@@ -2516,6 +3405,7 @@ pub fn evaluate_full(
         best_power_priority,
         beam_rank_score: 0.0,
         rollout_score: None,
+        choice_lookahead_score: None,
         has_choice_lookahead: false,
     };
 
@@ -2597,6 +3487,34 @@ pub fn compute_beam_rank_score_with_mode(
     potion_strategic_cost: i32,
     action_count: u16,
 ) -> f64 {
+    let net_potion_cost_centi = potion_strategic_cost
+        .max(0)
+        .saturating_mul(weights::HP_FIXED_SCALE);
+    compute_beam_rank_score_with_centi(
+        fast,
+        full,
+        root,
+        base_score_only,
+        boss_tempo_hp_pricing,
+        perturbation,
+        eval_mode,
+        net_potion_cost_centi,
+        action_count,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn compute_beam_rank_score_with_centi(
+    fast: &FastEvalSummary,
+    full: &FullEvalDetails,
+    root: &RootEvalBaseline,
+    base_score_only: bool,
+    boss_tempo_hp_pricing: bool,
+    perturbation: Option<BeamWeightPerturbation>,
+    eval_mode: EvalMode,
+    net_potion_cost_centi: i32,
+    action_count: u16,
+) -> f64 {
     if base_score_only || fast.player_dead || fast.projected_player_hp <= 0 {
         return fast.base_score;
     }
@@ -2607,49 +3525,34 @@ pub fn compute_beam_rank_score_with_mode(
             fast.player_hp,
             fast.player_max_hp,
         );
-        let hp_scale = match root.boss_hp_relief {
-            BossHpRelief::None => 1.0,
-            BossHpRelief::ActClearHeal => 0.20,
-            BossHpRelief::RunEnding => 0.0,
-        };
-        let raw_hp_delta =
-            (fast.player_hp + relic_heal - fast.death_save_hp_restored) - root.initial_player_hp;
-        let max_hp_gain = (fast.player_max_hp - root.initial_player_max_hp).max(0);
-        let max_hp_loss = (root.initial_player_max_hp - fast.player_max_hp).max(0);
-        let max_hp_term = if root.boss_hp_relief != BossHpRelief::RunEnding {
-            (if !root.ignore_long_term_rewards {
-                max_hp_gain as f64 * 2.0 * weights::HP
-            } else {
-                0.0
-            }) - max_hp_loss as f64 * weights::HP
-        } else {
-            0.0
-        };
-        let death_save_prem = ActEndingBossPolicy::death_save_premium(fast.death_save_hp_restored);
-        let death_save_pen = death_save_prem as f64 * weights::HP
-            + fast.death_save_use_count as f64 * 500_000_000.0;
-        let net_hp_score = raw_hp_delta as f64 * hp_scale * weights::HP
-            + max_hp_term
-            + (fast.growth_hp_credit + fast.relic_eval.total_hp_credit()) as f64 * weights::HP
-            - death_save_pen;
-        let net_hp_delta_centi = ((raw_hp_delta as f64 * hp_scale
-            + (max_hp_term / weights::HP)
-            + (fast.growth_hp_credit + fast.relic_eval.total_hp_credit()) as f64
-            - death_save_prem as f64)
-            * 100.0)
-            .round();
-        let potion_penalty = if root.boss_hp_relief == BossHpRelief::RunEnding {
-            0.0
-        } else {
-            potion_strategic_cost.max(0) as f64 * weights::HP
-        };
-        return weights::VICTORY_BONUS
-            + net_hp_score
-            - potion_penalty
-            + net_hp_delta_centi * 2.0
+        let net_hp_delta_centi = ActEndingBossPolicy::compute_net_persistent_hp_delta_centi(
+            fast.player_hp,
+            relic_heal,
+            root.initial_player_hp,
+            fast.player_max_hp,
+            root.initial_player_max_hp,
+            fast.death_save_hp_restored,
+            fast.strategic_hp_credit,
+            root.boss_hp_relief,
+            root.ignore_long_term_rewards,
+        );
+        let v_centi = (net_hp_delta_centi as i64) - (net_potion_cost_centi as i64);
+        let mut s = weights::VICTORY_BONUS
+            - fast.death_save_use_count as f64 * 500_000_000.0
+            + v_centi as f64 * 300.0
+            + net_hp_delta_centi as f64 * 2.0
             - fast.combat_ended_turn.unwrap_or(root.start_turn_number) as f64 * 5_000.0
             - action_count as f64 * 10.0
-            + fast.growth_reward_count as f64 * 5_000.0;
+            + fast.growth_reward_count as f64 * 5_000.0
+            + fast.relic_eval.satisfied_priority as f64 * 0.1
+            - fast.relic_eval.distance as f64 * 0.001;
+        if root.theft_policy == SolverTheftPolicy::PreserveResources {
+            s -= fast.outstanding_stolen as f64 * 1_000_000.0;
+            if fast.forfeits_gold {
+                s -= 2_000_000.0;
+            }
+        }
+        return s;
     }
 
     let _ = (
@@ -2667,11 +3570,23 @@ pub fn compute_beam_rank_score_with_mode(
         EvalMode::Offense => (0.85, 0.85, 1.40),
     };
 
-    let potion_cost_weight = match root.boss_hp_relief {
-        BossHpRelief::RunEnding => 500.0,
-        BossHpRelief::ActClearHeal | BossHpRelief::None => 30_000.0,
-    };
-    let potion_opportunity_penalty = potion_strategic_cost.max(0) as f64 * potion_cost_weight;
+    let ongoing_net_hp_delta_centi = ActEndingBossPolicy::compute_net_persistent_hp_delta_centi(
+        fast.player_hp,
+        0,
+        root.initial_player_hp,
+        fast.player_max_hp,
+        root.initial_player_max_hp,
+        fast.death_save_hp_restored,
+        fast.strategic_hp_credit,
+        root.boss_hp_relief,
+        root.ignore_long_term_rewards,
+    );
+    let ongoing_hp_score = (ongoing_net_hp_delta_centi as f64) * 300.0
+        - (net_potion_cost_centi as f64) * 300.0
+        - fast.death_save_use_count as f64 * 500_000_000.0
+        + fast.relic_eval.satisfied_priority as f64 * 0.1
+        - fast.relic_eval.distance as f64 * 0.001
+        + fast.enemy_hp as f64 * weights::ENEMY_HP;
 
     let mut threat_score_delta = 0.0;
     if full.unblocked_incoming > 0 {
@@ -2700,8 +3615,8 @@ pub fn compute_beam_rank_score_with_mode(
             };
         }
         threat_score_delta -= scaled_threat as f64 * 24_000.0 * defense_scale;
-    } else if full.preserves_excess_block && full.effective_defense > full.incoming_damage {
-        let carried = (full.effective_defense - full.incoming_damage).min(60);
+    } else if full.preserves_excess_block && full.end_turn_block > full.incoming_damage {
+        let carried = (full.end_turn_block - full.incoming_damage).min(60);
         threat_score_delta += carried as f64 * 14_000.0;
     }
 
@@ -2757,13 +3672,33 @@ pub fn compute_beam_rank_score_with_mode(
     } else {
         0.0
     };
+    let sandpit_bonus = if full.min_sandpit_turns < i32::MAX {
+        let mut sb = full.min_sandpit_turns.min(6) as f64 * 30_000.0;
+        if full.min_sandpit_turns <= 1 && fast.enemy_hp > 60 {
+            sb -= 140_000.0;
+        }
+        sb
+    } else {
+        0.0
+    };
+    let fool_bonus = full.ready_arrows as f64 * 6_000.0 + full.melody_cards_finished as f64 * 5_000.0;
+    let retained_attack_bonus = if full.retained_blade_bonus_base > 0 {
+        let per_dmg = if eval_mode == EvalMode::SetupAndSurvival {
+            6_500.0
+        } else {
+            4_800.0
+        };
+        full.retained_blade_bonus_base as f64 * per_dmg
+    } else {
+        0.0
+    };
     let hand_potential_bonus = full.playable_card_count.clamp(0, 10) as f64 * 18_000.0
         + full.zero_cost_playable_count.clamp(0, 8) as f64 * 11_000.0
+        + retained_attack_bonus
         - full.hand_clutter as f64 * 4_000.0
         - fast.live_deck_clutter as f64 * 4_500.0;
 
-    let mut score = fast.base_score
-        - potion_opportunity_penalty
+    let mut score = ongoing_hp_score
         + threat_score_delta
         + carryover_bonus
         + fast.energy.clamp(0, 6) as f64 * 55_000.0
@@ -2773,12 +3708,21 @@ pub fn compute_beam_rank_score_with_mode(
         - fast.enemy_block.max(0) as f64 * 2_000.0
         - reviving_penalty
         + full.effective_doom_value.max(0) as f64 * 5_500.0
+        + sandpit_bonus
+        + fool_bonus
         + orb_and_osty_bonus
         + focus_or_reattach_term
         + hand_potential_bonus
         + fast.growth_reward_count as f64 * 5_000.0
         - action_count as f64 * 5.0
         + (offense_scale - 1.0) * (fast.enemy_hp as f64 * weights::ENEMY_HP);
+
+    if root.theft_policy == SolverTheftPolicy::PreserveResources {
+        score -= fast.outstanding_stolen as f64 * 1_000_000.0;
+        if fast.forfeits_gold {
+            score -= 2_000_000.0;
+        }
+    }
 
     if let Some(p) = perturbation {
         if (p.scale - 1.0).abs() > f64::EPSILON {
@@ -2802,12 +3746,21 @@ pub struct FinalPlanSelection {
     pub survives: bool,
     pub death_save_use_count: i32,
     pub player_hp: i32,
+    pub end_player_max_hp: i32,
     pub strategic_hp_deficit: i32,
+    pub net_persistent_hp_delta_centi: i32,
+    pub net_potion_opportunity_cost_centi: i32,
     pub hp_lost: i32,
     pub potion_count: usize,
     pub optional_potion_count: usize,
+    pub optional_paid_potion_count: usize,
     pub optional_potion_strategic_cost: i32,
     pub optional_ambergris_count: i32,
+    pub used_potion_slot_mask: u16,
+    pub alchemize_count: u8,
+    pub empty_potion_slots: u8,
+    pub outstanding_stolen: i32,
+    pub forfeits_gold: bool,
     pub score: i64,
     pub all_forced_uses_satisfied: bool,
     pub strategy_goal_hp_credit: i32,
@@ -2817,14 +3770,15 @@ pub struct FinalPlanSelection {
     pub recovered_hp: i32,
 }
 
-/// 1:1 port of `CombatBeamSolver.FinalPlanOrdering.cs`.
+/// Unified centi-HP route selection matching `HotRouteQuality` + `HotPotionPolicy.SatisfiesHardConstraints`:
+/// zero post-hoc Smart/Ambergris vetoes; ranks strictly by `V = NetPersistentHpDeltaCenti - NetPotionCostCenti`.
 pub fn select_final_plan(
     arena: &NodeArena,
     candidates: &[NodeId],
     root: &RootEvalBaseline,
     potion_policy: SolverPotionPolicy,
     theft_policy: Option<SolverTheftPolicy>,
-    potion_replacement_hp_credit: i32,
+    _potion_replacement_hp_credit: i32,
     minimum_potion_uses: usize,
 ) -> Option<FinalPlanSelection> {
     if candidates.is_empty() {
@@ -2838,16 +3792,17 @@ pub fn select_final_plan(
         explicit_potion_count: i32,
         forced_uses_satisfied: bool,
         forced_use_count: i32,
-        optional_potion_count: i32,
+        optional_paid_potion_count: i32,
         optional_potion_strategic_cost: i32,
         optional_ambergris_count: i32,
-        effective_potion_policy: SolverPotionPolicy,
-        economic_burden: i32,
-        policy_hp_deficit: i32,
-        health_resource_cost: i32,
+        used_potion_slot_mask: u16,
+        alchemize_count: u8,
+        empty_potion_slots: u8,
+        net_persistent_hp_delta_centi: i32,
+        net_potion_opportunity_cost_centi: i32,
+        end_player_max_hp: i32,
         raw_growth_reward_count: i32,
-        growth_rewards: GrowthCounters,
-        relic_eval: RelicCounterEvaluation,
+        rare: RareNodeEval,
         recovered_hp: i32,
         boundary_rank: u8,
         action_count: u16,
@@ -2856,247 +3811,47 @@ pub fn select_final_plan(
         state_hash: StateHash,
     }
 
-    let enforce_forced = root.all_forced_potion_mask != 0;
-    let evaluated: Vec<EvaluatedCandidate> = candidates
-        .iter()
-        .map(|&nid| {
-            let node = arena.get(nid);
-            let f = &node.fast_eval;
-            let explicit_potion_count = node.explicit_potion_count as i32;
-            let matched_forced = node.forced_used_mask & root.all_forced_potion_mask;
-            let forced_uses_satisfied = matched_forced == root.all_forced_potion_mask;
-            let forced_use_count = if enforce_forced {
-                matched_forced.count_ones() as i32
-            } else {
-                0
-            };
-            let forced_strategic_cost = if enforce_forced {
-                node.forced_strategic_hp_cost
-            } else {
-                0
-            };
-            let forced_ambergris_count = if enforce_forced {
-                node.forced_ambergris_count as i32
-            } else {
-                0
-            };
-            let optional_potion_count = (explicit_potion_count - forced_use_count).max(0);
-            let optional_potion_strategic_cost = PotionUsePolicy::apply_replacement_credit(
-                (node.explicit_potion_strategic_cost - forced_strategic_cost).max(0),
-                optional_potion_count,
-                potion_replacement_hp_credit,
-            );
-            let optional_ambergris_count =
-                (node.ambergris_count as i32 - forced_ambergris_count).max(0);
-            let effective_potion_policy = match potion_policy {
-                SolverPotionPolicy::RequireAtLeastOne if forced_use_count > 0 => {
-                    SolverPotionPolicy::Smart
-                }
-                SolverPotionPolicy::Disabled if optional_potion_count > 0 => {
-                    SolverPotionPolicy::Smart
-                }
-                other => other,
-            };
-            let max_hp_deficit = (root.initial_player_max_hp - f.player_max_hp).max(0);
-            let complete_victory = RouteQualityPolicy::is_complete_victory(
-                node.action_count as usize,
-                f.all_enemies_dead,
-                f.player_dead,
-                f.projected_player_hp,
-            );
-            let relic_heal = ActEndingBossPolicy::ranked_post_combat_relic_heal(
-                root.post_combat_relic_heal,
-                complete_victory,
-                f.player_hp,
-                f.player_max_hp,
-            );
-            let max_hp_gain_credit =
-                if !root.ignore_long_term_rewards && root.boss_hp_relief != BossHpRelief::RunEnding {
-                    (f.player_max_hp - root.initial_player_max_hp).max(0) * 2
-                } else {
-                    0
-                };
-            let strategic_hp_deficit = ActEndingBossPolicy::strategic_hp_deficit(
-                f.cumulative_hp_lost,
-                max_hp_deficit,
-                f.recovered_hp + relic_heal,
-                root.boss_hp_relief,
-                f.death_save_hp_restored,
-            ) - f.strategic_hp_credit
-                - max_hp_gain_credit;
-            let health_resource_cost =
-                (root.initial_player_hp - f.player_hp) + (root.initial_player_max_hp - f.player_max_hp);
-            let policy_hp_deficit = strategic_hp_deficit
-                + if effective_potion_policy == SolverPotionPolicy::RequireAtLeastOne {
-                    PotionUsePolicy::additional_required_use_strategic_hp_cost(
-                        optional_potion_strategic_cost,
-                    )
-                } else {
-                    0
-                };
-            let economic_burden = match effective_potion_policy {
-                SolverPotionPolicy::Smart => strategic_hp_deficit.saturating_add(
-                    ActEndingBossPolicy::effective_optional_potion_burden(
-                        optional_potion_count,
-                        optional_potion_strategic_cost,
-                        root.boss_hp_relief,
-                    ),
-                ),
-                SolverPotionPolicy::RequireAtLeastOne => policy_hp_deficit,
-                SolverPotionPolicy::Disabled => strategic_hp_deficit,
-            };
-            let quality = RouteQuality {
-                won: complete_victory,
-                survives: !f.player_dead && f.projected_player_hp > 0,
-                death_save_use_count: f.death_save_use_count,
-                outstanding_stolen_resource: 0,
-                strategic_hp_deficit,
-                growth_hp_credit: f.strategy_goal_hp_credit,
-                growth_reward_count: f.strategy_goal_count,
-                combat_ended_turn: if complete_victory {
-                    f.combat_ended_turn
-                } else {
-                    None
-                },
-                projected_battle_hp_lost: f.cumulative_hp_lost,
-                potion_strategic_cost: node.potion_strategic_cost,
-                projected_battle_potion_count: node.potion_count as i32,
-                enemy_hp: f.enemy_hp,
-                score: f.base_score,
-                theft_policy,
-                forfeits_encounter_gold: false,
-            };
-            EvaluatedCandidate {
-                node_id: nid,
-                quality,
-                explicit_potion_count,
-                forced_uses_satisfied,
-                forced_use_count,
-                optional_potion_count,
-                optional_potion_strategic_cost,
-                optional_ambergris_count,
-                effective_potion_policy,
-                economic_burden,
-                policy_hp_deficit,
-                health_resource_cost,
-                raw_growth_reward_count: f.raw_growth_reward_count,
-                growth_rewards: f.growth_rewards,
-                relic_eval: f.relic_eval,
-                recovered_hp: f.recovered_hp,
-                boundary_rank: node.boundary_rank,
-                action_count: node.action_count,
-                turn: node.turn,
-                player_hp: f.player_hp,
-                state_hash: node.state_hash,
-            }
-        })
-        .collect();
-
-    let mut potion_free_baseline_idx: Option<usize> = None;
-    for (idx, c) in evaluated.iter().enumerate() {
-        let is_baseline = if enforce_forced {
-            c.forced_uses_satisfied && c.optional_potion_count == 0
-        } else {
-            c.explicit_potion_count == 0
-        };
-        if !is_baseline {
-            continue;
-        }
-        let better = match potion_free_baseline_idx {
-            None => true,
-            Some(best_idx) => {
-                let cur = &evaluated[best_idx];
-                RouteQualityPolicy::compare(&c.quality, &cur.quality, RouteQualityProjection::Primary)
-                    .is_lt()
-                    || (RouteQualityPolicy::compare(
-                        &c.quality,
-                        &cur.quality,
-                        RouteQualityProjection::Primary,
-                    )
-                    .is_eq()
-                        && (c.health_resource_cost < cur.health_resource_cost
-                            || (c.health_resource_cost == cur.health_resource_cost
-                                && c.quality.score > cur.quality.score)))
-            }
-        };
-        if better {
-            potion_free_baseline_idx = Some(idx);
-        }
-    }
-
-    let has_potion_free = potion_free_baseline_idx.is_some();
-    let (potion_free_won, potion_free_hp_deficit, potion_free_player_hp, potion_free_death_saves) =
-        match potion_free_baseline_idx {
-            Some(idx) => {
-                let b = &evaluated[idx];
-                (
-                    b.quality.won,
-                    b.quality.strategic_hp_deficit,
-                    b.player_hp,
-                    b.quality.death_save_use_count,
-                )
-            }
-            None => (false, root.initial_player_hp, 0, i32::MAX),
-        };
-    let any_route_won = potion_free_won || evaluated.iter().any(|c| c.quality.won);
-
-    let mut eligible: Vec<&EvaluatedCandidate> = evaluated
-        .iter()
-        .filter(|c| {
-            let protects_death_save = has_potion_free
-                && potion_free_won
-                && c.quality.won
-                && potion_policy != SolverPotionPolicy::Disabled
-                && c.optional_potion_count > 0
-                && c.quality.death_save_use_count < potion_free_death_saves;
-            let passes_soft = PotionUsePolicy::is_eligible(
-                c.effective_potion_policy,
-                c.optional_potion_count,
-                PotionUsePolicy::smart_required_hp_saved(
-                    c.optional_potion_strategic_cost,
-                    root.boss_hp_relief,
-                ),
-                potion_free_won,
-                potion_free_hp_deficit,
-                any_route_won,
-                c.quality.won,
-                c.quality.strategic_hp_deficit,
-            ) || protects_death_save;
-            let passes_ambergris = protects_death_save
-                || PotionUsePolicy::meets_ambergris_restriction(
-                    has_potion_free,
-                    c.optional_ambergris_count,
-                    c.optional_potion_strategic_cost,
-                    root.initial_player_max_hp,
-                    potion_free_player_hp,
-                    c.player_hp,
-                );
-            c.forced_uses_satisfied
-                && c.explicit_potion_count >= minimum_potion_uses as i32
-                && passes_soft
-                && passes_ambergris
-        })
-        .collect();
-
-    if eligible.is_empty() {
-        eligible = evaluated.iter().collect();
-    }
-
-    eligible.sort_by(|a, b| {
+    #[inline]
+    fn cmp_eval_cand(
+        a: &EvaluatedCandidate,
+        b: &EvaluatedCandidate,
+        check_theft: bool,
+    ) -> std::cmp::Ordering {
+        let a_v = (a.net_persistent_hp_delta_centi as i64)
+            - (a.net_potion_opportunity_cost_centi as i64);
+        let b_v = (b.net_persistent_hp_delta_centi as i64)
+            - (b.net_potion_opportunity_cost_centi as i64);
         b.forced_uses_satisfied
             .cmp(&a.forced_uses_satisfied)
             .then_with(|| b.forced_use_count.cmp(&a.forced_use_count))
             .then_with(|| b.quality.won.cmp(&a.quality.won))
-            .then_with(|| {
-                let a_dead = u8::from(!a.quality.won && !a.quality.survives);
-                let b_dead = u8::from(!b.quality.won && !b.quality.survives);
-                a_dead.cmp(&b_dead)
-            })
+            .then_with(|| b.quality.survives.cmp(&a.quality.survives))
             .then_with(|| a.quality.death_save_use_count.cmp(&b.quality.death_save_use_count))
-            .then_with(|| a.economic_burden.cmp(&b.economic_burden))
-            .then_with(|| a.quality.strategic_hp_deficit.cmp(&b.quality.strategic_hp_deficit))
+            .then_with(|| {
+                if check_theft {
+                    a.quality
+                        .outstanding_stolen_resource
+                        .cmp(&b.quality.outstanding_stolen_resource)
+                        .then_with(|| {
+                            a.quality
+                                .forfeits_encounter_gold
+                                .cmp(&b.quality.forfeits_encounter_gold)
+                        })
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            .then_with(|| b_v.cmp(&a_v))
+            .then_with(|| {
+                b.net_persistent_hp_delta_centi
+                    .cmp(&a.net_persistent_hp_delta_centi)
+            })
             .then_with(|| b.quality.growth_hp_credit.cmp(&a.quality.growth_hp_credit))
-            .then_with(|| b.quality.growth_reward_count.cmp(&a.quality.growth_reward_count))
+            .then_with(|| {
+                b.quality
+                    .growth_reward_count
+                    .cmp(&a.quality.growth_reward_count)
+            })
             .then_with(|| {
                 if !a.quality.won && !a.quality.survives && !b.quality.won && !b.quality.survives {
                     b.turn.cmp(&a.turn)
@@ -3107,18 +3862,176 @@ pub fn select_final_plan(
                         .cmp(&b.quality.combat_ended_turn.unwrap_or(i32::MAX))
                 }
             })
-            .then_with(|| a.policy_hp_deficit.cmp(&b.policy_hp_deficit))
-            .then_with(|| a.health_resource_cost.cmp(&b.health_resource_cost))
+            .then_with(|| {
+                a.quality
+                    .projected_battle_hp_lost
+                    .cmp(&b.quality.projected_battle_hp_lost)
+            })
             .then_with(|| b.raw_growth_reward_count.cmp(&a.raw_growth_reward_count))
             .then_with(|| a.boundary_rank.cmp(&b.boundary_rank))
-            .then_with(|| a.optional_potion_count.cmp(&b.optional_potion_count))
+            .then_with(|| {
+                a.quality
+                    .projected_battle_potion_count
+                    .cmp(&b.quality.projected_battle_potion_count)
+            })
+            .then_with(|| a.explicit_potion_count.cmp(&b.explicit_potion_count))
             .then_with(|| a.quality.enemy_hp.cmp(&b.quality.enemy_hp))
             .then_with(|| b.quality.score.total_cmp(&a.quality.score))
             .then_with(|| a.action_count.cmp(&b.action_count))
             .then_with(|| a.state_hash.cmp(&b.state_hash))
-    });
+    }
 
-    let best = eligible[0];
+    let effective_policy = match theft_policy {
+        Some(SolverTheftPolicy::PreserveResources) => SolverPotionPolicy::Smart,
+        _ => potion_policy,
+    };
+    let enforce_forced = root.all_forced_potion_mask != 0;
+    let forced_directive_count = root.forced_directive_count as i32;
+    let check_theft = theft_policy == Some(SolverTheftPolicy::PreserveResources);
+
+    let mut best_hard: Option<EvaluatedCandidate> = None;
+    let mut best_any: Option<EvaluatedCandidate> = None;
+
+    for &nid in candidates {
+        let node = arena.get(nid);
+        let f = &node.fast_eval;
+        let rare = arena.rare_eval(nid);
+        let explicit_potion_count = node.explicit_potion_count as i32;
+        let matched_forced = node.forced_used_mask & root.all_forced_potion_mask;
+        let forced_uses_satisfied = matched_forced == root.all_forced_potion_mask;
+        let forced_use_count = if enforce_forced {
+            matched_forced.count_ones() as i32
+        } else {
+            0
+        };
+        let forced_ambergris_count = if enforce_forced {
+            node.forced_ambergris_count as i32
+        } else {
+            0
+        };
+        let optional_paid_potion_count = node.optional_paid_potion_count as i32;
+        let optional_ambergris_count =
+            (node.ambergris_count as i32 - forced_ambergris_count).max(0);
+        let end_player_max_hp = if f.player_max_hp > 0 {
+            f.player_max_hp as i32
+        } else {
+            root.initial_player_max_hp.max(1)
+        };
+        let complete_victory = RouteQualityPolicy::is_complete_victory(
+            node.action_count as usize,
+            f.all_enemies_dead() || f.won(),
+            f.player_dead(),
+            f.projected_player_hp as i32,
+        );
+        let relic_heal = ActEndingBossPolicy::ranked_post_combat_relic_heal(
+            root.post_combat_relic_heal,
+            complete_victory,
+            f.player_hp as i32,
+            end_player_max_hp,
+        );
+        let net_persistent_hp_delta_centi = ActEndingBossPolicy::compute_net_persistent_hp_delta_centi(
+            f.player_hp as i32,
+            relic_heal,
+            root.initial_player_hp,
+            end_player_max_hp,
+            root.initial_player_max_hp,
+            f.death_save_hp_restored as i32,
+            f.strategic_hp_credit as i32,
+            root.boss_hp_relief,
+            root.ignore_long_term_rewards,
+        );
+        let net_potion_opportunity_cost_centi =
+            PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
+                node.optional_paid_potion_cost as i32,
+                optional_paid_potion_count,
+                f.alchemize_count as i32,
+                f.empty_potion_slots as i32,
+                root,
+            );
+        let strategic_hp_deficit =
+            ActEndingBossPolicy::round_centi_to_hp(-net_persistent_hp_delta_centi);
+        let optional_potion_strategic_cost = if net_potion_opportunity_cost_centi > 0 {
+            ActEndingBossPolicy::round_centi_to_hp(net_potion_opportunity_cost_centi).max(1)
+        } else {
+            0
+        };
+
+        let satisfies_policy_hard = match effective_policy {
+            SolverPotionPolicy::Disabled => {
+                optional_paid_potion_count == 0 && explicit_potion_count <= forced_directive_count
+            }
+            SolverPotionPolicy::RequireAtLeastOne => {
+                explicit_potion_count >= minimum_potion_uses as i32
+            }
+            SolverPotionPolicy::Smart => true,
+        };
+        let satisfies_hard = forced_uses_satisfied
+            && explicit_potion_count >= minimum_potion_uses as i32
+            && satisfies_policy_hard;
+
+        let quality = RouteQuality {
+            won: complete_victory,
+            survives: !f.player_dead() && f.projected_player_hp > 0,
+            death_save_use_count: f.death_save_use_count as i32,
+            outstanding_stolen_resource: f.outstanding_stolen as i32,
+            strategic_hp_deficit,
+            growth_hp_credit: f.strategy_goal_hp_credit as i32,
+            growth_reward_count: f.strategy_goal_count as i32,
+            combat_ended_turn: if complete_victory {
+                f.combat_ended_turn()
+            } else {
+                None
+            },
+            projected_battle_hp_lost: f.cumulative_hp_lost as i32,
+            potion_strategic_cost: optional_potion_strategic_cost,
+            projected_battle_potion_count: node.potion_count as i32,
+            enemy_hp: f.enemy_hp,
+            score: node.beam_rank_score_or_base(),
+            theft_policy,
+            forfeits_encounter_gold: f.forfeits_gold(),
+        };
+        let cand = EvaluatedCandidate {
+            node_id: nid,
+            quality,
+            explicit_potion_count,
+            forced_uses_satisfied,
+            forced_use_count,
+            optional_paid_potion_count,
+            optional_potion_strategic_cost,
+            optional_ambergris_count,
+            used_potion_slot_mask: node.used_potion_slot_mask,
+            alchemize_count: f.alchemize_count,
+            empty_potion_slots: f.empty_potion_slots,
+            net_persistent_hp_delta_centi,
+            net_potion_opportunity_cost_centi,
+            end_player_max_hp,
+            raw_growth_reward_count: f.raw_growth_reward_count as i32,
+            rare,
+            recovered_hp: f.recovered_hp as i32,
+            boundary_rank: node.boundary_rank,
+            action_count: node.action_count,
+            turn: node.turn as i32,
+            player_hp: f.player_hp as i32,
+            state_hash: node.state_hash,
+        };
+
+        if satisfies_hard {
+            if best_hard
+                .as_ref()
+                .is_none_or(|cur| cmp_eval_cand(&cand, cur, check_theft).is_lt())
+            {
+                best_hard = Some(cand);
+            }
+        } else if best_hard.is_none()
+            && best_any
+                .as_ref()
+                .is_none_or(|cur| cmp_eval_cand(&cand, cur, check_theft).is_lt())
+        {
+            best_any = Some(cand);
+        }
+    }
+
+    let best = best_hard.or(best_any)?;
     Some(FinalPlanSelection {
         node_id: best.node_id,
         turn: best.turn,
@@ -3126,18 +4039,27 @@ pub fn select_final_plan(
         survives: best.quality.survives,
         death_save_use_count: best.quality.death_save_use_count,
         player_hp: best.player_hp,
+        end_player_max_hp: best.end_player_max_hp,
         strategic_hp_deficit: best.quality.strategic_hp_deficit,
+        net_persistent_hp_delta_centi: best.net_persistent_hp_delta_centi,
+        net_potion_opportunity_cost_centi: best.net_potion_opportunity_cost_centi,
         hp_lost: best.quality.projected_battle_hp_lost,
         potion_count: best.quality.projected_battle_potion_count as usize,
-        optional_potion_count: best.optional_potion_count.max(0) as usize,
+        optional_potion_count: best.optional_paid_potion_count.max(0) as usize,
+        optional_paid_potion_count: best.optional_paid_potion_count.max(0) as usize,
         optional_potion_strategic_cost: best.optional_potion_strategic_cost,
         optional_ambergris_count: best.optional_ambergris_count,
+        used_potion_slot_mask: best.used_potion_slot_mask,
+        alchemize_count: best.alchemize_count,
+        empty_potion_slots: best.empty_potion_slots,
+        outstanding_stolen: best.quality.outstanding_stolen_resource,
+        forfeits_gold: best.quality.forfeits_encounter_gold,
         score: best.quality.score.round() as i64,
         all_forced_uses_satisfied: best.forced_uses_satisfied,
         strategy_goal_hp_credit: best.quality.growth_hp_credit,
         strategy_goal_count: best.quality.growth_reward_count,
-        growth_rewards: best.growth_rewards,
-        relic_eval: best.relic_eval,
+        growth_rewards: best.rare.growth_rewards,
+        relic_eval: best.rare.relic_eval,
         recovered_hp: best.recovered_hp,
     })
 }
