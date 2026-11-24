@@ -26,7 +26,10 @@ pub fn damage_block_internal(
     };
     // Exact port of Creature.DamageBlockInternal: subtracts (int)blocked, returns un-truncated blocked.
     c.block -= blocked.to_i32_trunc()?;
-    state.sync_player_hp_to_creature();
+    let new_block = c.block;
+    if creature == state.player.creature_handle {
+        state.player.block = new_block;
+    }
     Ok(blocked)
 }
 
@@ -49,7 +52,11 @@ pub fn lose_hp_internal(
         .checked_add(unblocked)
         .ok_or_else(|| KernelError::InvalidState("cumulative_hp_lost overflow".to_owned()))?;
     let overkill = if will_kill { (loss - hp_before).max(0) } else { 0 };
-    state.sync_player_hp_to_creature();
+    let (new_hp, new_cum) = (c.current_hp, c.cumulative_hp_lost);
+    if creature == state.player.creature_handle {
+        state.player.current_hp = new_hp;
+        state.player.cumulative_hp_lost = new_cum;
+    }
     Ok(DamageResult {
         receiver: creature,
         original_target: creature,
@@ -77,7 +84,9 @@ pub fn gain_block_internal(
         .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
         .to_i32_trunc()?;
     c.block = next;
-    state.sync_player_hp_to_creature();
+    if creature == state.player.creature_handle {
+        state.player.block = next;
+    }
     Ok(())
 }
 
@@ -94,7 +103,9 @@ pub fn lose_block_internal(
         .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
         .to_i32_trunc()?;
     c.block = next;
-    state.sync_player_hp_to_creature();
+    if creature == state.player.creature_handle {
+        state.player.block = next;
+    }
     Ok(())
 }
 
@@ -108,7 +119,7 @@ pub fn heal(
     if !is_player && hooks::is_ending_checked(state, content)? {
         return Ok(());
     }
-    let delta = {
+    let (delta, new_hp) = {
         let c = state
             .creature_mut(creature)
             .ok_or_else(|| KernelError::InvalidState("missing creature".to_owned()))?;
@@ -118,9 +129,11 @@ pub fn heal(
             .clamp(Dec::ZERO, Dec::from_i32(c.max_hp))
             .to_i32_trunc()?;
         c.current_hp = next;
-        state.sync_player_hp_to_creature();
-        next - before
+        (next - before, next)
     };
+    if creature == state.player.creature_handle {
+        state.player.current_hp = new_hp;
+    }
     let _ = delta;
     if amount > Dec::ZERO {
         let amt_i32 = amount.to_i32_trunc()?;
@@ -180,7 +193,9 @@ pub fn set_current_hp(
         c.current_hp = clamped;
         (previous, clamped)
     };
-    state.sync_player_hp_to_creature();
+    if creature == state.player.creature_handle {
+        state.player.current_hp = next;
+    }
     if next != previous {
         hooks::after_current_hp_changed(state, content, creature, next - previous)?;
     }
@@ -208,7 +223,7 @@ pub fn set_max_hp(
     creature: CreatureHandle,
     amount: Dec,
 ) -> Result<i32, KernelError> {
-    let delta = {
+    let (delta, new_hp, new_max) = {
         let c = state
             .creature_mut(creature)
             .ok_or_else(|| KernelError::InvalidState("missing creature".to_owned()))?;
@@ -220,9 +235,12 @@ pub fn set_max_hp(
         if c.current_hp > c.max_hp {
             c.current_hp = c.max_hp;
         }
-        c.max_hp - old
+        (c.max_hp - old, c.current_hp, c.max_hp)
     };
-    state.sync_player_hp_to_creature();
+    if creature == state.player.creature_handle {
+        state.player.current_hp = new_hp;
+        state.player.max_hp = new_max;
+    }
     Ok(delta)
 }
 
@@ -263,7 +281,9 @@ pub fn kill(
         }
         _ => return Ok(()),
     };
-    state.sync_player_hp_to_creature();
+    if creature == state.player.creature_handle {
+        state.player.current_hp = 0;
+    }
     if hp > 0 {
         hooks::after_current_hp_changed(state, content, creature, -hp)?;
     }
@@ -538,7 +558,7 @@ pub fn create_monster_creature(
             next_move_id: None,
             next_move_can_transition_away: true,
             performed_first_move: false,
-            state_log_ids: SmallVec::new(),
+            state_log_ids: Vec::new(),
             transient_move_follow_up_state_id: None,
             setup_fields: Default::default(),
             private_fields: Default::default(),

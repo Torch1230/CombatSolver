@@ -5,7 +5,7 @@ use sts2_kernel::commands::{card as card_cmd, card_pile, power};
 use sts2_kernel::content_dispatch::ContentDispatcher;
 use sts2_kernel::{
     BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine, CreatureHandle, CreatureInst,
-    MonsterInst, PlayerCounters, PlayerInst, RelicInst, RootStaticContext, StepOutcome,
+    MonsterInst, PlayerCounters, PlayerInst, RootStaticContext, StepOutcome,
 };
 use sts2_types::{
     generated_ids::generated_card_meta, CardId, CardKeywords, CardPartition, CardStaticFlags,
@@ -123,7 +123,7 @@ fn build_combat(
                 next_move_id: Some(std::borrow::Cow::Borrowed("CHOMP_MOVE")),
                 next_move_can_transition_away: true,
                 performed_first_move: false,
-                state_log_ids: SmallVec::new(),
+                state_log_ids: Vec::new(),
                 transient_move_follow_up_state_id: None,
                 setup_fields: Default::default(),
                 private_fields: Default::default(),
@@ -158,9 +158,9 @@ fn build_combat(
         potion_slots: smallvec::smallvec![None, None, None],
         combat_generated_potion_mask: 0,
         orb_capacity: 0,
-        orbs: SmallVec::new(),
-        arrows: SmallVec::new(),
-        relics: SmallVec::<[RelicInst; 16]>::new(),
+        orbs: Vec::new(),
+        arrows: Vec::new(),
+        relics: Vec::new(),
         card_or_potion_effect_depth: 0,
     };
 

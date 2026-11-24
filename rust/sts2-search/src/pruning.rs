@@ -264,7 +264,7 @@ struct BucketPruneScratch {
     heap_f64: Vec<(f64, u32)>,
     selected_rows: Vec<ParetoRow>,
     keys: Vec<PruneKey>,
-    order: Vec<usize>,
+    order: Vec<(f64, u32)>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1009,6 +1009,7 @@ impl BeamRetentionPolicy {
                             prefer_potion_buckets,
                             is_turn_boundary,
                             use_rollout_scores,
+                            None,
                         );
                     });
                 }
@@ -1019,6 +1020,7 @@ impl BeamRetentionPolicy {
                 if bucket.nodes.is_empty() || quota == 0 {
                     continue;
                 }
+                let single_pool = if active_buckets == 1 { pool } else { None };
                 select_from_potion_bucket_scratch(
                     arena,
                     bucket,
@@ -1030,6 +1032,7 @@ impl BeamRetentionPolicy {
                     prefer_potion_buckets,
                     is_turn_boundary,
                     use_rollout_scores,
+                    single_pool,
                 );
             }
         }
@@ -1261,6 +1264,7 @@ fn select_from_potion_bucket_scratch(
     prefer_potion_buckets: bool,
     is_turn_boundary: bool,
     use_rollout_scores: bool,
+    pool: Option<&rayon::ThreadPool>,
 ) {
     let BucketPruneScratch {
         nodes: bucket_nodes,
@@ -1282,13 +1286,48 @@ fn select_from_potion_bucket_scratch(
     }
 
     keys.clear();
-    keys.reserve(count);
-    for &nid in bucket_nodes.iter() {
-        keys.push(PruneKey::from_node(arena, nid, root, use_rollout_scores));
+    if let Some(pool) = pool.filter(|_| count >= 2048) {
+        let zero_key = PruneKey::from_node(arena, bucket_nodes[0], root, use_rollout_scores);
+        keys.resize(count, zero_key);
+        let chunk_len = ((count + 15) / 16).max(256);
+        pool.scope(|scope| {
+            let mut offset = 0usize;
+            for (k_chunk, n_chunk) in keys
+                .chunks_mut(chunk_len)
+                .zip(bucket_nodes.chunks(chunk_len))
+            {
+                let start = offset;
+                offset += k_chunk.len();
+                scope.spawn(move |_| {
+                    let skip_first = usize::from(start == 0);
+                    for j in skip_first..k_chunk.len() {
+                        k_chunk[j] =
+                            PruneKey::from_node(arena, n_chunk[j], root, use_rollout_scores);
+                    }
+                });
+            }
+        });
+    } else {
+        keys.reserve(count);
+        for &nid in bucket_nodes.iter() {
+            keys.push(PruneKey::from_node(arena, nid, root, use_rollout_scores));
+        }
     }
     let all_fast_exact = keys.iter().all(|k| k.fast_keys_exact());
     order.clear();
-    order.extend(0..count);
+    order.reserve(count);
+    for (i, k) in keys.iter().enumerate() {
+        order.push((k.primary, i as u32));
+    }
+    #[inline(always)]
+    fn cmp_order_entry(
+        (pa, ia): (f64, u32),
+        (pb, ib): (f64, u32),
+        keys: &[PruneKey],
+    ) -> std::cmp::Ordering {
+        pb.total_cmp(&pa)
+            .then_with(|| cmp_key_tie_break(&keys[ia as usize], &keys[ib as usize]))
+    }
     let fast_partial = bucket_index == 0
         && root.all_forced_potion_mask == 0
         && (root.ignore_long_term_rewards
@@ -1296,12 +1335,10 @@ fn select_from_potion_bucket_scratch(
         && !second_rank_band;
     let prefix_len = (quota + PER_NICHE_PARETO_TOP_K + (quota / 8)).min(count);
     if fast_partial && count > prefix_len * 2 {
-        order.select_nth_unstable_by(prefix_len - 1, |&ia, &ib| {
-            cmp_key_primary_desc(&keys[ia], &keys[ib])
-        });
-        order[..prefix_len].sort_unstable_by(|&ia, &ib| cmp_key_primary_desc(&keys[ia], &keys[ib]));
+        order.select_nth_unstable_by(prefix_len - 1, |&a, &b| cmp_order_entry(a, b, keys));
+        order[..prefix_len].sort_unstable_by(|&a, &b| cmp_order_entry(a, b, keys));
     } else {
-        order.sort_unstable_by(|&ia, &ib| cmp_key_primary_desc(&keys[ia], &keys[ib]));
+        order.sort_unstable_by(|&a, &b| cmp_order_entry(a, b, keys));
     }
 
     // 0 = unselected, 1 = selected into `out`, 2 = queued in full-pool Pareto candidate set
@@ -1311,13 +1348,16 @@ fn select_from_potion_bucket_scratch(
 
     // 0a. Forced potion leader
     if root.all_forced_potion_mask != 0 && selected_in_bucket < quota {
-        if let Some((_, &idx)) = order.iter().enumerate().max_by(|&(ra, &ia), &(rb, &ib)| {
+        if let Some((_, &(_, idx_u32))) = order.iter().enumerate().max_by(|&(ra, &(_, ia_u32)), &(rb, &(_, ib_u32))| {
+            let ia = ia_u32 as usize;
+            let ib = ib_u32 as usize;
             keys[ia]
                 .forced_match_count
                 .cmp(&keys[ib].forced_match_count)
                 .then_with(|| cmp_key_primary_max(&keys[ia], &keys[ib]))
                 .then_with(|| rb.cmp(&ra))
         }) {
+            let idx = idx_u32 as usize;
             marks[idx] = 1;
             out.push(keys[idx].node_id);
             selected_in_bucket += 1;
@@ -1329,11 +1369,13 @@ fn select_from_potion_bucket_scratch(
         && (!root.effective_growth_budgets.is_zero() || !root.active_relic_targets.is_empty())
         && selected_in_bucket < quota
     {
-        if let Some((_, &idx)) = order
+        if let Some((_, &(_, idx_u32))) = order
             .iter()
             .enumerate()
-            .filter(|&(_, &i)| marks[i] == 0)
-            .max_by(|&(ra, &ia), &(rb, &ib)| {
+            .filter(|&(_, &(_, i_u32))| marks[i_u32 as usize] == 0)
+            .max_by(|&(ra, &(_, ia_u32)), &(rb, &(_, ib_u32))| {
+                let ia = ia_u32 as usize;
+                let ib = ib_u32 as usize;
                 keys[ia]
                     .strategic_hp_credit
                     .cmp(&keys[ib].strategic_hp_credit)
@@ -1346,6 +1388,7 @@ fn select_from_potion_bucket_scratch(
                     .then_with(|| rb.cmp(&ra))
             })
         {
+            let idx = idx_u32 as usize;
             marks[idx] = 1;
             out.push(keys[idx].node_id);
             selected_in_bucket += 1;
@@ -1365,7 +1408,8 @@ fn select_from_potion_bucket_scratch(
 
         let mut seen_sigs: SmallVec<[(u16, i16, u8, u64); 16]> = SmallVec::new();
         let mut div_added = 0usize;
-        for &i in order.iter() {
+        for &(_, i_u32) in order.iter() {
+            let i = i_u32 as usize;
             if div_added >= diversity_cap || seen_sigs.len() >= 16 {
                 break;
             }
@@ -1392,7 +1436,8 @@ fn select_from_potion_bucket_scratch(
                 if div_added >= diversity_cap || selected_in_bucket >= quota {
                     break;
                 }
-                for &i in order.iter() {
+                for &(_, i_u32) in order.iter() {
+                    let i = i_u32 as usize;
                     if marks[i] != 0 {
                         continue;
                     }
@@ -1887,7 +1932,12 @@ fn select_from_potion_bucket_scratch(
         let mut p_cnt = 0usize;
         if second_rank_band && blended_q > 0 {
             unmarked.clear();
-            unmarked.extend(order.iter().copied().filter(|&i| marks[i] == 0));
+            unmarked.extend(
+                order
+                    .iter()
+                    .map(|&(_, i_u32)| i_u32 as usize)
+                    .filter(|&i| marks[i] == 0),
+            );
             BeamWidthPortfolio::move_leading_band_to_tail(unmarked, blended_q);
             for &idx in unmarked.iter() {
                 if taken_blended < take_blended {
@@ -1903,7 +1953,8 @@ fn select_from_potion_bucket_scratch(
                 }
             }
         } else {
-            for &idx in order.iter() {
+            for &(_, idx_u32) in order.iter() {
+                let idx = idx_u32 as usize;
                 if marks[idx] != 0 {
                     continue;
                 }
@@ -2206,7 +2257,8 @@ fn select_from_potion_bucket_scratch(
     }
 
     // Fill any remaining seats in primary order
-    for &i in order.iter() {
+    for &(_, i_u32) in order.iter() {
+        let i = i_u32 as usize;
         if selected_in_bucket >= quota {
             break;
         }

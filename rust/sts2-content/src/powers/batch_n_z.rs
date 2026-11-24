@@ -3327,37 +3327,69 @@ pub fn dispatch_hook(
         },
         PowerId::VeilpiercerPower => match slot {
             HookSlot::TryModifyEnergyCostInCombatLate => {
-                if let HookArgs::CardCost { card, .. } = args {
-                    let pile = state.card(*card).map_or(PileType::None, |c| c.pile);
-                    if creature == state.player.creature_handle
-                        && matches!(pile, PileType::Hand | PileType::Play)
-                        && card_is_ethereal_fast(state, content, *card)?
-                    {
-                        return Ok(HookResult {
-                            dec_val: Some(Dec::ZERO),
-                            modified: true,
-                            ..Default::default()
-                        });
+                if creature == state.player.creature_handle {
+                    if let HookArgs::CardCost { card, .. } = args {
+                        if let Some(ci) = state.card(*card) {
+                            if matches!(ci.pile, PileType::Hand | PileType::Play) {
+                                let is_eth = ci.effective_keywords_base().contains(CardKeywords::ETHEREAL)
+                                    || ((state.hook_cache.dirty_mask != 0
+                                        || state.hook_cache.cached_tables.is_none()
+                                        || state
+                                            .hook_cache
+                                            .masks
+                                            .combat_combined
+                                            .contains(HookSlot::TryModifyKeywordsInCombat))
+                                        && card_pile::card_has_keyword(
+                                            state,
+                                            content,
+                                            *card,
+                                            CardKeywords::ETHEREAL,
+                                        )?);
+                                if is_eth {
+                                    return Ok(HookResult {
+                                        dec_val: Some(Dec::ZERO),
+                                        modified: true,
+                                        ..Default::default()
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
                 Ok(HookResult::default())
             }
             HookSlot::BeforeCardPlayed => {
-                if let HookArgs::CardPlay(cp) = args {
-                    let pile = state.card(cp.card).map_or(PileType::None, |c| c.pile);
-                    if creature == state.player.creature_handle
-                        && matches!(pile, PileType::Hand | PileType::Play)
-                        && card_is_ethereal_fast(state, content, cp.card)?
-                    {
-                        let _ = power::modify_amount_by_handle(
-                            state,
-                            content,
-                            creature,
-                            p.handle,
-                            Dec::from_i32(-1),
-                            None,
-                            None,
-                        )?;
+                if creature == state.player.creature_handle {
+                    if let HookArgs::CardPlay(cp) = args {
+                        if let Some(ci) = state.card(cp.card) {
+                            if matches!(ci.pile, PileType::Hand | PileType::Play) {
+                                let is_eth = ci.effective_keywords_base().contains(CardKeywords::ETHEREAL)
+                                    || ((state.hook_cache.dirty_mask != 0
+                                        || state.hook_cache.cached_tables.is_none()
+                                        || state
+                                            .hook_cache
+                                            .masks
+                                            .combat_combined
+                                            .contains(HookSlot::TryModifyKeywordsInCombat))
+                                        && card_pile::card_has_keyword(
+                                            state,
+                                            content,
+                                            cp.card,
+                                            CardKeywords::ETHEREAL,
+                                        )?);
+                                if is_eth {
+                                    let _ = power::modify_amount_by_handle(
+                                        state,
+                                        content,
+                                        creature,
+                                        p.handle,
+                                        Dec::from_i32(-1),
+                                        None,
+                                        None,
+                                    )?;
+                                }
+                            }
+                        }
                     }
                 }
                 Ok(HookResult::default())
@@ -3365,11 +3397,9 @@ pub fn dispatch_hook(
             _ => Ok(HookResult::default()),
         },
         PowerId::SpiritOfAshPower => {
-            if slot == HookSlot::BeforeCardPlayed {
+            if slot == HookSlot::BeforeCardPlayed && creature == state.player.creature_handle {
                 if let HookArgs::CardPlay(cp) = args {
-                    if creature == state.player.creature_handle
-                        && card_is_ethereal_fast(state, content, cp.card)?
-                    {
+                    if card_is_ethereal_fast(state, content, cp.card)? {
                         let _ = block::gain_block(
                             state,
                             content,
@@ -3385,17 +3415,80 @@ pub fn dispatch_hook(
             Ok(HookResult::default())
         }
         PowerId::PagestormPower => {
-            if slot == HookSlot::AfterCardDrawn {
+            if slot == HookSlot::AfterCardDrawn && creature == state.player.creature_handle {
                 if let HookArgs::CardDrawn { card, .. } = args {
-                    if creature == state.player.creature_handle
-                        && card_is_ethereal_fast(state, content, *card)?
-                    {
+                    if card_is_ethereal_fast(state, content, *card)? {
                         let _ = card_pile::draw(state, content, p.amount, false)?;
                     }
                 }
             }
             Ok(HookResult::default())
         }
+        PowerId::VitalSparkPower => match slot {
+            HookSlot::AfterCardPlayed => {
+                if let HookArgs::CardPlay(cp) = args {
+                    if state
+                        .card(cp.card)
+                        .is_some_and(|c| c.affliction.is_some_and(|a| a.id == AfflictionId::Tainted))
+                    {
+                        let _ = power::apply(
+                            state,
+                            content,
+                            PowerId::TaintedPower,
+                            state.player.creature_handle,
+                            Dec::from_i32(p.amount),
+                            None,
+                            None,
+                        )?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterCardEnteredCombat => {
+                if let HookArgs::CardOnly(card) = args {
+                    if card_type_of(state, *card) == Some(CardType::Skill)
+                        && state.card(*card).is_some_and(|c| c.affliction.is_none())
+                    {
+                        let _ = card_cmd::afflict(state, *card, AfflictionId::Tainted, p.amount);
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterPowerAmountChanged => {
+                if let HookArgs::PowerChanged {
+                    power_handle,
+                    owner,
+                    ..
+                } = args
+                {
+                    if *owner == creature && *power_handle == p.handle {
+                        for card in all_combat_card_handles(state) {
+                            if card_type_of(state, card) == Some(CardType::Skill) {
+                                if let Some(c) = state.card_mut(card) {
+                                    if let Some(aff) = &mut c.affliction {
+                                        if aff.id == AfflictionId::Tainted {
+                                            aff.amount = p.amount;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::BeforeCombatStart => {
+                for card in all_combat_card_handles(state) {
+                    if card_type_of(state, card) == Some(CardType::Skill)
+                        && state.card(card).is_some_and(|c| c.affliction.is_none())
+                    {
+                        let _ = card_cmd::afflict(state, card, AfflictionId::Tainted, p.amount);
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
         PowerId::WraithFormPower => {
             if slot == HookSlot::AfterSideTurnStart {
                 if let HookArgs::SideTurn { participants, .. } = args {
@@ -6857,71 +6950,6 @@ fn dispatch_hook_cold(
             }
             Ok(HookResult::default())
         }
-        PowerId::VitalSparkPower => match slot {
-            HookSlot::BeforeCombatStart => {
-                for card in all_combat_card_handles(state) {
-                    if card_type_of(state, card) == Some(CardType::Skill)
-                        && state.card(card).is_some_and(|c| c.affliction.is_none())
-                    {
-                        let _ = card_cmd::afflict(state, card, AfflictionId::Tainted, p.amount);
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterCardEnteredCombat => {
-                if let HookArgs::CardOnly(card) = args {
-                    if card_type_of(state, *card) == Some(CardType::Skill)
-                        && state.card(*card).is_some_and(|c| c.affliction.is_none())
-                    {
-                        let _ = card_cmd::afflict(state, *card, AfflictionId::Tainted, p.amount);
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterCardPlayed => {
-                if let HookArgs::CardPlay(cp) = args {
-                    if state
-                        .card(cp.card)
-                        .is_some_and(|c| c.affliction.is_some_and(|a| a.id == AfflictionId::Tainted))
-                    {
-                        let _ = power::apply(
-                            state,
-                            content,
-                            PowerId::TaintedPower,
-                            state.player.creature_handle,
-                            Dec::from_i32(p.amount),
-                            None,
-                            None,
-                        )?;
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterPowerAmountChanged => {
-                if let HookArgs::PowerChanged {
-                    power_handle,
-                    owner,
-                    ..
-                } = args
-                {
-                    if *owner == creature && *power_handle == p.handle {
-                        for card in all_combat_card_handles(state) {
-                            if card_type_of(state, card) == Some(CardType::Skill) {
-                                if let Some(c) = state.card_mut(card) {
-                                    if let Some(aff) = &mut c.affliction {
-                                        if aff.id == AfflictionId::Tainted {
-                                            aff.amount = p.amount;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
         PowerId::WasteAwayPower => {
             if slot == HookSlot::ModifyMaxEnergy {
                 if let HookArgs::ModifyHandDraw { original_count } = args {

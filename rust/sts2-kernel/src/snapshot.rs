@@ -1069,7 +1069,7 @@ pub fn import_live_state(
         });
     }
 
-    let mut relics = SmallVec::new();
+    let mut relics = Vec::new();
     for r in &dto.relics {
         let rid = RelicId::from_model_id_str(&r.relic_id).ok_or_else(|| KernelError::Unsupported {
             kind: "Relic",
@@ -1107,7 +1107,7 @@ pub fn import_live_state(
         }
     }
 
-    let mut orbs = SmallVec::new();
+    let mut orbs = Vec::new();
     for o in &dto.player.orbs {
         let oid = OrbId::from_model_id_str(&o.orb_id).ok_or_else(|| KernelError::Unsupported {
             kind: "Orb",
@@ -1121,7 +1121,7 @@ pub fn import_live_state(
         });
     }
 
-    let mut arrows = SmallVec::new();
+    let mut arrows = Vec::new();
     for a in &dto.player.arrows {
         let status = match a.status.as_str() {
             "Retrieved" => ArrowStatus::Retrieved,
@@ -1347,6 +1347,8 @@ pub fn import_live_state(
         has_root_rngs: true,
         root_run_rngs: run_rngs.streams,
         root_player_rngs: player_rngs.streams,
+        root_run_rng_counters: run_rngs.streams.map(|r| r.counter),
+        root_player_rng_counters: player_rngs.streams.map(|r| r.counter),
     });
 
     let damage_history = dto

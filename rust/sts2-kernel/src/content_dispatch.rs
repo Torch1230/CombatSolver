@@ -33,8 +33,8 @@ pub struct HookMaskTableView {
     pub orbs: &'static [HookMask],
     pub enchantments: &'static [HookMask],
     pub afflictions: &'static [HookMask],
-    pub card_metas: &'static [&'static CardMeta],
-    pub power_metas: &'static [&'static PowerMeta],
+    pub card_metas: &'static [CardMeta],
+    pub power_metas: &'static [PowerMeta],
     pub card_rollout_profiles: &'static [CardRolloutProfile],
 }
 

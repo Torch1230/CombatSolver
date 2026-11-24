@@ -232,7 +232,9 @@ impl CombatEngine {
                     hooks::after_preventing_block_clear(state, content, preventer, ch)?;
                 } else if let Some(c) = state.creature_mut(ch) {
                     c.block = 0;
-                    state.sync_player_hp_to_creature();
+                    if ch == state.player.creature_handle {
+                        state.player.block = 0;
+                    }
                 }
             }
         }
@@ -451,7 +453,28 @@ impl CombatEngine {
     ) -> Result<Option<(i32, i32)>, KernelError> {
         #[cfg(debug_assertions)]
         debug_assert!(!hooks::is_over_or_ending_checked(state, content)?);
-        Self::can_play_card_with_costs_inner(state, content, card_handle, true)
+        let Some(card) = state.card(card_handle).copied() else {
+            return Ok(None);
+        };
+        Self::can_play_card_with_costs_card(state, content, card, true)
+    }
+
+    /// Fast variant using a pre-resolved `card_idx` into `state.cards`.
+    #[inline]
+    pub fn can_play_card_with_costs_in_progress_at(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+        card_handle: CardHandle,
+        card_idx: usize,
+    ) -> Result<Option<(i32, i32)>, KernelError> {
+        #[cfg(debug_assertions)]
+        {
+            debug_assert!(!hooks::is_over_or_ending_checked(state, content)?);
+            debug_assert_eq!(state.cards[card_idx].handle, card_handle);
+        }
+        let _ = card_handle;
+        let card = state.cards[card_idx];
+        Self::can_play_card_with_costs_card(state, content, card, true)
     }
 
     #[inline]
@@ -461,10 +484,23 @@ impl CombatEngine {
         card_handle: CardHandle,
         active_combat: bool,
     ) -> Result<Option<(i32, i32)>, KernelError> {
-        let (card_id, pile, base_kw) = match state.card(card_handle) {
-            Some(c) => (c.id, c.pile, c.effective_keywords_base()),
-            None => return Ok(None),
+        let Some(card) = state.card(card_handle).copied() else {
+            return Ok(None);
         };
+        Self::can_play_card_with_costs_card(state, content, card, active_combat)
+    }
+
+    #[inline]
+    fn can_play_card_with_costs_card(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+        card: crate::state::CardInst,
+        active_combat: bool,
+    ) -> Result<Option<(i32, i32)>, KernelError> {
+        let card_handle = card.handle;
+        let card_id = card.id;
+        let pile = card.pile;
+        let base_kw = card.effective_keywords_base();
         if pile != PileType::Hand {
             return Ok(None);
         }
@@ -489,7 +525,7 @@ impl CombatEngine {
 
         let meta = state.fast_card_meta(content, card_id)?;
         let is_x_energy = meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST);
-        let local_energy = ordering::resolve_local_energy_cost(state, card_handle, is_x_energy);
+        let local_energy = ordering::resolve_local_energy_cost_card(state, &card, is_x_energy);
         let energy_cost = if is_x_energy {
             local_energy
         } else if active_combat
@@ -497,13 +533,22 @@ impl CombatEngine {
                 || comb.contains(HookSlot::TryModifyEnergyCostInCombat)
                 || comb.contains(HookSlot::TryModifyEnergyCostInCombatLate))
         {
-            let (modified, was_modified) =
+            let (modified, was_modified) = if cache_ok && state.hook_cache.dirty_mask == 0 {
+                hooks::modify_energy_cost_in_combat_cached_ready(
+                    state,
+                    content,
+                    card_handle,
+                    Dec::from_i32(local_energy),
+                    comb,
+                )?
+            } else {
                 hooks::modify_energy_cost_in_combat_unchecked_active(
                     state,
                     content,
                     card_handle,
                     Dec::from_i32(local_energy),
-                )?;
+                )?
+            };
             if was_modified {
                 modified.max(Dec::ZERO).to_i32_trunc()?
             } else {
@@ -520,7 +565,7 @@ impl CombatEngine {
             state.player.stars
         } else {
             let local_star =
-                ordering::resolve_local_star_cost(state, card_handle, meta.canonical_star_cost);
+                ordering::resolve_local_star_cost_card(&card, meta.canonical_star_cost);
             if active_combat && (!cache_ok || comb.contains(HookSlot::TryModifyStarCostInCombat)) {
                 let (modified, was_modified) = hooks::modify_star_cost_in_combat_unchecked_active(
                     state,

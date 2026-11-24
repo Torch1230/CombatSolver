@@ -127,52 +127,95 @@ impl AttackBuilder {
 
         let mut all_results: SmallVec<[DamageResult; 16]> =
             SmallVec::with_capacity(attack_count.max(0) as usize);
-        for _ in 0..attack_count {
-            if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
-                break;
-            }
-            let valid_targets = collect_valid_targets(state, self);
-            if valid_targets.is_empty() {
-                break;
-            }
-            let targets_for_hit: SmallVec<[CreatureHandle; 8]> = match self.target_spec {
-                AttackTargetSpec::Single(t) => smallvec::smallvec![t],
-                AttackTargetSpec::AllOpponents => valid_targets,
-                AttackTargetSpec::RandomOpponents { allow_duplicates } => {
-                    let pool: SmallVec<[CreatureHandle; 8]> = if allow_duplicates {
-                        valid_targets
-                    } else {
-                        valid_targets
-                            .into_iter()
-                            .filter(|h| !all_results.iter().any(|r: &DamageResult| r.receiver == *h))
-                            .collect()
-                    };
-                    if pool.is_empty() {
-                        return Err(KernelError::InvalidState(
-                            "No valid targets for attack with duplicates disallowed".to_owned(),
-                        ));
+        match self.target_spec {
+            AttackTargetSpec::Single(t) => {
+                let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
+                for _ in 0..attack_count {
+                    if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
+                        break;
                     }
-                    let chosen = state
-                        .run_rngs
-                        .get_mut(sts2_types::RunRngType::CombatTargets)
-                        .next_item(&pool)
-                        .copied()
-                        .ok_or_else(|| KernelError::InvalidState("empty target pool".to_owned()))?;
-                    smallvec::smallvec![chosen]
+                    if !state.creature(t).is_some_and(|c| c.is_alive()) {
+                        break;
+                    }
+                    let targets_for_hit = [t];
+                    hit_results.clear();
+                    damage_targets_with_hook_mode_into(
+                        state,
+                        content,
+                        &targets_for_hit,
+                        self.damage_per_hit,
+                        self.props,
+                        Some(self.attacker),
+                        self.card_source,
+                        self.card_play,
+                        self.hook_type,
+                        &mut hit_results,
+                    )?;
+                    all_results.extend(hit_results.iter().map(|&(r, _)| r));
                 }
-            };
-            let hit_results = damage_targets_with_hook_mode(
-                state,
-                content,
-                &targets_for_hit,
-                self.damage_per_hit,
-                self.props,
-                Some(self.attacker),
-                self.card_source,
-                self.card_play,
-                self.hook_type,
-            )?;
-            all_results.extend(hit_results);
+            }
+            AttackTargetSpec::AllOpponents | AttackTargetSpec::RandomOpponents { .. } => {
+                let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
+                for _ in 0..attack_count {
+                    if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
+                        break;
+                    }
+                    let valid_targets = collect_valid_targets(state, self);
+                    if valid_targets.is_empty() {
+                        break;
+                    }
+                    let targets_for_hit: SmallVec<[CreatureHandle; 8]> = match self.target_spec {
+                        AttackTargetSpec::AllOpponents => valid_targets,
+                        AttackTargetSpec::RandomOpponents { allow_duplicates } => {
+                            let chosen = if allow_duplicates {
+                                state
+                                    .run_rngs
+                                    .get_mut(sts2_types::RunRngType::CombatTargets)
+                                    .next_item(&valid_targets)
+                                    .copied()
+                                    .ok_or_else(|| {
+                                        KernelError::InvalidState("empty target pool".to_owned())
+                                    })?
+                            } else {
+                                let pool: SmallVec<[CreatureHandle; 8]> = valid_targets
+                                    .into_iter()
+                                    .filter(|h| !all_results.iter().any(|r| r.receiver == *h))
+                                    .collect();
+                                if pool.is_empty() {
+                                    return Err(KernelError::InvalidState(
+                                        "No valid targets for attack with duplicates disallowed"
+                                            .to_owned(),
+                                    ));
+                                }
+                                state
+                                    .run_rngs
+                                    .get_mut(sts2_types::RunRngType::CombatTargets)
+                                    .next_item(&pool)
+                                    .copied()
+                                    .ok_or_else(|| {
+                                        KernelError::InvalidState("empty target pool".to_owned())
+                                    })?
+                            };
+                            smallvec::smallvec![chosen]
+                        }
+                        AttackTargetSpec::Single(_) => unreachable!(),
+                    };
+                    hit_results.clear();
+                    damage_targets_with_hook_mode_into(
+                        state,
+                        content,
+                        &targets_for_hit,
+                        self.damage_per_hit,
+                        self.props,
+                        Some(self.attacker),
+                        self.card_source,
+                        self.card_play,
+                        self.hook_type,
+                        &mut hit_results,
+                    )?;
+                    all_results.extend(hit_results.iter().map(|&(r, _)| r));
+                }
+            }
         }
 
         if state
@@ -188,35 +231,40 @@ impl AttackBuilder {
 }
 
 fn collect_valid_targets(state: &BattleState, builder: AttackBuilder) -> SmallVec<[CreatureHandle; 8]> {
-    let raw: SmallVec<[CreatureHandle; 8]> = match builder.target_spec {
-        AttackTargetSpec::Single(t) => smallvec::smallvec![t],
+    let mut out = SmallVec::new();
+    match builder.target_spec {
+        AttackTargetSpec::Single(t) => {
+            if state.creature(t).is_some_and(|c| c.is_alive()) {
+                out.push(t);
+            }
+        }
         AttackTargetSpec::AllOpponents | AttackTargetSpec::RandomOpponents { .. } => {
             if builder.is_monster_source {
-                state
-                    .ally_handles
-                    .iter()
-                    .copied()
-                    .filter(|&h| {
-                        state
-                            .creature(h)
-                            .is_some_and(|c| c.is_player || (!c.is_monster() && !c.is_pet()))
-                    })
-                    .collect()
+                for &h in &state.ally_handles {
+                    if let Some(c) = state.creature(h) {
+                        if (c.is_player || (!c.is_monster() && !c.is_pet())) && c.is_alive() {
+                            out.push(h);
+                        }
+                    }
+                }
             } else {
                 let attacker_side = state
                     .creature(builder.attacker)
                     .map_or(CombatSide::Player, |c| c.side);
-                if attacker_side == CombatSide::Player {
-                    SmallVec::from_slice(&state.enemy_handles)
+                let handles = if attacker_side == CombatSide::Player {
+                    &state.enemy_handles[..]
                 } else {
-                    SmallVec::from_slice(&state.ally_handles)
+                    &state.ally_handles[..]
+                };
+                for &h in handles {
+                    if state.creature(h).is_some_and(|c| c.is_alive()) {
+                        out.push(h);
+                    }
                 }
             }
         }
-    };
-    raw.into_iter()
-        .filter(|&h| state.creature(h).is_some_and(|c| c.is_alive()))
-        .collect()
+    }
+    out
 }
 
 pub fn damage_targets(
@@ -254,32 +302,63 @@ pub fn damage_targets_with_hook_mode(
     card_play: Option<CardPlayContext>,
     hook_type: ModifyDamageHookType,
 ) -> Result<SmallVec<[DamageResult; 16]>, KernelError> {
+    let mut pending: SmallVec<[(DamageResult, bool); 8]> = SmallVec::with_capacity(targets.len());
+    damage_targets_with_hook_mode_into(
+        state,
+        content,
+        targets,
+        amount,
+        props,
+        dealer,
+        card_source,
+        card_play,
+        hook_type,
+        &mut pending,
+    )?;
+    Ok(pending.into_iter().map(|(r, _)| r).collect())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn damage_targets_with_hook_mode_into(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    targets: &[CreatureHandle],
+    amount: Dec,
+    props: ValueProp,
+    dealer: Option<CreatureHandle>,
+    card_source: Option<CardHandle>,
+    card_play: Option<CardPlayContext>,
+    hook_type: ModifyDamageHookType,
+    pending: &mut SmallVec<[(DamageResult, bool); 8]>,
+) -> Result<(), KernelError> {
     if let Some(d) = dealer {
         if state.creature(d).is_none_or(|c| c.is_dead()) {
-            return Ok(targets
-                .iter()
-                .map(|&t| DamageResult {
-                    receiver: t,
-                    original_target: t,
-                    props,
-                    intended_hp_loss: 0,
-                    blocked_damage: 0,
-                    unblocked_damage: 0,
-                    overkill_damage: 0,
-                    was_target_killed: false,
-                    was_block_broken: false,
-                    was_fully_blocked: false,
-                })
-                .collect());
+            for &t in targets {
+                pending.push((
+                    DamageResult {
+                        receiver: t,
+                        original_target: t,
+                        props,
+                        intended_hp_loss: 0,
+                        blocked_damage: 0,
+                        unblocked_damage: 0,
+                        overkill_damage: 0,
+                        was_target_killed: false,
+                        was_block_broken: false,
+                        was_fully_blocked: false,
+                    },
+                    false,
+                ));
+            }
+            return Ok(());
         }
     }
 
-    let mut pending: SmallVec<[(DamageResult, bool); 8]> = SmallVec::with_capacity(targets.len());
     for &target in targets {
         if state.creature(target).is_none_or(|c| c.is_dead()) {
             continue;
         }
-        let singles = damage_single(
+        damage_single(
             state,
             content,
             target,
@@ -289,12 +368,12 @@ pub fn damage_targets_with_hook_mode(
             card_source,
             card_play,
             hook_type,
+            pending,
         )?;
-        pending.extend(singles);
     }
 
-    let mut killed: SmallVec<[DamageResult; 16]> = SmallVec::new();
-    for (result, prevented) in &pending {
+    let mut killed: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
+    for (result, prevented) in pending.iter() {
         if *prevented {
             continue;
         }
@@ -326,15 +405,15 @@ pub fn damage_targets_with_hook_mode(
         if !result.was_target_killed || !is_dead_now {
             hooks::after_damage_received(state, content, &hook_args)?;
         } else {
-            killed.push(result.clone());
+            killed.push(result.receiver);
         }
     }
 
-    for result in killed {
-        resolve_potential_death(state, content, result.receiver, card_source)?;
+    for receiver in killed {
+        resolve_potential_death(state, content, receiver, card_source)?;
     }
 
-    Ok(pending.into_iter().map(|(r, _)| r).collect())
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -348,7 +427,8 @@ fn damage_single(
     card_source: Option<CardHandle>,
     card_play: Option<CardPlayContext>,
     hook_type: ModifyDamageHookType,
-) -> Result<SmallVec<[(DamageResult, bool); 3]>, KernelError> {
+    results: &mut SmallVec<[(DamageResult, bool); 8]>,
+) -> Result<(), KernelError> {
     if !hooks::should_allow_hitting(state, content, target)? {
         let prevented = DamageResult {
             receiver: target,
@@ -362,7 +442,8 @@ fn damage_single(
             was_block_broken: false,
             was_fully_blocked: false,
         };
-        return Ok(smallvec::smallvec![(prevented, true)]);
+        results.push((prevented, true));
+        return Ok(());
     }
 
     let modified_amount = hooks::modify_damage_with_type(
@@ -383,7 +464,7 @@ fn damage_single(
         .and_then(|c| c.pet_owner_player_index.map(|_| state.player.creature_handle))
         .unwrap_or(target);
 
-    let mut results: SmallVec<[(DamageResult, bool); 3]> = SmallVec::new();
+    let start_len = results.len();
     let pre_block_target = hooks::modify_pre_block_damage_target(
         state,
         content,
@@ -499,7 +580,7 @@ fn damage_single(
         results.push((original, false));
     }
 
-    for (r, _) in &results {
+    for (r, _) in &results[start_len..] {
         state.damage_history.push(DamageHistoryEntry {
             receiver_creature_handle: r.receiver,
             dealer_creature_handle: dealer,
@@ -519,7 +600,7 @@ fn damage_single(
         });
     }
 
-    Ok(results)
+    Ok(())
 }
 
 pub fn roll_next_item<T: Copy>(rng: &mut Rng, items: &[T]) -> Option<T> {

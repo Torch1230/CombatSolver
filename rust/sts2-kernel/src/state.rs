@@ -201,7 +201,7 @@ fn field_borrow_entry_mut<'a>(
 
 /// Entry handle for `FieldMap::entry`.
 pub struct FieldMapEntry<'a> {
-    entries: &'a mut SmallVec<[(Cow<'static, str>, FieldValue); 4]>,
+    entries: &'a mut SmallVec<[(Cow<'static, str>, FieldValue); 1]>,
     key: Cow<'static, str>,
     pos: Result<usize, usize>,
 }
@@ -224,10 +224,10 @@ impl<'a> FieldMapEntry<'a> {
     }
 }
 
-/// Inline sorted field map replacing per-instance `BTreeMap` heap allocations on hot structs.
+/// Sorted small-inline vector-backed field map avoiding heap allocations for 0/1-entry maps.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FieldMap {
-    entries: SmallVec<[(Cow<'static, str>, FieldValue); 4]>,
+    entries: SmallVec<[(Cow<'static, str>, FieldValue); 1]>,
 }
 
 impl FieldMap {
@@ -270,6 +270,28 @@ impl FieldMap {
 
     #[inline]
     pub fn get(&self, key: &str) -> Option<&FieldValue> {
+        let len = self.entries.len();
+        if len == 0 {
+            return None;
+        }
+        let kb = key.as_bytes();
+        if len == 1 {
+            let (k, v) = &self.entries[0];
+            let eb = k.as_bytes();
+            if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                return Some(v);
+            }
+            return None;
+        }
+        if len <= 4 {
+            for (k, v) in &self.entries {
+                let eb = k.as_bytes();
+                if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                    return Some(v);
+                }
+            }
+            return None;
+        }
         self.entries
             .binary_search_by(|(k, _)| k.as_ref().cmp(key))
             .ok()
@@ -278,6 +300,28 @@ impl FieldMap {
 
     #[inline]
     pub fn get_mut(&mut self, key: &str) -> Option<&mut FieldValue> {
+        let len = self.entries.len();
+        if len == 0 {
+            return None;
+        }
+        let kb = key.as_bytes();
+        if len == 1 {
+            let (k, v) = &mut self.entries[0];
+            let eb = k.as_bytes();
+            if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                return Some(v);
+            }
+            return None;
+        }
+        if len <= 4 {
+            for (k, v) in &mut self.entries {
+                let eb = k.as_bytes();
+                if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                    return Some(v);
+                }
+            }
+            return None;
+        }
         self.entries
             .binary_search_by(|(k, _)| k.as_ref().cmp(key))
             .ok()
@@ -384,12 +428,36 @@ impl FieldMap {
             }
             return;
         }
+        if self.entries.len() == 1 {
+            let (sk, sv) = &self.entries[0];
+            if dst.entries.is_empty() {
+                dst.entries.push((sk.clone(), sv.clone()));
+            } else {
+                if dst.entries.len() > 1 {
+                    dst.entries.truncate(1);
+                }
+                let (dk, dv) = &mut dst.entries[0];
+                let db = dk.as_bytes();
+                let sb = sk.as_bytes();
+                if !(db.len() == sb.len() && (db.as_ptr() == sb.as_ptr() || db == sb)) {
+                    *dk = sk.clone();
+                }
+                if dv != sv {
+                    dv.clone_from(sv);
+                }
+            }
+            return;
+        }
         if dst.entries.len() == self.entries.len()
             && dst
                 .entries
                 .iter()
                 .zip(self.entries.iter())
-                .all(|((dk, _), (sk, _))| dk.as_ref() == sk.as_ref())
+                .all(|((dk, _), (sk, _))| {
+                    let db = dk.as_bytes();
+                    let sb = sk.as_bytes();
+                    db.len() == sb.len() && (db.as_ptr() == sb.as_ptr() || db == sb)
+                })
         {
             for ((_, dv), (_, sv)) in dst.entries.iter_mut().zip(self.entries.iter()) {
                 if dv != sv {
@@ -397,7 +465,11 @@ impl FieldMap {
                 }
             }
         } else {
-            dst.clone_from(self);
+            dst.entries.clear();
+            dst.entries.reserve(self.entries.len());
+            for (k, v) in &self.entries {
+                dst.entries.push((k.clone(), v.clone()));
+            }
         }
     }
 }
@@ -430,7 +502,7 @@ impl<'a> IntoIterator for &'a mut FieldMap {
 
 impl IntoIterator for FieldMap {
     type Item = (Cow<'static, str>, FieldValue);
-    type IntoIter = smallvec::IntoIter<[(Cow<'static, str>, FieldValue); 4]>;
+    type IntoIter = smallvec::IntoIter<[(Cow<'static, str>, FieldValue); 1]>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -553,7 +625,7 @@ bitflags! {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CardExtension {
-    pub local_energy_modifiers: SmallVec<[LocalEnergyModifier; 4]>,
+    pub local_energy_modifiers: SmallVec<[LocalEnergyModifier; 2]>,
     pub enchantment: Option<EnchantmentInst>,
     pub private_fields: FieldMap,
 }
@@ -662,7 +734,7 @@ pub struct RelicInst {
     pub private_fields: FieldMap,
 }
 
-/// Inline smallvec storage keeps standard runs stack/flat without capacity truncation on 2305+ card decks.
+/// Compact player state keeping standard combat fields and heap vectors lean.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlayerInst {
     pub creature_handle: CreatureHandle,
@@ -689,9 +761,9 @@ pub struct PlayerInst {
     pub potion_slots: SmallVec<[Option<PotionId>; 5]>,
     pub combat_generated_potion_mask: u16,
     pub orb_capacity: i32,
-    pub orbs: SmallVec<[OrbInst; 10]>,
-    pub arrows: SmallVec<[ArrowSlotInst; 4]>,
-    pub relics: SmallVec<[RelicInst; 16]>,
+    pub orbs: Vec<OrbInst>,
+    pub arrows: Vec<ArrowSlotInst>,
+    pub relics: Vec<RelicInst>,
     pub card_or_potion_effect_depth: i32,
 }
 
@@ -700,7 +772,7 @@ pub struct PowerExtension {
     pub private_fields: FieldMap,
     pub attack_command_id: Option<u64>,
     pub amount_when_attack_started: i32,
-    pub impaled_arrows: SmallVec<[usize; 4]>,
+    pub impaled_arrows: SmallVec<[usize; 2]>,
     pub hit_counter: i32,
 }
 
@@ -725,7 +797,7 @@ pub struct MonsterInst {
     pub next_move_id: Option<Cow<'static, str>>,
     pub next_move_can_transition_away: bool,
     pub performed_first_move: bool,
-    pub state_log_ids: SmallVec<[Cow<'static, str>; 8]>,
+    pub state_log_ids: Vec<Cow<'static, str>>,
     pub transient_move_follow_up_state_id: Option<Cow<'static, str>>,
     pub setup_fields: FieldMap,
     pub private_fields: FieldMap,
@@ -783,7 +855,7 @@ impl CreatureInst {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DamageResult {
     pub receiver: CreatureHandle,
     pub original_target: CreatureHandle,
@@ -1318,6 +1390,23 @@ pub struct RootStaticContext {
     pub has_root_rngs: bool,
     pub root_run_rngs: [Rng; 12],
     pub root_player_rngs: [Rng; 4],
+    pub root_run_rng_counters: [i32; 12],
+    pub root_player_rng_counters: [i32; 4],
+}
+
+impl RootStaticContext {
+    #[inline]
+    pub fn set_root_rngs(&mut self, run: [Rng; 12], player: [Rng; 4]) {
+        self.has_root_rngs = true;
+        self.root_run_rngs = run;
+        self.root_player_rngs = player;
+        for (i, r) in run.iter().enumerate() {
+            self.root_run_rng_counters[i] = r.counter;
+        }
+        for (i, r) in player.iter().enumerate() {
+            self.root_player_rng_counters[i] = r.counter;
+        }
+    }
 }
 
 impl Default for RootStaticContext {
@@ -1351,6 +1440,8 @@ impl Default for RootStaticContext {
             has_root_rngs: false,
             root_run_rngs: [Rng::from_seed(0); 12],
             root_player_rngs: [Rng::from_seed(0); 4],
+            root_run_rng_counters: [0; 12],
+            root_player_rng_counters: [0; 4],
         }
     }
 }
@@ -1425,6 +1516,7 @@ pub struct ActiveHookCache {
     pub listener_post_player: Vec<(HookListener, HookMask)>,
     pub in_combat_mask: u64,
     pub in_combat_overflow: bool,
+    pub combat_has_player: bool,
     pub cached_tables: Option<&'static HookMaskTableView>,
     pub listener_relics: Vec<(usize, HookMask)>,
     pub listener_potions: Vec<(usize, HookMask)>,
@@ -1453,6 +1545,7 @@ impl Default for ActiveHookCache {
             listener_post_player: Vec::new(),
             in_combat_mask: 0,
             in_combat_overflow: false,
+            combat_has_player: false,
             cached_tables: None,
             listener_relics: Vec::new(),
             listener_potions: Vec::new(),
@@ -1505,6 +1598,7 @@ impl ActiveHookCache {
         self.listener_post_player.clear();
         self.in_combat_mask = 0;
         self.in_combat_overflow = false;
+        self.combat_has_player = false;
         self.cached_tables = None;
         self.listener_relics.clear();
         self.listener_potions.clear();
@@ -1530,6 +1624,7 @@ impl ActiveHookCache {
             && self.listener_post_player == other.listener_post_player
             && self.in_combat_mask == other.in_combat_mask
             && self.in_combat_overflow == other.in_combat_overflow
+            && self.combat_has_player == other.combat_has_player
             && self.cached_tables.map(std::ptr::from_ref)
                 == other.cached_tables.map(std::ptr::from_ref)
             && self.listener_relics == other.listener_relics
@@ -1615,10 +1710,7 @@ fn lookup_creature(creatures: &[CreatureInst], handle: CreatureHandle) -> Option
 
 #[cold]
 #[inline(never)]
-fn lookup_creature_cold(
-    creatures: &[CreatureInst],
-    handle: CreatureHandle,
-) -> Option<&CreatureInst> {
+fn lookup_creature_cold(creatures: &[CreatureInst], handle: CreatureHandle) -> Option<&CreatureInst> {
     creatures.iter().find(|c| c.handle == handle)
 }
 
@@ -1707,7 +1799,7 @@ impl BattleState {
         id: CardId,
     ) -> Result<&'static CardMeta, KernelError> {
         if let Some(t) = self.hook_cache.cached_tables {
-            if let Some(&meta) = t.card_metas.get(id as usize) {
+            if let Some(meta) = t.card_metas.get(id as usize) {
                 return Ok(meta);
             }
         }
@@ -1721,7 +1813,7 @@ impl BattleState {
         id: PowerId,
     ) -> Result<&'static PowerMeta, KernelError> {
         if let Some(t) = self.hook_cache.cached_tables {
-            if let Some(&meta) = t.power_metas.get(id as usize) {
+            if let Some(meta) = t.power_metas.get(id as usize) {
                 return Ok(meta);
             }
         }
@@ -1873,8 +1965,11 @@ impl BattleState {
         is_deck: bool,
         tables: &HookMaskTableView,
         dst: &mut Vec<(HookListener, HookMask)>,
-    ) -> HookMask {
-        dst.clear();
+    ) -> (HookMask, bool) {
+        let was_empty = dst.is_empty();
+        if !was_empty {
+            dst.clear();
+        }
         let mut acc = HookMask::EMPTY;
         for &ch in pile {
             let Some(card) = lookup_card(cards, ch) else {
@@ -1924,7 +2019,7 @@ impl BattleState {
                 dst.push((HookListener::Affliction(ch), aff_mask));
             }
         }
-        acc
+        (acc, !(was_empty && dst.is_empty()))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1942,7 +2037,11 @@ impl BattleState {
         out: &mut ActiveHookCache,
     ) {
         out.cached_tables = Some(tables);
+        let prev_combat_has_player = out.combat_has_player;
+        let mut flat_dirty = (dirty & HOOK_DIRTY_STATIC) != 0 || out.flat_listeners.is_empty();
+
         if (dirty & HOOK_DIRTY_RELICS) != 0 {
+            let was_empty = out.listener_relics.is_empty();
             out.listener_relics.clear();
             let mut m_acc = HookMask::EMPTY;
             for (i, relic) in player.relics.iter().enumerate() {
@@ -1956,9 +2055,13 @@ impl BattleState {
                 }
             }
             out.masks.relics = m_acc;
+            if !was_empty || !out.listener_relics.is_empty() {
+                flat_dirty = true;
+            }
         }
 
         if (dirty & HOOK_DIRTY_POTIONS) != 0 {
+            let was_empty = out.listener_potions.is_empty();
             out.listener_potions.clear();
             let mut m_acc = HookMask::EMPTY;
             for (i, slot) in player.potion_slots.iter().enumerate() {
@@ -1971,9 +2074,13 @@ impl BattleState {
                 }
             }
             out.masks.potions = m_acc;
+            if !was_empty || !out.listener_potions.is_empty() {
+                flat_dirty = true;
+            }
         }
 
         if (dirty & HOOK_DIRTY_ORBS) != 0 {
+            let was_empty = out.listener_orbs.is_empty();
             out.listener_orbs.clear();
             let mut m_acc = HookMask::EMPTY;
             for (i, orb) in player.orbs.iter().enumerate() {
@@ -1984,10 +2091,13 @@ impl BattleState {
                 }
             }
             out.masks.orbs = m_acc;
+            if !was_empty || !out.listener_orbs.is_empty() {
+                flat_dirty = true;
+            }
         }
 
         if (dirty & HOOK_DIRTY_HAND) != 0 {
-            out.masks.cards_hand = Self::scan_pile_listeners(
+            let (m, changed) = Self::scan_pile_listeners(
                 cards,
                 card_extensions,
                 &player.hand,
@@ -1995,9 +2105,13 @@ impl BattleState {
                 tables,
                 &mut out.listener_hand,
             );
+            out.masks.cards_hand = m;
+            if changed {
+                flat_dirty = true;
+            }
         }
         if (dirty & HOOK_DIRTY_DRAW) != 0 {
-            out.masks.cards_draw = Self::scan_pile_listeners(
+            let (m, changed) = Self::scan_pile_listeners(
                 cards,
                 card_extensions,
                 &player.draw,
@@ -2005,9 +2119,13 @@ impl BattleState {
                 tables,
                 &mut out.listener_draw,
             );
+            out.masks.cards_draw = m;
+            if changed {
+                flat_dirty = true;
+            }
         }
         if (dirty & HOOK_DIRTY_DISCARD) != 0 {
-            out.masks.cards_discard = Self::scan_pile_listeners(
+            let (m, changed) = Self::scan_pile_listeners(
                 cards,
                 card_extensions,
                 &player.discard,
@@ -2015,9 +2133,13 @@ impl BattleState {
                 tables,
                 &mut out.listener_discard,
             );
+            out.masks.cards_discard = m;
+            if changed {
+                flat_dirty = true;
+            }
         }
         if (dirty & HOOK_DIRTY_EXHAUST) != 0 {
-            out.masks.cards_exhaust = Self::scan_pile_listeners(
+            let (m, changed) = Self::scan_pile_listeners(
                 cards,
                 card_extensions,
                 &player.exhaust,
@@ -2025,9 +2147,13 @@ impl BattleState {
                 tables,
                 &mut out.listener_exhaust,
             );
+            out.masks.cards_exhaust = m;
+            if changed {
+                flat_dirty = true;
+            }
         }
         if (dirty & HOOK_DIRTY_PLAY) != 0 {
-            out.masks.cards_play = Self::scan_pile_listeners(
+            let (m, changed) = Self::scan_pile_listeners(
                 cards,
                 card_extensions,
                 &player.play,
@@ -2035,9 +2161,13 @@ impl BattleState {
                 tables,
                 &mut out.listener_play,
             );
+            out.masks.cards_play = m;
+            if changed {
+                flat_dirty = true;
+            }
         }
         if (dirty & HOOK_DIRTY_DECK) != 0 {
-            out.masks.cards_deck = Self::scan_pile_listeners(
+            let (m, _) = Self::scan_pile_listeners(
                 cards,
                 card_extensions,
                 &player.deck,
@@ -2045,9 +2175,12 @@ impl BattleState {
                 tables,
                 &mut out.listener_deck,
             );
+            out.masks.cards_deck = m;
         }
 
         if (dirty & HOOK_DIRTY_CREATURES) != 0 {
+            let was_empty =
+                out.listener_pre_player.is_empty() && out.listener_post_player.is_empty();
             out.listener_pre_player.clear();
             out.listener_post_player.clear();
             let mut powers = HookMask::EMPTY;
@@ -2057,6 +2190,7 @@ impl BattleState {
             let mut in_combat_mask = 0u64;
             let mut in_combat_overflow = false;
             let mut seen_active_player = false;
+            let mut player_in_roster = false;
             for &ch in ally_handles {
                 if ch.0 >= 1 && ch.0 <= 64 {
                     in_combat_mask |= 1u64 << (ch.0 - 1);
@@ -2068,6 +2202,9 @@ impl BattleState {
                 };
                 if c.is_detached {
                     continue;
+                }
+                if c.is_player && ch == player.creature_handle {
+                    player_in_roster = true;
                 }
                 let is_active_player =
                     c.is_player && player.is_active_for_hooks && !seen_active_player;
@@ -2121,6 +2258,9 @@ impl BattleState {
                 if c.is_detached {
                     continue;
                 }
+                if c.is_player && ch == player.creature_handle {
+                    player_in_roster = true;
+                }
                 for p in &c.powers {
                     let pm = mask_at(tables.powers, p.id as usize);
                     if !pm.is_empty() {
@@ -2153,6 +2293,15 @@ impl BattleState {
             out.masks.post_player = post_player;
             out.in_combat_mask = in_combat_mask;
             out.in_combat_overflow = in_combat_overflow;
+            out.combat_has_player = player.is_active_for_hooks && player_in_roster;
+            if !was_empty
+                || !out.listener_pre_player.is_empty()
+                || !out.listener_post_player.is_empty()
+            {
+                flat_dirty = true;
+            }
+        } else if !player.is_active_for_hooks {
+            out.combat_has_player = false;
         }
 
         if let Some(rms) = static_rms {
@@ -2175,14 +2324,10 @@ impl BattleState {
             .powers
             .union(out.masks.monsters)
             .union(out.masks.run_and_dominion);
-        let combat_has_player = player.is_active_for_hooks
-            && (ally_handles.iter().any(|&h| {
-                h == player.creature_handle
-                    && lookup_creature(creatures, h).is_some_and(|c| !c.is_detached && c.is_player)
-            }) || enemy_handles.iter().any(|&h| {
-                h == player.creature_handle
-                    && lookup_creature(creatures, h).is_some_and(|c| !c.is_detached && c.is_player)
-            }));
+        let combat_has_player = out.combat_has_player;
+        if prev_combat_has_player != combat_has_player {
+            flat_dirty = true;
+        }
         if combat_has_player {
             let player_inv = out
                 .masks
@@ -2206,53 +2351,78 @@ impl BattleState {
             out.masks.run_combat_combined = out.masks.combat_combined;
         }
 
-        out.flat_masks_w0.clear();
-        out.flat_masks_w1.clear();
-        out.flat_masks_w2.clear();
-        out.flat_listeners.clear();
-        let mut push_flat = |l: HookListener, m: HookMask| {
-            out.flat_masks_w0.push(m.0[0]);
-            out.flat_masks_w1.push(m.0[1]);
-            out.flat_masks_w2.push(m.0[2]);
-            out.flat_listeners.push(l);
-        };
-        for &(l, m) in &out.listener_pre_player {
-            push_flat(l, m);
-        }
-        if combat_has_player {
-            for &(idx, m) in &out.listener_relics {
-                push_flat(HookListener::Relic(idx), m);
+        if flat_dirty {
+            let player_inv_len = if combat_has_player {
+                out.listener_relics.len()
+                    + out.listener_potions.len()
+                    + out.listener_orbs.len()
+                    + out.listener_hand.len()
+                    + out.listener_draw.len()
+                    + out.listener_discard.len()
+                    + out.listener_exhaust.len()
+                    + out.listener_play.len()
+            } else {
+                0
+            };
+            let total_flat = out.listener_pre_player.len()
+                + player_inv_len
+                + out.listener_post_player.len()
+                + out.listener_run_models.len()
+                + usize::from(out.listener_dominion.is_some());
+            out.flat_masks_w0.clear();
+            out.flat_masks_w1.clear();
+            out.flat_masks_w2.clear();
+            out.flat_listeners.clear();
+            if total_flat > out.flat_listeners.capacity() {
+                out.flat_masks_w0.reserve(total_flat);
+                out.flat_masks_w1.reserve(total_flat);
+                out.flat_masks_w2.reserve(total_flat);
+                out.flat_listeners.reserve(total_flat);
             }
-            for &(idx, m) in &out.listener_potions {
-                push_flat(HookListener::Potion(idx), m);
-            }
-            for &(idx, m) in &out.listener_orbs {
-                push_flat(HookListener::Orb(idx), m);
-            }
-            for &(l, m) in &out.listener_hand {
+            let mut push_flat = |l: HookListener, m: HookMask| {
+                out.flat_masks_w0.push(m.0[0]);
+                out.flat_masks_w1.push(m.0[1]);
+                out.flat_masks_w2.push(m.0[2]);
+                out.flat_listeners.push(l);
+            };
+            for &(l, m) in &out.listener_pre_player {
                 push_flat(l, m);
             }
-            for &(l, m) in &out.listener_draw {
+            if combat_has_player {
+                for &(idx, m) in &out.listener_relics {
+                    push_flat(HookListener::Relic(idx), m);
+                }
+                for &(idx, m) in &out.listener_potions {
+                    push_flat(HookListener::Potion(idx), m);
+                }
+                for &(idx, m) in &out.listener_orbs {
+                    push_flat(HookListener::Orb(idx), m);
+                }
+                for &(l, m) in &out.listener_hand {
+                    push_flat(l, m);
+                }
+                for &(l, m) in &out.listener_draw {
+                    push_flat(l, m);
+                }
+                for &(l, m) in &out.listener_discard {
+                    push_flat(l, m);
+                }
+                for &(l, m) in &out.listener_exhaust {
+                    push_flat(l, m);
+                }
+                for &(l, m) in &out.listener_play {
+                    push_flat(l, m);
+                }
+            }
+            for &(l, m) in &out.listener_post_player {
                 push_flat(l, m);
             }
-            for &(l, m) in &out.listener_discard {
-                push_flat(l, m);
+            for &(rm, m) in &out.listener_run_models {
+                push_flat(HookListener::RunModel(rm), m);
             }
-            for &(l, m) in &out.listener_exhaust {
-                push_flat(l, m);
+            if let Some((dom, m)) = out.listener_dominion {
+                push_flat(HookListener::Dominion(dom), m);
             }
-            for &(l, m) in &out.listener_play {
-                push_flat(l, m);
-            }
-        }
-        for &(l, m) in &out.listener_post_player {
-            push_flat(l, m);
-        }
-        for &(rm, m) in &out.listener_run_models {
-            push_flat(HookListener::RunModel(rm), m);
-        }
-        if let Some((dom, m)) = out.listener_dominion {
-            push_flat(HookListener::Dominion(dom), m);
         }
 
         out.dirty_mask = 0;
@@ -2284,6 +2454,15 @@ impl BattleState {
         } else {
             fallback
         }
+    }
+
+    #[inline(always)]
+    pub fn card_index(&self, handle: CardHandle) -> Option<usize> {
+        let idx = handle.0.wrapping_sub(1) as usize;
+        if idx < self.cards.len() && self.cards[idx].handle == handle {
+            return Some(idx);
+        }
+        Self::find_card_idx_cold(&self.cards, handle)
     }
 
     #[inline(always)]
@@ -2452,8 +2631,11 @@ impl BattleState {
         self.is_in_progress
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn osty_handle(&self) -> Option<CreatureHandle> {
+        if self.pet_handles.is_empty() {
+            return None;
+        }
         self.pet_handles.iter().copied().find(|&h| {
             self.creature(h)
                 .is_some_and(|c| c.monster_id == Some(MonsterId::Osty))

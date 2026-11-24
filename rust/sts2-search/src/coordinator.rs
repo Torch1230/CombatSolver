@@ -41,7 +41,8 @@ use crate::pruning::{
 };
 use crate::rollout::{
     encode_choice_probe_rank_score, evaluate_choice_probe_packed, evaluate_choice_probe_state,
-    evaluate_turn_boundary_rollouts_into, ChoiceProbeResult, ChoiceProbeWorkspace, RolloutResult,
+    evaluate_turn_boundary_rollouts_into, ChoiceProbeCache, ChoiceProbeResult,
+    ChoiceProbeWorkspace, RolloutResult, TurnRolloutCache,
 };
 use crate::tt::{ShardedParetoTT, TranspositionLabel, TT_SHARD_COUNT};
 use crate::{InCombatSolveResponse, PlannedAction, SearchPolicy, SearchProgress, SearchStatistics};
@@ -163,6 +164,7 @@ struct WorkerCandidate {
     label: TranspositionLabel,
 }
 
+#[derive(Clone, Copy)]
 struct ResolvedChoiceCandidate {
     choices_offset: u32,
     choices_len: u8,
@@ -187,9 +189,12 @@ struct ResolvedChoiceCandidate {
     forced_used_mask: u64,
     forced_ambergris_count: u16,
     is_terminal: bool,
-    fast_eval: FastEvalSummary,
-    full_eval: Option<FullEvalDetails>,
+    base_score: f64,
+    fast_eval: StoredFastEval,
+    full_eval: Option<StoredNodeEval>,
+    rare_eval: Option<RareNodeEval>,
     label: TranspositionLabel,
+    terminal_probe_score: f64,
     lookahead_score: f64,
     lookahead_hp_lost: i32,
     lookahead_board_investment: i32,
@@ -203,7 +208,6 @@ struct WorkerScratch {
     choice_paused_states: Vec<BattleState>,
     choice_probe_ws: ChoiceProbeWorkspace,
     choice_resolved: Vec<ResolvedChoiceCandidate>,
-    choice_staged: Vec<Option<ResolvedChoiceCandidate>>,
     choice_enum_bufs: [Vec<SmallVec<[usize; 8]>>; 4],
     choice_enum_scratch: ChoiceEnumScratch,
     choice_slab: LocalStateSlab,
@@ -214,6 +218,7 @@ struct WorkerScratch {
     choice_tt_epoch: u32,
     marginal_scores: Vec<f64>,
     marginal_order: Vec<usize>,
+    probed_sels: Vec<(SmallVec<[usize; 8]>, f64, u64, u64)>,
     pack_buf: Vec<u8>,
     action_buf: Vec<ActionTask>,
     slab: LocalStateSlab,
@@ -235,7 +240,6 @@ impl WorkerScratch {
             choice_paused_states,
             choice_probe_ws: ChoiceProbeWorkspace::new(static_ctx.clone()),
             choice_resolved: Vec::with_capacity(CHOICE_RESOLVED_CAPACITY),
-            choice_staged: Vec::with_capacity(CHOICE_RESOLVED_CAPACITY),
             choice_enum_bufs: [
                 Vec::with_capacity(64),
                 Vec::with_capacity(32),
@@ -251,6 +255,7 @@ impl WorkerScratch {
             choice_tt_epoch: 0,
             marginal_scores: Vec::with_capacity(64),
             marginal_order: Vec::with_capacity(64),
+            probed_sels: Vec::with_capacity(64),
             state: empty_scratch_state(static_ctx),
             pack_buf: Vec::with_capacity(4096),
             action_buf: Vec::with_capacity(16),
@@ -271,7 +276,6 @@ impl WorkerScratch {
         self.choice_staging_choices.clear();
         self.candidates.clear();
         self.choice_resolved.clear();
-        self.choice_staged.clear();
         self.transitions = 0;
         self.choice_replay_attempts = 0;
         self.incumbent_pruned = 0;
@@ -284,7 +288,6 @@ impl WorkerScratch {
         self.choice_slab.clear();
         self.choice_staging_choices.clear();
         self.choice_resolved.clear();
-        self.choice_staged.clear();
         self.choice_tt_epoch = self.choice_tt_epoch.wrapping_add(1);
         if self.choice_tt_epoch == 0 {
             self.choice_tt_epochs.fill(0);
@@ -331,6 +334,8 @@ struct PassResources {
     next_step_arena: MainStateArena,
     turn_staging_arena: MainStateArena,
     tt: ShardedParetoTT,
+    choice_probe_cache: ChoiceProbeCache,
+    turn_rollout_cache: TurnRolloutCache,
     stand_pat_seen: hashbrown::HashSet<StateHash, ahash::RandomState>,
     sort_list: Vec<(usize, usize, (u32, u32, u32))>,
     parent_slices: Vec<AtomicU64>,
@@ -423,6 +428,8 @@ impl PassResources {
                         .push(crate::rollout::RolloutWorkspace::new(static_ctx.clone()));
                 }
                 r.tt.set_entry_limit(transposition_entry_limit.max(65_536));
+                r.choice_probe_cache.clear();
+                r.turn_rollout_cache.clear();
                 r.reset_for_new_solve(static_ctx);
                 r
             }
@@ -474,6 +481,8 @@ impl PassResources {
             next_step_arena: MainStateArena::default(),
             turn_staging_arena: MainStateArena::default(),
             tt: ShardedParetoTT::new(transposition_entry_limit.max(65_536)),
+            choice_probe_cache: ChoiceProbeCache::new(),
+            turn_rollout_cache: TurnRolloutCache::new(),
             stand_pat_seen: hashbrown::HashSet::with_hasher(ahash::RandomState::with_seeds(
                 0x3141_5926_5358_9793,
                 0x2718_2818_2845_9045,
@@ -547,14 +556,15 @@ fn clone_opt_cow_str_into(
 
 #[inline]
 fn clone_small_cow_strings_into(
-    src: &SmallVec<[Cow<'static, str>; 8]>,
-    dst: &mut SmallVec<[Cow<'static, str>; 8]>,
+    src: &[Cow<'static, str>],
+    dst: &mut Vec<Cow<'static, str>>,
 ) {
     let keep = dst.len().min(src.len());
     for i in 0..keep {
         clone_cow_str_into(&src[i], &mut dst[i]);
     }
     if src.len() > keep {
+        dst.reserve(src.len() - keep);
         for s in &src[keep..] {
             dst.push(s.clone());
         }
@@ -647,6 +657,7 @@ fn clone_hook_cache_into(src: &ActiveHookCache, dst: &mut ActiveHookCache) {
     dst.masks = src.masks;
     dst.in_combat_mask = src.in_combat_mask;
     dst.in_combat_overflow = src.in_combat_overflow;
+    dst.combat_has_player = src.combat_has_player;
     dst.cached_tables = src.cached_tables;
     dst.listener_dominion = src.listener_dominion;
     dst.listener_pre_player.clone_from(&src.listener_pre_player);
@@ -1415,8 +1426,6 @@ fn prepare_staged_candidate(
         root_baseline,
     );
 
-    let state_hash = hash_canonical_key(&scratch.state);
-
     if !is_terminal
         && policy.accelerations.enable_closure_pruning
         && frozen_incumbent.is_pruned(
@@ -1438,6 +1447,8 @@ fn prepare_staged_candidate(
         scratch.incumbent_pruned += 1;
         return None;
     }
+
+    let state_hash = hash_canonical_key(&scratch.state);
 
     if check_local_choice_tt && !scratch.try_insert_local_choice_tt(state_hash) {
         return None;
@@ -1652,6 +1663,7 @@ fn stage_resolved_choice(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
+    probe_cache: &ChoiceProbeCache,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -1691,6 +1703,8 @@ fn stage_resolved_choice(
         if let Some(probe) = evaluate_choice_probe_state(
             &mut scratch.choice_probe_ws,
             &scratch.state,
+            s.state_hash,
+            probe_cache,
             content,
             root_baseline,
             profile,
@@ -1733,6 +1747,33 @@ fn stage_resolved_choice(
         )
     };
 
+    let terminal_probe_score = if s.is_terminal {
+        let net_potion_cost_centi =
+            PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
+                s.optional_paid_potion_cost,
+                s.optional_paid_potion_count as i32,
+                s.fast_eval.alchemize_count as i32,
+                s.fast_eval.empty_potion_slots as i32,
+                root_baseline,
+            );
+        compute_beam_rank_score_with_centi(
+            &s.fast_eval,
+            &FullEvalDetails::default(),
+            root_baseline,
+            profile.base_score_only,
+            profile.boss_tempo_hp_pricing,
+            profile.beam_weight_perturbation,
+            eval_mode,
+            net_potion_cost_centi,
+            s.action_count,
+        )
+    } else {
+        0.0
+    };
+    let base_score = s.fast_eval.base_score;
+    let rare_eval = rare_eval_opt(&s.fast_eval);
+    let stored_fast = StoredFastEval::from(&s.fast_eval);
+    let stored_full = s.full_eval.map(|f| f.to_stored());
     let (choices_offset, choices_len) = scratch.choice_staging_choices.push_choices(choices);
     scratch.choice_resolved.push(ResolvedChoiceCandidate {
         choices_offset,
@@ -1758,9 +1799,12 @@ fn stage_resolved_choice(
         forced_used_mask: s.forced_used_mask,
         forced_ambergris_count: s.forced_ambergris_count,
         is_terminal: s.is_terminal,
-        fast_eval: s.fast_eval,
-        full_eval: s.full_eval,
+        base_score,
+        fast_eval: stored_fast,
+        full_eval: stored_full,
+        rare_eval,
         label: s.label,
+        terminal_probe_score,
         lookahead_score,
         lookahead_hp_lost,
         lookahead_board_investment,
@@ -1777,6 +1821,7 @@ fn probe_choice_selection_1t(
     root_baseline: &RootEvalBaseline,
     profile: &SolverSearchProfile,
     eval_mode: EvalMode,
+    probe_cache: &ChoiceProbeCache,
     task: &ActionTask,
     sel: &[usize],
 ) -> f64 {
@@ -1828,9 +1873,12 @@ fn probe_choice_selection_1t(
             task.parent_optional_paid_potion_count,
         ),
     };
+    let state_hash = hash_canonical_key(&scratch.state);
     let Some(probe) = evaluate_choice_probe_state(
         &mut scratch.choice_probe_ws,
         &scratch.state,
+        state_hash,
+        probe_cache,
         content,
         root_baseline,
         profile,
@@ -1862,6 +1910,7 @@ fn screen_high_branching_multi_pick(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
+    probe_cache: &ChoiceProbeCache,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -1911,6 +1960,7 @@ fn screen_high_branching_multi_pick(
                 root_baseline,
                 profile,
                 eval_mode,
+                probe_cache,
                 task,
                 &[rep],
             );
@@ -1954,6 +2004,7 @@ fn screen_high_branching_multi_pick(
                         cert,
                         frozen_incumbent,
                         tt,
+                        probe_cache,
                         sensitivity,
                         allow_paid_optional_potions,
                         eval_mode,
@@ -1986,6 +2037,7 @@ fn screen_high_branching_multi_pick(
                             cert,
                             frozen_incumbent,
                             tt,
+                            probe_cache,
                             sensitivity,
                             allow_paid_optional_potions,
                             eval_mode,
@@ -2080,36 +2132,51 @@ fn screen_high_branching_multi_pick(
 
     let mut scores = std::mem::take(&mut scratch.marginal_scores);
     let mut order = std::mem::take(&mut scratch.marginal_order);
+    let mut probed_sels = std::mem::take(&mut scratch.probed_sels);
     scores.clear();
     order.clear();
+    probed_sels.clear();
     scores.reserve(distinct_n);
     order.reserve(distinct_n);
+
+    let mut probe_cached_sel =
+        |scratch: &mut WorkerScratch, sel: &SmallVec<[usize; 8]>| -> f64 {
+            if let Some(&(_, sc, rep_d, trans_d)) =
+                probed_sels.iter().find(|(s, _, _, _)| s == sel)
+            {
+                scratch.choice_replay_attempts += rep_d;
+                scratch.transitions += trans_d;
+                return sc;
+            }
+            let rep_before = scratch.choice_replay_attempts;
+            let trans_before = scratch.transitions;
+            let sc = probe_choice_selection_1t(
+                scratch,
+                static_ctx,
+                content,
+                root_baseline,
+                profile,
+                eval_mode,
+                probe_cache,
+                task,
+                sel,
+            );
+            probed_sels.push((
+                sel.clone(),
+                sc,
+                scratch.choice_replay_attempts - rep_before,
+                scratch.transitions - trans_before,
+            ));
+            sc
+        };
 
     // Round 1: tail vs head/mid anchors across distinct equivalence reps only
     for g in 0..distinct_n {
         let rep = groups[g].0;
         let sel_tail = build_k_selection(rep, &tail_anchors);
-        let s_tail = probe_choice_selection_1t(
-            scratch,
-            static_ctx,
-            content,
-            root_baseline,
-            profile,
-            eval_mode,
-            task,
-            &sel_tail,
-        );
+        let s_tail = probe_cached_sel(scratch, &sel_tail);
         let sel_head = build_k_selection(rep, &head_anchors);
-        let s_head = probe_choice_selection_1t(
-            scratch,
-            static_ctx,
-            content,
-            root_baseline,
-            profile,
-            eval_mode,
-            task,
-            &sel_head,
-        );
+        let s_head = probe_cached_sel(scratch, &sel_head);
         scores.push(s_tail.max(s_head));
         order.push(g);
     }
@@ -2128,16 +2195,7 @@ fn screen_high_branching_multi_pick(
     }
     for g in 0..distinct_n {
         let sel_mvp = build_k_selection(groups[g].0, &mvp_anchors);
-        let s_mvp = probe_choice_selection_1t(
-            scratch,
-            static_ctx,
-            content,
-            root_baseline,
-            profile,
-            eval_mode,
-            task,
-            &sel_mvp,
-        );
+        let s_mvp = probe_cached_sel(scratch, &sel_mvp);
         if s_mvp > scores[g] {
             scores[g] = s_mvp;
         }
@@ -2169,6 +2227,8 @@ fn screen_high_branching_multi_pick(
             }
         }
     }
+    probed_sels.clear();
+    scratch.probed_sels = probed_sels;
     scratch.marginal_scores = scores;
     scratch.marginal_order = order;
 
@@ -2216,6 +2276,7 @@ fn resolve_choices_recursive(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
+    probe_cache: &ChoiceProbeCache,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -2256,6 +2317,7 @@ fn resolve_choices_recursive(
             cert,
             frozen_incumbent,
             tt,
+            probe_cache,
             sensitivity,
             allow_paid_optional_potions,
             eval_mode,
@@ -2318,6 +2380,7 @@ fn resolve_choices_recursive(
                     cert,
                     frozen_incumbent,
                     tt,
+                    probe_cache,
                     sensitivity,
                     allow_paid_optional_potions,
                     eval_mode,
@@ -2352,6 +2415,7 @@ fn resolve_choices_recursive(
                         cert,
                         frozen_incumbent,
                         tt,
+                        probe_cache,
                         sensitivity,
                         allow_paid_optional_potions,
                         eval_mode,
@@ -2373,17 +2437,17 @@ fn compare_resolved_choice(
     let score_of = |c: &ResolvedChoiceCandidate| -> f64 {
         c.full_eval
             .as_ref()
-            .map_or(c.fast_eval.base_score, |f| f.beam_rank_score)
+            .map_or(c.base_score, |f| f.beam_rank_score)
     };
     let board_of = |c: &ResolvedChoiceCandidate| -> i32 {
         c.full_eval.as_ref().map_or(0, |f| f.board_investment)
     };
     let opt_of = |c: &ResolvedChoiceCandidate| -> i32 {
-        c.fast_eval.energy.max(0)
-            + c.fast_eval.stars.max(0)
+        (c.fast_eval.energy as i32).max(0)
+            + (c.fast_eval.stars as i32).max(0)
             + c.full_eval
                 .as_ref()
-                .map_or(0, |f| f.playable_card_count + f.next_turn_draw)
+                .map_or(0, |f| f.optionality_cards)
     };
 
     match criterion {
@@ -2449,6 +2513,7 @@ fn commit_resolved_choices(
     root_baseline: &RootEvalBaseline,
     profile: &SolverSearchProfile,
     eval_mode: EvalMode,
+    probe_cache: &ChoiceProbeCache,
 ) {
     let resolved_count = scratch.choice_resolved.len();
     if resolved_count == 0 {
@@ -2478,13 +2543,14 @@ fn commit_resolved_choices(
             if scratch.choice_resolved[i].has_lookahead {
                 continue;
             }
-            let (is_term, slab_idx, off, len, opt_cost, opt_count, action_count) = {
+            let (is_term, slab_idx, off, len, state_hash, opt_cost, opt_count, action_count) = {
                 let c = &scratch.choice_resolved[i];
                 (
                     c.is_terminal,
                     c.state_slab_idx,
                     c.state_off,
                     c.state_len,
+                    c.state_hash,
                     c.optional_paid_potion_cost,
                     c.optional_paid_potion_count,
                     c.action_count,
@@ -2492,37 +2558,20 @@ fn commit_resolved_choices(
             };
             let probe = if is_term {
                 let c = &scratch.choice_resolved[i];
-                let net_potion_cost_centi =
-                    PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
-                        opt_cost,
-                        opt_count as i32,
-                        c.fast_eval.alchemize_count as i32,
-                        c.fast_eval.empty_potion_slots as i32,
-                        root_baseline,
-                    );
-                let term_score = compute_beam_rank_score_with_centi(
-                    &c.fast_eval,
-                    &FullEvalDetails::default(),
-                    root_baseline,
-                    profile.base_score_only,
-                    profile.boss_tempo_hp_pricing,
-                    profile.beam_weight_perturbation,
-                    eval_mode,
-                    net_potion_cost_centi,
-                    action_count,
-                );
                 ChoiceProbeResult {
-                    score: term_score,
-                    hp_lost: c.fast_eval.cumulative_hp_lost,
+                    score: c.terminal_probe_score,
+                    hp_lost: c.fast_eval.cumulative_hp_lost as i32,
                     board_investment: 0,
-                    is_victory: c.fast_eval.won,
-                    is_defeat: c.fast_eval.player_dead || c.fast_eval.projected_player_hp <= 0,
+                    is_victory: c.fast_eval.won(),
+                    is_defeat: c.fast_eval.player_dead() || c.fast_eval.projected_player_hp <= 0,
                 }
             } else {
                 let state_bytes = scratch.choice_slab.get(slab_idx, off, len);
                 let Some(probe) = evaluate_choice_probe_packed(
                     &mut scratch.choice_probe_ws,
                     state_bytes,
+                    state_hash,
+                    probe_cache,
                     static_ctx,
                     content,
                     root_baseline,
@@ -2609,14 +2658,8 @@ fn commit_resolved_choices(
         });
     }
 
-    scratch.choice_staged.clear();
-    scratch
-        .choice_staged
-        .extend(scratch.choice_resolved.drain(..).map(Some));
     for (choice_ord, &idx) in selected_indices[..selected_len].iter().enumerate() {
-        let Some(cand) = scratch.choice_staged[idx].take() else {
-            continue;
-        };
+        let cand = scratch.choice_resolved[idx];
         let (state_slab_idx, state_off, state_len) = if cand.state_len == 0 {
             (0, 0, 0)
         } else {
@@ -2631,10 +2674,6 @@ fn commit_resolved_choices(
             cand.choices_offset,
             cand.choices_len,
         );
-        let rare_eval = rare_eval_opt(&cand.fast_eval);
-        let base_score = cand.fast_eval.base_score;
-        let stored_fast = StoredFastEval::from(&cand.fast_eval);
-        let stored_full = cand.full_eval.map(|f| f.to_stored());
         scratch.candidates.push(WorkerCandidate {
             sort_key: (task.parent_rank, task.action_ord, choice_ord as u32),
             parent_id: task.parent_id,
@@ -2661,13 +2700,14 @@ fn commit_resolved_choices(
             forced_used_mask: cand.forced_used_mask,
             forced_ambergris_count: cand.forced_ambergris_count,
             is_terminal: cand.is_terminal,
-            base_score,
-            fast_eval: stored_fast,
-            full_eval: stored_full,
-            rare_eval,
+            base_score: cand.base_score,
+            fast_eval: cand.fast_eval,
+            full_eval: cand.full_eval,
+            rare_eval: cand.rare_eval,
             label: cand.label,
         });
     }
+    scratch.choice_resolved.clear();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2683,6 +2723,7 @@ fn execute_action_from_parent(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
+    probe_cache: &ChoiceProbeCache,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -2755,6 +2796,7 @@ fn execute_action_from_parent(
             cert,
             frozen_incumbent,
             tt,
+            probe_cache,
             sensitivity,
             allow_paid_optional_potions,
             eval_mode,
@@ -2770,6 +2812,7 @@ fn execute_action_from_parent(
             root_baseline,
             profile,
             eval_mode,
+            probe_cache,
         );
         return;
     }
@@ -2861,6 +2904,7 @@ fn execute_action_from_parent(
                 cert,
                 frozen_incumbent,
                 tt,
+                probe_cache,
                 sensitivity,
                 allow_paid_optional_potions,
                 eval_mode,
@@ -2876,6 +2920,7 @@ fn execute_action_from_parent(
                 root_baseline,
                 profile,
                 eval_mode,
+                probe_cache,
             );
         }
     }
@@ -2896,6 +2941,7 @@ fn expand_wave_tasks(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
+    probe_cache: &ChoiceProbeCache,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -2966,6 +3012,7 @@ fn expand_wave_tasks(
                     cert,
                     frozen_incumbent,
                     tt,
+                    probe_cache,
                     sensitivity,
                     allow_paid_optional_potions,
                     eval_mode,
@@ -3044,6 +3091,7 @@ fn expand_wave_tasks(
                     cert,
                     frozen_incumbent,
                     tt,
+                    probe_cache,
                     sensitivity,
                     allow_paid_optional_potions,
                     eval_mode,
@@ -3080,6 +3128,7 @@ fn expand_wave_tasks(
                         cert,
                         frozen_incumbent,
                         tt,
+                        probe_cache,
                         sensitivity,
                         allow_paid_optional_potions,
                         eval_mode,
@@ -3161,6 +3210,7 @@ fn expand_wave_tasks(
                             cert,
                             frozen_incumbent,
                             tt,
+                            probe_cache,
                             sensitivity,
                             allow_paid_optional_potions,
                             eval_mode,
@@ -3584,6 +3634,8 @@ fn run_beam_pass_with_resources(
         next_step_arena,
         turn_staging_arena,
         tt,
+        choice_probe_cache,
+        turn_rollout_cache,
         stand_pat_seen,
         sort_list,
         parent_slices,
@@ -4173,6 +4225,7 @@ fn run_beam_pass_with_resources(
             cert,
             &frozen_setup_inc,
             tt,
+            choice_probe_cache,
             &sensitivity,
             options.allow_paid_optional_potions,
             options.eval_mode,
@@ -4276,6 +4329,7 @@ fn run_beam_pass_with_resources(
                     active_pool,
                     cancel,
                     rollout_workspaces,
+                    Some(turn_rollout_cache),
                     rollout_results,
                 );
                 for (idx, maybe_rr) in rollout_results.drain(..).enumerate() {
@@ -4535,6 +4589,7 @@ fn run_beam_pass_with_resources(
                 cert,
                 &frozen_incumbent,
                 tt,
+                choice_probe_cache,
                 &sensitivity,
                 options.allow_paid_optional_potions,
                 options.eval_mode,
@@ -4661,6 +4716,7 @@ fn run_beam_pass_with_resources(
                     let arena_ref: &NodeArena = &*arena;
                     let step_arena_ref: &MainStateArena = &*step_arena;
                     let tt_ref: &ShardedParetoTT = &*tt;
+                    let probe_cache_ref: &ChoiceProbeCache = &*choice_probe_cache;
                     let rb_ref: &RootEvalBaseline = &root_baseline;
                     let static_ctx_ref = &root.static_ctx;
                     let sens_ref = &sensitivity;
@@ -4711,6 +4767,7 @@ fn run_beam_pass_with_resources(
                                     cert,
                                     &frozen_incumbent,
                                     tt_ref,
+                                    probe_cache_ref,
                                     sens_ref,
                                     options.allow_paid_optional_potions,
                                     options.eval_mode,
@@ -4755,6 +4812,7 @@ fn run_beam_pass_with_resources(
                             cert,
                             &frozen_incumbent,
                             tt,
+                            choice_probe_cache,
                             &sensitivity,
                             options.allow_paid_optional_potions,
                             options.eval_mode,
@@ -4931,6 +4989,7 @@ fn run_beam_pass_with_resources(
                 active_pool,
                 cancel,
                 rollout_workspaces,
+                Some(turn_rollout_cache),
                 rollout_results,
             );
             for (idx, maybe_rr) in rollout_results.drain(..).enumerate() {
@@ -5385,7 +5444,8 @@ fn run_novelty_pass(
     let mut main_arena = MainStateArena::default();
     let mut scratch = WorkerScratch::new(root.static_ctx.clone());
     let mut parent_state = empty_scratch_state(root.static_ctx.clone());
-    let tt = ShardedParetoTT::new(policy.transposition_entry_limit.max(65_536));
+        let tt = ShardedParetoTT::new(policy.transposition_entry_limit.max(65_536));
+        let probe_cache = ChoiceProbeCache::new();
     let frozen_incumbent = FrozenIncumbentBound::default();
 
     pack_state(root, &mut scratch.pack_buf);
@@ -5522,6 +5582,7 @@ fn run_novelty_pass(
                 cert,
                 &frozen_incumbent,
                 &tt,
+                &probe_cache,
                 &sensitivity,
                 true,
                 EvalMode::Balanced,
@@ -5858,6 +5919,7 @@ fn run_boss_tempo_depth_first(
     let mut scratch = WorkerScratch::new(root.static_ctx.clone());
     let mut parent_state = empty_scratch_state(root.static_ctx.clone());
     let tt = ShardedParetoTT::new(16_384);
+    let probe_cache = ChoiceProbeCache::new();
     let frozen_incumbent = FrozenIncumbentBound::default();
     let mut tempo_tt = BossTempoTranspositions::new(32_768);
     let mut boss_profile = profile.clone();
@@ -5973,6 +6035,7 @@ fn run_boss_tempo_depth_first(
                 cert,
                 &frozen_incumbent,
                 &tt,
+                &probe_cache,
                 &sensitivity,
                 true,
                 EvalMode::Balanced,
@@ -7248,9 +7311,7 @@ impl CombatSearchCoordinator {
             let mut ctx = (*root.static_ctx).clone();
             ctx.compact_turn_history = true;
             if !ctx.has_root_rngs {
-                ctx.has_root_rngs = true;
-                ctx.root_run_rngs = root.run_rngs.streams;
-                ctx.root_player_rngs = root.player_rngs.streams;
+                ctx.set_root_rngs(root.run_rngs.streams, root.player_rngs.streams);
             }
             compacted_root.static_ctx = Arc::new(ctx);
             &compacted_root

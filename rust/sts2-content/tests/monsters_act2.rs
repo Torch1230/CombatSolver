@@ -90,7 +90,7 @@ fn build_battle_with(
         });
     }
 
-    let mut arrows = SmallVec::new();
+    let mut arrows = Vec::new();
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
@@ -146,7 +146,7 @@ fn build_battle_with(
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
-                state_log_ids: SmallVec::new(),
+                state_log_ids: Vec::new(),
                 transient_move_follow_up_state_id: None,
                 setup_fields: Default::default(),
                 private_fields: Default::default(),
@@ -181,9 +181,9 @@ fn build_battle_with(
         potion_slots: smallvec![None, None, None],
         combat_generated_potion_mask: 0,
         orb_capacity: character.base_orb_slot_count(),
-        orbs: SmallVec::new(),
+        orbs: Vec::new(),
         arrows,
-        relics: SmallVec::new(),
+        relics: Vec::new(),
         card_or_potion_effect_depth: 0,
     };
 

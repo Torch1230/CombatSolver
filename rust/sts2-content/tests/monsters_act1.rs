@@ -5,10 +5,9 @@ use sts2_content::monsters::act1;
 use sts2_content::Sts2Content;
 use sts2_kernel::commands::{creature as creature_cmd, damage::AttackBuilder};
 use sts2_kernel::{
-    ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine,
-    ContentDispatcher, CreatureHandle, CreatureInst, FieldMap, FieldValue, HookArgs,
-    HookListener, MonsterInst, PlayerCounters, PlayerInst, RelicInst, RootStaticContext,
-    SemanticHistory, StepOutcome,
+    BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine, ContentDispatcher,
+    CreatureHandle, CreatureInst, FieldMap, FieldValue, HookArgs, HookListener, MonsterInst,
+    PlayerCounters, PlayerInst, RootStaticContext, SemanticHistory, StepOutcome,
 };
 use sts2_types::{
     CardId, CardKeywords, CharacterId, CombatSide, Dec, GameMode, HookSlot, MonsterId, PileType,
@@ -159,9 +158,9 @@ fn build_battle(
         potion_slots: smallvec::smallvec![None, None, None],
         combat_generated_potion_mask: 0,
         orb_capacity: 0,
-        orbs: SmallVec::new(),
-        arrows: SmallVec::<[ArrowSlotInst; 4]>::new(),
-        relics: SmallVec::<[RelicInst; 16]>::new(),
+        orbs: Vec::new(),
+        arrows: Vec::new(),
+        relics: Vec::new(),
         card_or_potion_effect_depth: 0,
     };
 
@@ -255,7 +254,7 @@ fn build_battle(
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
-                state_log_ids: SmallVec::new(),
+                state_log_ids: Vec::new(),
                 transient_move_follow_up_state_id: None,
                 setup_fields: setup_fields.clone(),
                 private_fields: FieldMap::new(),

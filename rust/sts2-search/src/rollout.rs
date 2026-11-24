@@ -2,7 +2,8 @@ use crate::arena::{MainStateArena, NodeArena, NodeId};
 use crate::coordinator::clone_battle_state_into;
 use crate::eval::{
     compute_beam_rank_score_with_centi, evaluate_fast, evaluate_full, is_creature_reviving,
-    EvalMode, FastEvalSummary, PotionUsePolicy, RootEvalBaseline, SolverPotionPolicy,
+    BeamWeightTerm, EvalMode, FastEvalSummary, FullEvalDetails, PotionUsePolicy, RootEvalBaseline,
+    SolverPotionPolicy,
 };
 use crate::hash::StateHash;
 use crate::packer::{empty_scratch_state, hash_canonical_key, unpack_state};
@@ -10,10 +11,12 @@ use crate::portfolio::SolverSearchProfile;
 use crate::SearchPolicy;
 use smallvec::SmallVec;
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
-use sts2_kernel::ordering::{resolve_local_energy_cost, resolve_local_star_cost};
+use sts2_kernel::ordering::{
+    resolve_local_energy_cost, resolve_local_energy_cost_card, resolve_local_star_cost_card,
+};
 use sts2_kernel::state::{BattleState, CardHandle, CreatureHandle, RootStaticContext};
 use sts2_kernel::{rollout_op_flags as op, CombatEngine, ContentDispatcher, StepOutcome};
 use sts2_types::{
@@ -95,14 +98,102 @@ pub struct RolloutResult {
     pub promoted_victory: Option<PromotedVictory>,
 }
 
-type RolloutDedupKey = (
-    CardId,
-    i32,
-    i32,
-    i32,
-    bool,
-    Option<sts2_types::AfflictionId>,
-);
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(crate) struct RolloutDedupKey(u128);
+
+impl RolloutDedupKey {
+    #[inline(always)]
+    fn new(
+        card_id: CardId,
+        upgrade_level: i32,
+        energy_cost: i32,
+        star_cost: i32,
+        has_ext: bool,
+        aff_id: Option<sts2_types::AfflictionId>,
+    ) -> Self {
+        let aff_bits = aff_id.map_or(0u128, |a| {
+            debug_assert!((a as u32) < 0x7FFF);
+            u128::from((a as u32) + 1)
+        });
+        let raw = u128::from(card_id as u16)
+            | (u128::from(has_ext) << 16)
+            | (aff_bits << 17)
+            | (u128::from(upgrade_level as u32) << 32)
+            | (u128::from(energy_cost as u32) << 64)
+            | (u128::from(star_cost as u32) << 96);
+        Self(raw)
+    }
+}
+
+#[inline(always)]
+const fn eval_mode_index(mode: EvalMode) -> usize {
+    match mode {
+        EvalMode::Balanced => 0,
+        EvalMode::SetupAndSurvival => 1,
+        EvalMode::Offense => 2,
+    }
+}
+
+#[inline(always)]
+fn compute_scores_at_zero(
+    fast: &FastEvalSummary,
+    full: &FullEvalDetails,
+    root_baseline: &RootEvalBaseline,
+    profile: &SolverSearchProfile,
+    linear_adj: bool,
+    action_count: u16,
+) -> [f64; 3] {
+    if !linear_adj || fast.won {
+        let s = compute_beam_rank_score_with_centi(
+            fast,
+            full,
+            root_baseline,
+            profile.base_score_only,
+            profile.boss_tempo_hp_pricing,
+            profile.beam_weight_perturbation,
+            EvalMode::Balanced,
+            0,
+            action_count,
+        );
+        [s, s, s]
+    } else {
+        [
+            compute_beam_rank_score_with_centi(
+                fast,
+                full,
+                root_baseline,
+                profile.base_score_only,
+                profile.boss_tempo_hp_pricing,
+                profile.beam_weight_perturbation,
+                EvalMode::Balanced,
+                0,
+                action_count,
+            ),
+            compute_beam_rank_score_with_centi(
+                fast,
+                full,
+                root_baseline,
+                profile.base_score_only,
+                profile.boss_tempo_hp_pricing,
+                profile.beam_weight_perturbation,
+                EvalMode::SetupAndSurvival,
+                0,
+                action_count,
+            ),
+            compute_beam_rank_score_with_centi(
+                fast,
+                full,
+                root_baseline,
+                profile.base_score_only,
+                profile.boss_tempo_hp_pricing,
+                profile.beam_weight_perturbation,
+                EvalMode::Offense,
+                0,
+                action_count,
+            ),
+        ]
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ChoiceProbeResult {
@@ -111,6 +202,633 @@ pub(crate) struct ChoiceProbeResult {
     pub board_investment: i32,
     pub is_victory: bool,
     pub is_defeat: bool,
+}
+
+const CHOICE_PROBE_SHARDS: usize = 256;
+const CHOICE_PROBE_SETS_PER_SHARD: usize = 64;
+const CHOICE_PROBE_WAYS: usize = 4;
+const CHOICE_PROBE_SLOTS_PER_SHARD: usize = CHOICE_PROBE_SETS_PER_SHARD * CHOICE_PROBE_WAYS;
+const CHOICE_PROBE_FLAG_SOME: u8 = 1 << 0;
+const CHOICE_PROBE_FLAG_NONE: u8 = 1 << 1;
+const CHOICE_PROBE_FLAG_VICTORY: u8 = 1 << 2;
+const CHOICE_PROBE_FLAG_DEFEAT: u8 = 1 << 3;
+const CHOICE_PROBE_FLAG_LINEAR_ADJ: u8 = 1 << 4;
+
+#[inline]
+fn mix_cfg_u64(acc: u64, v: u64) -> u64 {
+    let mut x = acc.wrapping_add(v).wrapping_add(0x9E37_79B9_7F4A_7C15);
+    x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    x ^ (x >> 31)
+}
+
+#[inline]
+fn choice_probe_cfg_hash(profile: &SolverSearchProfile, max_turns_ahead: u8) -> u64 {
+    let flags_word = ((max_turns_ahead as u64) << 4)
+        | (u64::from(profile.base_score_only) << 12)
+        | (u64::from(profile.boss_tempo_hp_pricing) << 13);
+    let (pert_term, pert_scale) = match profile.beam_weight_perturbation {
+        None => (0u64, 0u64),
+        Some(p) => {
+            let term = match p.term {
+                BeamWeightTerm::CurrentEnergy => 1u64,
+                BeamWeightTerm::PersistentBuffDelta => 2u64,
+                BeamWeightTerm::EnemyHp => 3u64,
+            };
+            (term, p.scale.to_bits())
+        }
+    };
+    let h = mix_cfg_u64(0x517C_C1B7_2722_0A95, flags_word | (pert_term << 16));
+    mix_cfg_u64(h, pert_scale)
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct CachedProbeEntry {
+    pub scores_at_zero: [f64; 3],
+    pub hp_lost: i32,
+    pub board_investment: i32,
+    pub alchemize_count: u8,
+    pub empty_potion_slots: u8,
+    pub is_victory: bool,
+    pub is_defeat: bool,
+    pub linear_adj: bool,
+}
+
+impl CachedProbeEntry {
+    #[inline(always)]
+    pub(crate) fn materialize_result(
+        self,
+        root_baseline: &RootEvalBaseline,
+        eval_mode: EvalMode,
+        optional_paid_potion_cost: i32,
+        optional_paid_potion_count: usize,
+        parent_action_count: u16,
+    ) -> ChoiceProbeResult {
+        let base = self.scores_at_zero[eval_mode_index(eval_mode)];
+        let score = if self.linear_adj {
+            let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
+                optional_paid_potion_cost,
+                optional_paid_potion_count as i32,
+                self.alchemize_count as i32,
+                self.empty_potion_slots as i32,
+                root_baseline,
+            );
+            let act_coeff = if self.is_victory { 10.0 } else { 5.0 };
+            base - (net_potion_cost_centi as f64) * 300.0 - (parent_action_count as f64) * act_coeff
+        } else {
+            base
+        };
+        ChoiceProbeResult {
+            score,
+            hp_lost: self.hp_lost,
+            board_investment: self.board_investment,
+            is_victory: self.is_victory,
+            is_defeat: self.is_defeat,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct ChoiceProbeSlot {
+    state_hash: StateHash,
+    cfg_hash: u64,
+    scores_at_zero: [f64; 3],
+    hp_lost: i32,
+    board_investment: i32,
+    epoch: u32,
+    flags: u8,
+    alchemize_count: u8,
+    empty_potion_slots: u8,
+}
+
+const _: () = assert!(std::mem::size_of::<ChoiceProbeSlot>() == 64);
+
+impl ChoiceProbeSlot {
+    const EMPTY: Self = Self {
+        state_hash: StateHash(0),
+        cfg_hash: 0,
+        scores_at_zero: [0.0; 3],
+        hp_lost: 0,
+        board_investment: 0,
+        epoch: 0,
+        flags: 0,
+        alchemize_count: 0,
+        empty_potion_slots: 0,
+    };
+
+    #[inline(always)]
+    fn into_entry(self) -> CachedProbeEntry {
+        CachedProbeEntry {
+            scores_at_zero: self.scores_at_zero,
+            hp_lost: self.hp_lost,
+            board_investment: self.board_investment,
+            alchemize_count: self.alchemize_count,
+            empty_potion_slots: self.empty_potion_slots,
+            is_victory: (self.flags & CHOICE_PROBE_FLAG_VICTORY) != 0,
+            is_defeat: (self.flags & CHOICE_PROBE_FLAG_DEFEAT) != 0,
+            linear_adj: (self.flags & CHOICE_PROBE_FLAG_LINEAR_ADJ) != 0,
+        }
+    }
+}
+
+struct ChoiceProbeShard {
+    slots: Option<Box<[ChoiceProbeSlot; CHOICE_PROBE_SLOTS_PER_SHARD]>>,
+    victim_cursor: [u8; CHOICE_PROBE_SETS_PER_SHARD],
+}
+
+impl Default for ChoiceProbeShard {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            slots: None,
+            victim_cursor: [0; CHOICE_PROBE_SETS_PER_SHARD],
+        }
+    }
+}
+
+pub(crate) struct ChoiceProbeCache {
+    shards: Box<[parking_lot::Mutex<ChoiceProbeShard>]>,
+    epoch: AtomicU32,
+}
+
+impl Default for ChoiceProbeCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ChoiceProbeCache {
+    pub(crate) fn new() -> Self {
+        let shards = (0..CHOICE_PROBE_SHARDS)
+            .map(|_| parking_lot::Mutex::new(ChoiceProbeShard::default()))
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        Self {
+            shards,
+            epoch: AtomicU32::new(1),
+        }
+    }
+
+    pub(crate) fn clear(&self) {
+        let mut next = self.epoch.load(Ordering::Relaxed).wrapping_add(1);
+        if next == 0 {
+            next = 1;
+            for shard in self.shards.iter() {
+                let mut s = shard.lock();
+                if let Some(slots) = s.slots.as_mut() {
+                    for slot in slots.iter_mut() {
+                        slot.flags = 0;
+                        slot.epoch = 0;
+                    }
+                }
+                s.victim_cursor.fill(0);
+            }
+        }
+        self.epoch.store(next, Ordering::Relaxed);
+    }
+
+    #[inline(always)]
+    fn slot_indices(exact_state_hash: StateHash, cfg_hash: u64) -> (usize, usize) {
+        let shard_idx = exact_state_hash.shard_index() & (CHOICE_PROBE_SHARDS - 1);
+        let lo = exact_state_hash.0 as usize;
+        let set_idx =
+            (lo ^ (lo >> 16) ^ (cfg_hash as usize)) & (CHOICE_PROBE_SETS_PER_SHARD - 1);
+        (shard_idx, set_idx)
+    }
+
+    #[inline]
+    pub(crate) fn get(
+        &self,
+        exact_state_hash: StateHash,
+        cfg_hash: u64,
+    ) -> Option<Option<CachedProbeEntry>> {
+        let epoch = self.epoch.load(Ordering::Relaxed);
+        let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let shard = self.shards[shard_idx].lock();
+        let Some(slots) = shard.slots.as_ref() else {
+            return None;
+        };
+        let base = set_idx * CHOICE_PROBE_WAYS;
+        for w in 0..CHOICE_PROBE_WAYS {
+            let s = &slots[base + w];
+            if s.epoch == epoch
+                && s.flags != 0
+                && s.cfg_hash == cfg_hash
+                && s.state_hash == exact_state_hash
+            {
+                if (s.flags & CHOICE_PROBE_FLAG_NONE) != 0 {
+                    return Some(None);
+                }
+                return Some(Some(s.into_entry()));
+            }
+        }
+        None
+    }
+
+    #[inline]
+    pub(crate) fn insert(
+        &self,
+        exact_state_hash: StateHash,
+        cfg_hash: u64,
+        res: Option<CachedProbeEntry>,
+    ) {
+        let epoch = self.epoch.load(Ordering::Relaxed);
+        let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let slot = match res {
+            None => ChoiceProbeSlot {
+                state_hash: exact_state_hash,
+                cfg_hash,
+                scores_at_zero: [0.0; 3],
+                hp_lost: 0,
+                board_investment: 0,
+                epoch,
+                flags: CHOICE_PROBE_FLAG_NONE,
+                alchemize_count: 0,
+                empty_potion_slots: 0,
+            },
+            Some(r) => {
+                let mut flags = CHOICE_PROBE_FLAG_SOME;
+                if r.is_victory {
+                    flags |= CHOICE_PROBE_FLAG_VICTORY;
+                }
+                if r.is_defeat {
+                    flags |= CHOICE_PROBE_FLAG_DEFEAT;
+                }
+                if r.linear_adj {
+                    flags |= CHOICE_PROBE_FLAG_LINEAR_ADJ;
+                }
+                ChoiceProbeSlot {
+                    state_hash: exact_state_hash,
+                    cfg_hash,
+                    scores_at_zero: r.scores_at_zero,
+                    hp_lost: r.hp_lost,
+                    board_investment: r.board_investment,
+                    epoch,
+                    flags,
+                    alchemize_count: r.alchemize_count,
+                    empty_potion_slots: r.empty_potion_slots,
+                }
+            }
+        };
+        let shard = &mut *self.shards[shard_idx].lock();
+        let slots = shard
+            .slots
+            .get_or_insert_with(|| Box::new([ChoiceProbeSlot::EMPTY; CHOICE_PROBE_SLOTS_PER_SHARD]));
+        let base = set_idx * CHOICE_PROBE_WAYS;
+        for w in 0..CHOICE_PROBE_WAYS {
+            let cur = &slots[base + w];
+            if cur.epoch == epoch
+                && cur.flags != 0
+                && cur.cfg_hash == cfg_hash
+                && cur.state_hash == exact_state_hash
+            {
+                slots[base + w] = slot;
+                return;
+            }
+        }
+        for w in 0..CHOICE_PROBE_WAYS {
+            let cur = &slots[base + w];
+            if cur.epoch != epoch || cur.flags == 0 {
+                slots[base + w] = slot;
+                return;
+            }
+        }
+        let way = usize::from(shard.victim_cursor[set_idx]) & (CHOICE_PROBE_WAYS - 1);
+        shard.victim_cursor[set_idx] = shard.victim_cursor[set_idx].wrapping_add(1);
+        slots[base + way] = slot;
+    }
+}
+
+const TURN_ROLLOUT_SHARDS: usize = 64;
+const TURN_ROLLOUT_SETS_PER_SHARD: usize = 32;
+const TURN_ROLLOUT_WAYS: usize = 2;
+const TURN_ROLLOUT_SLOTS_PER_SHARD: usize = TURN_ROLLOUT_SETS_PER_SHARD * TURN_ROLLOUT_WAYS;
+const TURN_ROLLOUT_SLOT_NONE: u8 = 1;
+const TURN_ROLLOUT_SLOT_SOME: u8 = 2;
+const ROLLOUT_PILOT_VALID: u8 = 1 << 0;
+const ROLLOUT_PILOT_WON: u8 = 1 << 1;
+const ROLLOUT_PILOT_LINEAR_ADJ: u8 = 1 << 2;
+
+#[inline]
+fn turn_rollout_cfg_hash(profile: &SolverSearchProfile, horizon_turns: usize) -> u64 {
+    let flags_word = (horizon_turns as u64)
+        | (u64::from(profile.base_score_only) << 16)
+        | (u64::from(profile.boss_tempo_hp_pricing) << 17);
+    let (pert_term, pert_scale) = match profile.beam_weight_perturbation {
+        None => (0u64, 0u64),
+        Some(p) => {
+            let term = match p.term {
+                BeamWeightTerm::CurrentEnergy => 1u64,
+                BeamWeightTerm::PersistentBuffDelta => 2u64,
+                BeamWeightTerm::EnemyHp => 3u64,
+            };
+            (term, p.scale.to_bits())
+        }
+    };
+    let h = mix_cfg_u64(0x9E37_79B9_7F4A_7C15, flags_word | (pert_term << 20));
+    mix_cfg_u64(h, pert_scale)
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct TurnRolloutPilotEntry {
+    pub scores_at_zero: [f64; 3],
+    pub alchemize_count: u8,
+    pub empty_potion_slots: u8,
+    pub flags: u8,
+}
+
+impl TurnRolloutPilotEntry {
+    const EMPTY: Self = Self {
+        scores_at_zero: [0.0; 3],
+        alchemize_count: 0,
+        empty_potion_slots: 0,
+        flags: 0,
+    };
+
+    #[inline(always)]
+    pub(crate) fn from_eval(
+        fast: &FastEvalSummary,
+        full: &FullEvalDetails,
+        root_baseline: &RootEvalBaseline,
+        profile: &SolverSearchProfile,
+        total_steps: usize,
+    ) -> Self {
+        let is_defeat = fast.player_dead || fast.projected_player_hp <= 0;
+        let linear_adj = !(profile.base_score_only || is_defeat);
+        let step_actions = total_steps.min(u16::MAX as usize) as u16;
+        let scores_at_zero =
+            compute_scores_at_zero(fast, full, root_baseline, profile, linear_adj, step_actions);
+        let mut flags = ROLLOUT_PILOT_VALID;
+        if fast.won {
+            flags |= ROLLOUT_PILOT_WON;
+        }
+        if linear_adj {
+            flags |= ROLLOUT_PILOT_LINEAR_ADJ;
+        }
+        Self {
+            scores_at_zero,
+            alchemize_count: fast.alchemize_count,
+            empty_potion_slots: fast.empty_potion_slots,
+            flags,
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) fn is_valid(self) -> bool {
+        (self.flags & ROLLOUT_PILOT_VALID) != 0
+    }
+
+    #[inline(always)]
+    pub(crate) fn won(self) -> bool {
+        (self.flags & ROLLOUT_PILOT_WON) != 0
+    }
+
+    #[inline(always)]
+    pub(crate) fn materialize_score(
+        self,
+        root_baseline: &RootEvalBaseline,
+        eval_mode: EvalMode,
+        optional_paid_potion_cost: i32,
+        optional_paid_potion_count: usize,
+        parent_action_count: u16,
+    ) -> f64 {
+        let base = self.scores_at_zero[eval_mode_index(eval_mode)];
+        if (self.flags & ROLLOUT_PILOT_LINEAR_ADJ) != 0 {
+            let net_c = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
+                optional_paid_potion_cost,
+                optional_paid_potion_count as i32,
+                self.alchemize_count as i32,
+                self.empty_potion_slots as i32,
+                root_baseline,
+            );
+            let act_coeff = if self.won() { 10.0 } else { 5.0 };
+            base - (net_c as f64) * 300.0 - (parent_action_count as f64) * act_coeff
+        } else {
+            base
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct TurnRolloutEntry {
+    pub a: TurnRolloutPilotEntry,
+    pub b: TurnRolloutPilotEntry,
+}
+
+#[derive(Clone, Copy)]
+struct TurnRolloutSlot {
+    state_hash: StateHash,
+    cfg_hash: u64,
+    a_scores_at_zero: [f64; 3],
+    b_scores_at_zero: [f64; 3],
+    epoch: u32,
+    a_alchemize_count: u8,
+    a_empty_potion_slots: u8,
+    a_flags: u8,
+    b_alchemize_count: u8,
+    b_empty_potion_slots: u8,
+    b_flags: u8,
+    slot_state: u8,
+}
+
+const _: () = assert!(std::mem::size_of::<TurnRolloutSlot>() == 96);
+
+impl TurnRolloutSlot {
+    const EMPTY: Self = Self {
+        state_hash: StateHash(0),
+        cfg_hash: 0,
+        a_scores_at_zero: [0.0; 3],
+        b_scores_at_zero: [0.0; 3],
+        epoch: 0,
+        a_alchemize_count: 0,
+        a_empty_potion_slots: 0,
+        a_flags: 0,
+        b_alchemize_count: 0,
+        b_empty_potion_slots: 0,
+        b_flags: 0,
+        slot_state: 0,
+    };
+
+    #[inline(always)]
+    fn into_entry(self) -> TurnRolloutEntry {
+        TurnRolloutEntry {
+            a: TurnRolloutPilotEntry {
+                scores_at_zero: self.a_scores_at_zero,
+                alchemize_count: self.a_alchemize_count,
+                empty_potion_slots: self.a_empty_potion_slots,
+                flags: self.a_flags,
+            },
+            b: TurnRolloutPilotEntry {
+                scores_at_zero: self.b_scores_at_zero,
+                alchemize_count: self.b_alchemize_count,
+                empty_potion_slots: self.b_empty_potion_slots,
+                flags: self.b_flags,
+            },
+        }
+    }
+}
+
+struct TurnRolloutShard {
+    slots: Option<Box<[TurnRolloutSlot; TURN_ROLLOUT_SLOTS_PER_SHARD]>>,
+    victim_bits: u32,
+}
+
+impl Default for TurnRolloutShard {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            slots: None,
+            victim_bits: 0,
+        }
+    }
+}
+
+pub(crate) struct TurnRolloutCache {
+    shards: Box<[parking_lot::Mutex<TurnRolloutShard>]>,
+    epoch: AtomicU32,
+}
+
+impl Default for TurnRolloutCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TurnRolloutCache {
+    pub(crate) fn new() -> Self {
+        let shards = (0..TURN_ROLLOUT_SHARDS)
+            .map(|_| parking_lot::Mutex::new(TurnRolloutShard::default()))
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        Self {
+            shards,
+            epoch: AtomicU32::new(1),
+        }
+    }
+
+    pub(crate) fn clear(&self) {
+        let mut next = self.epoch.load(Ordering::Relaxed).wrapping_add(1);
+        if next == 0 {
+            next = 1;
+            for shard in self.shards.iter() {
+                let mut s = shard.lock();
+                if let Some(slots) = s.slots.as_mut() {
+                    for slot in slots.iter_mut() {
+                        slot.slot_state = 0;
+                        slot.epoch = 0;
+                    }
+                }
+                s.victim_bits = 0;
+            }
+        }
+        self.epoch.store(next, Ordering::Relaxed);
+    }
+
+    #[inline(always)]
+    fn slot_indices(exact_state_hash: StateHash, cfg_hash: u64) -> (usize, usize) {
+        let shard_idx = exact_state_hash.shard_index() & (TURN_ROLLOUT_SHARDS - 1);
+        let lo = exact_state_hash.0 as usize;
+        let set_idx =
+            (lo ^ (lo >> 16) ^ (cfg_hash as usize)) & (TURN_ROLLOUT_SETS_PER_SHARD - 1);
+        (shard_idx, set_idx)
+    }
+
+    #[inline]
+    pub(crate) fn get(
+        &self,
+        exact_state_hash: StateHash,
+        cfg_hash: u64,
+    ) -> Option<Option<TurnRolloutEntry>> {
+        let epoch = self.epoch.load(Ordering::Relaxed);
+        let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let shard = self.shards[shard_idx].lock();
+        let Some(slots) = shard.slots.as_ref() else {
+            return None;
+        };
+        let base = set_idx * TURN_ROLLOUT_WAYS;
+        for w in 0..TURN_ROLLOUT_WAYS {
+            let s = &slots[base + w];
+            if s.epoch == epoch
+                && s.slot_state != 0
+                && s.cfg_hash == cfg_hash
+                && s.state_hash == exact_state_hash
+            {
+                if s.slot_state == TURN_ROLLOUT_SLOT_NONE {
+                    return Some(None);
+                }
+                return Some(Some(s.into_entry()));
+            }
+        }
+        None
+    }
+
+    #[inline]
+    pub(crate) fn insert(
+        &self,
+        exact_state_hash: StateHash,
+        cfg_hash: u64,
+        res: Option<TurnRolloutEntry>,
+    ) {
+        let epoch = self.epoch.load(Ordering::Relaxed);
+        let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let slot = match res {
+            None => TurnRolloutSlot {
+                state_hash: exact_state_hash,
+                cfg_hash,
+                a_scores_at_zero: [0.0; 3],
+                b_scores_at_zero: [0.0; 3],
+                epoch,
+                a_alchemize_count: 0,
+                a_empty_potion_slots: 0,
+                a_flags: 0,
+                b_alchemize_count: 0,
+                b_empty_potion_slots: 0,
+                b_flags: 0,
+                slot_state: TURN_ROLLOUT_SLOT_NONE,
+            },
+            Some(e) => TurnRolloutSlot {
+                state_hash: exact_state_hash,
+                cfg_hash,
+                a_scores_at_zero: e.a.scores_at_zero,
+                b_scores_at_zero: e.b.scores_at_zero,
+                epoch,
+                a_alchemize_count: e.a.alchemize_count,
+                a_empty_potion_slots: e.a.empty_potion_slots,
+                a_flags: e.a.flags,
+                b_alchemize_count: e.b.alchemize_count,
+                b_empty_potion_slots: e.b.empty_potion_slots,
+                b_flags: e.b.flags,
+                slot_state: TURN_ROLLOUT_SLOT_SOME,
+            },
+        };
+        let shard = &mut *self.shards[shard_idx].lock();
+        let slots = shard.slots.get_or_insert_with(|| {
+            Box::new([TurnRolloutSlot::EMPTY; TURN_ROLLOUT_SLOTS_PER_SHARD])
+        });
+        let base = set_idx * TURN_ROLLOUT_WAYS;
+        for w in 0..TURN_ROLLOUT_WAYS {
+            let cur = &slots[base + w];
+            if cur.epoch == epoch
+                && cur.slot_state != 0
+                && cur.cfg_hash == cfg_hash
+                && cur.state_hash == exact_state_hash
+            {
+                slots[base + w] = slot;
+                return;
+            }
+        }
+        for w in 0..TURN_ROLLOUT_WAYS {
+            let cur = &slots[base + w];
+            if cur.epoch != epoch || cur.slot_state == 0 {
+                slots[base + w] = slot;
+                return;
+            }
+        }
+        let bit = 1u32 << set_idx;
+        let way = usize::from((shard.victim_bits & bit) != 0);
+        shard.victim_bits ^= bit;
+        slots[base + way] = slot;
+    }
 }
 
 struct PilotIntentEntry {
@@ -140,9 +858,9 @@ pub(crate) struct ChoiceProbeWorkspace {
     pub(crate) intent_cache: PilotIntentCache,
     pub(crate) blocked_buf: SmallVec<[CardHandle; 8]>,
     pub(crate) empty_q: SmallVec<[Vec<usize>; 2]>,
-    pub(crate) playable_buf: SmallVec<[(CardHandle, i32, i32); 16]>,
-    pub(crate) hand_buf: SmallVec<[CardHandle; 16]>,
-    pub(crate) seen_keys: SmallVec<[RolloutDedupKey; 16]>,
+    pub(crate) playable_buf: Vec<(CardHandle, usize, i32, i32)>,
+    pub(crate) hand_buf: Vec<CardHandle>,
+    pub(crate) seen_keys: Vec<RolloutDedupKey>,
 }
 
 impl ChoiceProbeWorkspace {
@@ -157,9 +875,9 @@ impl ChoiceProbeWorkspace {
             },
             blocked_buf: SmallVec::new(),
             empty_q: SmallVec::new(),
-            playable_buf: SmallVec::new(),
-            hand_buf: SmallVec::new(),
-            seen_keys: SmallVec::new(),
+            playable_buf: Vec::with_capacity(16),
+            hand_buf: Vec::with_capacity(16),
+            seen_keys: Vec::with_capacity(16),
         }
     }
 }
@@ -175,9 +893,9 @@ pub(crate) struct RolloutWorkspace {
     pub(crate) intent_cache: PilotIntentCache,
     pub(crate) blocked_buf: SmallVec<[CardHandle; 8]>,
     pub(crate) empty_q: SmallVec<[Vec<usize>; 2]>,
-    pub(crate) playable_buf: SmallVec<[(CardHandle, i32, i32); 16]>,
-    pub(crate) hand_buf: SmallVec<[CardHandle; 16]>,
-    pub(crate) seen_keys: SmallVec<[RolloutDedupKey; 16]>,
+    pub(crate) playable_buf: Vec<(CardHandle, usize, i32, i32)>,
+    pub(crate) hand_buf: Vec<CardHandle>,
+    pub(crate) seen_keys: Vec<RolloutDedupKey>,
     pub(crate) results_buf: Vec<(usize, Option<RolloutResult>)>,
 }
 
@@ -202,9 +920,9 @@ impl RolloutWorkspace {
             },
             blocked_buf: SmallVec::new(),
             empty_q: SmallVec::new(),
-            playable_buf: SmallVec::new(),
-            hand_buf: SmallVec::new(),
-            seen_keys: SmallVec::new(),
+            playable_buf: Vec::with_capacity(16),
+            hand_buf: Vec::with_capacity(16),
+            seen_keys: Vec::with_capacity(16),
             results_buf: Vec::with_capacity(32),
         }
     }
@@ -230,16 +948,27 @@ struct FastTurnContext {
     enemy_vuln: [bool; MAX_FAST_ENEMIES],
 }
 
+#[inline(always)]
+fn cow_str_eq(a: &Cow<'static, str>, b: &Cow<'static, str>) -> bool {
+    match (a, b) {
+        (Cow::Borrowed(sa), Cow::Borrowed(sb)) => {
+            (sa.as_ptr() == sb.as_ptr() && sa.len() == sb.len()) || *sa == *sb
+        }
+        _ => a.as_ref() == b.as_ref(),
+    }
+}
+
 #[inline]
-fn lookup_cached_intent_hits(
-    intent_cache: &mut PilotIntentCache,
+fn lookup_cached_intent_hits<'a>(
+    intent_cache: &'a mut PilotIntentCache,
+    dynamic_hits: &'a mut SmallVec<[(Dec, i32); 2]>,
     state: &BattleState,
     content: &dyn ContentDispatcher,
     eh: CreatureHandle,
     ec: &sts2_kernel::state::CreatureInst,
-) -> SmallVec<[(Dec, i32); 2]> {
+) -> &'a [(Dec, i32)] {
     let Some(m) = &ec.monster else {
-        return SmallVec::new();
+        return &[];
     };
     let mid = m.monster_id;
     let is_dynamic = matches!(
@@ -247,12 +976,17 @@ fn lookup_cached_intent_hits(
         MonsterId::WaterfallGiant | MonsterId::TestSubject | MonsterId::TheForgotten
     );
     if is_dynamic {
-        return content.monster_attack_intent_hits(state, eh).unwrap_or_default();
+        *dynamic_hits = content.monster_attack_intent_hits(state, eh).unwrap_or_default();
+        return dynamic_hits.as_slice();
     }
     let move_cow = m.next_move_id.as_ref().unwrap_or(&m.current_state_id);
-    let move_str = move_cow.as_ref();
-    if let Some(entry) = intent_cache.entries.iter_mut().find(|e| e.handle == eh) {
-        if entry.monster_id == mid && entry.move_id.as_ref() == move_str {
+    if let Some(pos) = intent_cache.entries.iter().position(|e| e.handle == eh) {
+        let matched = {
+            let entry = &intent_cache.entries[pos];
+            entry.monster_id == mid && cow_str_eq(&entry.move_id, move_cow)
+        };
+        if matched {
+            let entry = &intent_cache.entries[pos];
             #[cfg(debug_assertions)]
             {
                 let fresh = content
@@ -260,18 +994,20 @@ fn lookup_cached_intent_hits(
                     .unwrap_or_default();
                 debug_assert_eq!(
                     entry.hits, fresh,
-                    "PilotIntentCache mismatch for {mid:?} move={move_str}"
+                    "PilotIntentCache mismatch for {mid:?} move={}",
+                    move_cow.as_ref()
                 );
             }
-            return entry.hits.clone();
+            return entry.hits.as_slice();
         }
         let hits = content
             .monster_attack_intent_hits(state, eh)
             .unwrap_or_default();
+        let entry = &mut intent_cache.entries[pos];
         entry.monster_id = mid;
         entry.move_id = move_cow.clone();
-        entry.hits = hits.clone();
-        return hits;
+        entry.hits = hits;
+        return entry.hits.as_slice();
     }
     let hits = content
         .monster_attack_intent_hits(state, eh)
@@ -280,9 +1016,9 @@ fn lookup_cached_intent_hits(
         handle: eh,
         monster_id: mid,
         move_id: move_cow.clone(),
-        hits: hits.clone(),
+        hits,
     });
-    hits
+    intent_cache.entries.last().unwrap().hits.as_slice()
 }
 
 fn compute_fast_turn_context(
@@ -382,14 +1118,12 @@ fn compute_fast_turn_context(
     };
 
     let mut total_incoming = 0i32;
+    let mut dynamic_hits: SmallVec<[(Dec, i32); 2]> = SmallVec::new();
 
     for &eh in &state.enemy_handles {
         let Some(ec) = state.creature(eh) else {
             continue;
         };
-        if !state.contains_creature(eh) {
-            continue;
-        }
         if ec.is_dead() {
             if is_creature_reviving(state, ec) {
                 ctx.reviving_enemies += 1;
@@ -439,8 +1173,9 @@ fn compute_fast_turn_context(
         let poison_lethal = cur_hp > 0 && poison_dmg >= cur_hp && !has_reattach && !has_damage_cap;
         let mut inc = 0i32;
         if !poison_lethal {
-            let hits = lookup_cached_intent_hits(intent_cache, state, content, eh, ec);
-            for (base_dmg, count) in hits {
+            let hits =
+                lookup_cached_intent_hits(intent_cache, &mut dynamic_hits, state, content, eh, ec);
+            for &(base_dmg, count) in hits {
                 let mut per_hit =
                     (base_dmg.to_i32_trunc().unwrap_or(0) + enemy_str).max(0);
                 if enemy_weak {
@@ -518,9 +1253,9 @@ fn count_non_empty_potion_slots(state: &BattleState) -> usize {
 fn collect_rollout_playable_cards(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
-    hand_buf: &mut SmallVec<[CardHandle; 16]>,
-    seen_keys: &mut SmallVec<[RolloutDedupKey; 16]>,
-    playable_buf: &mut SmallVec<[(CardHandle, i32, i32); 16]>,
+    hand_buf: &mut Vec<CardHandle>,
+    seen_keys: &mut Vec<RolloutDedupKey>,
+    playable_buf: &mut Vec<(CardHandle, usize, i32, i32)>,
 ) {
     playable_buf.clear();
     if state.player.hand.is_empty()
@@ -533,76 +1268,93 @@ fn collect_rollout_playable_cards(
     hand_buf.extend_from_slice(&state.player.hand);
     seen_keys.clear();
 
-    let early_dedup_safe = state.hook_cache.dirty_mask == 0
-        && state.hook_cache.cached_tables.is_some()
-        && {
-            let comb = state.hook_cache.masks.combat_combined;
-            !comb.contains(HookSlot::ShouldPlay)
-                && !comb.contains(HookSlot::TryModifyEnergyCostInCombat)
-                && !comb.contains(HookSlot::TryModifyEnergyCostInCombatLate)
-                && !comb.contains(HookSlot::TryModifyStarCostInCombat)
-                && !comb.contains(HookSlot::TryModifyKeywordsInCombat)
-        };
+    let cache_ready = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    let comb = state.hook_cache.masks.combat_combined;
+    let early_dedup_safe = cache_ready
+        && !comb.contains(HookSlot::ShouldPlay)
+        && !comb.contains(HookSlot::TryModifyKeywordsInCombat)
+        && !comb.contains(HookSlot::TryModifyEnergyCostInCombat)
+        && !comb.contains(HookSlot::TryModifyEnergyCostInCombatLate)
+        && !comb.contains(HookSlot::TryModifyStarCostInCombat);
 
     for i in 0..hand_buf.len() {
         let ch = hand_buf[i];
+        let Some(card_idx) = state.card_index(ch) else {
+            continue;
+        };
+        let card = state.cards[card_idx];
+        if card.pile != PileType::Hand {
+            continue;
+        }
+        let is_unplayable = card.effective_keywords_base().contains(CardKeywords::UNPLAYABLE);
+        if is_unplayable {
+            continue;
+        }
+        let card_id = card.id;
+        let upgrade_level = card.upgrade_level;
+        let has_ext = card.ext_index.is_some();
+        let aff_id = card.affliction.map(|a| a.id);
         if early_dedup_safe {
-            if let Some(card) = state.card(ch) {
-                if card.has_local_keyword(CardKeywords::UNPLAYABLE) {
+            if let Ok(meta) = state.fast_card_meta(content, card_id) {
+                let is_x_e = meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST);
+                let is_x_s = meta.flags.contains(CardStaticFlags::IS_X_STAR_COST);
+                let local_e = resolve_local_energy_cost_card(state, &card, is_x_e);
+                if !is_x_e && local_e > state.player.energy {
                     continue;
                 }
-                if let Ok(meta) = state.fast_card_meta(content, card.id) {
-                    let is_x_e = meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST);
-                    let is_x_s = meta.flags.contains(CardStaticFlags::IS_X_STAR_COST);
-                    let local_e = resolve_local_energy_cost(state, ch, is_x_e);
-                    if !is_x_e && local_e > state.player.energy {
+                let local_s = if is_x_s {
+                    state.player.stars
+                } else {
+                    resolve_local_star_cost_card(&card, meta.canonical_star_cost)
+                };
+                if !is_x_s && local_s > state.player.stars {
+                    continue;
+                }
+                let key = RolloutDedupKey::new(
+                    card_id,
+                    upgrade_level,
+                    local_e,
+                    local_s,
+                    has_ext,
+                    aff_id,
+                );
+                if !seen_keys.is_empty() && seen_keys.contains(&key) {
+                    continue;
+                }
+                if meta.target_type == TargetType::AnyAlly {
+                    let has_ally = state.ally_handles.iter().any(|&h| {
+                        h != state.player.creature_handle
+                            && state.creature(h).is_some_and(|c| c.is_alive())
+                    });
+                    if !has_ally {
                         continue;
-                    }
-                    let local_s = if is_x_s {
-                        state.player.stars
-                    } else {
-                        resolve_local_star_cost(state, ch, meta.canonical_star_cost)
-                    };
-                    if !is_x_s && local_s > state.player.stars {
-                        continue;
-                    }
-                    if !seen_keys.is_empty() {
-                        let key: RolloutDedupKey = (
-                            card.id,
-                            card.upgrade_level,
-                            local_e,
-                            local_s,
-                            card.ext_index.is_some(),
-                            card.affliction.map(|a| a.id),
-                        );
-                        if seen_keys.contains(&key) {
-                            continue;
-                        }
                     }
                 }
+                if content.card_is_playable(state, ch).unwrap_or(false) {
+                    seen_keys.push(key);
+                    playable_buf.push((ch, card_idx, local_e, local_s));
+                }
+                continue;
             }
         }
         let Ok(Some((energy_cost, star_cost))) =
-            CombatEngine::can_play_card_with_costs_in_progress(state, content, ch)
+            CombatEngine::can_play_card_with_costs_in_progress_at(state, content, ch, card_idx)
         else {
             continue;
         };
-        let Some(card) = state.card(ch) else {
-            continue;
-        };
-        let key: RolloutDedupKey = (
-            card.id,
-            card.upgrade_level,
+        let key = RolloutDedupKey::new(
+            card_id,
+            upgrade_level,
             energy_cost,
             star_cost,
-            card.ext_index.is_some(),
-            card.affliction.map(|a| a.id),
+            has_ext,
+            aff_id,
         );
         if seen_keys.contains(&key) {
             continue;
         }
         seen_keys.push(key);
-        playable_buf.push((ch, energy_cost, star_cost));
+        playable_buf.push((ch, card_idx, energy_cost, star_cost));
     }
 }
 
@@ -814,20 +1566,18 @@ fn read_comparison_var(
 fn select_best_pilot_move(
     state: &BattleState,
     content: &dyn ContentDispatcher,
-    playable: &[(CardHandle, i32, i32)],
+    playable: &[(CardHandle, usize, i32, i32)],
     blocked: &[CardHandle],
     ctx: &FastTurnContext,
     pilot: PilotKind,
 ) -> Option<(CardHandle, Option<CreatureHandle>)> {
     let mut has_non_retained = false;
     if pilot == PilotKind::SetupFirst {
-        for &(ch, _, _) in playable {
+        for &(ch, card_idx, _, _) in playable {
             if !blocked.is_empty() && blocked.contains(&ch) {
                 continue;
             }
-            let Some(card) = state.card(ch) else {
-                continue;
-            };
+            let card = &state.cards[card_idx];
             let Ok(meta) = state.fast_card_meta(content, card.id) else {
                 continue;
             };
@@ -848,13 +1598,11 @@ fn select_best_pilot_move(
     let lethal_threat = ctx.unblocked_incoming >= ctx.player_hp;
     let mut best: Option<(i32, CardHandle, Option<CreatureHandle>)> = None;
 
-    for &(ch, raw_e_cost, raw_s_cost) in playable {
+    for &(ch, card_idx, raw_e_cost, raw_s_cost) in playable {
         if !blocked.is_empty() && blocked.contains(&ch) {
             continue;
         }
-        let Some(card) = state.card(ch) else {
-            continue;
-        };
+        let card = &state.cards[card_idx];
         let Ok(meta) = state.fast_card_meta(content, card.id) else {
             continue;
         };
@@ -1263,9 +2011,9 @@ fn run_pilot_turns<R>(
     horizon_turns: usize,
     blocked_buf: &mut SmallVec<[CardHandle; 8]>,
     empty_q: &mut SmallVec<[Vec<usize>; 2]>,
-    playable_buf: &mut SmallVec<[(CardHandle, i32, i32); 16]>,
-    hand_buf: &mut SmallVec<[CardHandle; 16]>,
-    seen_keys: &mut SmallVec<[RolloutDedupKey; 16]>,
+    playable_buf: &mut Vec<(CardHandle, usize, i32, i32)>,
+    hand_buf: &mut Vec<CardHandle>,
+    seen_keys: &mut Vec<RolloutDedupKey>,
 ) -> Option<(usize, u16)>
 where
     R: FnMut(&mut BattleState) -> bool,
@@ -1382,6 +2130,8 @@ where
 pub(crate) fn evaluate_choice_probe_state(
     ws: &mut ChoiceProbeWorkspace,
     base_state: &BattleState,
+    exact_state_hash: StateHash,
+    probe_cache: &ChoiceProbeCache,
     content: &dyn ContentDispatcher,
     root_baseline: &RootEvalBaseline,
     profile: &SolverSearchProfile,
@@ -1391,8 +2141,21 @@ pub(crate) fn evaluate_choice_probe_state(
     optional_paid_potion_count: usize,
     parent_action_count: u16,
 ) -> Option<ChoiceProbeResult> {
+    let cache_turns = max_turns_ahead.min(4) as u8;
+    let cfg_hash = choice_probe_cfg_hash(profile, cache_turns);
+    if let Some(cached) = probe_cache.get(exact_state_hash, cfg_hash) {
+        return cached.map(|e| {
+            e.materialize_result(
+                root_baseline,
+                eval_mode,
+                optional_paid_potion_cost,
+                optional_paid_potion_count,
+                parent_action_count,
+            )
+        });
+    }
     clone_battle_state_into(base_state, &mut ws.probe_state);
-    let turn_slots = max_turns_ahead.min(4) + 1;
+    let turn_slots = (cache_turns as usize) + 1;
     let total_steps = run_pilot_turns(
         &mut ws.probe_state,
         &mut ws.compact_steps,
@@ -1416,44 +2179,44 @@ pub(crate) fn evaluate_choice_probe_state(
     .map_or(0, |(steps, _)| steps);
 
     let fast = evaluate_fast(&ws.probe_state, content, root_baseline, None);
-    let terminal = fast.won || fast.player_dead || fast.projected_player_hp <= 0;
+    let is_victory = fast.won;
+    let is_defeat = fast.player_dead || fast.projected_player_hp <= 0;
+    let terminal = is_victory || is_defeat;
     let full = if terminal {
-        crate::eval::FullEvalDetails::default()
+        FullEvalDetails::default()
     } else {
         evaluate_full(&ws.probe_state, content, &fast, root_baseline)
     };
-    let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
-        optional_paid_potion_cost,
-        optional_paid_potion_count as i32,
-        fast.alchemize_count as i32,
-        fast.empty_potion_slots as i32,
-        root_baseline,
-    );
-    let action_count = parent_action_count.saturating_add(total_steps as u16);
-    let score = compute_beam_rank_score_with_centi(
-        &fast,
-        &full,
-        root_baseline,
-        profile.base_score_only,
-        profile.boss_tempo_hp_pricing,
-        profile.beam_weight_perturbation,
-        eval_mode,
-        net_potion_cost_centi,
-        action_count,
-    );
-    Some(ChoiceProbeResult {
-        score,
+    let linear_adj = !(profile.base_score_only || is_defeat);
+    let probe_steps = total_steps.min(u16::MAX as usize) as u16;
+    let scores_at_zero =
+        compute_scores_at_zero(&fast, &full, root_baseline, profile, linear_adj, probe_steps);
+    let entry = CachedProbeEntry {
+        scores_at_zero,
         hp_lost: fast.cumulative_hp_lost,
         board_investment: full.board_investment,
-        is_victory: fast.won,
-        is_defeat: fast.player_dead || fast.projected_player_hp <= 0,
-    })
+        alchemize_count: fast.alchemize_count,
+        empty_potion_slots: fast.empty_potion_slots,
+        is_victory,
+        is_defeat,
+        linear_adj,
+    };
+    probe_cache.insert(exact_state_hash, cfg_hash, Some(entry));
+    Some(entry.materialize_result(
+        root_baseline,
+        eval_mode,
+        optional_paid_potion_cost,
+        optional_paid_potion_count,
+        parent_action_count,
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn evaluate_choice_probe_packed(
     ws: &mut ChoiceProbeWorkspace,
     packed_state: &[u8],
+    exact_state_hash: StateHash,
+    probe_cache: &ChoiceProbeCache,
     static_ctx: &Arc<RootStaticContext>,
     content: &dyn ContentDispatcher,
     root_baseline: &RootEvalBaseline,
@@ -1464,10 +2227,24 @@ pub(crate) fn evaluate_choice_probe_packed(
     optional_paid_potion_count: usize,
     parent_action_count: u16,
 ) -> Option<ChoiceProbeResult> {
+    let cache_turns = max_turns_ahead.min(4) as u8;
+    let cfg_hash = choice_probe_cfg_hash(profile, cache_turns);
+    if let Some(cached) = probe_cache.get(exact_state_hash, cfg_hash) {
+        return cached.map(|e| {
+            e.materialize_result(
+                root_baseline,
+                eval_mode,
+                optional_paid_potion_cost,
+                optional_paid_potion_count,
+                parent_action_count,
+            )
+        });
+    }
     if unpack_state(packed_state, static_ctx, &mut ws.probe_state).is_err() {
+        probe_cache.insert(exact_state_hash, cfg_hash, None);
         return None;
     }
-    let turn_slots = max_turns_ahead.min(4) + 1;
+    let turn_slots = (cache_turns as usize) + 1;
     let total_steps = run_pilot_turns(
         &mut ws.probe_state,
         &mut ws.compact_steps,
@@ -1488,38 +2265,36 @@ pub(crate) fn evaluate_choice_probe_packed(
     .map_or(0, |(steps, _)| steps);
 
     let fast = evaluate_fast(&ws.probe_state, content, root_baseline, None);
-    let terminal = fast.won || fast.player_dead || fast.projected_player_hp <= 0;
+    let is_victory = fast.won;
+    let is_defeat = fast.player_dead || fast.projected_player_hp <= 0;
+    let terminal = is_victory || is_defeat;
     let full = if terminal {
-        crate::eval::FullEvalDetails::default()
+        FullEvalDetails::default()
     } else {
         evaluate_full(&ws.probe_state, content, &fast, root_baseline)
     };
-    let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
-        optional_paid_potion_cost,
-        optional_paid_potion_count as i32,
-        fast.alchemize_count as i32,
-        fast.empty_potion_slots as i32,
-        root_baseline,
-    );
-    let action_count = parent_action_count.saturating_add(total_steps as u16);
-    let score = compute_beam_rank_score_with_centi(
-        &fast,
-        &full,
-        root_baseline,
-        profile.base_score_only,
-        profile.boss_tempo_hp_pricing,
-        profile.beam_weight_perturbation,
-        eval_mode,
-        net_potion_cost_centi,
-        action_count,
-    );
-    Some(ChoiceProbeResult {
-        score,
+    let linear_adj = !(profile.base_score_only || is_defeat);
+    let probe_steps = total_steps.min(u16::MAX as usize) as u16;
+    let scores_at_zero =
+        compute_scores_at_zero(&fast, &full, root_baseline, profile, linear_adj, probe_steps);
+    let entry = CachedProbeEntry {
+        scores_at_zero,
         hp_lost: fast.cumulative_hp_lost,
         board_investment: full.board_investment,
-        is_victory: fast.won,
-        is_defeat: fast.player_dead || fast.projected_player_hp <= 0,
-    })
+        alchemize_count: fast.alchemize_count,
+        empty_potion_slots: fast.empty_potion_slots,
+        is_victory,
+        is_defeat,
+        linear_adj,
+    };
+    probe_cache.insert(exact_state_hash, cfg_hash, Some(entry));
+    Some(entry.materialize_result(
+        root_baseline,
+        eval_mode,
+        optional_paid_potion_cost,
+        optional_paid_potion_count,
+        parent_action_count,
+    ))
 }
 
 #[inline]
@@ -1537,6 +2312,7 @@ pub(crate) fn encode_choice_probe_rank_score(probe: &ChoiceProbeResult) -> f64 {
 }
 
 struct PilotOutcomeMeta {
+    pilot_entry: TurnRolloutPilotEntry,
     score: f64,
     won: bool,
     final_fast: FastEvalSummary,
@@ -1595,23 +2371,19 @@ fn run_pilot_from_base(
     } else {
         evaluate_full(&ws.pilot_state, content, &final_fast, root_baseline)
     };
-    let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
-        optional_paid_potion_cost,
-        optional_paid_potion_count as i32,
-        final_fast.alchemize_count as i32,
-        final_fast.empty_potion_slots as i32,
-        root_baseline,
-    );
-    let score = compute_beam_rank_score_with_centi(
+    let pilot_entry = TurnRolloutPilotEntry::from_eval(
         &final_fast,
         &final_full,
         root_baseline,
-        profile.base_score_only,
-        profile.boss_tempo_hp_pricing,
-        profile.beam_weight_perturbation,
+        profile,
+        total_steps,
+    );
+    let score = pilot_entry.materialize_score(
+        root_baseline,
         eval_mode,
-        net_potion_cost_centi,
-        parent_action_count.saturating_add(total_steps as u16),
+        optional_paid_potion_cost,
+        optional_paid_potion_count,
+        parent_action_count,
     );
     let won_key = if compute_won_key && final_fast.won {
         Some((
@@ -1622,6 +2394,7 @@ fn run_pilot_from_base(
         None
     };
     Some(PilotOutcomeMeta {
+        pilot_entry,
         score,
         won: final_fast.won,
         final_fast,
@@ -1643,24 +2416,93 @@ fn evaluate_single_candidate(
     profile: &SolverSearchProfile,
     eval_mode: EvalMode,
     horizon_turns: usize,
+    rollout_cache: Option<&TurnRolloutCache>,
 ) -> Option<RolloutResult> {
     let pnode = arena.get(pid);
     if pnode.is_terminal() || pnode.state_handle.len == 0 {
         return None;
     }
+    let can_promote = parent_satisfies_hard_potions(arena, pid, root_baseline, policy);
+    let opt_cost = pnode.optional_paid_potion_cost as i32;
+    let opt_count = pnode.optional_paid_potion_count as usize;
+    let parent_act = pnode.action_count;
+    let pnode_hash = pnode.state_hash;
+    let cfg_hash = turn_rollout_cfg_hash(profile, horizon_turns);
+
+    if let Some(cache) = rollout_cache {
+        if let Some(cached) = cache.get(pnode_hash, cfg_hash) {
+            let Some(entry) = cached else {
+                return None;
+            };
+            let any_won = entry.a.won() || entry.b.won();
+            if !(can_promote && any_won) {
+                let score_a = entry.a.is_valid().then(|| {
+                    (
+                        entry.a.won(),
+                        entry.a.materialize_score(
+                            root_baseline,
+                            eval_mode,
+                            opt_cost,
+                            opt_count,
+                            parent_act,
+                        ),
+                    )
+                });
+                let score_b = entry.b.is_valid().then(|| {
+                    (
+                        entry.b.won(),
+                        entry.b.materialize_score(
+                            root_baseline,
+                            eval_mode,
+                            opt_cost,
+                            opt_count,
+                            parent_act,
+                        ),
+                    )
+                });
+                let chosen_score = match (score_a, score_b) {
+                    (Some((aw, as_)), Some((bw, bs_))) => {
+                        if aw != bw {
+                            if bw {
+                                bs_
+                            } else {
+                                as_
+                            }
+                        } else if bs_ > as_ {
+                            bs_
+                        } else {
+                            as_
+                        }
+                    }
+                    (Some((_, as_)), None) => as_,
+                    (None, Some((_, bs_))) => bs_,
+                    (None, None) => return None,
+                };
+                return Some(RolloutResult {
+                    rollout_score: chosen_score,
+                    promoted_victory: None,
+                });
+            }
+        }
+    }
+
     let pbytes = state_arena.get(pnode.state_handle);
     if unpack_state(pbytes, root_ctx, &mut ws.base_state).is_err() {
         return None;
     }
+    #[cfg(debug_assertions)]
+    debug_assert_eq!(pnode_hash, hash_canonical_key(&ws.base_state));
     if !ws.base_state.is_in_progress
         || ws.base_state.won
         || ws.base_state.pending.is_some()
         || !ws.base_state.has_living_player_creature()
     {
+        if let Some(cache) = rollout_cache {
+            cache.insert(pnode_hash, cfg_hash, None);
+        }
         return None;
     }
 
-    let can_promote = parent_satisfies_hard_potions(arena, pid, root_baseline, policy);
     let res_a = run_pilot_from_base(
         ws,
         false,
@@ -1669,9 +2511,9 @@ fn evaluate_single_candidate(
         profile,
         eval_mode,
         horizon_turns,
-        pnode.optional_paid_potion_cost as i32,
-        pnode.optional_paid_potion_count as usize,
-        pnode.action_count,
+        opt_cost,
+        opt_count,
+        parent_act,
         PilotKind::DefensiveTempo,
         can_promote,
     );
@@ -1683,12 +2525,28 @@ fn evaluate_single_candidate(
         profile,
         eval_mode,
         horizon_turns,
-        pnode.optional_paid_potion_cost as i32,
-        pnode.optional_paid_potion_count as usize,
-        pnode.action_count,
+        opt_cost,
+        opt_count,
+        parent_act,
         PilotKind::SetupFirst,
         can_promote,
     );
+
+    if let Some(cache) = rollout_cache {
+        let entry_opt = if res_a.is_none() && res_b.is_none() {
+            None
+        } else {
+            Some(TurnRolloutEntry {
+                a: res_a
+                    .as_ref()
+                    .map_or(TurnRolloutPilotEntry::EMPTY, |r| r.pilot_entry),
+                b: res_b
+                    .as_ref()
+                    .map_or(TurnRolloutPilotEntry::EMPTY, |r| r.pilot_entry),
+            })
+        };
+        cache.insert(pnode_hash, cfg_hash, entry_opt);
+    }
 
     let (winner_is_b, chosen) = match (res_a, res_b) {
         (Some(a), Some(b)) => {
@@ -1780,6 +2638,7 @@ pub fn evaluate_turn_boundary_rollouts(
         pool,
         cancel,
         &mut workspaces,
+        None,
     )
 }
 
@@ -1799,6 +2658,7 @@ pub(crate) fn evaluate_turn_boundary_rollouts_with_workspaces(
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
     workspaces: &mut [RolloutWorkspace],
+    rollout_cache: Option<&TurnRolloutCache>,
 ) -> Vec<Option<RolloutResult>> {
     let mut out = Vec::with_capacity(shortlist.len());
     evaluate_turn_boundary_rollouts_into(
@@ -1816,6 +2676,7 @@ pub(crate) fn evaluate_turn_boundary_rollouts_with_workspaces(
         pool,
         cancel,
         workspaces,
+        rollout_cache,
         &mut out,
     );
     out
@@ -1837,6 +2698,7 @@ pub(crate) fn evaluate_turn_boundary_rollouts_into(
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
     workspaces: &mut [RolloutWorkspace],
+    rollout_cache: Option<&TurnRolloutCache>,
     out: &mut Vec<Option<RolloutResult>>,
 ) {
     let m = shortlist.len();
@@ -1869,6 +2731,7 @@ pub(crate) fn evaluate_turn_boundary_rollouts_into(
                 profile,
                 eval_mode,
                 horizon_turns,
+                rollout_cache,
             ));
         }
         return;
@@ -1913,6 +2776,7 @@ pub(crate) fn evaluate_turn_boundary_rollouts_into(
                         profile,
                         eval_mode,
                         horizon_turns,
+                        rollout_cache,
                     );
                     ws.results_buf.push((idx, r));
                 }
@@ -1923,6 +2787,367 @@ pub(crate) fn evaluate_turn_boundary_rollouts_into(
     for ws in workspaces[..workers].iter_mut() {
         for (idx, res) in ws.results_buf.drain(..) {
             out[idx] = res;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::eval::{BeamWeightPerturbation, BossHpRelief, RelicCounterEvaluation};
+
+    #[test]
+    fn choice_probe_cache_lazy_shards_and_four_way_eviction() {
+        let cache = ChoiceProbeCache::new();
+        assert!(cache.shards.iter().all(|s| s.lock().slots.is_none()));
+
+        let h0 = StateHash(0x0000_0000_0001_0001u128);
+        let cfg_a = choice_probe_cfg_hash(&SolverSearchProfile::default(), 2);
+        let cfg_b = choice_probe_cfg_hash(&SolverSearchProfile::default(), 3);
+        assert_ne!(cfg_a, cfg_b);
+
+        let r0 = CachedProbeEntry {
+            scores_at_zero: [123.5, 223.5, 323.5],
+            hp_lost: 4,
+            board_investment: 17,
+            alchemize_count: 1,
+            empty_potion_slots: 2,
+            is_victory: true,
+            is_defeat: false,
+            linear_adj: true,
+        };
+        let r1 = CachedProbeEntry {
+            scores_at_zero: [-45.25, -45.25, -45.25],
+            hp_lost: 12,
+            board_investment: -3,
+            alchemize_count: 0,
+            empty_potion_slots: 1,
+            is_victory: false,
+            is_defeat: true,
+            linear_adj: false,
+        };
+
+        let (sh0, set0) = ChoiceProbeCache::slot_indices(h0, cfg_a);
+        let same_set_hashes: Vec<StateHash> = (1u128..1_000_000u128)
+            .filter_map(|k| {
+                let candidate = StateHash((k << 64) ^ (h0.0 & 0xFFFF_FFFF_FFFF_FFFF));
+                if ChoiceProbeCache::slot_indices(candidate, cfg_a) == (sh0, set0)
+                    && candidate != h0
+                {
+                    Some(candidate)
+                } else {
+                    None
+                }
+            })
+            .take(4)
+            .collect();
+        assert_eq!(same_set_hashes.len(), 4);
+        let h_a = h0;
+        let h_b = same_set_hashes[0];
+        let h_c = same_set_hashes[1];
+        let h_d = same_set_hashes[2];
+        let h_e = same_set_hashes[3];
+
+        cache.insert(h_a, cfg_a, Some(r0));
+        assert_eq!(
+            cache
+                .shards
+                .iter()
+                .filter(|s| s.lock().slots.is_some())
+                .count(),
+            1
+        );
+
+        cache.insert(h_b, cfg_a, Some(r1));
+        cache.insert(h_c, cfg_a, Some(r0));
+        cache.insert(h_d, cfg_a, Some(r1));
+        cache.insert(h_a, cfg_b, None);
+
+        let got_a = cache.get(h_a, cfg_a).flatten().unwrap();
+        assert_eq!(got_a.scores_at_zero[0].to_bits(), r0.scores_at_zero[0].to_bits());
+        assert_eq!(got_a.scores_at_zero[1].to_bits(), r0.scores_at_zero[1].to_bits());
+        assert_eq!(got_a.scores_at_zero[2].to_bits(), r0.scores_at_zero[2].to_bits());
+        assert_eq!(got_a.hp_lost, r0.hp_lost);
+        assert_eq!(got_a.board_investment, r0.board_investment);
+        assert_eq!(got_a.alchemize_count, r0.alchemize_count);
+        assert_eq!(got_a.empty_potion_slots, r0.empty_potion_slots);
+        assert_eq!(got_a.is_victory, r0.is_victory);
+        assert_eq!(got_a.is_defeat, r0.is_defeat);
+        assert_eq!(got_a.linear_adj, r0.linear_adj);
+
+        assert!(cache.get(h_b, cfg_a).is_some());
+        assert!(cache.get(h_c, cfg_a).is_some());
+        assert!(cache.get(h_d, cfg_a).is_some());
+        assert!(matches!(cache.get(h_a, cfg_b), Some(None)));
+
+        cache.insert(h_e, cfg_a, Some(r0));
+        assert!(cache.get(h_e, cfg_a).is_some());
+        assert!(cache.get(h_a, cfg_a).is_none());
+        assert!(cache.get(h_b, cfg_a).is_some());
+
+        cache.clear();
+        assert!(cache.get(h_e, cfg_a).is_none());
+        assert!(cache.get(h_a, cfg_b).is_none());
+    }
+
+    #[test]
+    fn turn_rollout_cache_cross_mode_and_linear_materialization() {
+        let root = RootEvalBaseline {
+            initial_player_hp: 70,
+            initial_player_max_hp: 80,
+            initial_enemy_count: 2,
+            start_turn_number: 1,
+            boss_hp_relief: BossHpRelief::ActClearHeal,
+            belt_full_at_root: true,
+            base_replacement_credit_centi: 900,
+            ..Default::default()
+        };
+        let fast_ongoing = FastEvalSummary {
+            base_score: 12_345.5,
+            player_hp: 55,
+            player_max_hp: 80,
+            projected_player_hp: 40,
+            cumulative_hp_lost: 15,
+            energy: 2,
+            stars: 1,
+            alchemize_count: 1,
+            empty_potion_slots: 2,
+            enemy_hp: 88,
+            alive_enemy_count: 2,
+            ..Default::default()
+        };
+        let full_ongoing = FullEvalDetails {
+            board_investment: 30,
+            unblocked_incoming: 10,
+            persistent_buff_value: 20,
+            playable_card_count: 3,
+            ..Default::default()
+        };
+        let profile = SolverSearchProfile::default();
+        let entry_a = TurnRolloutPilotEntry::from_eval(&fast_ongoing, &full_ongoing, &root, &profile, 6);
+        let cache = TurnRolloutCache::new();
+        let hash = StateHash(0x1234_5678_9ABC_DEF0u128);
+        let cfg = turn_rollout_cfg_hash(&profile, 4);
+        cache.insert(
+            hash,
+            cfg,
+            Some(TurnRolloutEntry {
+                a: entry_a,
+                b: TurnRolloutPilotEntry::EMPTY,
+            }),
+        );
+        let hit = cache.get(hash, cfg).flatten().unwrap();
+        for &mode in &[EvalMode::Balanced, EvalMode::SetupAndSurvival, EvalMode::Offense] {
+            for &(opt_cost, opt_cnt, parent_act) in &[(0, 0, 0), (9, 1, 5), (18, 2, 11)] {
+                let got = hit.a.materialize_score(&root, mode, opt_cost, opt_cnt, parent_act);
+                let net_c = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
+                    opt_cost,
+                    opt_cnt as i32,
+                    fast_ongoing.alchemize_count as i32,
+                    fast_ongoing.empty_potion_slots as i32,
+                    &root,
+                );
+                let direct = compute_beam_rank_score_with_centi(
+                    &fast_ongoing,
+                    &full_ongoing,
+                    &root,
+                    profile.base_score_only,
+                    profile.boss_tempo_hp_pricing,
+                    profile.beam_weight_perturbation,
+                    mode,
+                    net_c,
+                    parent_act + 6,
+                );
+                assert!((got - direct).abs() <= 1e-9, "turn rollout mismatch: got={got} direct={direct}");
+            }
+        }
+        cache.clear();
+        assert!(cache.get(hash, cfg).is_none());
+    }
+
+    #[test]
+    fn linear_probe_materialization_matches_direct_rank_score() {
+        let root = RootEvalBaseline {
+            initial_player_hp: 70,
+            initial_player_max_hp: 80,
+            initial_enemy_count: 2,
+            start_turn_number: 1,
+            boss_hp_relief: BossHpRelief::ActClearHeal,
+            belt_full_at_root: true,
+            base_replacement_credit_centi: 900,
+            ..Default::default()
+        };
+        let fast_ongoing = FastEvalSummary {
+            base_score: 123_456.5,
+            player_hp: 58,
+            player_max_hp: 80,
+            projected_player_hp: 45,
+            cumulative_hp_lost: 12,
+            death_save_hp_restored: 0,
+            strategic_hp_credit: 200,
+            death_save_use_count: 0,
+            combat_ended_turn: None,
+            growth_reward_count: 2,
+            relic_eval: RelicCounterEvaluation {
+                satisfied_priority: 3,
+                distance: 1,
+                ..Default::default()
+            },
+            outstanding_stolen: 15,
+            enemy_hp: 94,
+            enemy_block: 6,
+            alive_enemy_count: 2,
+            reviving_enemy_count: 1,
+            energy: 2,
+            stars: 3,
+            live_deck_clutter: 1,
+            alchemize_count: 1,
+            empty_potion_slots: 2,
+            won: false,
+            player_dead: false,
+            forfeits_gold: true,
+            ..Default::default()
+        };
+        let full_ongoing = FullEvalDetails {
+            retained_blade_bonus_base: 18,
+            board_investment: 42,
+            unblocked_incoming: 13,
+            end_turn_block: 20,
+            incoming_damage: 15,
+            next_turn_block: 8,
+            next_turn_energy: 2,
+            next_turn_draw: 1,
+            next_turn_stars: 2,
+            next_turn_summon: 3,
+            doom_lethal_count: 1,
+            reviving_hp_penalty: 12,
+            persistent_buff_value: 25,
+            enemy_debuff_value: 9,
+            enemy_threat_power_penalty: 4,
+            orb_capacity: 3,
+            orb_score: 21,
+            osty_hp: 15,
+            highest_alive_enemy_hp: 60,
+            focus_target_remaining_hp: 34,
+            min_sandpit_turns: 3,
+            ready_arrows: 2,
+            melody_cards_finished: 1,
+            playable_card_count: 4,
+            zero_cost_playable_count: 1,
+            hand_clutter: 1,
+            effective_doom_value: 17,
+            all_reattach_encounter: false,
+            preserves_excess_block: true,
+            ..Default::default()
+        };
+        let mut fast_won = fast_ongoing;
+        fast_won.won = true;
+        fast_won.enemy_hp = 0;
+        fast_won.alive_enemy_count = 0;
+        fast_won.reviving_enemy_count = 0;
+        fast_won.combat_ended_turn = Some(4);
+
+        let mut fast_dead = fast_ongoing;
+        fast_dead.player_dead = true;
+        fast_dead.projected_player_hp = 0;
+
+        let modes = [
+            EvalMode::Balanced,
+            EvalMode::SetupAndSurvival,
+            EvalMode::Offense,
+        ];
+        let perts = [
+            None,
+            Some(BeamWeightPerturbation {
+                term: BeamWeightTerm::CurrentEnergy,
+                scale: 1.25,
+            }),
+            Some(BeamWeightPerturbation {
+                term: BeamWeightTerm::PersistentBuffDelta,
+                scale: 0.75,
+            }),
+            Some(BeamWeightPerturbation {
+                term: BeamWeightTerm::EnemyHp,
+                scale: 1.4,
+            }),
+        ];
+
+        for (fast, full) in [
+            (&fast_ongoing, &full_ongoing),
+            (&fast_won, &FullEvalDetails::default()),
+            (&fast_dead, &FullEvalDetails::default()),
+        ] {
+            let is_victory = fast.won;
+            let is_defeat = fast.player_dead || fast.projected_player_hp <= 0;
+            for &base_only in &[false, true] {
+                for &pert in &perts {
+                    let profile = SolverSearchProfile {
+                        soft_time_budget_ms: 0,
+                        base_score_only: base_only,
+                        beam_weight_perturbation: pert,
+                        ..Default::default()
+                    };
+                    let probe_steps = 7u16;
+                    let linear_adj = !(base_only || is_defeat);
+                    let scores_at_zero = compute_scores_at_zero(
+                        fast,
+                        full,
+                        &root,
+                        &profile,
+                        linear_adj,
+                        probe_steps,
+                    );
+                    let entry = CachedProbeEntry {
+                        scores_at_zero,
+                        hp_lost: fast.cumulative_hp_lost,
+                        board_investment: full.board_investment,
+                        alchemize_count: fast.alchemize_count,
+                        empty_potion_slots: fast.empty_potion_slots,
+                        is_victory,
+                        is_defeat,
+                        linear_adj,
+                    };
+                    for &eval_mode in &modes {
+                        for &(opt_cost, opt_cnt, p_act) in &[(0, 0, 0), (9, 1, 5), (18, 2, 12)] {
+                            let mat = entry.materialize_result(
+                                &root,
+                                eval_mode,
+                                opt_cost,
+                                opt_cnt,
+                                p_act,
+                            );
+                            let net_c = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
+                                opt_cost,
+                                opt_cnt as i32,
+                                fast.alchemize_count as i32,
+                                fast.empty_potion_slots as i32,
+                                &root,
+                            );
+                            let direct = compute_beam_rank_score_with_centi(
+                                fast,
+                                full,
+                                &root,
+                                profile.base_score_only,
+                                profile.boss_tempo_hp_pricing,
+                                profile.beam_weight_perturbation,
+                                eval_mode,
+                                net_c,
+                                p_act.saturating_add(probe_steps),
+                            );
+                            assert!(
+                                (mat.score - direct).abs() <= 1e-9,
+                                "linear mismatch: mat={} direct={}",
+                                mat.score,
+                                direct
+                            );
+                            assert_eq!(mat.hp_lost, fast.cumulative_hp_lost);
+                            assert_eq!(mat.board_investment, full.board_investment);
+                            assert_eq!(mat.is_victory, fast.won);
+                            assert_eq!(mat.is_defeat, is_defeat);
+                        }
+                    }
+                }
+            }
         }
     }
 }

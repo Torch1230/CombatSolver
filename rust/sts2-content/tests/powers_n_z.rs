@@ -529,7 +529,7 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         cards.push(make_card(h, cid, PileType::Hand));
     }
 
-    let mut arrows = SmallVec::new();
+    let mut arrows = Vec::new();
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
@@ -577,7 +577,7 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
             next_move_id: Some(Cow::Borrowed("FIRST_ACID_GOOP")),
             next_move_can_transition_away: false,
             performed_first_move: false,
-            state_log_ids: smallvec::smallvec![Cow::Borrowed("FIRST_ACID_GOOP")],
+            state_log_ids: vec![Cow::Borrowed("FIRST_ACID_GOOP")],
             transient_move_follow_up_state_id: None,
             setup_fields: Default::default(),
             private_fields: Default::default(),
@@ -611,9 +611,9 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         potion_slots: smallvec::smallvec![None, None, None],
         combat_generated_potion_mask: 0,
         orb_capacity: character.base_orb_slot_count(),
-        orbs: SmallVec::new(),
+        orbs: Vec::new(),
         arrows,
-        relics: SmallVec::new(),
+        relics: Vec::new(),
         card_or_potion_effect_depth: 0,
     };
 

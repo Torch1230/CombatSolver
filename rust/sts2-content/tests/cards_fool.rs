@@ -116,7 +116,7 @@ fn build_fool_battle(
                 next_move_id: Some(std::borrow::Cow::Borrowed("ACID_GOOP")),
                 next_move_can_transition_away: true,
                 performed_first_move: false,
-                state_log_ids: smallvec::smallvec![std::borrow::Cow::Borrowed("ACID_GOOP")],
+                state_log_ids: vec![std::borrow::Cow::Borrowed("ACID_GOOP")],
                 transient_move_follow_up_state_id: None,
                 setup_fields: Default::default(),
                 private_fields: Default::default(),
@@ -151,12 +151,12 @@ fn build_fool_battle(
         potion_slots: smallvec::smallvec![None, None, None],
         combat_generated_potion_mask: 0,
         orb_capacity: 0,
-        orbs: SmallVec::new(),
-        arrows: smallvec::smallvec![ArrowSlotInst {
+        orbs: Vec::new(),
+        arrows: vec![ArrowSlotInst {
             status: ArrowStatus::Retrieved,
             destroy_after_impaled: false,
         }],
-        relics: SmallVec::new(),
+        relics: Vec::new(),
         card_or_potion_effect_depth: 0,
     };
 

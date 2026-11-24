@@ -572,9 +572,9 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
             potion_slots: smallvec::smallvec![Some(PotionId::LiquidMemories), None, None],
             combat_generated_potion_mask: 0,
             orb_capacity: 0,
-            orbs: SmallVec::new(),
-            arrows: SmallVec::new(),
-            relics: smallvec::smallvec![sts2_kernel::RelicInst {
+            orbs: Vec::new(),
+            arrows: Vec::new(),
+            relics: vec![sts2_kernel::RelicInst {
                 id: RelicId::BurningBlood,
                 is_wax: false,
                 is_melted: false,
@@ -626,7 +626,7 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
                     next_move_id: Some(Cow::Borrowed("IDLE")),
                     next_move_can_transition_away: true,
                     performed_first_move: false,
-                    state_log_ids: SmallVec::new(),
+                    state_log_ids: Vec::new(),
                     transient_move_follow_up_state_id: None,
                     setup_fields: Default::default(),
                     private_fields: Default::default(),

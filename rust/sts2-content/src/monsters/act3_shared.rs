@@ -442,7 +442,7 @@ fn spawn_enemy_with_unique_hp(
             next_move_id: None,
             next_move_can_transition_away: true,
             performed_first_move: false,
-            state_log_ids: SmallVec::new(),
+            state_log_ids: Vec::new(),
             transient_move_follow_up_state_id: None,
             setup_fields: Default::default(),
             private_fields: Default::default(),

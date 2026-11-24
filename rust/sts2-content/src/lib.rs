@@ -21,8 +21,8 @@ use sts2_types::{
 };
 
 struct ContentMetaTables {
-    card_metas: [&'static CardMeta; CardId::COUNT],
-    power_metas: [&'static PowerMeta; PowerId::COUNT],
+    card_metas: [CardMeta; CardId::COUNT],
+    power_metas: [PowerMeta; PowerId::COUNT],
     relic_metas: [&'static RelicMeta; RelicId::COUNT],
     potion_metas: [&'static PotionMeta; PotionId::COUNT],
     monster_metas: [&'static MonsterMeta; MonsterId::COUNT],
@@ -40,9 +40,9 @@ struct ContentMetaTables {
 }
 
 static CONTENT_TABLES: LazyLock<ContentMetaTables> = LazyLock::new(|| {
-    let card_metas: [&'static CardMeta; CardId::COUNT] = std::array::from_fn(|idx| {
+    let card_metas: [CardMeta; CardId::COUNT] = std::array::from_fn(|idx| {
         let id: CardId = unsafe { core::mem::transmute(idx as u16) };
-        cards::card_meta(id).expect("valid card meta")
+        *cards::card_meta(id).expect("valid card meta")
     });
     let mut cards = [HookMask::EMPTY; CardId::COUNT];
     let mut card_rollout_profiles = [CardRolloutProfile::default(); CardId::COUNT];
@@ -55,9 +55,9 @@ static CONTENT_TABLES: LazyLock<ContentMetaTables> = LazyLock::new(|| {
         all_cards = all_cards.union(mask);
     }
 
-    let power_metas: [&'static PowerMeta; PowerId::COUNT] = std::array::from_fn(|idx| {
+    let power_metas: [PowerMeta; PowerId::COUNT] = std::array::from_fn(|idx| {
         let id: PowerId = unsafe { core::mem::transmute(idx as u16) };
-        powers::power_meta(id).expect("valid power meta")
+        *powers::power_meta(id).expect("valid power meta")
     });
     let mut powers = [HookMask::EMPTY; PowerId::COUNT];
     let mut all_powers = HookMask::EMPTY;
@@ -191,12 +191,12 @@ pub struct Sts2Content;
 impl ContentDispatcher for Sts2Content {
     #[inline]
     fn card_meta(&self, id: CardId) -> Result<&'static CardMeta, KernelError> {
-        Ok(CONTENT_TABLES.card_metas[id as usize])
+        Ok(&CONTENT_TABLES.card_metas[id as usize])
     }
 
     #[inline]
     fn power_meta(&self, id: PowerId) -> Result<&'static PowerMeta, KernelError> {
-        Ok(CONTENT_TABLES.power_metas[id as usize])
+        Ok(&CONTENT_TABLES.power_metas[id as usize])
     }
 
     #[inline]

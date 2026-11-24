@@ -114,7 +114,7 @@ fn build_bench_combat() -> BattleState {
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
-                state_log_ids: SmallVec::new(),
+                state_log_ids: Vec::new(),
                 transient_move_follow_up_state_id: None,
                 setup_fields: Default::default(),
                 private_fields: Default::default(),
@@ -194,9 +194,9 @@ fn build_bench_combat() -> BattleState {
             ],
             combat_generated_potion_mask: 0,
             orb_capacity: 0,
-            orbs: SmallVec::new(),
-            arrows: SmallVec::new(),
-            relics: smallvec::smallvec![RelicInst {
+            orbs: Vec::new(),
+            arrows: Vec::new(),
+            relics: vec![RelicInst {
                 id: RelicId::RingOfTheSnake,
                 is_wax: false,
                 is_melted: false,
@@ -368,7 +368,7 @@ fn build_custom_bench_combat(
                 next_move_id: None,
                 next_move_can_transition_away: true,
                 performed_first_move: false,
-                state_log_ids: SmallVec::new(),
+                state_log_ids: Vec::new(),
                 transient_move_follow_up_state_id: None,
                 setup_fields: Default::default(),
                 private_fields: Default::default(),
@@ -444,8 +444,8 @@ fn build_custom_bench_combat(
             potion_slots: smallvec::smallvec![potions[0], potions[1], potions[2]],
             combat_generated_potion_mask: 0,
             orb_capacity: character.base_orb_slot_count(),
-            orbs: SmallVec::new(),
-            arrows: SmallVec::new(),
+            orbs: Vec::new(),
+            arrows: Vec::new(),
             relics: relics
                 .iter()
                 .map(|&id| RelicInst {

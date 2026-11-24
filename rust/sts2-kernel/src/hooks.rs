@@ -545,14 +545,14 @@ fn dispatch_single_void_known_slot(
                 || !state.contains_creature(creature)
                 || (c.is_player && !state.player.is_active_for_hooks)
             {
-                None
-            } else {
-                c.powers
-                    .iter()
-                    .enumerate()
-                    .find(|(_, p)| p.handle == power_handle)
-                    .map(|(idx, &p)| (idx, p, c.side))
+                return None;
             }
+            for (idx, &p) in c.powers.iter().enumerate() {
+                if p.handle == power_handle {
+                    return Some((idx, p, c.side));
+                }
+            }
+            None
         });
         #[cfg(debug_assertions)]
         debug_assert!(
@@ -1208,27 +1208,26 @@ fn dispatch_if_eligible_known_slot(
         power_handle,
     } = listener
     {
-        let Some(c) = state.creature(creature) else {
-            return Ok(None);
-        };
-        if c.is_detached || !state.contains_creature(creature) {
-            return Ok(None);
+        let resolved = state.creature(creature).and_then(|c| {
+            if c.is_detached
+                || !state.contains_creature(creature)
+                || (c.is_player && !state.player.is_active_for_hooks)
+            {
+                return None;
+            }
+            for (idx, &p) in c.powers.iter().enumerate() {
+                if p.handle == power_handle {
+                    return Some((idx, p, c.side));
+                }
+            }
+            None
+        });
+        if let Some((power_idx, power, owner_side)) = resolved {
+            return Ok(Some(content.dispatch_power_hook_resolved(
+                state, creature, power_idx, power, owner_side, slot, args,
+            )?));
         }
-        if c.is_player && !state.player.is_active_for_hooks {
-            return Ok(None);
-        }
-        let Some((power_idx, &power)) = c
-            .powers
-            .iter()
-            .enumerate()
-            .find(|(_, p)| p.handle == power_handle)
-        else {
-            return Ok(None);
-        };
-        let owner_side = c.side;
-        return Ok(Some(content.dispatch_power_hook_resolved(
-            state, creature, power_idx, power, owner_side, slot, args,
-        )?));
+        return Ok(None);
     }
     if !is_eligible_hook_listener(state, listener) {
         return Ok(None);
@@ -1289,12 +1288,14 @@ fn dispatch_query_known_slot(
         let Some(c) = state.creature(creature) else {
             return Ok(Default::default());
         };
-        let Some((power_idx, &power)) = c
-            .powers
-            .iter()
-            .enumerate()
-            .find(|(_, p)| p.handle == power_handle)
-        else {
+        let mut found = None;
+        for (idx, &p) in c.powers.iter().enumerate() {
+            if p.handle == power_handle {
+                found = Some((idx, p));
+                break;
+            }
+        }
+        let Some((power_idx, power)) = found else {
             return Ok(Default::default());
         };
         let owner_side = c.side;
@@ -1303,6 +1304,42 @@ fn dispatch_query_known_slot(
         );
     }
     content.dispatch_hook(state, listener, slot, args)
+}
+
+#[inline]
+fn dispatch_cached_query_listeners_slot_ready<F>(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    word: usize,
+    bit: u64,
+    mut on_listener: F,
+) -> Result<(), KernelError>
+where
+    F: FnMut(&mut BattleState, &dyn ContentDispatcher, HookListener) -> Result<bool, KernelError>,
+{
+    let len = state.hook_cache.flat_listeners.len();
+    for i in 0..len {
+        if (state.hook_cache.flat_mask_word(word)[i] & bit) != 0 {
+            let listener = state.hook_cache.flat_listeners[i];
+            #[cfg(debug_assertions)]
+            debug_assert!(
+                is_eligible_hook_listener(state, listener),
+                "cached query listener {:?} ineligible",
+                listener
+            );
+            let cont = on_listener(state, content, listener)?;
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                state.hook_cache.dirty_mask, 0,
+                "query hook mutated hook_cache during {:?}",
+                listener
+            );
+            if !cont {
+                return Ok(());
+            }
+        }
+    }
+    Ok(())
 }
 
 #[inline]
@@ -1330,7 +1367,8 @@ where
         let mask = HookMask::EMPTY.with(slot);
         let listeners = collect_combat_only_listeners_for_mask(state, content, mask)?;
         for listener in listeners {
-            if is_eligible_hook_listener(state, listener) && !on_listener(state, content, listener)?
+            if is_eligible_hook_listener(state, listener)
+                && !on_listener(state, content, listener)?
             {
                 break;
             }
@@ -1347,30 +1385,7 @@ where
         return Ok(());
     }
 
-    let len = state.hook_cache.flat_listeners.len();
-    for i in 0..len {
-        if (state.hook_cache.flat_mask_word(word)[i] & bit) != 0 {
-            let listener = state.hook_cache.flat_listeners[i];
-            #[cfg(debug_assertions)]
-            debug_assert!(
-                is_eligible_hook_listener(state, listener),
-                "cached query listener {:?} ineligible",
-                listener
-            );
-            let cont = on_listener(state, content, listener)?;
-            #[cfg(debug_assertions)]
-            debug_assert_eq!(
-                state.hook_cache.dirty_mask, 0,
-                "query hook mutated hook_cache during {:?}",
-                listener
-            );
-            if !cont {
-                return Ok(());
-            }
-        }
-    }
-
-    Ok(())
+    dispatch_cached_query_listeners_slot_ready(state, content, word, bit, on_listener)
 }
 
 #[inline]
@@ -1398,7 +1413,8 @@ where
         let mask = HookMask::EMPTY.with(slot);
         let listeners = collect_run_combat_listeners_for_mask(state, content, mask)?;
         for listener in listeners {
-            if is_eligible_hook_listener(state, listener) && !on_listener(state, content, listener)?
+            if is_eligible_hook_listener(state, listener)
+                && !on_listener(state, content, listener)?
             {
                 break;
             }
@@ -3777,30 +3793,29 @@ pub fn after_modifying_card_play_result_location(
     )
 }
 
-pub fn modify_energy_cost_in_combat_unchecked_active(
+#[inline]
+pub fn modify_energy_cost_in_combat_cached_ready(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     card: CardHandle,
     original_cost: Dec,
+    comb: HookMask,
 ) -> Result<(Dec, bool), KernelError> {
+    #[cfg(debug_assertions)]
+    {
+        debug_assert_eq!(state.hook_cache.dirty_mask, 0);
+        debug_assert!(state.hook_cache.cached_tables.is_some());
+    }
     let mut cost = original_cost;
     let mut modified = false;
-    state.ensure_hook_cache(content)?;
-    let (check_early, check_late) =
-        if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
-            let comb = state.hook_cache.masks.combat_combined;
-            (
-                comb.contains(HookSlot::TryModifyEnergyCostInCombat),
-                comb.contains(HookSlot::TryModifyEnergyCostInCombatLate),
-            )
-        } else {
-            (true, true)
-        };
-    if check_early {
-        dispatch_cached_query_listeners_slot(
+    let (w_early, b_early) = HookMask::slot_parts(HookSlot::TryModifyEnergyCostInCombat);
+    let (w_late, b_late) = HookMask::slot_parts(HookSlot::TryModifyEnergyCostInCombatLate);
+    if comb.contains_slot_parts(w_early, b_early) {
+        dispatch_cached_query_listeners_slot_ready(
             state,
             content,
-            HookSlot::TryModifyEnergyCostInCombat,
+            w_early,
+            b_early,
             |s, c, listener| {
                 let res = dispatch_query_known_slot(
                     s,
@@ -3819,11 +3834,12 @@ pub fn modify_energy_cost_in_combat_unchecked_active(
             },
         )?;
     }
-    if check_late {
-        dispatch_cached_query_listeners_slot(
+    if comb.contains_slot_parts(w_late, b_late) {
+        dispatch_cached_query_listeners_slot_ready(
             state,
             content,
-            HookSlot::TryModifyEnergyCostInCombatLate,
+            w_late,
+            b_late,
             |s, c, listener| {
                 let res = dispatch_query_known_slot(
                     s,
@@ -3842,6 +3858,73 @@ pub fn modify_energy_cost_in_combat_unchecked_active(
             },
         )?;
     }
+    Ok((cost, modified))
+}
+
+pub fn modify_energy_cost_in_combat_unchecked_active(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card: CardHandle,
+    original_cost: Dec,
+) -> Result<(Dec, bool), KernelError> {
+    #[cfg(not(debug_assertions))]
+    let cached_hit = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    #[cfg(debug_assertions)]
+    let cached_hit = {
+        state.ensure_hook_cache(content)?;
+        state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some()
+    };
+    if !cached_hit {
+        state.ensure_hook_cache(content)?;
+    }
+    if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
+        let comb = state.hook_cache.masks.combat_combined;
+        return modify_energy_cost_in_combat_cached_ready(state, content, card, original_cost, comb);
+    }
+    let mut cost = original_cost;
+    let mut modified = false;
+    dispatch_cached_query_listeners_slot(
+        state,
+        content,
+        HookSlot::TryModifyEnergyCostInCombat,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::TryModifyEnergyCostInCombat,
+                &HookArgs::CardCost { card, cost },
+            )?;
+            if res.modified {
+                modified = true;
+                if let Some(next) = res.dec_val {
+                    cost = next;
+                }
+            }
+            Ok(true)
+        },
+    )?;
+    dispatch_cached_query_listeners_slot(
+        state,
+        content,
+        HookSlot::TryModifyEnergyCostInCombatLate,
+        |s, c, listener| {
+            let res = dispatch_query_known_slot(
+                s,
+                c,
+                listener,
+                HookSlot::TryModifyEnergyCostInCombatLate,
+                &HookArgs::CardCost { card, cost },
+            )?;
+            if res.modified {
+                modified = true;
+                if let Some(next) = res.dec_val {
+                    cost = next;
+                }
+            }
+            Ok(true)
+        },
+    )?;
     Ok((cost, modified))
 }
 

@@ -81,11 +81,13 @@ pub fn add_and_notify(
 }
 
 pub fn remove(state: &mut BattleState, card: CardHandle) {
-    let old = state.remove_card_from_current_pile(card);
+    let tables = state.hook_cache.cached_tables;
+    let has_hook = tables.is_none_or(|t| state.card_has_any_hook(t, card));
+    let old = state.remove_card_from_current_pile_with_tables(card, tables);
     if let Some(c) = state.card_mut(card) {
         c.removed_from_state = true;
     }
-    if old == PileType::None {
+    if old == PileType::None && has_hook {
         state.invalidate_pile_hooks(crate::state::HOOK_DIRTY_PILES);
     }
 }
