@@ -5,7 +5,7 @@ namespace CombatSolver;
 
 internal sealed partial class SolverSettingsPanel
 {
-    private SpinBox _maxHardFightThinkSeconds = null!;
+    private SpinBox _maxCombatSolveSeconds = null!;
     private OptionButton _searchParallelism = null!;
 
     internal bool ExercisePerformancePresetPersistenceForTesting()
@@ -36,7 +36,7 @@ internal sealed partial class SolverSettingsPanel
             SolverSettings.ApplyForTesting(migrated);
             bool migrationApplied = migrated.PerformanceMigrationVersion
                     == SolverSettings.CurrentPerformanceMigrationVersion
-                && migrated.MaxHardFightThinkSeconds == SolverSettings.DefaultMaxHardFightThinkSeconds
+                && migrated.MaxCombatSolveSeconds == SolverSettings.DefaultMaxCombatSolveSeconds
                 && migrated.PerformancePreset == null
                 && migrated.SearchBeamWidth == null
                 && migrated.SearchMaxExpandedNodes == null
@@ -46,21 +46,21 @@ internal sealed partial class SolverSettingsPanel
                 && migrated.OverlayTheme == SolverOverlayTheme.Light
                 && migrated.ShowSpeedXWarning;
 
-            SolverSettingsData customThink = migrated with
+            SolverSettingsData customSolve = migrated with
             {
-                MaxHardFightThinkSeconds = 9,
+                MaxCombatSolveSeconds = 9,
                 SearchMaxDegreeOfParallelism = null,
             };
-            SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(customThink);
-            SolverSettings.ApplyForTesting(customThink);
+            SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(customSolve);
+            SolverSettings.ApplyForTesting(customSolve);
             Reload();
-            bool controlsSynced = (int)Math.Round(_maxHardFightThinkSeconds.Value) == 9
+            bool controlsSynced = (int)Math.Round(_maxCombatSolveSeconds.Value) == 9
                 && _searchParallelism.GetItemId(_searchParallelism.Selected) == 0
-                && roundTripped.MaxHardFightThinkSeconds == 9
+                && roundTripped.MaxCombatSolveSeconds == 9
                 && roundTripped.SearchMaxDegreeOfParallelism == null
                 && CommitPending()
-                && SolverSettings.Current.MaxHardFightThinkSeconds == 9
-                && SolverSettings.Capture().MaxHardFightThinkSeconds == 9;
+                && SolverSettings.Current.MaxCombatSolveSeconds == 9
+                && SolverSettings.Capture().MaxCombatSolveSeconds == 9;
 
             SolverSettingsData harnessCompat = SolverSettings.ApplyPerformancePreset(
                 original,
@@ -79,12 +79,12 @@ internal sealed partial class SolverSettingsPanel
     {
         VBoxContainer content = CreatePageContent("PerformanceSettingsPage");
         GridContainer performanceGrid = CreateSettingsGrid();
-        _maxHardFightThinkSeconds = CreateMaxHardFightThinkSecondsInput();
+        _maxCombatSolveSeconds = CreateMaxCombatSolveSecondsInput();
         AddBasicRow(
             performanceGrid,
-            SolverText.Get("硬仗最大思考时长（秒）"),
-            _maxHardFightThinkSeconds,
-            SolverText.Get("默认 4 秒（范围 1–15 秒）。普通战斗仍会瞬间完成；遇到复杂硬仗时自动逐级深化，最长不超过此设定。下次搜索生效。"));
+            SolverText.Get("战斗最大求解时长（秒）"),
+            _maxCombatSolveSeconds,
+            SolverText.Get("默认 4 秒（范围 1–15 秒）。简单战斗通常瞬间完成；复杂战斗自动逐级深化，最长不超过此设定。下次搜索生效。"));
         _searchParallelism = CreateSearchParallelismInput();
         AddBasicRow(
             performanceGrid,
@@ -94,25 +94,25 @@ internal sealed partial class SolverSettingsPanel
         AddSettingsSection(
             content,
             SolverText.Get("搜索性能"),
-            SolverText.Get("普通战斗仍会瞬间完成；遇到复杂或高战损硬仗时，求解器会自动深化搜索，最长不超过设定思考时长。"),
+            SolverText.Get("简单战斗通常瞬间完成；遇到复杂或高战损战斗时自动逐级深化，最长不超过设定求解时长。"),
             performanceGrid);
         return CreatePageScroll(content);
     }
 
     private void ReloadPerformancePage(SolverSettingsData data)
     {
-        _maxHardFightThinkSeconds.SetValueNoSignal(data.MaxHardFightThinkSeconds);
+        _maxCombatSolveSeconds.SetValueNoSignal(data.MaxCombatSolveSeconds);
         int parallelismId = data.SearchMaxDegreeOfParallelism ?? 0;
         _searchParallelism.Selected = _searchParallelism.GetItemIndex(parallelismId);
     }
 
-    private SpinBox CreateMaxHardFightThinkSecondsInput()
+    private SpinBox CreateMaxCombatSolveSecondsInput()
     {
         SpinBox input = new()
         {
-            Name = "MaxHardFightThinkSecondsInput",
-            MinValue = SolverSettings.MinimumMaxHardFightThinkSeconds,
-            MaxValue = SolverSettings.MaximumMaxHardFightThinkSeconds,
+            Name = "MaxCombatSolveSecondsInput",
+            MinValue = SolverSettings.MinimumMaxCombatSolveSeconds,
+            MaxValue = SolverSettings.MaximumMaxCombatSolveSeconds,
             Step = 1d,
             Rounded = true,
             CustomMinimumSize = new Vector2(140, 34),
@@ -131,16 +131,16 @@ internal sealed partial class SolverSettingsPanel
                 return;
             int seconds = Math.Clamp(
                 (int)Math.Round(value),
-                SolverSettings.MinimumMaxHardFightThinkSeconds,
-                SolverSettings.MaximumMaxHardFightThinkSeconds);
-            if (SolverSettings.Current.MaxHardFightThinkSeconds == seconds)
+                SolverSettings.MinimumMaxCombatSolveSeconds,
+                SolverSettings.MaximumMaxCombatSolveSeconds);
+            if (SolverSettings.Current.MaxCombatSolveSeconds == seconds)
                 return;
             SolverSettings.Update(SolverSettings.Current with
             {
-                MaxHardFightThinkSeconds = seconds,
+                MaxCombatSolveSeconds = seconds,
             });
             SetStatus(
-                SolverText.Format($"硬仗最大思考时长已设为 {seconds} 秒，下次搜索生效"),
+                SolverText.Format($"战斗最大求解时长已设为 {seconds} 秒，下次搜索生效"),
                 SolverUiTokens.Palette.Success);
         };
         _commitInputs.Add(() =>

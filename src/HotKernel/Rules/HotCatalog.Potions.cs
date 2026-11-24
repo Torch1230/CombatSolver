@@ -58,7 +58,7 @@ internal static class HotPotionCatalog
         arr[(int)HotCustomPotionId.CunningPotion] = new(HotCustomPotionId.CunningPotion, "CUNNING_POTION", false, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.CureAll] = new(HotCustomPotionId.CureAll, "CURE_ALL", false, false, false, 14, false, false, true);
         arr[(int)HotCustomPotionId.DexterityPotion] = new(HotCustomPotionId.DexterityPotion, "DEXTERITY_POTION", true, false, false, 9, true, false, true);
-        arr[(int)HotCustomPotionId.DistilledChaos] = new(HotCustomPotionId.DistilledChaos, "DISTILLED_CHAOS", false, false, true, 14, false, false, true);
+        arr[(int)HotCustomPotionId.DistilledChaos] = new(HotCustomPotionId.DistilledChaos, "DISTILLED_CHAOS", false, false, false, 14, false, false, true);
         arr[(int)HotCustomPotionId.DropletOfPrecognition] = new(HotCustomPotionId.DropletOfPrecognition, "DROPLET_OF_PRECOGNITION", false, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.Duplicator] = new(HotCustomPotionId.Duplicator, "DUPLICATOR", true, false, false, 18, false, false, true);
         arr[(int)HotCustomPotionId.EnergyPotion] = new(HotCustomPotionId.EnergyPotion, "ENERGY_POTION", true, false, false, 9, false, false, true);
@@ -98,7 +98,7 @@ internal static class HotPotionCatalog
         arr[(int)HotCustomPotionId.ShacklingPotion] = new(HotCustomPotionId.ShacklingPotion, "SHACKLING_POTION", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.ShipInABottle] = new(HotCustomPotionId.ShipInABottle, "SHIP_IN_A_BOTTLE", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.SkillPotion] = new(HotCustomPotionId.SkillPotion, "SKILL_POTION", false, false, true, 9, false, false, true);
-        arr[(int)HotCustomPotionId.SneckoOil] = new(HotCustomPotionId.SneckoOil, "SNECKO_OIL", false, false, true, 9, false, false, true);
+        arr[(int)HotCustomPotionId.SneckoOil] = new(HotCustomPotionId.SneckoOil, "SNECKO_OIL", false, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.SoldiersStew] = new(HotCustomPotionId.SoldiersStew, "SOLDIERS_STEW", false, false, false, 9, true, false, true);
         arr[(int)HotCustomPotionId.SpeedPotion] = new(HotCustomPotionId.SpeedPotion, "SPEED_POTION", true, false, false, 9, false, false, true);
         arr[(int)HotCustomPotionId.StableSerum] = new(HotCustomPotionId.StableSerum, "STABLE_SERUM", true, false, false, 9, false, false, true);

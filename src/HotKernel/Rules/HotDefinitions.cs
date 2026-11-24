@@ -35,6 +35,7 @@ internal enum HotCounterSlot : byte
     BaseMaxEnergy                = 21,
     BaseHandDraw                 = 22,
     CardBlockGainsThisTurn       = 23,
+    ShivPlaysFinishedThisTurn    = 24,
 }
 
 internal enum HotCardOpKind : byte

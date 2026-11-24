@@ -1228,17 +1228,10 @@ internal static class SolverOverlay
             row.Populate(turn);
             if (index == 0 && snapshot.PendingTurnSetup)
                 row.SetTurnStartChoiceDeploymentState(active: true, completed: false);
-            // Damage alone reads wrong on a turn that also heals: the player wants the number the
-            // turn actually leaves them at, not the hits they took on the way there.
-            int netHpChange = turn.HpRecovered - turn.HpLoss;
-            string outcome = turn.CombatEnded
-                ? SolverText.Get("战斗结束")
-                : netHpChange != 0
-                    ? $"{HpChangeText.Signed(netHpChange)} HP"
-                    : "0 HP";
+            (string outcome, Color outcomeColor) = FormatTurnOutcome(turn);
             row.SetOutcome(
                 outcome,
-                turn.CombatEnded ? Success : netHpChange < 0 ? Danger : netHpChange > 0 ? Success : TextMuted,
+                outcomeColor,
                 energyText: SolverText.Format($"余 {turn.EnergyLeft} 费"),
                 enemyDamageText: turn.EnemyHpDamageLost is { } damage
                     ? SolverText.Format($"对敌伤害 {damage}")
@@ -1258,6 +1251,27 @@ internal static class SolverOverlay
                         ? Danger
                         : Success);
         }
+    }
+
+    internal static (string Text, Color Color) FormatTurnOutcome(SolverOverlayTurnSnapshot turn)
+    {
+        // Damage alone reads wrong on a turn that also heals: the player wants the number the
+        // turn actually leaves them at, not the hits they took on the way there.
+        int netHpChange = turn.HpRecovered - turn.HpLoss;
+        if (turn.CombatEnded)
+        {
+            string text = netHpChange != 0
+                ? SolverText.Format($"战斗结束（{HpChangeText.Signed(netHpChange)} HP）")
+                : SolverText.Get("战斗结束");
+            Color color = netHpChange < 0 ? Danger : Success;
+            return (text, color);
+        }
+
+        string turnText = netHpChange != 0
+            ? $"{HpChangeText.Signed(netHpChange)} HP"
+            : "0 HP";
+        Color turnColor = netHpChange < 0 ? Danger : netHpChange > 0 ? Success : TextMuted;
+        return (turnText, turnColor);
     }
 
     public static void ShowDeploying(Node host, int turn, int actionCount)
@@ -1987,7 +2001,7 @@ internal static class SolverOverlay
         _growthStrategyVisible = false;
         _relicStrategyVisible = false;
         SetCollapsed(false);
-        Entry.Logger.Info("[CombatSolver/Test] UI_CREATE responsive=true content_fit_height=true minimum_size_reflow=true draggable=true drag_coordinates=viewport drag_relayout=release_only resizable=right+bottom+corner resize_grip=three_diagonal_lines size_persisted=true route_scroll_expand=true max_width=viewport max_height=viewport route_row_height=44 route_viewport_height=148 visible_unwrapped_route_rows=3 cached_route_rows=16 all_searched_turns=true route_scroll=true persistent_status_card=true compact_title=true compact_footer=true collapsed_action_buttons=true footer_pause_toggles=false settings_pause_toggles=true footer_top_margin=8 details_in_status_row=true battle_hp_in_route_heading=true sold_hp_summary=false three_column_routes=true semantic_action_pills=true full_target_names=true whole_pill_kill_highlight=true text_outline_px=2 wrapped_summary=true summary_bold_metric=true flat_collapse=true plain_details_button=true full_auto_positive_toggle=true no_middle_dot=true status_badge=true plain_action_buttons=true always_show_energy=true plain_route_heading=true settings_button=true settings_persisted=true settings_tabs=general+performance+feedback notification_policy=three_state performance_controls=max_hard_fight_think_seconds+max_dop kill_pill=green_with_target_names status_badge=content_width deployment_speed_settings=true search_status=fixed_columns_seconds only_death_marker=true relic_action_labels=true position_persisted=true theft_policy_buttons=contextual stop_search_button=true memory_bar=false");
+        Entry.Logger.Info("[CombatSolver/Test] UI_CREATE responsive=true content_fit_height=true minimum_size_reflow=true draggable=true drag_coordinates=viewport drag_relayout=release_only resizable=right+bottom+corner resize_grip=three_diagonal_lines size_persisted=true route_scroll_expand=true max_width=viewport max_height=viewport route_row_height=44 route_viewport_height=148 visible_unwrapped_route_rows=3 cached_route_rows=16 all_searched_turns=true route_scroll=true persistent_status_card=true compact_title=true compact_footer=true collapsed_action_buttons=true footer_pause_toggles=false settings_pause_toggles=true footer_top_margin=8 details_in_status_row=true battle_hp_in_route_heading=true sold_hp_summary=false three_column_routes=true semantic_action_pills=true full_target_names=true whole_pill_kill_highlight=true text_outline_px=2 wrapped_summary=true summary_bold_metric=true flat_collapse=true plain_details_button=true full_auto_positive_toggle=true no_middle_dot=true status_badge=true plain_action_buttons=true always_show_energy=true plain_route_heading=true settings_button=true settings_persisted=true settings_tabs=general+performance+feedback notification_policy=three_state performance_controls=max_combat_solve_seconds+max_dop kill_pill=green_with_target_names status_badge=content_width deployment_speed_settings=true search_status=fixed_columns_seconds only_death_marker=true relic_action_labels=true position_persisted=true theft_policy_buttons=contextual stop_search_button=true memory_bar=false");
         Entry.Logger.Info("[CombatSolver/Test] UI_FEEDBACK_BANNER position=full_width manual_improvement=green unexpected_replan=red export_prompt=full_bug_report");
     }
 

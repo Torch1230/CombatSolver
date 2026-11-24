@@ -54,6 +54,9 @@ internal sealed record FightOutcomeRecord
     [JsonPropertyName("hp_loss")]
     public int HpLoss { get; init; }
 
+    [JsonPropertyName("gross_hp_loss")]
+    public int? GrossHpLoss { get; init; }
+
     [JsonPropertyName("strategic_hp_deficit")]
     public int StrategicHpDeficit { get; init; }
 
@@ -278,6 +281,8 @@ internal static class BenchmarkOutcomeHelper
             ? (long)Math.Clamp(quality.Score, -1_000_000_000_000_000d, 1_000_000_000_000_000d)
             : 0L;
 
+        int deathSaveHpRestored = Math.Max(0, snap.DeathSaveHpRestored);
+
         return new FightOutcomeRecord
         {
             FightId = fightId,
@@ -294,7 +299,8 @@ internal static class BenchmarkOutcomeHelper
             EndHp = snap.PlayerHp,
             StartMaxHp = hotPolicy.InitialPlayerMaxHp,
             EndMaxHp = snap.PlayerMaxHp,
-            HpLoss = quality.ProjectedBattleHpLost,
+            HpLoss = Math.Max(0, hotPolicy.InitialPlayerHp - (snap.PlayerHp - deathSaveHpRestored)),
+            GrossHpLoss = quality.ProjectedBattleHpLost,
             StrategicHpDeficit = quality.StrategicHpDeficit,
             PotionsUsed = quality.ProjectedBattlePotionCount,
             PotionCostHp = quality.PotionStrategicCost,
@@ -398,7 +404,7 @@ internal static class BenchmarkOutcomeHelper
         GrowthHpCredit: r.GrowthHpCredit,
         GrowthRewardCount: r.GrowthRewardCount,
         CombatEndedTurn: r.Won ? r.Turns : int.MaxValue,
-        ProjectedBattleHpLost: r.HpLoss,
+        ProjectedBattleHpLost: r.GrossHpLoss ?? r.HpLoss,
         ProjectedBattlePotionCount: r.PotionsUsed,
         ExplicitPotionCount: r.PotionsUsed,
         PlayerHp: r.EndHp,
@@ -727,9 +733,14 @@ internal static class OutcomeComparator
             string verdict = cmp < 0 ? "Better" : cmp > 0 ? "Worse" : "Equal";
             double baseV = b.EconomicValueV;
             double candV = c.EconomicValueV;
+            // Harmonize HpLoss unit on gross (GrossHpLoss ?? HpLoss) when diffing mixed-schema baselines
+            // (pre-Wave-3 files store gross loss in HpLoss with GrossHpLoss == null; Wave-3 files store net in HpLoss).
+            bool harmonizeGrossHpLoss = b.GrossHpLoss.HasValue != c.GrossHpLoss.HasValue;
+            int baseHpLoss = harmonizeGrossHpLoss ? (b.GrossHpLoss ?? b.HpLoss) : b.HpLoss;
+            int candHpLoss = harmonizeGrossHpLoss ? (c.GrossHpLoss ?? c.HpLoss) : c.HpLoss;
             bool exactRoute = string.Equals(b.RouteSignature ?? string.Empty, c.RouteSignature ?? string.Empty, StringComparison.Ordinal)
                 && b.Won == c.Won
-                && b.HpLoss == c.HpLoss
+                && baseHpLoss == candHpLoss
                 && b.PotionsUsed == c.PotionsUsed
                 && b.Turns == c.Turns
                 && b.Score == c.Score;
@@ -745,9 +756,9 @@ internal static class OutcomeComparator
                 Verdict = verdict,
                 BaseWon = b.Won,
                 CandWon = c.Won,
-                BaseHpLoss = b.HpLoss,
-                CandHpLoss = c.HpLoss,
-                HpLossDelta = c.HpLoss - b.HpLoss,
+                BaseHpLoss = baseHpLoss,
+                CandHpLoss = candHpLoss,
+                HpLossDelta = candHpLoss - baseHpLoss,
                 BasePotions = b.PotionsUsed,
                 CandPotions = c.PotionsUsed,
                 PotionDelta = c.PotionsUsed - b.PotionsUsed,
@@ -910,14 +921,14 @@ internal static class OutcomeComparator
         var validBoth = rows.Where(static r => r.Diff.BaseHardErrors == 0 && r.Diff.CandHardErrors == 0).ToList();
         double baseAvgV = validBoth.Count > 0 ? validBoth.Average(static r => r.Diff.BaseV) : 0.0;
         double candAvgV = validBoth.Count > 0 ? validBoth.Average(static r => r.Diff.CandV) : 0.0;
-        double baseAvgHp = validBoth.Count > 0 ? validBoth.Average(static r => (double)r.Base.HpLoss) : 0.0;
-        double candAvgHp = validBoth.Count > 0 ? validBoth.Average(static r => (double)r.Cand.HpLoss) : 0.0;
+        double baseAvgHp = validBoth.Count > 0 ? validBoth.Average(static r => (double)r.Diff.BaseHpLoss) : 0.0;
+        double candAvgHp = validBoth.Count > 0 ? validBoth.Average(static r => (double)r.Diff.CandHpLoss) : 0.0;
         double baseAvgPot = validBoth.Count > 0 ? validBoth.Average(static r => (double)r.Base.PotionsUsed) : 0.0;
         double candAvgPot = validBoth.Count > 0 ? validBoth.Average(static r => (double)r.Cand.PotionsUsed) : 0.0;
 
         var sharedWins = validBoth.Where(static r => r.Base.Won && r.Cand.Won).ToList();
         double sharedWinsHpDelta = sharedWins.Count > 0
-            ? sharedWins.Average(static r => (double)(r.Cand.HpLoss - r.Base.HpLoss))
+            ? sharedWins.Average(static r => (double)r.Diff.HpLossDelta)
             : 0.0;
 
         double[] baseTimes = validBoth.Select(static r => r.Base.ElapsedMs).ToArray();

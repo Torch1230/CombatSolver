@@ -377,10 +377,6 @@ internal static class HotPotionPolicy
 
         int hpScale = HotRouteQuality.PersistentHpScale(policy.StrategicBossHpRelief);
 
-        // Final Boss survival priority (hpScale == 0): clean win without death saves cannot improve V via paid potions.
-        if (policy.EncounterBossHpRelief == BossHpRelief.RunEnding && hpScale == 0)
-            return false;
-
         int minAlchemizeRefill = policy.HasAlchemizeInDeck && !policy.HasSozu ? 1 : 0;
         int minNetCostCenti = ComputeNetPotionOpportunityCostCenti(
             policy.MinPaidOptionalRawHpCost,

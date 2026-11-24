@@ -493,7 +493,8 @@ internal static class HotContinuationStamp
 
         for (int i = 0; i < def.OrderedVarNames.Length; i++)
         {
-            text.Append(def.OrderedVarNames[i]).Append('=').Append(HotRules.GetCardVarValue(in card, def, i));
+            text.Append(def.OrderedVarNames[i]).Append('=');
+            AppendNormalizedDecimal(text, HotRules.GetCardVarValue(in card, def, i));
             if (def.OrderedVarStrings != null && def.OrderedVarStrings[i] is { } strVal)
                 text.Append(':').Append(strVal);
             text.Append(',');
@@ -636,6 +637,35 @@ internal static class HotContinuationStamp
         return text.ToString();
     }
 
+    /// <summary>
+    /// Formats a <see cref="decimal"/> with trailing fractional zeros stripped using
+    /// <see cref="CultureInfo.InvariantCulture"/> so live STS2 <c>DynamicVar.BaseValue</c>
+    /// values (e.g. <c>19.00m</c> from multiplicative damage/block hooks) match scale-0
+    /// simulated values (<c>19m</c>) verbatim.
+    /// </summary>
+    public static string FormatNormalizedDecimal(decimal value)
+    {
+        if (value == 0m)
+            return "0";
+        decimal normalized = value.Scale == 0 ? value : value / 1.0000000000000000000000000000m;
+        return normalized.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static void AppendNormalizedDecimal(StringBuilder text, decimal value)
+    {
+        if (value == 0m)
+        {
+            text.Append('0');
+            return;
+        }
+        decimal normalized = value.Scale == 0 ? value : value / 1.0000000000000000000000000000m;
+        Span<char> buffer = stackalloc char[32];
+        if (normalized.TryFormat(buffer, out int written, ReadOnlySpan<char>.Empty, CultureInfo.InvariantCulture))
+            text.Append((ReadOnlySpan<char>)buffer[..written]);
+        else
+            text.Append(normalized.ToString(CultureInfo.InvariantCulture));
+    }
+
     private static void AppendChoiceCardKey(
         StringBuilder text,
         in HotCard card,
@@ -662,7 +692,8 @@ internal static class HotContinuationStamp
         for (int i = 0; i < def.OrderedVarNames.Length; i++)
         {
             if (i > 0) text.Append(';');
-            text.Append(def.OrderedVarNames[i]).Append('=').Append(HotRules.GetCardVarValue(in card, def, i));
+            text.Append(def.OrderedVarNames[i]).Append('=');
+            AppendNormalizedDecimal(text, HotRules.GetCardVarValue(in card, def, i));
         }
         text.Append('|');
         if (card.EnchId == 0)
@@ -706,7 +737,7 @@ internal static class HotContinuationStamp
         switch (kind)
         {
             case HotRelicSpecialKind.BeatingRemnant:
-                text.Append(((decimal)rs.Current).ToString(CultureInfo.InvariantCulture));
+                AppendNormalizedDecimal(text, rs.Current);
                 break;
             case HotRelicSpecialKind.JossPaper:
                 if (rs.PreviousOrAux == 0)
@@ -759,7 +790,8 @@ internal static class HotContinuationStamp
             {
                 string varName = def.OrderedVarNames[v];
                 decimal val = ResolvePowerVarValue(in p, def, v, varName);
-                text.Append(varName).Append('=').Append(val);
+                text.Append(varName).Append('=');
+                AppendNormalizedDecimal(text, val);
                 if (def.OrderedVarStrings != null && def.OrderedVarStrings[v] is { } strVal)
                     text.Append(':').Append(strVal);
                 text.Append(',');

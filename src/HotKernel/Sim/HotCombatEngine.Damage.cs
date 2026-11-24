@@ -285,6 +285,8 @@ internal static partial class HotCombatEngine
         if ((initialTargetRef.Flags & HotCreatureFlags.Alive) == 0 || initialTargetRef.CurrentHp <= 0)
             return 0;
 
+        ushort cardUid = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardUid : (ushort)0;
+
         decimal modifiedAmount = ComputeModifiedDamage(ref s, ref cold, rules, scratch, dealerSlot, targetSlot, baseDamage, isPoweredAttack, cardIdx, cardDefId);
 
         // Pre-block damage cap (Intangible, HardToKill, HardenedShell)
@@ -524,6 +526,7 @@ internal static partial class HotCombatEngine
                 ActorSlot = dealerSlot,
                 TargetSlot = targetSlot,
                 CardIdx = cardIdx,
+                CardUid = cardUid,
                 CardDefId = cardDefId,
                 IsPoweredAttack = isPoweredAttack,
                 IsUnblockable = isUnblockable,
@@ -1325,6 +1328,7 @@ internal static partial class HotCombatEngine
                 HotPowerId.WitheringPresencePower => 6,
                 HotPowerId.JugglingPower => s.Counters[(int)HotCounterSlot.AttackPlayStartsThisTurn],
                 HotPowerId.FeralPower => s.Counters[(int)HotCounterSlot.ZeroCostAttackStartsThisTurn],
+                HotPowerId.PhantomBladesPower when ownerSlot == 0 && s.Counters[(int)HotCounterSlot.ShivPlaysFinishedThisTurn] > 0 => 1,
                 _ => 0,
             };
 
@@ -1855,6 +1859,25 @@ internal static partial class HotCombatEngine
             && rules.Afflictions[card.AfflId].AfflictionId == HotAfflictionId.Hexed)
         {
             return GetPowerAmountById(in s, rules, 0, HotPowerId.HexPower) > 0;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Exact STS2 0.113.1 global+local Retain check (<c>CardModel.Keywords.Contains(Retain)</c>):
+    /// true when the card has local <c>Retain</c> OR carries <c>CardTag.Shiv</c> while player has
+    /// <c>PhantomBladesPower</c> (<c>PhantomBladesPower.TryModifyKeywordsInCombat</c>, never mutating <c>LocalKeywordsMask</c>).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool HasEffectiveRetainKeyword(in CombatHotState s, in HotCard card, HotRules rules)
+    {
+        if ((card.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0)
+            return true;
+        if (card.CardDefId > 0
+            && card.CardDefId < rules.Cards.Length
+            && rules.Cards[card.CardDefId].IsShivTag)
+        {
+            return GetPowerAmountById(in s, rules, 0, HotPowerId.PhantomBladesPower) > 0;
         }
         return false;
     }

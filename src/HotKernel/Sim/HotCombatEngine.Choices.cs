@@ -440,11 +440,9 @@ internal static partial class HotCombatEngine
             HotCustomCardId.HandTrick => def.Type == CardType.Skill && (card.Flags & HotCardFlags.IsSlyThisTurn) == 0,
             HotCustomCardId.HeirloomHammer => def.IsVisualColorless,
             HotCustomCardId.SculptingStrike => (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) == 0,
-            HotCustomCardId.Snap => (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0,
+            HotCustomCardId.Snap => !HasEffectiveRetainKeyword(in s, in card, rules),
             HotCustomCardId.DecisionsDecisions => def.Type == CardType.Skill && (card.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0,
             HotCustomCardId.LockedIn or HotCustomCardId.ArrowStab => def.IsShootTag,
-            HotCustomCardId.WellLaidPlans => (card.Flags & HotCardFlags.SingleTurnRetain) == 0
-                && (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0,
             _ => true,
         };
     }

@@ -29,6 +29,21 @@ internal static partial class HotCombatEngine
             t_cardOrPotionEffectDepth--;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void RefreshHookCardIdx(in CombatHotState s, ref HotHookArgs args)
+    {
+        ushort uid = args.CardUid;
+        if (uid == 0)
+            return;
+        int idx = args.CardIdx;
+        if ((uint)idx < (uint)s.TotalCardCount && s.Cards[idx].CardUid == uid)
+            return;
+        int liveIdx = FindCardIndexByUid(in s, HotPileKind.Play, uid);
+        if (liveIdx < 0)
+            liveIdx = FindCardIndexByUidAnyPile(in s, uid);
+        args.CardIdx = liveIdx;
+    }
+
     internal static void CheckForEmptyHand(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
@@ -87,14 +102,17 @@ internal static partial class HotCombatEngine
 
         int playIdx = HotPiles.MoveCard(ref s, handIdx, HotPileKind.Play, s.PlayCount);
         int playOffsetInPlay = playIdx - s.PlayStart;
+        ushort playedCardUid = s.Cards[playIdx].CardUid;
+        ushort playedCardDefId = s.Cards[playIdx].CardDefId;
 
         if (energyValue > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterEnergySpent) != 0)
         {
             HotHookArgs eArgs = new()
             {
                 ActorSlot = 0,
-                CardIdx = s.PlayStart + playOffsetInPlay,
-                CardDefId = s.Cards[s.PlayStart + playOffsetInPlay].CardDefId,
+                CardIdx = FindCardIndexByUid(in s, HotPileKind.Play, playedCardUid),
+                CardUid = playedCardUid,
+                CardDefId = playedCardDefId,
                 EnergySpent = energyValue,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterEnergySpent, ref eArgs);
@@ -105,12 +123,17 @@ internal static partial class HotCombatEngine
             HotHookArgs sArgs = new()
             {
                 ActorSlot = 0,
-                CardIdx = s.PlayStart + playOffsetInPlay,
-                CardDefId = s.Cards[s.PlayStart + playOffsetInPlay].CardDefId,
+                CardIdx = FindCardIndexByUid(in s, HotPileKind.Play, playedCardUid),
+                CardUid = playedCardUid,
+                CardDefId = playedCardDefId,
                 StarsSpent = starValue,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterStarsSpent, ref sArgs);
         }
+
+        int refreshedPlayIdx = FindCardIndexByUid(in s, HotPileKind.Play, playedCardUid);
+        if (refreshedPlayIdx >= 0)
+            playOffsetInPlay = refreshedPlayIdx - s.PlayStart;
 
         t_requestEndPlayerTurn = false;
         HotRegentNecro.ClearPendingEndTurnRequest();
@@ -233,8 +256,6 @@ internal static partial class HotCombatEngine
             || (card.Flags & HotCardFlags.ExhaustOnNextPlay) != 0
             || (card.LocalKeywordsMask & HotCardKeywordMask.Exhaust) != 0)
         {
-            if ((card.Flags & HotCardFlags.ExhaustOnNextPlay) != 0)
-                card.Flags &= ~HotCardFlags.ExhaustOnNextPlay;
             ExhaustCard(ref s, ref cold, rules, scratch, playIdx, causedByEthereal: false);
         }
         else
@@ -420,7 +441,8 @@ internal static partial class HotCombatEngine
             HotHookArgs locArgs = new()
             {
                 ActorSlot = 0,
-                CardIdx = s.PlayStart + playOffsetInPlay,
+                CardIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid),
+                CardUid = playCardUid,
                 CardDefId = cardDefId,
                 EnergySpent = energyValue,
                 IsAutoPlay = isAutoPlay,
@@ -431,8 +453,10 @@ internal static partial class HotCombatEngine
         }
 
         // 2. Determine play count (Spiral enchantment + ModifyCardPlayCount: Burst, Duplication, EchoForm, OneTwoPunch, SignalBoost, TagTeam, ThrowingAxe)
-        int liveIdxForCount = s.PlayStart + playOffsetInPlay;
-        int playCount = 1 + GetEnchantedReplayCount(in s.Cards[liveIdxForCount], rules);
+        int liveIdxForCount = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
+        int playCount = liveIdxForCount >= 0
+            ? 1 + GetEnchantedReplayCount(in s.Cards[liveIdxForCount], rules)
+            : 1;
         if ((s.ActiveHookMask & (ulong)HotHookMask.ModifyCardPlayCount) != 0)
         {
             HotHookArgs cntArgs = new()
@@ -440,6 +464,7 @@ internal static partial class HotCombatEngine
                 ActorSlot = 0,
                 TargetSlot = targetCreatureSlot,
                 CardIdx = liveIdxForCount,
+                CardUid = playCardUid,
                 CardDefId = cardDefId,
                 PlayCount = playCount,
             };
@@ -458,7 +483,8 @@ internal static partial class HotCombatEngine
 
             scratch.CurrentPlayIndex = playIndex;
             scratch.CardBlockGainsInCurrentPlay = 0;
-            int curPlayIdx = s.PlayStart + playOffsetInPlay;
+            int curPlayIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
+            int curPlayOffset = curPlayIdx >= 0 ? curPlayIdx - s.PlayStart : playOffsetInPlay;
 
             // RecordCardPlayStarted
             s.Counters[(int)HotCounterSlot.CardPlayStartsThisTurn]++;
@@ -479,7 +505,7 @@ internal static partial class HotCombatEngine
                 s.Counters[(int)HotCounterSlot.PowerPlayStartsThisTurn]++;
             }
 
-            if (cardDef.CardId == HotCustomCardId.BrightestFlame && curPlayIdx < s.TotalCardCount)
+            if (cardDef.CardId == HotCustomCardId.BrightestFlame && curPlayIdx >= 0)
                 s.BrightestFlameMaxHpSpent += GetNamedVarInt(in s.Cards[curPlayIdx], cardDef, "MaxHp", 2);
 
             if (cardDef.MelodyTagMask != 0)
@@ -489,7 +515,7 @@ internal static partial class HotCombatEngine
                     if ((cardDef.MelodyTagMask & (1 << m)) != 0)
                     {
                         if (s.Fool.MelodyStarted[m] == 0)
-                            s.Fool.FirstPlayCardUid[m] = s.Cards[curPlayIdx].CardUid;
+                            s.Fool.FirstPlayCardUid[m] = playCardUid;
                         s.Fool.MelodyStarted[m]++;
                     }
                 }
@@ -517,7 +543,8 @@ internal static partial class HotCombatEngine
                 {
                     ActorSlot = 0,
                     TargetSlot = targetCreatureSlot,
-                    CardIdx = s.PlayStart + playOffsetInPlay,
+                    CardIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid),
+                    CardUid = playCardUid,
                     CardDefId = cardDefId,
                     EnergySpent = energyValue,
                     StarsSpent = starValue,
@@ -531,7 +558,10 @@ internal static partial class HotCombatEngine
             }
 
             // Execute card effects (bytecode or custom handler)
-            ExecuteCardEffects(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot, energyValue);
+            curPlayIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
+            if (curPlayIdx >= 0)
+                curPlayOffset = curPlayIdx - s.PlayStart;
+            ExecuteCardEffects(ref s, ref cold, rules, scratch, curPlayOffset, targetEnemySlot, energyValue);
             if (scratch.NeedsChoice)
                 return true;
             if (cardDef.CardId == HotCustomCardId.VoidForm)
@@ -541,7 +571,10 @@ internal static partial class HotCombatEngine
                 break;
 
             // Execute Enchantment OnPlay (Adroit, Corrupted, Inky, Momentum, Sown, Swift)
-            ExecuteEnchantmentOnPlay(ref s, ref cold, rules, scratch, playOffsetInPlay, targetEnemySlot);
+            curPlayIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
+            if (curPlayIdx >= 0)
+                curPlayOffset = curPlayIdx - s.PlayStart;
+            ExecuteEnchantmentOnPlay(ref s, ref cold, rules, scratch, curPlayOffset, targetEnemySlot);
             if (scratch.NeedsChoice)
                 return true;
 
@@ -550,13 +583,15 @@ internal static partial class HotCombatEngine
 
             // RecordCardPlayFinished
             s.HistoryFinishedPlays++;
-            curPlayIdx = s.PlayStart + playOffsetInPlay;
+            if (cardDef.IsShivTag)
+                s.Counters[(int)HotCounterSlot.ShivPlaysFinishedThisTurn]++;
+            curPlayIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
             if (cardDef.CardId is HotCustomCardId.Bounce or HotCustomCardId.ThrummingHatchet or HotCustomCardId.Bolas
-                && curPlayIdx < s.TotalCardCount)
+                && curPlayIdx >= 0)
             {
                 s.Cards[curPlayIdx].CardPrivate = (short)s.PlayerTurnNumber;
             }
-            bool playedWasEthereal = curPlayIdx < s.TotalCardCount
+            bool playedWasEthereal = curPlayIdx >= 0
                 && IsCardEthereal(in s, in s.Cards[curPlayIdx], rules);
             if (playedWasEthereal)
                 s.HistoryEtherealPlays++;
@@ -576,7 +611,7 @@ internal static partial class HotCombatEngine
             {
                 s.Counters[(int)HotCounterSlot.AttacksPlayedThisTurn]++;
                 if (rules.HasRelic(HotRelicId.HistoryCourse)
-                    && curPlayIdx < s.TotalCardCount
+                    && curPlayIdx >= 0
                     && (s.Cards[curPlayIdx].Flags & HotCardFlags.IsDupe) == 0)
                 {
                     s.HistoryCourseCard = s.Cards[curPlayIdx];
@@ -627,7 +662,8 @@ internal static partial class HotCombatEngine
                 {
                     ActorSlot = 0,
                     TargetSlot = targetCreatureSlot,
-                    CardIdx = s.PlayStart + playOffsetInPlay,
+                    CardIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid),
+                    CardUid = playCardUid,
                     CardDefId = cardDefId,
                     EnergySpent = energyValue,
                     StarsSpent = starValue,
@@ -653,8 +689,9 @@ internal static partial class HotCombatEngine
                 TriggerRightHandHandAfterCardPlayedLate(ref s, rules, energyValue);
 
             // Enchantment AfterCardPlayed (disable single-use Sown/Swift/Glam/Vigorous, scale Goopy)
-            if (playOffsetInPlay < s.PlayCount && s.Cards[s.PlayStart + playOffsetInPlay].CardUid == playCardUid)
-                ExecuteEnchantmentAfterPlay(ref s, rules, s.PlayStart + playOffsetInPlay);
+            int enchAfterIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
+            if (enchAfterIdx >= 0)
+                ExecuteEnchantmentAfterPlay(ref s, rules, enchAfterIdx);
 
             // CardModel.OnPlayWrapper (CardModel.cs:2140-2149): TransformIntoAfterPlay on last play in series (MourningBlow -> Sadness).
             if (playIndex == playCount - 1 && cardDef.CardId == HotCustomCardId.MourningBlow && !IsOverOrEnding(in s))
@@ -818,6 +855,7 @@ internal static partial class HotCombatEngine
                     break;
 
                 int drawnIdx = s.HandCount - 1;
+                ushort drawnUid = s.Cards[drawnIdx].CardUid;
                 ushort drawnDefId = s.Cards[drawnIdx].CardDefId;
                 lastDrawnCardDefId = drawnDefId;
                 HotCardDef drawnDef = rules.Cards[drawnDefId];
@@ -857,6 +895,7 @@ internal static partial class HotCombatEngine
                     {
                         ActorSlot = 0,
                         CardIdx = drawnIdx,
+                        CardUid = drawnUid,
                         CardDefId = drawnDefId,
                         FromHandDraw = fromHandDraw,
                     };
@@ -900,6 +939,7 @@ internal static partial class HotCombatEngine
             {
                 ActorSlot = 0,
                 CardIdx = dstIdx,
+                CardUid = cardUid,
                 CardDefId = cardDefId,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardDiscarded, ref discArgs);
@@ -964,6 +1004,7 @@ internal static partial class HotCombatEngine
                 {
                     ActorSlot = 0,
                     CardIdx = dstIdx,
+                    CardUid = uid,
                     CardDefId = cardDefId,
                 };
                 DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardDiscarded, ref discArgs);
@@ -1011,6 +1052,7 @@ internal static partial class HotCombatEngine
         int exhaustedIdx,
         bool causedByEthereal)
     {
+        ushort exhaustedUid = s.Cards[exhaustedIdx].CardUid;
         ushort cardDefId = s.Cards[exhaustedIdx].CardDefId;
         HotCardDef def = rules.Cards[cardDefId];
 
@@ -1039,6 +1081,7 @@ internal static partial class HotCombatEngine
             {
                 ActorSlot = 0,
                 CardIdx = exhaustedIdx,
+                CardUid = exhaustedUid,
                 CardDefId = cardDefId,
                 CausedByEthereal = causedByEthereal,
             };
@@ -1255,17 +1298,22 @@ internal static partial class HotCombatEngine
             {
                 ActorSlot = 0,
                 CardIdx = addedIdx,
+                CardUid = cloneUid,
                 CardDefId = clone.CardDefId,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
+            addedIdx = enterArgs.CardIdx;
         }
 
         if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardGenerated) != 0)
         {
+            if ((uint)addedIdx >= (uint)s.TotalCardCount || s.Cards[addedIdx].CardUid != cloneUid)
+                addedIdx = FindCardIndexByUidAnyPile(in s, cloneUid);
             HotHookArgs genArgs = new()
             {
                 ActorSlot = 0,
                 CardIdx = addedIdx,
+                CardUid = cloneUid,
                 CardDefId = clone.CardDefId,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardGenerated, ref genArgs);
@@ -1350,6 +1398,7 @@ internal static partial class HotCombatEngine
             actualOffset = Math.Clamp(dstOffset, 0, zoneCount);
 
         int addedIdx = HotPiles.AddCard(ref s, in card, actualPile, actualOffset);
+        ushort addedUid = s.Cards[addedIdx].CardUid;
         if (createdByPlayer)
         {
             s.HistoryCardsGenerated++;
@@ -1386,24 +1435,34 @@ internal static partial class HotCombatEngine
             {
                 ActorSlot = createdByPlayer ? (byte)0 : (byte)0xFF,
                 CardIdx = addedIdx,
+                CardUid = addedUid,
                 CardDefId = card.CardDefId,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
+            addedIdx = enterArgs.CardIdx;
         }
 
         if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardGenerated) != 0)
         {
+            if ((uint)addedIdx >= (uint)s.TotalCardCount || s.Cards[addedIdx].CardUid != addedUid)
+                addedIdx = FindCardIndexByUidAnyPile(in s, addedUid);
             HotHookArgs genArgs = new()
             {
                 ActorSlot = createdByPlayer ? (byte)0 : (byte)0xFF,
                 CardIdx = addedIdx,
+                CardUid = addedUid,
                 CardDefId = card.CardDefId,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardGenerated, ref genArgs);
+            addedIdx = genArgs.CardIdx;
         }
+
+        if ((uint)addedIdx >= (uint)s.TotalCardCount || s.Cards[addedIdx].CardUid != addedUid)
+            addedIdx = FindCardIndexByUidAnyPile(in s, addedUid);
 
         // BansheesCry.AfterCardEnteredCombat: reduce cost by Energy var per Ethereal card already finished this combat (non-clones)
         if (def.CardId == HotCustomCardId.BansheesCry
+            && addedIdx >= 0
             && (s.Cards[addedIdx].Flags & HotCardFlags.IsClone) == 0
             && s.HistoryEtherealPlays > 0)
         {

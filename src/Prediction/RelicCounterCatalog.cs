@@ -33,6 +33,24 @@ internal static class RelicCounterCatalog
         _ => null,
     };
 
+    internal static int ReadLiveCounter(RelicModel relic, int period) => relic switch
+    {
+        // Read underlying saved counter properties directly instead of DisplayAmount,
+        // because DisplayAmount transiently returns Period during the 1s flash animation.
+        HappyFlower flower => RelicCounterPolicy.NormalizeCounter(flower.TurnsSeen, period),
+        FakeHappyFlower flower => RelicCounterPolicy.NormalizeCounter(flower.TurnsSeen, period),
+        Pendulum pendulum => RelicCounterPolicy.NormalizeCounter(pendulum.TurnsSeen, period),
+        PollinousCore core => RelicCounterPolicy.NormalizeCounter(core.TurnsSeen, period),
+        PenNib penNib => RelicCounterPolicy.NormalizeCounter(penNib.AttacksPlayed, period),
+        Nunchaku nunchaku => RelicCounterPolicy.NormalizeCounter(nunchaku.AttacksPlayed, period),
+        TuningFork fork => RelicCounterPolicy.NormalizeCounter(fork.SkillsPlayed, period),
+        JossPaper paper => RelicCounterPolicy.NormalizeCounter(paper.CardsExhausted, period),
+        IronClub club => RelicCounterPolicy.NormalizeCounter(club.CardsPlayed, period),
+        GalacticDust dust => RelicCounterPolicy.NormalizeCounter(dust.StarsSpent, period),
+        MeatOnTheBone => 0,
+        _ => throw new ArgumentOutOfRangeException(nameof(relic), relic.GetType().Name, "Unsupported relic counter model."),
+    };
+
     public static string UnavailableReason(RelicModel relic) => relic switch
     {
         VelvetChoker or PaelsLegion or Shuriken or Pocketwatch or PaelsFlesh or StoneCalendar
@@ -48,16 +66,40 @@ internal static class RelicCounterCatalog
     public static IReadOnlyList<RelicCounterTarget> Capture(ICombatState combat, bool enabled, IEnumerable<RelicCounterRule> rules)
     {
         if (!enabled) return Array.Empty<RelicCounterTarget>();
-        var owned = combat.Players.SelectMany(player => player.Relics).Where(relic => !relic.IsMelted)
-            .Select(Identify).OfType<RelicCounterId>().ToHashSet();
-        return Array.AsReadOnly(rules.Where(rule => rule.Enabled && owned.Contains(rule.Id))
-            .Select(rule =>
-            {
-                int period = All.Single(entry => entry.Id == rule.Id).Period;
-                if (rule.Maximum >= period) throw new ArgumentException("Relic range exceeds its counter period.");
-                return new RelicCounterTarget(rule.Id, rule.Minimum, rule.Maximum, rule.HpAllowance, period, rule.Priority);
-            })
-            .Where(target => target.Minimum > 0 || target.Maximum < target.Period - 1)
-            .OrderBy(target => target.Id).ToArray());
+
+        Dictionary<RelicCounterId, int> ownedCounters = [];
+        foreach (RelicModel relic in combat.Players.SelectMany(player => player.Relics))
+        {
+            if (relic.IsMelted)
+                continue;
+            if (Identify(relic) is not { } id || ownedCounters.ContainsKey(id))
+                continue;
+            int period = PeriodOf(id);
+            ownedCounters[id] = ReadLiveCounter(relic, period);
+        }
+
+        if (ownedCounters.Count == 0)
+            return Array.Empty<RelicCounterTarget>();
+
+        List<RelicCounterCandidate> candidates = [];
+        foreach (RelicCounterRule rule in rules)
+        {
+            if (!rule.Enabled || !ownedCounters.TryGetValue(rule.Id, out int currentValue))
+                continue;
+            int period = PeriodOf(rule.Id);
+            if (rule.Maximum >= period)
+                throw new ArgumentException("Relic range exceeds its counter period.");
+            if (rule.Minimum < 0 || rule.Maximum < rule.Minimum)
+                throw new ArgumentException("Invalid relic counter policy.", nameof(rules));
+            if (rule.Minimum <= 0 && rule.Maximum >= period - 1)
+                continue;
+            RelicCounterTarget target = new(rule.Id, rule.Minimum, rule.Maximum, rule.HpAllowance, period, rule.Priority);
+            candidates.Add(new RelicCounterCandidate(target, currentValue));
+        }
+
+        RelicCounterTarget[] resolved = RelicCounterPolicy.ResolveConflicts(candidates);
+        return resolved.Length == 0 ? Array.Empty<RelicCounterTarget>() : Array.AsReadOnly(resolved);
     }
+
+    private static int PeriodOf(RelicCounterId id) => All.Single(entry => entry.Id == id).Period;
 }

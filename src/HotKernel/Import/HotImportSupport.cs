@@ -204,7 +204,7 @@ internal static class HotImportSupport
         string vars = string.Join(';', card.DynamicVars
             .OrderBy(static item => item.Key, StringComparer.Ordinal)
             .Where(item => IsSemanticVar(card, item.Key, item.Value))
-            .Select(static item => $"{item.Key}={item.Value.BaseValue}"));
+            .Select(static item => $"{item.Key}={HotContinuationStamp.FormatNormalizedDecimal(item.Value.BaseValue)}"));
         string keywords = string.Join(',', card.GetKeywordsWithSources(KeywordSources.Local).Order());
 
         StringBuilder key = new(192);

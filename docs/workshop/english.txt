@@ -1,22 +1,16 @@
 [h1]Combat Solver[/h1]
 
-Combat Solver is a single-player combat planner for Slay the Spire 2.
-
-Once combat starts, it simulates your hand, draw and discard piles, enemy actions, potions, relics and future turns in the background. The overlay shows the best route found within your search budget, projected HP loss and key actions. Follow the advice yourself, execute one turn, or let auto-play handle the fight.
+Combat Solver is a single-player combat route planner for Slay the Spire 2. Once combat begins, it simulates your hand, piles, enemy intents, potions, relics, and future turns in the background to find a recommended line and projected HP loss. Follow the advice yourself, play one turn, or turn on auto-play to handle the fight.
 
 [h2]Features[/h2]
 
 [list]
-[*]Multi-turn planning: explores future draws, shuffles, enemy actions and resources, not just the current hand.
-[*]Readable routes: displays cards, targets, choices, potions, end-turn actions and important relic triggers by turn.
-[*]Projected HP loss: prioritizes survival, confirmed victory and total combat HP loss rather than immediate damage alone.
-[*]Per-potion policies: choose Smart use, Always use, or Disabled / Protected for each potion, and customize each potion's HP threshold. Newly acquired potions default to Smart use.
-[*]Three ways to play: advice only, execute this turn, or continuous auto-play.
-[*]Stop controls: interrupt a search from the overlay and start a new calculation when ready.
-[*]Native card choices: turn-start choices and draw/discard selections still use the game's own screens and animations.
-[*]Route reuse: continues an existing plan when the live game matches its prediction; recalculates when the state changes.
-[*]Adjustable budgets: Low, Medium, High, Very High and Custom presets, with configurable parallelism and custom parameters.
-[*]Bug reports: upload a report from Settings, or export it locally for manual submission.
+[*][b]Fast multi-turn engine[/b]: Simulates future draws, shuffles, enemy intents, relics, and powers to optimize survival and total combat HP loss rather than immediate damage alone.
+[*][b]Clear routes & flexible control[/b]: Displays card plays, targets, choices, potions, key relic triggers, and projected HP loss/healing by turn. Review only, click [b]Play turn[/b], or toggle [b]Auto: On[/b] (with optional auto-enable each combat). You can also [b]Stop search[/b], [b]Use candidate[/b], [b]Freeze route[/b], or toggle the overlay anytime with Ctrl+F9.
+[*][b]Per-potion policies & HP thresholds[/b]: Open [b]Potions[/b] to set each held potion to Smart use, Always use, or Disabled / Protected, and customize each potion's [b]HP threshold[/b] directly (saved per potion type; newly acquired potions default to Smart use).
+[*][b]Relic counter, growth & boss policies[/b]: Target ending counters, extra HP allowances, and priorities (1–3) for cyclic relics such as Happy Flower, Pendulum, Pen Nib, and Meat on the Bone; configure HP allowances for out-of-combat scaling cards, toggle [b]Ignore out-of-combat gains[/b], cap Brightest Flame max-HP cost, and pick Progression first or Minimize HP loss for Act 1/2 and Final bosses.
+[*][b]Native choices & route reuse[/b]: Turn-start and draw/discard choices keep the game's native screens and animations; unchanged states reuse the existing route across turns and only recalculate when the live state diverges.
+[*][b]Built-in bug reports[/b]: Submit issues from [b]Settings > Reports > Upload report[/b] (with automatic classification), or use [b]Export report[/b] to save a local archive.
 [/list]
 
 [h2]Getting started[/h2]
@@ -24,41 +18,43 @@ Once combat starts, it simulates your hand, draw and discard piles, enemy action
 [olist]
 [*]Subscribe to and enable the required RitsuLib mod.
 [*]Enable Combat Solver and enter a single-player combat.
-[*]Wait for cards and turn-start effects to finish resolving. The solver starts automatically by default.
-[*]Review the recommended route, execute the current turn, or enable auto-play.
+[*]Wait for the opening draw and turn-start effects; calculation starts automatically by default.
+[*]Follow the suggested plays, click [b]Play turn[/b], or toggle [b]Auto: On[/b].
 [/olist]
-
-[h2]Code origins, permission and credits[/h2]
-
-Combat Solver's embedded combat simulation core uses and adapts parts of Random Foreseer, with permission from its original author, [b]hotwords123[/b].
-
-That code relationship remains in the current version, including foundations for combat state, card piles, RNG, forks, history and mirrors. Combat Solver builds on this work with multi-turn search, route reuse, automatic execution, native choice handling and performance controls. It does not load or distribute the Random Foreseer assembly as a runtime dependency; this separation does not change the origins of the code.
-
-Thank you to hotwords123 and Random Foreseer. Permission, attribution and third-party notices are included with the source and every binary distribution.
-
-Random Foreseer: search for Random Foreseer on Steam Workshop, or hotwords123/StS2.RandomForeseer on GitHub.
-Combat Solver source: search for Torch1230/CombatSolver on GitHub.
 
 [h2]Requirements and compatibility[/h2]
 
 [list]
 [*]Requires RitsuLib 0.6.11 or later.
-[*]Supports single-player Standard, Dread and Blitz modes in Slay the Spire 2 v0.113.1 (compatible with 0.113.0).
-[*]Single-player combat only; multiplayer is not supported.
-[*]Background search does not modify the live game's RNG.
-[*]Search is bounded by time and node budgets. The recommended route is the best found within those limits, not a guarantee of a mathematically optimal solution.
+[*]Supports Slay the Spire 2 v0.113.1 single-player Standard, Dread, and Blitz modes (compatible with 0.113.0).
+[*]Single-player combat only; multiplayer and gameplay-altering content mods are not supported.
+[*]Background search never modifies the live game's RNG.
+[*]Search is bounded by your solve-time limit. The displayed route is the best found within that budget, not a guarantee of a mathematically optimal solution.
 [/list]
 
 [h2]Performance[/h2]
 
-The redesigned high-speed engine runs with dramatically faster solving and much lower memory usage. It defaults to the Medium preset with parallelism automatically matched to your CPU, and both can be adjusted in Settings. Search runs in the background to minimize impact on gameplay and animations.
+The redesigned high-speed, low-memory engine works out of the box with no memory-management tweaks needed. Normal fights typically resolve almost instantly, while complex fights automatically deepen up to your [b]Max combat solve time[/b] (default 4 s, configurable 1–15 s). [b]Max parallel threads[/b] scales automatically to your CPU and can be tuned or set to single-threaded in Settings.
+
+[h2]Online presence[/h2]
+
+Online presence is enabled by default (sharing online status, anonymous run statistics, and eligible Ascension 10 Act 3 boss flawless routes) and can be turned off anytime under [b]Settings > General > Online presence[/b].
+
+[h2]Code origins, permission and credits[/h2]
+
+Combat Solver's embedded combat simulation core uses and adapts parts of Random Foreseer with permission from its original author, [b]hotwords123[/b]. Both Random Foreseer and Combat Solver are licensed under the MIT License.
+
+That lineage remains in the current version, including foundations for combat state, piles, RNG, forks, history, and mirrors, extended with multi-turn search, route reuse, auto-play, and native choice handling. Combat Solver does not load or distribute the Random Foreseer assembly at runtime; this separation does not change the origins of the code.
+
+Thank you to hotwords123 and Random Foreseer. Attribution and notices (THIRD_PARTY_NOTICES.md and LICENSE) ship with the source and every binary release.
+
+Random Foreseer: search for Random Foreseer on Steam Workshop, or hotwords123/StS2.RandomForeseer on GitHub.
+Combat Solver source: search for Torch1230/CombatSolver on GitHub.
 
 [h2]Community and feedback[/h2]
 
 [b]QQ community: 1106541324[/b]
 
-Share builds, discuss runs and suggest improvements. For incorrect routes, unexpected recalculations, execution failures or game errors, use Upload report in the mod's Settings. Reports include automatic issue classification to help diagnosis. The reporting backend was developed with community support from iRyougi. You can also use Export report to keep a local copy.
-
-When following up, include the report ID and a description of what happened.
+Share builds, discuss runs, and suggest improvements. For wrong routes, unexpected recalculations, execution issues, or errors, use [b]Upload report[/b] in Settings and include your report ID with a brief description, or use [b]Export report[/b] to save a local copy.
 
 Author: Torch

@@ -152,6 +152,12 @@ internal static class PlayerBeatReplayRunner
 
         [JsonPropertyName("old_solver_baseline_turn")]
         public int OldSolverBaselineTurn { get; init; } = 1;
+
+        [JsonPropertyName("player_checkpoint_id")]
+        public string? PlayerCheckpointId { get; init; }
+
+        [JsonPropertyName("player_event_cursor")]
+        public int? PlayerEventCursor { get; init; }
     }
 
     private sealed record RecordedOriginJson
@@ -207,7 +213,58 @@ internal static class PlayerBeatReplayRunner
         bool OldSolverWon,
         int OldSolverHpLoss,
         int OldSolverPotionsUsed,
-        int OldSolverTurns);
+        int OldSolverTurns,
+        string? PlayerCheckpointId = null,
+        int? PlayerEventCursor = null,
+        int PlayerDeathSaveUseCount = 0);
+
+    private readonly record struct RootPotionSlotInfo(
+        int Slot,
+        string Entry,
+        short StrategicCostHp,
+        bool IsCombatUsable);
+
+    private readonly record struct RootCanonicalContext(
+        bool HasPolicy,
+        HotSearchPolicy Policy,
+        short[] RootSlotCosts,
+        RootPotionSlotInfo[] RootPotions)
+    {
+        public static RootCanonicalContext Empty => new(false, default, [], []);
+    }
+
+    private sealed record PlayerCheckpointSnapshot(
+        int EventCursor,
+        string CheckpointId,
+        int CurrentHp,
+        int MaxHp,
+        int UnusedLizardTails,
+        Dictionary<int, string> PotionsBySlot);
+
+    private sealed record MatchedRouteTelemetry(
+        bool Won,
+        int ProjectedBattleHpLost,
+        int TotalPotionsUsed,
+        int Turns,
+        int? FinalHp,
+        int DeathSaveUseCount,
+        int DeathSaveRelicHpRestored,
+        int DeathSavePotionHpRestored);
+
+    private sealed record PlayerBundleTelemetry(
+        int InitialUnusedLizardTails,
+        int InitialFairyCount,
+        int DeathSaveUseCount,
+        int LizardTailUseCount,
+        int FairyUseCount,
+        int DeathSaveHpRestored,
+        int? TelemetryFinalHp,
+        int LatestObservedMaxHp,
+        int[] ConsumedRootPotionSlots,
+        int AlchemizePlayCount)
+    {
+        public static PlayerBundleTelemetry Empty => new(0, 0, 0, 0, 0, 0, null, 0, [], 0);
+    }
 
     private sealed class PreparedBundle : IDisposable
     {
@@ -225,6 +282,7 @@ internal static class PlayerBeatReplayRunner
         public BundleCheckpointSummary? ReadyCheckpoint { get; init; }
         public required IReadOnlyList<BundleCheckpointSummary> AllCheckpoints { get; init; }
         public required BundleGroundTruth GroundTruth { get; init; }
+        public required PlayerBundleTelemetry PlayerTelemetry { get; init; }
         public bool ModelHashMatches => Origin.ModelIdHash == ModelIdSerializationCache.Hash;
 
         public PreparedBundle(string? tempDir) => _tempDir = tempDir;
@@ -290,10 +348,16 @@ internal static class PlayerBeatReplayRunner
         double PlayerEffectiveCostHp,
         bool CombatStartStampMatched,
         bool ReadyStampMatched,
-        double RestoreMs);
+        double RestoreMs,
+        int PlayerDeathSaveUseCount = 0,
+        BossHpRelief BossHpRelief = BossHpRelief.None,
+        double? SolverCanonicalV = null,
+        double? PlayerCanonicalV = null,
+        PlayerVerdict? VsPlayerCanonicalV = null);
 
     private sealed record CapturedChoiceRecord(
         string[] OptionEntries,
+        int[] OptionUpgrades,
         string[] OptionStateKeys,
         int[] SelectedIndices,
         string[] SelectedEntries,
@@ -335,6 +399,14 @@ internal static class PlayerBeatReplayRunner
                     if (peek.eventType == CombatReplayEventType.PlayerChoice)
                         break;
                     if (peek.eventType is CombatReplayEventType.HookAction or CombatReplayEventType.ResumeAction)
+                    {
+                        cursor++;
+                        continue;
+                    }
+                    // Enemy-turn and next-turn-start choices follow the system ReadyToBeginEnemyTurnAction gate.
+                    if (peek.eventType == CombatReplayEventType.GameAction
+                        && string.Equals(_events[cursor].Origin, "system", StringComparison.Ordinal)
+                        && peek.action is NetReadyToBeginEnemyTurnAction)
                     {
                         cursor++;
                         continue;
@@ -386,6 +458,7 @@ internal static class PlayerBeatReplayRunner
 
                 CapturedChoices.Add(new CapturedChoiceRecord(
                     OptionEntries: candidates.Select(static c => c.Id.Entry).ToArray(),
+                    OptionUpgrades: candidates.Select(static c => c.CurrentUpgradeLevel).ToArray(),
                     OptionStateKeys: candidates.Select(static c => HotImportSupport.FormatLiveChoiceCardKey(c)).ToArray(),
                     SelectedIndices: selectedIndices,
                     SelectedEntries: selected.Select(static c => c.Id.Entry).ToArray(),
@@ -586,15 +659,24 @@ internal static class PlayerBeatReplayRunner
 
             List<DeployReplanDiff> deployDiffs = [];
             FightOutcomeRecord solverOutcome;
+            RootCanonicalContext rootContext;
             if (deploySolver)
             {
                 solverOutcome = SolveAndDeployBundleCombat(
                     loop, combat, gt.CaseId, "single", $"{gt.CharacterId.ToLowerInvariant()}_{gt.EncounterType.ToLowerInvariant()}",
                     gt.CharacterId, gt.EncounterId, resolvedProfile, parsedPotionPolicy, dop, budgetMs,
-                    out short[] rootSlotCosts, deployDiffs);
-                PrintSingleBundleComparison(gt, solverOutcome, rootSlotCosts, deployDiffs);
+                    out rootContext, deployDiffs);
+                PrintSingleBundleComparison(gt, solverOutcome, in rootContext, bundle.PlayerTelemetry, deployDiffs);
                 if (dumpDiffPath != null && !lockstepActions)
                 {
+                    double? solverCanonicalV = null;
+                    double? playerCanonicalV = null;
+                    PlayerVerdict? canonicalVerdict = gt.HasPlayerOutcome
+                        ? EvaluateCanonicalVAgainstPlayer(
+                            solverOutcome, gt.PlayerWon, gt.PlayerHpLoss, gt.PlayerPotionsUsed,
+                            in rootContext, bundle.PlayerTelemetry,
+                            out solverCanonicalV, out playerCanonicalV)
+                        : null;
                     WriteJsonFile(dumpDiffPath, new
                     {
                         bundle_path = bundle.SourcePath,
@@ -602,6 +684,11 @@ internal static class PlayerBeatReplayRunner
                         restore = verify,
                         solver_outcome = solverOutcome,
                         ground_truth = gt,
+                        player_death_save_use_count = gt.PlayerDeathSaveUseCount,
+                        boss_hp_relief = rootContext.HasPolicy ? rootContext.Policy.StrategicBossHpRelief.ToString() : null,
+                        solver_canonical_v = solverCanonicalV,
+                        player_canonical_v = playerCanonicalV,
+                        vs_player_canonical_v = canonicalVerdict?.ToString(),
                         deploy_replans = deployDiffs,
                     });
                     Console.WriteLine($"diff_json={dumpDiffPath}");
@@ -614,10 +701,18 @@ internal static class PlayerBeatReplayRunner
                 solverOutcome = SolveRestoredRoot(
                     combat, gt.CaseId, "single", $"{gt.CharacterId.ToLowerInvariant()}_{gt.EncounterType.ToLowerInvariant()}",
                     gt.CharacterId, gt.EncounterId, resolvedProfile, searchMode, parsedPotionPolicy, dop, budgetMs,
-                    out short[] rootSlotCosts);
-                PrintSingleBundleComparison(gt, solverOutcome, rootSlotCosts, deployDiffs);
+                    out rootContext);
+                PrintSingleBundleComparison(gt, solverOutcome, in rootContext, bundle.PlayerTelemetry, deployDiffs);
                 if (dumpDiffPath != null && !lockstepActions)
                 {
+                    double? solverCanonicalV = null;
+                    double? playerCanonicalV = null;
+                    PlayerVerdict? canonicalVerdict = gt.HasPlayerOutcome
+                        ? EvaluateCanonicalVAgainstPlayer(
+                            solverOutcome, gt.PlayerWon, gt.PlayerHpLoss, gt.PlayerPotionsUsed,
+                            in rootContext, bundle.PlayerTelemetry,
+                            out solverCanonicalV, out playerCanonicalV)
+                        : null;
                     WriteJsonFile(dumpDiffPath, new
                     {
                         bundle_path = bundle.SourcePath,
@@ -625,6 +720,11 @@ internal static class PlayerBeatReplayRunner
                         restore = verify,
                         solver_outcome = solverOutcome,
                         ground_truth = gt,
+                        player_death_save_use_count = gt.PlayerDeathSaveUseCount,
+                        boss_hp_relief = rootContext.HasPolicy ? rootContext.Policy.StrategicBossHpRelief.ToString() : null,
+                        solver_canonical_v = solverCanonicalV,
+                        player_canonical_v = playerCanonicalV,
+                        vs_player_canonical_v = canonicalVerdict?.ToString(),
                     });
                     Console.WriteLine($"diff_json={dumpDiffPath}");
                 }
@@ -997,7 +1097,7 @@ internal static class PlayerBeatReplayRunner
             readyMatched = verify.ReadyStampMatched;
             restoreMs = verify.RestoreMs;
 
-            short[] rootSlotCosts;
+            RootCanonicalContext rootContext;
             FightOutcomeRecord outcome;
             if (deploySolver)
             {
@@ -1006,7 +1106,7 @@ internal static class PlayerBeatReplayRunner
                     loop, combat, entry.CaseId, entry.Split, group,
                     entry.Character, entry.Encounter,
                     resolvedProfile, potionPolicy, dop, budgetMs,
-                    out rootSlotCosts, deployDiffs);
+                    out rootContext, deployDiffs);
             }
             else
             {
@@ -1014,19 +1114,37 @@ internal static class PlayerBeatReplayRunner
                     combat, entry.CaseId, entry.Split, group,
                     entry.Character, entry.Encounter,
                     resolvedProfile, searchMode, potionPolicy, dop, budgetMs,
-                    out rootSlotCosts);
+                    out rootContext);
             }
 
+            short[] rootSlotCosts = rootContext.RootSlotCosts;
+            int playerDeathSaveUseCount = bundle.PlayerTelemetry.DeathSaveUseCount;
             PlayerVerdict vsPlayer = EvaluateAgainstTarget(
                 outcome, entry.PlayerWon, entry.PlayerHpLoss, entry.PlayerPotionsUsed,
-                rootSlotCosts, out int playerPotEst, out double solverEffCost, out double playerEffCost);
+                rootSlotCosts, out int playerPotEst, out double solverEffCost, out double playerEffCost,
+                targetDeathSaveUseCount: playerDeathSaveUseCount);
+            // Old-solver manifest rows do not record death saves, so keep targetDeathSaveUseCount = 0 for vsOld.
             PlayerVerdict vsOld = EvaluateAgainstTarget(
                 outcome, entry.OldSolverWon, entry.OldSolverHpLoss, entry.OldSolverPotionsUsed,
-                rootSlotCosts, out _, out _, out _);
+                rootSlotCosts, out _, out _, out _,
+                targetDeathSaveUseCount: 0);
+
+            PlayerVerdict? vsPlayerCanonicalV = EvaluateCanonicalVAgainstPlayer(
+                outcome, entry.PlayerWon, entry.PlayerHpLoss, entry.PlayerPotionsUsed,
+                in rootContext, bundle.PlayerTelemetry,
+                out double? solverCanonicalV, out double? playerCanonicalV);
+            BossHpRelief bossHpRelief = rootContext.HasPolicy
+                ? rootContext.Policy.StrategicBossHpRelief
+                : BossHpRelief.None;
 
             return new PlayerCorpusCaseResult(
                 entry, outcome, vsPlayer, vsOld, playerPotEst, solverEffCost, playerEffCost,
-                startMatched, readyMatched, restoreMs);
+                startMatched, readyMatched, restoreMs,
+                PlayerDeathSaveUseCount: playerDeathSaveUseCount,
+                BossHpRelief: bossHpRelief,
+                SolverCanonicalV: solverCanonicalV,
+                PlayerCanonicalV: playerCanonicalV,
+                VsPlayerCanonicalV: vsPlayerCanonicalV);
         }
         catch (Exception ex)
         {
@@ -1046,7 +1164,12 @@ internal static class PlayerBeatReplayRunner
             };
             return new PlayerCorpusCaseResult(
                 entry, errOutcome, PlayerVerdict.Error, PlayerVerdict.Error,
-                0, 0.0, 0.0, startMatched, readyMatched, restoreMs);
+                0, 0.0, 0.0, startMatched, readyMatched, restoreMs,
+                PlayerDeathSaveUseCount: 0,
+                BossHpRelief: BossHpRelief.None,
+                SolverCanonicalV: null,
+                PlayerCanonicalV: null,
+                VsPlayerCanonicalV: PlayerVerdict.Error);
         }
         finally
         {
@@ -1169,6 +1292,10 @@ internal static class PlayerBeatReplayRunner
 
             BundleGroundTruth groundTruth = ExtractGroundTruth(
                 inputPath, index, reportJson, originSavePath, startCp, manifestOverride);
+            bool modelHashMatches = origin.ModelIdHash == ModelIdSerializationCache.Hash;
+            PlayerBundleTelemetry playerTelemetry = ExtractPlayerBundleTelemetry(
+                rootDir, index, originSavePath, startCp, summaries, events, modelHashMatches, groundTruth);
+            groundTruth = groundTruth with { PlayerDeathSaveUseCount = playerTelemetry.DeathSaveUseCount };
 
             return new PreparedBundle(tempDir)
             {
@@ -1184,6 +1311,7 @@ internal static class PlayerBeatReplayRunner
                 ReadyCheckpoint = readyCp,
                 AllCheckpoints = summaries,
                 GroundTruth = groundTruth,
+                PlayerTelemetry = playerTelemetry,
             };
         }
         catch
@@ -1507,6 +1635,40 @@ internal static class PlayerBeatReplayRunner
             Steps: stepDiffs.ToArray());
     }
 
+    private static RootCanonicalContext CaptureRootCanonicalContext(
+        CombatRootSnapshot root,
+        BattleDamageSnapshot damage,
+        SearchPolicySnapshot policy)
+    {
+        HotRootBundle rootBundle = root.HotRoot;
+        CombatHotState rootHotState = rootBundle.RootState;
+        HotRules rules = rootBundle.Rules;
+        short[] slotCosts = HotPotionPolicy.BuildRootSlotCosts(
+            root, in rootHotState, rules, policy.PotionStrategy.Thresholds);
+        HotSearchPolicy hotPolicy = new(root, damage, policy, rules, in rootHotState, slotCosts);
+
+        int slotCount = Math.Min((int)rootHotState.PotionSlotCount, HotLimits.MaxPotions);
+        List<RootPotionSlotInfo> rootPotions = new(slotCount);
+        for (int s = 0; s < slotCount; s++)
+        {
+            ushort defId = rootHotState.Potions[s];
+            if (defId == 0 || defId >= rules.Potions.Length)
+                continue;
+            HotPotionDef pDef = rules.Potions[defId];
+            short cost = (uint)s < (uint)slotCosts.Length && slotCosts[s] >= 0
+                ? slotCosts[s]
+                : HotPotionPolicy.ComputePotionDefCost(
+                    pDef, hotPolicy.HasRenewablePotionShapedRock, hotPolicy.InitialPlayerMaxHp, hotPolicy.PotionThresholds);
+            rootPotions.Add(new RootPotionSlotInfo(
+                Slot: s,
+                Entry: pDef.Entry,
+                StrategicCostHp: cost,
+                IsCombatUsable: HotPotionPolicy.IsDefCombatUsable(pDef)));
+        }
+
+        return new RootCanonicalContext(true, hotPolicy, slotCosts, rootPotions.ToArray());
+    }
+
     private static FightOutcomeRecord SolveRestoredRoot(
         CombatState combat,
         string fightId,
@@ -1519,7 +1681,7 @@ internal static class PlayerBeatReplayRunner
         SolverPotionPolicy potionPolicy,
         int dop,
         int budgetMs,
-        out short[] rootSlotCosts)
+        out RootCanonicalContext rootContext)
     {
         CombatRootSnapshot root = CombatRootSnapshot.Capture(combat);
         SolverDisplayNames names = SolverDisplayNames.Capture(combat);
@@ -1537,9 +1699,7 @@ internal static class PlayerBeatReplayRunner
             EnableTurnBoundaryRollouts = !ModRuntime.DisableTurnBoundaryRolloutsOverride,
         };
 
-        CombatHotState rootHotState = root.HotRoot.RootState;
-        rootSlotCosts = HotPotionPolicy.BuildRootSlotCosts(
-            root, in rootHotState, root.HotRoot.Rules, policy.PotionStrategy.Thresholds);
+        rootContext = CaptureRootCanonicalContext(root, damage, policy);
 
         Stopwatch sw = Stopwatch.StartNew();
         SolverResult solved = searchMode == "Coordinator"
@@ -1564,7 +1724,7 @@ internal static class PlayerBeatReplayRunner
         SolverPotionPolicy potionPolicy,
         int dop,
         int budgetMs,
-        out short[] rootSlotCosts,
+        out RootCanonicalContext rootContext,
         List<DeployReplanDiff> replanDiffs)
     {
         Player player = LocalContext.GetMe(combat)!;
@@ -1576,7 +1736,8 @@ internal static class PlayerBeatReplayRunner
         int initialFairyCount = player.PotionSlots
             .Count(static p => p != null && string.Equals(p.Id.Entry, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal));
 
-        rootSlotCosts = [];
+        rootContext = RootCanonicalContext.Empty;
+        short[] rootSlotCosts = [];
         HotSearchPolicy rootHotPolicy = default;
         bool hasRootHotPolicy = false;
         ushort rootOccupiedMask = 0;
@@ -1598,8 +1759,26 @@ internal static class PlayerBeatReplayRunner
 
         SolverResult? activePlan = null;
         const int maxTurns = 40;
+        int grossHpLoss = 0;
+        int observedDeathSaveUses = 0;
+        int observedDeathSaveHpRestored = 0;
+        void OnPlayerHpChanged(int oldHp, int newHp)
+        {
+            if (newHp < oldHp)
+            {
+                grossHpLoss += oldHp - newHp;
+            }
+            else if (oldHp == 0 && newHp > 0 && CombatManager.Instance.IsInProgress)
+            {
+                observedDeathSaveUses++;
+                observedDeathSaveHpRestored += newHp;
+            }
+        }
 
-        for (int turnLoop = 0; turnLoop < maxTurns; turnLoop++)
+        player.Creature.CurrentHpChanged += OnPlayerHpChanged;
+        try
+        {
+            for (int turnLoop = 0; turnLoop < maxTurns; turnLoop++)
         {
             if (RealCombatDriver.GetLiveOutcome(combat) != HotCombatOutcome.Ongoing)
                 break;
@@ -1658,10 +1837,9 @@ internal static class PlayerBeatReplayRunner
                 if (!hasRootHotPolicy)
                 {
                     CombatHotState rootHotState = root.HotRoot.RootState;
-                    rootSlotCosts = HotPotionPolicy.BuildRootSlotCosts(
-                        root, in rootHotState, root.HotRoot.Rules, policy.PotionStrategy.Thresholds);
-                    rootHotPolicy = new HotSearchPolicy(
-                        root, damage, policy, root.HotRoot.Rules, in rootHotState, rootSlotCosts);
+                    rootContext = CaptureRootCanonicalContext(root, damage, policy);
+                    rootSlotCosts = rootContext.RootSlotCosts;
+                    rootHotPolicy = rootContext.Policy;
                     int slotCount = Math.Min((int)rootHotState.PotionSlotCount, HotLimits.MaxPotions);
                     for (int s = 0; s < slotCount; s++)
                     {
@@ -1829,11 +2007,15 @@ internal static class PlayerBeatReplayRunner
                 }
             }
         }
+        }
+        finally
+        {
+            player.Creature.CurrentHpChanged -= OnPlayerHpChanged;
+        }
 
         HotCombatOutcome finalOutcome = RealCombatDriver.GetLiveOutcome(combat);
         int endHp = player.Creature.CurrentHp;
         int endMaxHp = player.Creature.MaxHp;
-        int hpLoss = Math.Max(0, startHp - endHp);
         bool won = finalOutcome == HotCombatOutcome.Victory;
         bool survives = !player.Creature.IsDead && endHp > 0;
 
@@ -1844,8 +2026,10 @@ internal static class PlayerBeatReplayRunner
             .Count(static p => p != null && string.Equals(p.Id.Entry, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal));
         int lizardTailConsumed = Math.Max(0, initialUnusedLizardTails - remainingLizardTails);
         int fairyConsumed = Math.Max(0, initialFairyCount - remainingFairyCount);
-        int deathSaveUses = lizardTailConsumed + fairyConsumed;
-        int deathSaveHpRestored = lizardTailConsumed * (endMaxHp / 2) + fairyConsumed * ((endMaxHp * 30) / 100);
+        int deathSaveUses = Math.Max(lizardTailConsumed + fairyConsumed, observedDeathSaveUses);
+        int deathSaveHpRestored = observedDeathSaveHpRestored;
+        int hpLoss = Math.Max(0, startHp - (endHp - deathSaveHpRestored));
+        int finalGrossHpLoss = Math.Max(hpLoss, grossHpLoss);
 
         int postCombatHeal = hasRootHotPolicy
             ? HotRouteQuality.RankedPostCombatRelicHeal(rootHotPolicy.PostCombatRelicHeal, won, endHp, endMaxHp)
@@ -1886,6 +2070,7 @@ internal static class PlayerBeatReplayRunner
             StartMaxHp = startMaxHp,
             EndMaxHp = endMaxHp,
             HpLoss = hpLoss,
+            GrossHpLoss = finalGrossHpLoss,
             StrategicHpDeficit = strategicDeficit,
             PotionsUsed = fightPotionsUsed,
             PotionCostHp = potionStrategicCost,
@@ -1995,6 +2180,11 @@ internal static class PlayerBeatReplayRunner
         List<HotChoiceSelection> selections = [];
         int choiceCursor = 0;
         int pickedInChoiceCursor = 0;
+        int recordSelectionStart = 0;
+        bool usedForcedChoiceBypass = false;
+        Span<byte> classMultiplicities = choiceOptBuf.Length <= 128
+            ? stackalloc byte[choiceOptBuf.Length]
+            : new byte[choiceOptBuf.Length];
 
         for (int guard = 0; guard < 32; guard++)
         {
@@ -2011,14 +2201,41 @@ internal static class PlayerBeatReplayRunner
                     error = $"HotCombatEngine.Step({action.Kind}) returned Executed=false";
                     return;
                 }
+                if (usedForcedChoiceBypass && choiceCursor < capturedChoices.Count)
+                {
+                    error = $"HotCombatEngine bypassed a forced pile choice, leaving {capturedChoices.Count - choiceCursor} unconsumed recorded live choice(s).";
+                    return;
+                }
                 hot = probe;
                 hotCold = probeCold;
                 return;
             }
 
-            int optCount = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, rules, scratch, choiceOptBuf);
+            classMultiplicities.Clear();
+            int optCount = HotCombatEngine.EnumerateChoiceOptionsWithClasses(
+                in probe, probeCold, rules, scratch, choiceOptBuf, classMultiplicities);
+            int rawEligibleCount = 0;
+            for (int i = 0; i < optCount; i++)
+            {
+                if (choiceOptBuf[i].Kind != HotChoiceKind.None)
+                    rawEligibleCount += classMultiplicities[i];
+            }
+
+            bool isForcedSinglePileChoice = scratch.PendingChoiceKind != HotChoiceKind.GeneratedCard
+                && scratch.PendingChoiceMin > 0
+                && optCount == 1
+                && rawEligibleCount <= scratch.PendingChoiceMin
+                && choiceOptBuf[0].Kind != HotChoiceKind.None;
+
             if (choiceCursor >= capturedChoices.Count)
             {
+                // Vanilla CardSelectCmd auto-resolves mandatory pile choices when !RequireManualConfirmation && num <= MinSelect
+                // without invoking ICardSelector, so 0 PlayerChoice events are recorded (while GeneratedCard always records).
+                if (isForcedSinglePileChoice)
+                {
+                    selections.Add(choiceOptBuf[0]);
+                    continue;
+                }
                 if (scratch.PendingChoiceMin == 0)
                 {
                     selections.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
@@ -2029,6 +2246,24 @@ internal static class PlayerBeatReplayRunner
             }
 
             CapturedChoiceRecord rec = capturedChoices[choiceCursor];
+            if (isForcedSinglePileChoice && pickedInChoiceCursor == 0)
+            {
+                // Only bypass ahead of an unconsumed recorded prompt when that recorded prompt cannot belong to this
+                // forced choice (e.g., an earlier mandatory 1-card pile choice auto-resolved before a later recorded prompt).
+                // Never bypass a RequireManualConfirmation=true prompt or a filter bug collapsing live options to <= MinSelect.
+                if (!RecordedChoiceMatchesHotOption(in probe, probeCold, rules, choiceOptBuf[0], rec))
+                {
+                    usedForcedChoiceBypass = true;
+                    selections.Add(choiceOptBuf[0]);
+                    continue;
+                }
+                if (rec.OptionEntries.Length > rawEligibleCount)
+                {
+                    error = $"HotCombatEngine choice filter collapsed options to {rawEligibleCount} (<= min={scratch.PendingChoiceMin}), but live prompt offered {rec.OptionEntries.Length} option(s).";
+                    return;
+                }
+            }
+
             if (rec.SelectedEntries.Length == 0)
             {
                 selections.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
@@ -2051,6 +2286,10 @@ internal static class PlayerBeatReplayRunner
                 continue;
             }
 
+            if (pickedInChoiceCursor == 0)
+                recordSelectionStart = selections.Count;
+            ReadOnlySpan<HotChoiceSelection> priorPicksInRecord = CollectionsMarshal.AsSpan(selections).Slice(recordSelectionStart);
+
             string wantEntry = rec.SelectedEntries[pickedInChoiceCursor];
             int wantUpgrade = rec.SelectedUpgrades[pickedInChoiceCursor];
             string wantStateKey = rec.SelectedStateKeys[pickedInChoiceCursor];
@@ -2064,7 +2303,8 @@ internal static class PlayerBeatReplayRunner
 
             if (!TryMatchHotChoiceOption(
                     in probe, probeCold, rules, choiceOptBuf.AsSpan(0, optCount),
-                    wantEntry, wantUpgrade, wantStateKey, wantOptionIdx, out HotChoiceSelection matched))
+                    rec, wantEntry, wantUpgrade, wantStateKey, wantOptionIdx,
+                    priorPicksInRecord, out HotChoiceSelection matched))
             {
                 error = $"HotCombatEngine choice options ({optCount}) did not contain live-selected {wantEntry}+{wantUpgrade} (optIdx={wantOptionIdx}).";
                 return;
@@ -2080,10 +2320,12 @@ internal static class PlayerBeatReplayRunner
         HotColdSidecar? probeCold,
         HotRules rules,
         ReadOnlySpan<HotChoiceSelection> options,
+        CapturedChoiceRecord rec,
         string wantEntry,
         int wantUpgrade,
         string wantStateKey,
         int wantOptionIdx,
+        ReadOnlySpan<HotChoiceSelection> priorPicksInRecord,
         out HotChoiceSelection matched)
     {
         // 1. Exact GeneratedCard index + entry match
@@ -2100,7 +2342,7 @@ internal static class PlayerBeatReplayRunner
             }
         }
 
-        // 2. Exact StateKey match for pile cards
+        // 2. Exact StateKey match for pile cards (re-resolving canonical deduplication to the exact live copy)
         if (!string.IsNullOrEmpty(wantStateKey))
         {
             for (int i = 0; i < options.Length; i++)
@@ -2115,14 +2357,16 @@ internal static class PlayerBeatReplayRunner
                     string key = HotContinuationStamp.FormatChoiceCardKey(in hc, probeCold, rules);
                     if (string.Equals(key, wantStateKey, StringComparison.Ordinal))
                     {
-                        matched = opt;
+                        matched = ResolveExactPileCopySelection(
+                            in probe, probeCold, rules, opt, rec, wantOptionIdx,
+                            wantStateKey, priorPicksInRecord);
                         return true;
                     }
                 }
             }
         }
 
-        // 3. Entry + UpgradeLevel match
+        // 3. Entry + UpgradeLevel match (stay on the already-filtered canonical option to avoid picking ineligible/excluded copies)
         for (int i = 0; i < options.Length; i++)
         {
             HotChoiceSelection opt = options[i];
@@ -2160,6 +2404,134 @@ internal static class PlayerBeatReplayRunner
         return false;
     }
 
+    private static HotChoiceSelection ResolveExactPileCopySelection(
+        in CombatHotState probe,
+        HotColdSidecar? probeCold,
+        HotRules rules,
+        HotChoiceSelection canonicalOpt,
+        CapturedChoiceRecord rec,
+        int wantOptionIdx,
+        string wantStateKey,
+        ReadOnlySpan<HotChoiceSelection> priorPicksInRecord)
+    {
+        // EnumerateChoiceOptions intentionally deduplicates identical pile cards to the lowest-CardUid copy.
+        // For Hand/Discard/Exhaust (whose CardSelectCmd order matches Hot pile order), map the live option's
+        // occurrence ordinal to the matching eligible, non-excluded CardUid so multiset-identical lockstep slot orders align.
+        HotPileKind? pile = canonicalOpt.Kind switch
+        {
+            HotChoiceKind.HandCard => HotPileKind.Hand,
+            HotChoiceKind.DiscardPile => HotPileKind.Discard,
+            HotChoiceKind.ExhaustPile => HotPileKind.Exhaust,
+            _ => null,
+        };
+        if (pile is not HotPileKind targetPile)
+            return canonicalOpt;
+
+        if ((uint)wantOptionIdx >= (uint)rec.OptionStateKeys.Length)
+            return canonicalOpt;
+
+        int ordinal = 0;
+        for (int j = 0; j < wantOptionIdx; j++)
+        {
+            if (string.Equals(rec.OptionStateKeys[j], wantStateKey, StringComparison.Ordinal))
+                ordinal++;
+        }
+
+        ReadOnlySpan<ushort> allowedUids = HotCombatEngine.GetPendingFilteredChoiceUids();
+        ReadOnlySpan<ushort> excludedUids = HotCombatEngine.GetPendingExcludedChoiceUids();
+
+        int zoneStart = HotPiles.ZoneStart(in probe, targetPile);
+        int zoneCount = HotPiles.ZoneCount(in probe, targetPile);
+        int seen = 0;
+        for (int offset = 0; offset < zoneCount; offset++)
+        {
+            ref readonly HotCard hc = ref probe.Cards[zoneStart + offset];
+            if (hc.CardDefId == 0 || hc.CardDefId >= rules.Cards.Length)
+                continue;
+            if (hc.CardDefId != canonicalOpt.CardDefId)
+                continue;
+            if (!allowedUids.IsEmpty && !ContainsUid(allowedUids, hc.CardUid))
+                continue;
+            if (!string.Equals(HotContinuationStamp.FormatChoiceCardKey(in hc, probeCold, rules), wantStateKey, StringComparison.Ordinal))
+                continue;
+
+            if (seen == ordinal)
+            {
+                if (hc.CardUid != 0
+                    && (excludedUids.IsEmpty || !ContainsUid(excludedUids, hc.CardUid))
+                    && !ContainsSelectionUid(priorPicksInRecord, canonicalOpt.Kind, hc.CardUid))
+                {
+                    return new HotChoiceSelection(canonicalOpt.Kind, hc.CardUid, hc.CardDefId);
+                }
+                return canonicalOpt;
+            }
+            seen++;
+        }
+
+        return canonicalOpt;
+    }
+
+    private static bool RecordedChoiceMatchesHotOption(
+        in CombatHotState probe,
+        HotColdSidecar? probeCold,
+        HotRules rules,
+        HotChoiceSelection opt,
+        CapturedChoiceRecord rec)
+    {
+        if (rec.OptionEntries.Length == 0)
+            return false;
+        if (opt.CardDefId == 0 || opt.CardDefId >= rules.Cards.Length)
+            return true;
+
+        int cardIdx = ResolveHotChoiceCardIndex(in probe, opt);
+        if (cardIdx < 0)
+            return true;
+
+        ref readonly HotCard hc = ref probe.Cards[cardIdx];
+        string hotKey = HotContinuationStamp.FormatChoiceCardKey(in hc, probeCold, rules);
+        for (int i = 0; i < rec.OptionStateKeys.Length; i++)
+        {
+            if (string.Equals(rec.OptionStateKeys[i], hotKey, StringComparison.Ordinal))
+                return true;
+        }
+
+        string hotEntry = rules.Cards[opt.CardDefId].Entry;
+        bool checkUpgrades = rec.OptionUpgrades.Length == rec.OptionEntries.Length;
+        for (int i = 0; i < rec.OptionEntries.Length; i++)
+        {
+            if (string.Equals(rec.OptionEntries[i], hotEntry, StringComparison.Ordinal)
+                && (!checkUpgrades || rec.OptionUpgrades[i] == hc.UpgradeLevel))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsUid(ReadOnlySpan<ushort> uids, ushort uid)
+    {
+        for (int i = 0; i < uids.Length; i++)
+        {
+            if (uids[i] == uid)
+                return true;
+        }
+        return false;
+    }
+
+    private static bool ContainsSelectionUid(
+        ReadOnlySpan<HotChoiceSelection> selections,
+        HotChoiceKind kind,
+        ushort uid)
+    {
+        for (int i = 0; i < selections.Length; i++)
+        {
+            if (selections[i].Kind == kind && selections[i].CardUidOrIndex == uid)
+                return true;
+        }
+        return false;
+    }
+
     private static int ResolveHotChoiceCardIndex(in CombatHotState probe, HotChoiceSelection opt)
     {
         HotPileKind pile = opt.Kind switch
@@ -2175,8 +2547,9 @@ internal static class PlayerBeatReplayRunner
     }
 
     /// <summary>
-    /// Strict Win-first + HP loss + Potion cost comparison against a target outcome (Player or Old Solver).
-    /// Uses exact Pareto dominance first, then unified economic cost (<c>HpLoss + PotionCostHp</c>) on tradeoffs.
+    /// Strict Win-first + DeathSave-preservation + HP loss + Potion cost comparison against a target outcome (Player or Old Solver).
+    /// Matches <see cref="HotRouteQuality.Compare"/> Step 1 (Win) and Step 3 (preserve one-shot death saves),
+    /// then uses exact Pareto dominance and unified economic cost (<c>HpLoss + PotionCostHp</c>) on tradeoffs.
     /// </summary>
     private static PlayerVerdict EvaluateAgainstTarget(
         FightOutcomeRecord solver,
@@ -2186,10 +2559,14 @@ internal static class PlayerBeatReplayRunner
         short[] rootSlotCosts,
         out int targetPotionCostEstimateHp,
         out double solverEffectiveCostHp,
-        out double targetEffectiveCostHp)
+        out double targetEffectiveCostHp,
+        int targetDeathSaveUseCount = 0)
     {
+        // Target corpus ground truth (Player / Old Solver) records gross projectedBattleHpLost,
+        // so align Raw comparison on GrossHpLoss ?? HpLoss while canonical V handles net HP/healing/death saves.
+        int solverHpLoss = solver.GrossHpLoss ?? solver.HpLoss;
         targetPotionCostEstimateHp = EstimatePotionCostHp(targetPotionsUsed, rootSlotCosts);
-        solverEffectiveCostHp = solver.HpLoss + solver.PotionCostHp;
+        solverEffectiveCostHp = solverHpLoss + solver.PotionCostHp;
         targetEffectiveCostHp = targetHpLoss + targetPotionCostEstimateHp;
 
         if (solver.HardErrors > 0 || !string.IsNullOrEmpty(solver.HardError))
@@ -2200,19 +2577,26 @@ internal static class PlayerBeatReplayRunner
 
         if (!solver.Won)
         {
-            return solver.HpLoss < targetHpLoss ? PlayerVerdict.BeatPlayer
-                : solver.HpLoss > targetHpLoss ? PlayerVerdict.BehindPlayer
+            return solverHpLoss < targetHpLoss ? PlayerVerdict.BeatPlayer
+                : solverHpLoss > targetHpLoss ? PlayerVerdict.BehindPlayer
                 : PlayerVerdict.TiedPlayer;
         }
 
+        // Preserve one-shot death saves (Lizard Tail / Fairy in a Bottle), matching HotRouteQuality.Compare Step 3:
+        // a solver victory that burns more death saves than the target never beats or ties a clean target victory.
+        if (solver.DeathSaveUseCount != targetDeathSaveUseCount)
+            return solver.DeathSaveUseCount < targetDeathSaveUseCount
+                ? PlayerVerdict.BeatPlayer
+                : PlayerVerdict.BehindPlayer;
+
         // Exact tie on both HP loss and potions used
-        if (solver.HpLoss == targetHpLoss && solver.PotionsUsed == targetPotionsUsed)
+        if (solverHpLoss == targetHpLoss && solver.PotionsUsed == targetPotionsUsed)
             return PlayerVerdict.TiedPlayer;
 
         // Strict Pareto dominance (fewer/equal HP loss AND fewer/equal potions)
-        if (solver.HpLoss <= targetHpLoss && solver.PotionsUsed <= targetPotionsUsed)
+        if (solverHpLoss <= targetHpLoss && solver.PotionsUsed <= targetPotionsUsed)
             return PlayerVerdict.BeatPlayer;
-        if (solver.HpLoss >= targetHpLoss && solver.PotionsUsed >= targetPotionsUsed)
+        if (solverHpLoss >= targetHpLoss && solver.PotionsUsed >= targetPotionsUsed)
             return PlayerVerdict.BehindPlayer;
 
         // HP-vs-Potion tradeoff: compare unified economic cost (HP loss + strategic potion cost)
@@ -2236,6 +2620,187 @@ internal static class PlayerBeatReplayRunner
         for (int i = 0; i < potionsUsed; i++)
             total += i < positiveCosts.Length ? positiveCosts[i] : HotSearchConstants.PotionMinimumHpSaved;
         return total;
+    }
+
+    /// <summary>
+    /// Objective-aligned auxiliary canonical <c>V</c> comparison matching <see cref="HotRouteQuality"/>
+    /// (<see cref="HotRouteQuality.PersistentHpScale"/> for <see cref="BossHpRelief"/>, monotone post-combat
+    /// relic healing, <see cref="HotRouteQuality.DeathSavePremium"/>, renewable <c>PotionShapedRock</c> = 0,
+    /// passive <c>FairyInABottle</c> excluded from active potion cost, and
+    /// <see cref="HotPotionPolicy.ComputeNetPotionOpportunityCostCenti"/>).
+    /// </summary>
+    private static PlayerVerdict? EvaluateCanonicalVAgainstPlayer(
+        FightOutcomeRecord solver,
+        bool playerWon,
+        int playerHpLoss,
+        int playerPotionsUsed,
+        in RootCanonicalContext rootContext,
+        PlayerBundleTelemetry playerTelemetry,
+        out double? solverCanonicalV,
+        out double? playerCanonicalV)
+    {
+        if (solver.HardErrors > 0 || !string.IsNullOrEmpty(solver.HardError))
+        {
+            solverCanonicalV = null;
+            playerCanonicalV = null;
+            return PlayerVerdict.Error;
+        }
+
+        if (!rootContext.HasPolicy)
+        {
+            solverCanonicalV = solver.EconomicValueV;
+            playerCanonicalV = null;
+            return null;
+        }
+
+        HotSearchPolicy hotPolicy = rootContext.Policy;
+        long solverVCenti = solver.EconomicValueCenti;
+        solverCanonicalV = Math.Round(solverVCenti / (double)HotSearchConstants.HpFixedScale, 2);
+
+        int initialHp = hotPolicy.InitialPlayerHp;
+        int initialMaxHp = Math.Max(1, hotPolicy.InitialPlayerMaxHp);
+        int deathSaveHp = Math.Max(0, playerTelemetry.DeathSaveHpRestored);
+        int endMaxHp = playerTelemetry.LatestObservedMaxHp > 0
+            ? playerTelemetry.LatestObservedMaxHp
+            : initialMaxHp;
+
+        int endHp;
+        if (!playerWon)
+        {
+            endHp = 0;
+        }
+        else if (playerTelemetry.TelemetryFinalHp.HasValue)
+        {
+            endHp = Math.Max(1, playerTelemetry.TelemetryFinalHp.Value);
+        }
+        else
+        {
+            endHp = Math.Clamp(initialHp - playerHpLoss + deathSaveHp, 1, Math.Max(endMaxHp, initialMaxHp));
+        }
+
+        if (endHp > endMaxHp)
+            endMaxHp = endHp;
+
+        int postCombatHeal = HotRouteQuality.RankedPostCombatRelicHeal(
+            hotPolicy.PostCombatRelicHeal, playerWon, endHp, endMaxHp);
+        int playerNetHpDeltaCenti = HotRouteQuality.ComputeNetPersistentHpDeltaCenti(
+            endPlayerHp: endHp,
+            postCombatMonotoneHeal: postCombatHeal,
+            initialPlayerHp: initialHp,
+            endPlayerMaxHp: endMaxHp,
+            initialPlayerMaxHp: initialMaxHp,
+            deathSaveHpRestored: deathSaveHp,
+            growthHpCredit: 0,
+            bossHpRelief: hotPolicy.StrategicBossHpRelief,
+            ignoreLongTermRewards: hotPolicy.IgnoreLongTermRewards);
+
+        int playerNetPotionCostCenti = ComputePlayerCanonicalPotionCostCenti(
+            playerPotionsUsed, in rootContext, playerTelemetry);
+        long playerVCenti = (long)playerNetHpDeltaCenti - playerNetPotionCostCenti;
+        playerCanonicalV = Math.Round(playerVCenti / (double)HotSearchConstants.HpFixedScale, 2);
+
+        if (solver.Won != playerWon)
+            return solver.Won ? PlayerVerdict.BeatPlayer : PlayerVerdict.BehindPlayer;
+
+        if (!solver.Won)
+        {
+            int solverHpLoss = solver.GrossHpLoss ?? solver.HpLoss;
+            return solverHpLoss < playerHpLoss ? PlayerVerdict.BeatPlayer
+                : solverHpLoss > playerHpLoss ? PlayerVerdict.BehindPlayer
+                : PlayerVerdict.TiedPlayer;
+        }
+
+        if (solver.DeathSaveUseCount != playerTelemetry.DeathSaveUseCount)
+            return solver.DeathSaveUseCount < playerTelemetry.DeathSaveUseCount
+                ? PlayerVerdict.BeatPlayer
+                : PlayerVerdict.BehindPlayer;
+
+        if (solverVCenti != playerVCenti)
+            return solverVCenti > playerVCenti
+                ? PlayerVerdict.BeatPlayer
+                : PlayerVerdict.BehindPlayer;
+
+        if (solver.NetPersistentHpDeltaCenti != playerNetHpDeltaCenti)
+            return solver.NetPersistentHpDeltaCenti > playerNetHpDeltaCenti
+                ? PlayerVerdict.BeatPlayer
+                : PlayerVerdict.BehindPlayer;
+
+        if (solver.PotionsUsed != playerPotionsUsed)
+            return solver.PotionsUsed < playerPotionsUsed
+                ? PlayerVerdict.BeatPlayer
+                : PlayerVerdict.BehindPlayer;
+
+        return PlayerVerdict.TiedPlayer;
+    }
+
+    private static int ComputePlayerCanonicalPotionCostCenti(
+        int playerPotionsUsed,
+        in RootCanonicalContext rootContext,
+        PlayerBundleTelemetry playerTelemetry)
+    {
+        // Passive Fairy in a Bottle triggers are priced via DeathSaveUseCount/DeathSavePremium, not active potion cost.
+        int explicitPotionsUsed = Math.Max(0, playerPotionsUsed - playerTelemetry.FairyUseCount);
+        if (explicitPotionsUsed <= 0)
+            return 0;
+
+        Dictionary<int, RootPotionSlotInfo> usableBySlot = new();
+        for (int i = 0; i < rootContext.RootPotions.Length; i++)
+        {
+            RootPotionSlotInfo info = rootContext.RootPotions[i];
+            if (info.IsCombatUsable)
+                usableBySlot[info.Slot] = info;
+        }
+
+        HashSet<int> usedSlots = [];
+        int paidRawHpCost = 0;
+        int paidCount = 0;
+        int consumedTotal = 0;
+
+        // 1. Prefer exact root potion slots observed consumed in events / checkpoints / plannedActions.
+        for (int i = 0; i < playerTelemetry.ConsumedRootPotionSlots.Length && consumedTotal < explicitPotionsUsed; i++)
+        {
+            int slot = playerTelemetry.ConsumedRootPotionSlots[i];
+            if (!usableBySlot.TryGetValue(slot, out RootPotionSlotInfo info) || !usedSlots.Add(slot))
+                continue;
+            consumedTotal++;
+            if (info.StrategicCostHp > 0)
+            {
+                paidRawHpCost += info.StrategicCostHp;
+                paidCount++;
+            }
+        }
+
+        // 2. If more explicit potions were used than observed root slots, assign cheapest remaining root slots
+        //    (including 0-cost Token / renewable PotionShapedRock). Uses beyond root slots are combat-generated (0 cost).
+        if (consumedTotal < explicitPotionsUsed)
+        {
+            foreach (RootPotionSlotInfo info in usableBySlot.Values
+                .Where(s => !usedSlots.Contains(s.Slot))
+                .OrderBy(static s => s.StrategicCostHp)
+                .ThenBy(static s => s.Slot))
+            {
+                if (consumedTotal >= explicitPotionsUsed)
+                    break;
+                usedSlots.Add(info.Slot);
+                consumedTotal++;
+                if (info.StrategicCostHp > 0)
+                {
+                    paidRawHpCost += info.StrategicCostHp;
+                    paidCount++;
+                }
+            }
+        }
+
+        HotSearchPolicy hotPolicy = rootContext.Policy;
+        int endEmptySlots = Math.Min(
+            (int)hotPolicy.RootPotionSlotCount,
+            hotPolicy.EmptyRootPotionSlots + consumedTotal);
+        return HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
+            paidRawHpCost,
+            paidCount,
+            playerTelemetry.AlchemizePlayCount,
+            endEmptySlots,
+            in hotPolicy);
     }
 
     private static void PrintLockstepSummary(LockstepAuditReport audit)
@@ -2268,9 +2833,20 @@ internal static class PlayerBeatReplayRunner
     private static void PrintSingleBundleComparison(
         BundleGroundTruth gt,
         FightOutcomeRecord solver,
-        short[] rootSlotCosts,
+        in RootCanonicalContext rootContext,
+        PlayerBundleTelemetry playerTelemetry,
         List<DeployReplanDiff> deployDiffs)
     {
+        short[] rootSlotCosts = rootContext.RootSlotCosts;
+        double? solverCanonicalV = null;
+        double? playerCanonicalV = null;
+        PlayerVerdict? vsPlayerCanonicalV = gt.HasPlayerOutcome
+            ? EvaluateCanonicalVAgainstPlayer(
+                solver, gt.PlayerWon, gt.PlayerHpLoss, gt.PlayerPotionsUsed,
+                in rootContext, playerTelemetry,
+                out solverCanonicalV, out playerCanonicalV)
+            : null;
+
         Console.WriteLine();
         Console.WriteLine("### Single-Bundle Comparison");
         Console.WriteLine("| Competitor | Won | HP Loss | Potions | Pot Cost | Effective Cost | V | Turns | ms | Replans | Boundary |");
@@ -2285,9 +2861,12 @@ internal static class PlayerBeatReplayRunner
         if (gt.HasPlayerOutcome)
         {
             int playerPotCost = EstimatePotionCostHp(gt.PlayerPotionsUsed, rootSlotCosts);
+            string playerVStr = playerCanonicalV.HasValue
+                ? playerCanonicalV.Value.ToString("F2", CultureInfo.InvariantCulture)
+                : "-";
             Console.WriteLine(
                 $"| Player Recorded | {(gt.PlayerWon ? "W" : "L")} | {gt.PlayerHpLoss} | " +
-                $"{gt.PlayerPotionsUsed} | ~{playerPotCost} | ~{gt.PlayerHpLoss + playerPotCost} | - | {gt.PlayerTurns} | - | - | - |");
+                $"{gt.PlayerPotionsUsed} | ~{playerPotCost} | ~{gt.PlayerHpLoss + playerPotCost} | {playerVStr} | {gt.PlayerTurns} | - | - | - |");
         }
         Console.WriteLine(
             $"| **Current Solver** | **{(solver.HardErrors > 0 ? "ERR" : solver.Won ? "W" : "L")}** | **{solver.HpLoss}** | " +
@@ -2298,8 +2877,18 @@ internal static class PlayerBeatReplayRunner
         {
             PlayerVerdict vsPlayer = EvaluateAgainstTarget(
                 solver, gt.PlayerWon, gt.PlayerHpLoss, gt.PlayerPotionsUsed,
-                rootSlotCosts, out _, out _, out _);
-            Console.WriteLine($"Verdict vs Player: {vsPlayer}");
+                rootSlotCosts, out _, out _, out _,
+                targetDeathSaveUseCount: gt.PlayerDeathSaveUseCount);
+            Console.WriteLine(
+                $"Verdict vs Player (Raw): {vsPlayer} (DeathSave S={solver.DeathSaveUseCount} vs P={gt.PlayerDeathSaveUseCount})");
+            if (vsPlayerCanonicalV.HasValue && solverCanonicalV.HasValue && playerCanonicalV.HasValue)
+            {
+                BossHpRelief relief = rootContext.HasPolicy ? rootContext.Policy.StrategicBossHpRelief : BossHpRelief.None;
+                Console.WriteLine(
+                    $"Verdict vs Player (Canonical V, {relief}): {vsPlayerCanonicalV.Value} " +
+                    $"(S={solverCanonicalV.Value:F2} vs P={playerCanonicalV.Value:F2}, " +
+                    $"delta={(solverCanonicalV.Value - playerCanonicalV.Value):+0.00;-0.00;0.00})");
+            }
         }
         if (deployDiffs.Count > 0)
         {
@@ -2343,16 +2932,46 @@ internal static class PlayerBeatReplayRunner
                    $"{p50:F0} / {p95:F0} | {replans} | {errs} |";
         }
 
+        static string FormatCanonicalVLine(string label, IReadOnlyList<PlayerCorpusCaseResult> subset)
+        {
+            int n = subset.Count;
+            int rawBeatOrTie = subset.Count(static r => r.VerdictVsPlayer is PlayerVerdict.BeatPlayer or PlayerVerdict.TiedPlayer);
+            double rawPct = n > 0 ? (double)rawBeatOrTie / n : 0.0;
+            int beatV = subset.Count(static r => r.VsPlayerCanonicalV == PlayerVerdict.BeatPlayer);
+            int tiedV = subset.Count(static r => r.VsPlayerCanonicalV == PlayerVerdict.TiedPlayer);
+            int behindV = subset.Count(static r => r.VsPlayerCanonicalV == PlayerVerdict.BehindPlayer);
+            int errV = subset.Count(static r => r.VsPlayerCanonicalV is null or PlayerVerdict.Error);
+            double vPct = n > 0 ? (double)(beatV + tiedV) / n : 0.0;
+            var validV = subset.Where(static r => r.SolverCanonicalV.HasValue && r.PlayerCanonicalV.HasValue).ToList();
+            double avgSolverV = validV.Count > 0 ? validV.Average(static r => r.SolverCanonicalV!.Value) : 0.0;
+            double avgPlayerV = validV.Count > 0 ? validV.Average(static r => r.PlayerCanonicalV!.Value) : 0.0;
+            double deltaV = avgSolverV - avgPlayerV;
+            int playerDeathSaveCases = subset.Count(static r => r.PlayerDeathSaveUseCount > 0);
+            int solverDeathSaveCases = subset.Count(static r => r.Outcome.DeathSaveUseCount > 0);
+            return $"Canonical V vs Player ({label}): {beatV} / {tiedV} / {behindV} ({vPct:P1} >=P, err={errV}) | " +
+                   $"Avg V (S vs P): {avgSolverV:F2} vs {avgPlayerV:F2} ({deltaV:+0.00;-0.00;0.00}) | " +
+                   $"Raw >=P: {rawPct:P1} | DeathSave fights S={solverDeathSaveCases} P={playerDeathSaveCases}";
+        }
+
         Console.WriteLine("### Solver vs Player Scoreboard (Overall & Split)");
         Console.WriteLine("| Slice | N | Beat / Tied / Behind Player | vs Old Solver | Avg HP (S vs P) | Avg V | p50 / p95 ms | Replans | Errors |");
         Console.WriteLine("|---|---:|---|---|---:|---:|---:|---:|---:|");
-        foreach (IGrouping<string, PlayerCorpusCaseResult> grp in results
+        List<IGrouping<string, PlayerCorpusCaseResult>> splitGroups = results
             .GroupBy(static r => r.Case.Split, StringComparer.Ordinal)
-            .OrderBy(static g => g.Key, StringComparer.Ordinal))
+            .OrderBy(static g => g.Key, StringComparer.Ordinal)
+            .ToList();
+        foreach (IGrouping<string, PlayerCorpusCaseResult> grp in splitGroups)
         {
             Console.WriteLine(FormatScoreRow(grp.Key, grp.ToList()));
         }
         Console.WriteLine(FormatScoreRow("**ALL**", results));
+        Console.WriteLine();
+        if (splitGroups.Count > 1)
+        {
+            foreach (IGrouping<string, PlayerCorpusCaseResult> grp in splitGroups)
+                Console.WriteLine(FormatCanonicalVLine(grp.Key, grp.ToList()));
+        }
+        Console.WriteLine(FormatCanonicalVLine("ALL", results));
 
         Console.WriteLine();
         Console.WriteLine("### Breakdown by Character");
@@ -2386,16 +3005,19 @@ internal static class PlayerBeatReplayRunner
         {
             Console.WriteLine();
             Console.WriteLine($"### Top Behind-Player Gaps ({behindTop.Count} shown)");
-            Console.WriteLine("| CaseId | Split | Char | Encounter | Solver (W/HP/Pot) | Player (W/HP/Pot) | EffCost Gap | Boundary | ms |");
-            Console.WriteLine("|---|---|---|---|---|---|---:|---|---:|");
+            Console.WriteLine("| CaseId | Split | Char | Encounter | Solver (W/HP/Pot) | Player (W/HP/Pot) | EffCost Gap | Canonical V (S vs P / Verdict) | Boundary | ms |");
+            Console.WriteLine("|---|---|---|---|---|---|---:|---|---|---:|");
             foreach (PlayerCorpusCaseResult r in behindTop)
             {
                 double gap = r.SolverEffectiveCostHp - r.PlayerEffectiveCostHp;
+                string canonicalCol = r.SolverCanonicalV.HasValue && r.PlayerCanonicalV.HasValue && r.VsPlayerCanonicalV.HasValue
+                    ? $"{r.SolverCanonicalV.Value:F2} vs {r.PlayerCanonicalV.Value:F2} ({r.VsPlayerCanonicalV.Value switch { PlayerVerdict.BeatPlayer => "BEAT", PlayerVerdict.TiedPlayer => "TIED", PlayerVerdict.BehindPlayer => "BHND", _ => "ERR" }})"
+                    : "-";
                 Console.WriteLine(
                     $"| {r.Case.CaseId} | {r.Case.Split} | {r.Case.Character} | {r.Case.Encounter} | " +
                     $"{(r.Outcome.Won ? "W" : "L")}/{r.Outcome.HpLoss}/{r.Outcome.PotionsUsed} | " +
                     $"{(r.Case.PlayerWon ? "W" : "L")}/{r.Case.PlayerHpLoss}/{r.Case.PlayerPotionsUsed} | " +
-                    $"+{gap:F1} | {r.Outcome.Boundary} | {r.Outcome.ElapsedMs:F0} |");
+                    $"+{gap:F1} | {canonicalCol} | {r.Outcome.Boundary} | {r.Outcome.ElapsedMs:F0} |");
             }
         }
 
@@ -2414,6 +3036,10 @@ internal static class PlayerBeatReplayRunner
         BenchmarkSummaryRecord overall,
         IReadOnlyList<PlayerCorpusCaseResult> results)
     {
+        List<PlayerCorpusCaseResult> validCanonical = results
+            .Where(static r => r.SolverCanonicalV.HasValue && r.PlayerCanonicalV.HasValue)
+            .ToList();
+
         return new
         {
             manifest_path = manifestPath,
@@ -2426,6 +3052,20 @@ internal static class PlayerBeatReplayRunner
                 tied_player = results.Count(static r => r.VerdictVsPlayer == PlayerVerdict.TiedPlayer),
                 behind_player = results.Count(static r => r.VerdictVsPlayer == PlayerVerdict.BehindPlayer),
                 errors = results.Count(static r => r.VerdictVsPlayer == PlayerVerdict.Error),
+            },
+            vs_player_canonical_v = new
+            {
+                total = results.Count,
+                beat_player = results.Count(static r => r.VsPlayerCanonicalV == PlayerVerdict.BeatPlayer),
+                tied_player = results.Count(static r => r.VsPlayerCanonicalV == PlayerVerdict.TiedPlayer),
+                behind_player = results.Count(static r => r.VsPlayerCanonicalV == PlayerVerdict.BehindPlayer),
+                errors = results.Count(static r => r.VsPlayerCanonicalV is null or PlayerVerdict.Error),
+                avg_solver_canonical_v = validCanonical.Count > 0
+                    ? Math.Round(validCanonical.Average(static r => r.SolverCanonicalV!.Value), 2)
+                    : 0.0,
+                avg_player_canonical_v = validCanonical.Count > 0
+                    ? Math.Round(validCanonical.Average(static r => r.PlayerCanonicalV!.Value), 2)
+                    : 0.0,
             },
             vs_old_solver = new
             {
@@ -2447,13 +3087,19 @@ internal static class PlayerBeatReplayRunner
                 solver_hp_loss = r.Outcome.HpLoss,
                 solver_potions_used = r.Outcome.PotionsUsed,
                 solver_potion_cost_hp = r.Outcome.PotionCostHp,
+                solver_death_save_use_count = r.Outcome.DeathSaveUseCount,
                 solver_v = r.Outcome.EconomicValueV,
                 solver_turns = r.Outcome.Turns,
                 player_won = r.Case.PlayerWon,
                 player_hp_loss = r.Case.PlayerHpLoss,
                 player_potions_used = r.Case.PlayerPotionsUsed,
                 player_potion_cost_est_hp = r.PlayerPotionCostEstimateHp,
+                player_death_save_use_count = r.PlayerDeathSaveUseCount,
                 player_turns = r.Case.PlayerTurns,
+                boss_hp_relief = r.BossHpRelief.ToString(),
+                solver_canonical_v = r.SolverCanonicalV,
+                player_canonical_v = r.PlayerCanonicalV,
+                vs_player_canonical_v = r.VsPlayerCanonicalV?.ToString(),
                 old_solver_won = r.Case.OldSolverWon,
                 old_solver_hp_loss = r.Case.OldSolverHpLoss,
                 old_solver_potions_used = r.Case.OldSolverPotionsUsed,
@@ -2495,7 +3141,9 @@ internal static class PlayerBeatReplayRunner
                 OldSolverWon: manifestOverride.OldSolverWon,
                 OldSolverHpLoss: manifestOverride.OldSolverHpLoss,
                 OldSolverPotionsUsed: manifestOverride.OldSolverPotionsUsed,
-                OldSolverTurns: manifestOverride.OldSolverTurns);
+                OldSolverTurns: manifestOverride.OldSolverTurns,
+                PlayerCheckpointId: manifestOverride.PlayerCheckpointId,
+                PlayerEventCursor: manifestOverride.PlayerEventCursor);
         }
 
         string charId = string.Empty;
@@ -2585,6 +3233,11 @@ internal static class PlayerBeatReplayRunner
         int playerHp = bestPlayer != null ? SrHp(bestPlayer) : (mpc?["currentProjectedBattleHpLost"]?.GetValue<int>() ?? 0);
         int playerPots = bestPlayer != null ? SrPots(bestPlayer) : (mpc?["currentProjectedBattlePotionCount"]?.GetValue<int>() ?? 0);
         int playerTurns = bestPlayer != null ? SrTurns(bestPlayer) : 0;
+        string? bestPlayerCpId = bestPlayer?["checkpointId"]?.GetValue<string>()
+            ?? mpc?["currentCheckpointId"]?.GetValue<string>();
+        int? bestPlayerCursor = bestPlayer?["eventCursor"] is JsonNode evCursorNode
+            ? (int)evCursorNode.GetValue<long>()
+            : null;
 
         return new BundleGroundTruth(
             CaseId: caseId,
@@ -2604,8 +3257,673 @@ internal static class PlayerBeatReplayRunner
             OldSolverWon: oldWon,
             OldSolverHpLoss: oldHp,
             OldSolverPotionsUsed: oldPots,
-            OldSolverTurns: oldTurns);
+            OldSolverTurns: oldTurns,
+            PlayerCheckpointId: bestPlayerCpId,
+            PlayerEventCursor: bestPlayerCursor);
     }
+
+    /// <summary>
+    /// Deterministically extracts symmetric player one-shot death-save uses (<c>LIZARD_TAIL</c> and
+    /// <c>FAIRY_IN_A_BOTTLE</c>), restored revival HP, observed ending HP/MaxHP, and consumed root potion slots
+    /// from general bundle artifacts (origin/checkpoint saves, replay-state JSONs, recorded events,
+    /// <c>searchResults</c>, and combat route telemetry).
+    /// </summary>
+    private static PlayerBundleTelemetry ExtractPlayerBundleTelemetry(
+        string rootDir,
+        JsonObject index,
+        string originSavePath,
+        BundleCheckpointSummary startCp,
+        IReadOnlyList<BundleCheckpointSummary> allCheckpoints,
+        RecordedCombatEvent[] events,
+        bool modelHashMatches,
+        BundleGroundTruth gt)
+    {
+        PlayerCheckpointSnapshot? startSnap =
+            (File.Exists(originSavePath) ? TryReadSavePlayerSnapshot(originSavePath, 0, "origin") : null)
+            ?? (startCp.RunStatePath != null && File.Exists(startCp.RunStatePath)
+                ? TryReadSavePlayerSnapshot(startCp.RunStatePath, startCp.EventCursor, startCp.CheckpointId)
+                : null)
+            ?? (startCp.ReplayStatePath != null && File.Exists(startCp.ReplayStatePath)
+                ? TryReadReplayStatePlayerSnapshot(startCp.ReplayStatePath, startCp.EventCursor, startCp.CheckpointId)
+                : null);
+
+        if (startSnap == null)
+            return PlayerBundleTelemetry.Empty;
+
+        List<PlayerCheckpointSnapshot> cpSnaps = new(allCheckpoints.Count);
+        foreach (BundleCheckpointSummary cp in allCheckpoints.OrderBy(static c => c.EventCursor))
+        {
+            PlayerCheckpointSnapshot? snap = null;
+            if (cp.RunStatePath != null && File.Exists(cp.RunStatePath))
+                snap = TryReadSavePlayerSnapshot(cp.RunStatePath, cp.EventCursor, cp.CheckpointId);
+            if (snap == null && cp.ReplayStatePath != null && File.Exists(cp.ReplayStatePath))
+                snap = TryReadReplayStatePlayerSnapshot(cp.ReplayStatePath, cp.EventCursor, cp.CheckpointId);
+            if (snap != null)
+                cpSnaps.Add(snap);
+        }
+
+        int initialUnusedLizardTails = startSnap.UnusedLizardTails;
+        HashSet<int> initialFairySlots = startSnap.PotionsBySlot
+            .Where(static kv => string.Equals(kv.Value, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal))
+            .Select(static kv => kv.Key)
+            .ToHashSet();
+        int initialFairyCount = initialFairySlots.Count;
+        int initialTotalDeathSaves = initialUnusedLizardTails + initialFairyCount;
+
+        JsonObject? playerSr = gt.HasPlayerOutcome ? FindMatchingPlayerSearchResult(index, gt) : null;
+        int targetCursor = gt.PlayerEventCursor
+            ?? (playerSr?["eventCursor"] is JsonNode srCursor ? (int)srCursor.GetValue<long>() : events.Length);
+        targetCursor = Math.Clamp(targetCursor, 0, events.Length);
+
+        PlayerCheckpointSnapshot snapAtTarget =
+            cpSnaps.LastOrDefault(s => !string.IsNullOrEmpty(gt.PlayerCheckpointId)
+                && string.Equals(s.CheckpointId, gt.PlayerCheckpointId, StringComparison.Ordinal))
+            ?? cpSnaps.LastOrDefault(s => s.EventCursor <= targetCursor)
+            ?? cpSnaps.LastOrDefault()
+            ?? startSnap;
+
+        int latestObservedMaxHp = snapAtTarget.MaxHp > 0 ? snapAtTarget.MaxHp : startSnap.MaxHp;
+
+        HashSet<int> discardedFairySlots = [];
+        HashSet<int> rootSlotsStillOriginal = new(startSnap.PotionsBySlot.Keys);
+        List<int> consumedRootPotionSlots = [];
+        int alchemizePlayCount = 0;
+
+        if (modelHashMatches)
+        {
+            for (int i = 0; i < events.Length; i++)
+            {
+                RecordedCombatEvent rec = events[i];
+                if (string.Equals(rec.Origin, "system", StringComparison.Ordinal))
+                    continue;
+                CombatReplayEvent decoded = DecodeReplayEvent(rec);
+                if (decoded.eventType != CombatReplayEventType.GameAction || decoded.action == null)
+                    continue;
+
+                if (decoded.action is NetDiscardPotionGameAction discard)
+                {
+                    int slot = checked((int)discard.potionSlotIndex);
+                    if (initialFairySlots.Contains(slot))
+                    {
+                        PlayerCheckpointSnapshot? priorCp = cpSnaps.LastOrDefault(s => s.EventCursor <= rec.Sequence);
+                        bool hadFairyBeforeDiscard = priorCp == null
+                            || (priorCp.PotionsBySlot.TryGetValue(slot, out string? pid)
+                                && string.Equals(pid, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal));
+                        if (hadFairyBeforeDiscard)
+                            discardedFairySlots.Add(slot);
+                    }
+                    if (i < targetCursor)
+                        rootSlotsStillOriginal.Remove(slot);
+                }
+                else if (i < targetCursor && decoded.action is NetUsePotionAction usePot)
+                {
+                    int slot = checked((int)usePot.potionIndex);
+                    if (rootSlotsStillOriginal.Remove(slot))
+                        consumedRootPotionSlots.Add(slot);
+                }
+                else if (i < targetCursor && decoded.action is NetPlayCardAction play)
+                {
+                    if (string.Equals(play.modelId?.Entry, "ALCHEMIZE", StringComparison.OrdinalIgnoreCase))
+                        alchemizePlayCount++;
+                }
+            }
+        }
+        else
+        {
+            foreach (KeyValuePair<int, string> kv in startSnap.PotionsBySlot)
+            {
+                if (string.Equals(kv.Value, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal))
+                    continue;
+                if (!snapAtTarget.PotionsBySlot.TryGetValue(kv.Key, out string? nowEntry)
+                    || !string.Equals(nowEntry, kv.Value, StringComparison.Ordinal))
+                {
+                    if (rootSlotsStillOriginal.Remove(kv.Key))
+                        consumedRootPotionSlots.Add(kv.Key);
+                }
+            }
+        }
+
+        if (playerSr?["plannedActions"] is JsonArray srActions)
+        {
+            foreach (JsonObject act in srActions.OfType<JsonObject>())
+            {
+                string? kind = act["kind"]?.GetValue<string>();
+                if (string.Equals(kind, "UsePotion", StringComparison.Ordinal))
+                {
+                    int slot = act["potionSlot"]?.GetValue<int>() ?? -1;
+                    if (slot >= 0 && startSnap.PotionsBySlot.TryGetValue(slot, out string? rootEntry))
+                    {
+                        string actPotId = NormalizeModelEntry(act["potionId"]?.GetValue<string>(), "POTION.");
+                        if ((string.IsNullOrEmpty(actPotId) || string.Equals(actPotId, rootEntry, StringComparison.Ordinal))
+                            && rootSlotsStillOriginal.Remove(slot))
+                        {
+                            consumedRootPotionSlots.Add(slot);
+                        }
+                    }
+                }
+                else if (string.Equals(kind, "PlayCard", StringComparison.Ordinal))
+                {
+                    string? cardId = act["cardId"]?.GetValue<string>();
+                    if (string.Equals(cardId, "ALCHEMIZE", StringComparison.OrdinalIgnoreCase))
+                        alchemizePlayCount++;
+                }
+            }
+        }
+
+        MatchedRouteTelemetry? matchedTelemetry = gt.HasPlayerOutcome
+            ? FindMatchingPlayerTelemetry(rootDir, index, gt)
+            : null;
+
+        int deathSaveUseCount = 0;
+        int lizardTailUseCount = 0;
+        int fairyUseCount = 0;
+        int deathSaveHpRestored = 0;
+
+        if (initialTotalDeathSaves > 0)
+        {
+            int minUnusedLizardTails = initialUnusedLizardTails;
+            foreach (PlayerCheckpointSnapshot snap in cpSnaps)
+            {
+                if (snap.UnusedLizardTails < minUnusedLizardTails)
+                    minUnusedLizardTails = snap.UnusedLizardTails;
+            }
+            int liveLizardTailUses = Math.Max(0, initialUnusedLizardTails - minUnusedLizardTails);
+
+            int liveFairyUses = 0;
+            int liveFairyUsesAtSr = 0;
+            PlayerCheckpointSnapshot? snapUpToSr = cpSnaps.LastOrDefault(s => s.EventCursor <= targetCursor);
+            foreach (int slot in initialFairySlots)
+            {
+                if (discardedFairySlots.Contains(slot))
+                    continue;
+                if (cpSnaps.Any(s => !s.PotionsBySlot.TryGetValue(slot, out string? pid)
+                    || !string.Equals(pid, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal)))
+                {
+                    liveFairyUses++;
+                }
+                if (snapUpToSr != null
+                    && (!snapUpToSr.PotionsBySlot.TryGetValue(slot, out string? pidAtSr)
+                        || !string.Equals(pidAtSr, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal)))
+                {
+                    liveFairyUsesAtSr++;
+                }
+            }
+
+            int usableFairyBudget = Math.Max(0, initialFairyCount - discardedFairySlots.Count);
+            int projectedImplicitFairyUses = 0;
+            if (playerSr != null && playerSr["plannedActions"] is JsonArray plannedArr && usableFairyBudget > 0)
+            {
+                int srPotionCount = playerSr["potionCount"]?.GetValue<int>() ?? 0;
+                int explicitUsePotions = plannedArr
+                    .OfType<JsonObject>()
+                    .Count(static a => string.Equals(a["kind"]?.GetValue<string>(), "UsePotion", StringComparison.Ordinal));
+                int remainingFairyAtSr = Math.Max(0, usableFairyBudget - liveFairyUsesAtSr);
+                projectedImplicitFairyUses = Math.Clamp(srPotionCount - explicitUsePotions, 0, remainingFairyAtSr);
+            }
+            int totalFairyUses = Math.Clamp(
+                Math.Max(liveFairyUses, liveFairyUsesAtSr + projectedImplicitFairyUses),
+                0,
+                usableFairyBudget);
+
+            int telemetryDeathSaves = matchedTelemetry?.DeathSaveUseCount ?? 0;
+            int telemetryRelicHp = Math.Max(0, matchedTelemetry?.DeathSaveRelicHpRestored ?? 0);
+            int telemetryPotionHp = Math.Max(0, matchedTelemetry?.DeathSavePotionHpRestored ?? 0);
+
+            int inferredRelicFromTelemetry = telemetryRelicHp > 0 ? Math.Min(initialUnusedLizardTails, 1) : 0;
+            int inferredFairyFromTelemetry = telemetryPotionHp > 0 ? Math.Min(usableFairyBudget, 1) : 0;
+
+            lizardTailUseCount = Math.Clamp(Math.Max(liveLizardTailUses, inferredRelicFromTelemetry), 0, initialUnusedLizardTails);
+            fairyUseCount = Math.Clamp(Math.Max(totalFairyUses, inferredFairyFromTelemetry), 0, usableFairyBudget);
+            deathSaveUseCount = Math.Clamp(
+                Math.Max(lizardTailUseCount + fairyUseCount, telemetryDeathSaves),
+                0,
+                initialTotalDeathSaves);
+
+            int remainingUnassigned = Math.Max(0, deathSaveUseCount - (lizardTailUseCount + fairyUseCount));
+            if (remainingUnassigned > 0)
+            {
+                int availFairy = Math.Max(0, usableFairyBudget - fairyUseCount);
+                int availLizard = Math.Max(0, initialUnusedLizardTails - lizardTailUseCount);
+                if (telemetryPotionHp >= telemetryRelicHp)
+                {
+                    int addFairy = Math.Min(remainingUnassigned, availFairy);
+                    fairyUseCount += addFairy;
+                    remainingUnassigned -= addFairy;
+                    lizardTailUseCount += Math.Min(remainingUnassigned, availLizard);
+                }
+                else
+                {
+                    int addLizard = Math.Min(remainingUnassigned, availLizard);
+                    lizardTailUseCount += addLizard;
+                    remainingUnassigned -= addLizard;
+                    fairyUseCount += Math.Min(remainingUnassigned, availFairy);
+                }
+            }
+
+            int telemetryDeathSaveHp = telemetryRelicHp + telemetryPotionHp;
+            int baseMaxHp = Math.Max(1, latestObservedMaxHp > 0 ? latestObservedMaxHp : startSnap.MaxHp);
+            int estimatedDeathSaveHp = lizardTailUseCount * Math.Max(1, baseMaxHp / 2)
+                + fairyUseCount * Math.Max(1, (baseMaxHp * 30) / 100);
+            deathSaveHpRestored = telemetryDeathSaveHp > 0 && telemetryDeathSaves >= deathSaveUseCount
+                ? telemetryDeathSaveHp
+                : Math.Max(telemetryDeathSaveHp, estimatedDeathSaveHp);
+        }
+
+        return new PlayerBundleTelemetry(
+            InitialUnusedLizardTails: initialUnusedLizardTails,
+            InitialFairyCount: initialFairyCount,
+            DeathSaveUseCount: deathSaveUseCount,
+            LizardTailUseCount: lizardTailUseCount,
+            FairyUseCount: fairyUseCount,
+            DeathSaveHpRestored: deathSaveHpRestored,
+            TelemetryFinalHp: matchedTelemetry?.FinalHp,
+            LatestObservedMaxHp: latestObservedMaxHp,
+            ConsumedRootPotionSlots: consumedRootPotionSlots.ToArray(),
+            AlchemizePlayCount: alchemizePlayCount);
+    }
+
+    private static JsonObject? FindMatchingPlayerSearchResult(JsonObject index, BundleGroundTruth gt)
+    {
+        if (index["searchResults"] is not JsonArray srs || srs.Count == 0)
+            return null;
+
+        bool MatchesOutcome(JsonObject sr)
+        {
+            bool srWon = sr["combatEndedTurn"] != null && sr["deathTurn"] == null;
+            int srHp = sr["projectedBattleHpLost"]?.GetValue<int>() ?? 0;
+            int srPots = (sr["potionCount"]?.GetValue<int>() ?? 0) + (sr["battlePotionsUsedSoFar"]?.GetValue<int>() ?? 0);
+            int srTurns = sr["combatEndedTurn"]?.GetValue<int>() ?? sr["deathTurn"]?.GetValue<int>() ?? 0;
+            return srWon == gt.PlayerWon
+                && srHp == gt.PlayerHpLoss
+                && srPots == gt.PlayerPotionsUsed
+                && (gt.PlayerTurns <= 0 || srTurns <= 0 || srTurns == gt.PlayerTurns);
+        }
+
+        List<JsonObject> all = srs.OfType<JsonObject>().ToList();
+        if (!string.IsNullOrEmpty(gt.PlayerCheckpointId))
+        {
+            JsonObject? exact = all.LastOrDefault(sr =>
+                string.Equals(sr["checkpointId"]?.GetValue<string>(), gt.PlayerCheckpointId, StringComparison.Ordinal)
+                && MatchesOutcome(sr));
+            if (exact != null)
+                return exact;
+        }
+
+        JsonObject? byOutcome = all.LastOrDefault(sr =>
+            (sr["eventCursor"]?.GetValue<long>() ?? 0L) > 0L && MatchesOutcome(sr));
+        if (byOutcome != null)
+            return byOutcome;
+
+        if (!string.IsNullOrEmpty(gt.PlayerCheckpointId))
+        {
+            return all.LastOrDefault(sr =>
+                string.Equals(sr["checkpointId"]?.GetValue<string>(), gt.PlayerCheckpointId, StringComparison.Ordinal));
+        }
+
+        return null;
+    }
+
+    private static PlayerCheckpointSnapshot? TryReadSavePlayerSnapshot(
+        string savePath,
+        int eventCursor,
+        string checkpointId)
+    {
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(savePath));
+        JsonElement root = doc.RootElement;
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("players", out JsonElement players)
+            || players.ValueKind != JsonValueKind.Array
+            || players.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        JsonElement p0 = players[0];
+        if (p0.ValueKind != JsonValueKind.Object)
+            return null;
+
+        int currentHp = TryGetInt(p0, "current_hp") ?? 0;
+        int maxHp = TryGetInt(p0, "max_hp") ?? 0;
+        int unusedLizardTails = 0;
+
+        if (p0.TryGetProperty("relics", out JsonElement relics) && relics.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement relic in relics.EnumerateArray())
+            {
+                if (relic.ValueKind != JsonValueKind.Object)
+                    continue;
+                string entry = NormalizeModelEntry(TryGetString(relic, "id"), "RELIC.");
+                if (!string.Equals(entry, "LIZARD_TAIL", StringComparison.Ordinal))
+                    continue;
+
+                bool wasUsed = false;
+                if (relic.TryGetProperty("props", out JsonElement props) && props.ValueKind == JsonValueKind.Object)
+                {
+                    if (props.TryGetProperty("bools", out JsonElement bools) && bools.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (JsonElement prop in bools.EnumerateArray())
+                        {
+                            if (prop.ValueKind != JsonValueKind.Object)
+                                continue;
+                            if (string.Equals(TryGetString(prop, "name"), "WasUsed", StringComparison.OrdinalIgnoreCase)
+                                && prop.TryGetProperty("value", out JsonElement valEl)
+                                && valEl.ValueKind == JsonValueKind.True)
+                            {
+                                wasUsed = true;
+                                break;
+                            }
+                        }
+                    }
+                    else if (props.TryGetProperty("WasUsed", out JsonElement directVal)
+                        && directVal.ValueKind == JsonValueKind.True)
+                    {
+                        wasUsed = true;
+                    }
+                }
+
+                if (!wasUsed)
+                    unusedLizardTails++;
+            }
+        }
+
+        Dictionary<int, string> potionsBySlot = new();
+        if (p0.TryGetProperty("potions", out JsonElement potions) && potions.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement pot in potions.EnumerateArray())
+            {
+                if (pot.ValueKind != JsonValueKind.Object)
+                    continue;
+                int? slot = TryGetInt(pot, "slot_index") ?? TryGetInt(pot, "slot");
+                string entry = NormalizeModelEntry(TryGetString(pot, "id"), "POTION.");
+                if (slot.HasValue && !string.IsNullOrEmpty(entry))
+                    potionsBySlot[slot.Value] = entry;
+            }
+        }
+
+        return new PlayerCheckpointSnapshot(eventCursor, checkpointId, currentHp, maxHp, unusedLizardTails, potionsBySlot);
+    }
+
+    private static PlayerCheckpointSnapshot? TryReadReplayStatePlayerSnapshot(
+        string replayStatePath,
+        int eventCursor,
+        string checkpointId)
+    {
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(replayStatePath));
+        JsonElement root = doc.RootElement;
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("players", out JsonElement players)
+            || players.ValueKind != JsonValueKind.Array
+            || players.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        JsonElement p0 = players[0];
+        if (p0.ValueKind != JsonValueKind.Object)
+            return null;
+
+        int currentHp = TryGetInt(p0, "currentHp") ?? 0;
+        int maxHp = TryGetInt(p0, "maxHp") ?? 0;
+        int unusedLizardTails = 0;
+
+        if (p0.TryGetProperty("relics", out JsonElement relics) && relics.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement relic in relics.EnumerateArray())
+            {
+                if (relic.ValueKind != JsonValueKind.Object)
+                    continue;
+                string entry = NormalizeModelEntry(TryGetString(relic, "id"), "RELIC.");
+                if (!string.Equals(entry, "LIZARD_TAIL", StringComparison.Ordinal))
+                    continue;
+
+                bool wasUsed = false;
+                if (relic.TryGetProperty("fields", out JsonElement fields) && fields.ValueKind == JsonValueKind.Object)
+                {
+                    if (fields.TryGetProperty("LizardTail._wasUsed", out JsonElement wuEl)
+                        && wuEl.ValueKind == JsonValueKind.True)
+                    {
+                        wasUsed = true;
+                    }
+                    else if (string.Equals(TryGetString(fields, "RelicModel._status"), "Disabled", StringComparison.OrdinalIgnoreCase))
+                    {
+                        wasUsed = true;
+                    }
+                }
+
+                if (!wasUsed)
+                    unusedLizardTails++;
+            }
+        }
+
+        Dictionary<int, string> potionsBySlot = new();
+        if (p0.TryGetProperty("potions", out JsonElement potions) && potions.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement pot in potions.EnumerateArray())
+            {
+                if (pot.ValueKind != JsonValueKind.Object)
+                    continue;
+                int? slot = TryGetInt(pot, "slot") ?? TryGetInt(pot, "slot_index");
+                string entry = NormalizeModelEntry(TryGetString(pot, "id"), "POTION.");
+                if (slot.HasValue && !string.IsNullOrEmpty(entry))
+                    potionsBySlot[slot.Value] = entry;
+            }
+        }
+
+        return new PlayerCheckpointSnapshot(eventCursor, checkpointId, currentHp, maxHp, unusedLizardTails, potionsBySlot);
+    }
+
+    private static MatchedRouteTelemetry? FindMatchingPlayerTelemetry(
+        string rootDir,
+        JsonObject index,
+        BundleGroundTruth gt)
+    {
+        bool MatchesPlayer(MatchedRouteTelemetry t)
+            => t.Won == gt.PlayerWon
+               && t.ProjectedBattleHpLost == gt.PlayerHpLoss
+               && t.TotalPotionsUsed == gt.PlayerPotionsUsed
+               && (gt.PlayerTurns <= 0 || t.Turns <= 0 || t.Turns == gt.PlayerTurns);
+
+        string rawSlot = index["slot"]?.GetValue<string>() ?? "current";
+        string slot = rawSlot is "current" or "recent" ? rawSlot : "current";
+        string[] routeFiles =
+        [
+            Path.Combine(rootDir, "replay", slot, "last-route.txt"),
+            Path.Combine(rootDir, "diagnostics", "current-route.txt"),
+        ];
+
+        foreach (string path in routeFiles)
+        {
+            if (!File.Exists(path))
+                continue;
+            MatchedRouteTelemetry? match = null;
+            foreach (string line in File.ReadLines(path))
+            {
+                if (TryParseResultTelemetryLine(line, out MatchedRouteTelemetry? parsed)
+                    && parsed != null
+                    && MatchesPlayer(parsed))
+                {
+                    match = parsed;
+                }
+            }
+            if (match != null)
+                return match;
+        }
+
+        string combatLogsDir = Path.Combine(rootDir, "diagnostics", "logs", "combat");
+        if (!Directory.Exists(combatLogsDir))
+            return null;
+
+        string? expectedSessionId = index["sessionId"]?.GetValue<string>();
+        string logsIndexPath = Path.Combine(rootDir, "diagnostics", "logs", "index.json");
+        if (!string.IsNullOrEmpty(expectedSessionId) && File.Exists(logsIndexPath))
+        {
+            using JsonDocument logIdxDoc = JsonDocument.Parse(File.ReadAllText(logsIndexPath));
+            if (logIdxDoc.RootElement.ValueKind == JsonValueKind.Object
+                && logIdxDoc.RootElement.TryGetProperty("combat", out JsonElement combatEl)
+                && combatEl.ValueKind == JsonValueKind.Object)
+            {
+                string? logSessionId = TryGetString(combatEl, "sessionId");
+                if (!string.IsNullOrEmpty(logSessionId)
+                    && !string.Equals(logSessionId, expectedSessionId, StringComparison.Ordinal))
+                {
+                    return null;
+                }
+            }
+        }
+
+        foreach (string logPath in Directory.EnumerateFiles(combatLogsDir, "*.jsonl")
+            .OrderByDescending(static p => Path.GetFileName(p), StringComparer.Ordinal))
+        {
+            MatchedRouteTelemetry? fileLastMatch = null;
+            foreach (string rawLine in File.ReadLines(logPath))
+            {
+                if (!rawLine.Contains("] RESULT ", StringComparison.Ordinal))
+                    continue;
+                string trimmed = rawLine.Trim();
+                if (trimmed.Length == 0 || trimmed[0] != '{')
+                    continue;
+                using JsonDocument lineDoc = JsonDocument.Parse(trimmed);
+                if (lineDoc.RootElement.ValueKind != JsonValueKind.Object
+                    || !lineDoc.RootElement.TryGetProperty("Message", out JsonElement msgEl)
+                    || msgEl.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+                string? msg = msgEl.GetString();
+                if (string.IsNullOrEmpty(msg))
+                    continue;
+                int nl = msg.IndexOfAny(['\r', '\n']);
+                string firstLine = nl >= 0 ? msg[..nl] : msg;
+                if (TryParseResultTelemetryLine(firstLine, out MatchedRouteTelemetry? parsed)
+                    && parsed != null
+                    && MatchesPlayer(parsed))
+                {
+                    fileLastMatch = parsed;
+                }
+            }
+            if (fileLastMatch != null)
+                return fileLastMatch;
+        }
+
+        return null;
+    }
+
+    private static bool TryParseResultTelemetryLine(string line, out MatchedRouteTelemetry? telemetry)
+    {
+        telemetry = null;
+        int marker = line.IndexOf("] RESULT ", StringComparison.Ordinal);
+        if (marker < 0)
+            return false;
+
+        int? projectedHpLost = null;
+        int? battlePotsSoFar = null;
+        int? potionCount = null;
+        int? combatEndedTurn = null;
+        int? deathTurn = null;
+        int? finalHp = null;
+        int? deathSaveRelicHp = null;
+        int? deathSavePotionHp = null;
+        int? deathSaveUses = null;
+        int? projectedDeathSaveUses = null;
+
+        string payload = line[(marker + "] RESULT ".Length)..];
+        foreach (string token in payload.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            int eq = token.IndexOf('=');
+            if (eq <= 0 || eq >= token.Length - 1)
+                continue;
+            string key = token[..eq];
+            string val = token[(eq + 1)..];
+            if (val == "-")
+                continue;
+
+            switch (key)
+            {
+                case "projected_battle_hp_lost":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v1))
+                        projectedHpLost = v1;
+                    break;
+                case "battle_potions_used_so_far":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v2))
+                        battlePotsSoFar = v2;
+                    break;
+                case "potion_count":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v3))
+                        potionCount = v3;
+                    break;
+                case "combat_ended_turn":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v4))
+                        combatEndedTurn = v4;
+                    break;
+                case "death_turn":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v5))
+                        deathTurn = v5;
+                    break;
+                case "final_hp":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v6))
+                        finalHp = v6;
+                    break;
+                case "death_save_relic_hp":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v7))
+                        deathSaveRelicHp = v7;
+                    break;
+                case "death_save_potion_hp":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v8))
+                        deathSavePotionHp = v8;
+                    break;
+                case "death_save_uses":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v9))
+                        deathSaveUses = v9;
+                    break;
+                case "projected_death_save_uses":
+                    if (int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v10))
+                        projectedDeathSaveUses = v10;
+                    break;
+            }
+        }
+
+        if (!projectedHpLost.HasValue)
+            return false;
+
+        bool won = combatEndedTurn.HasValue && !deathTurn.HasValue;
+        int totalPotions = (battlePotsSoFar ?? 0) + (potionCount ?? 0);
+        int turns = combatEndedTurn ?? deathTurn ?? 0;
+        int dsUses = Math.Max(deathSaveUses ?? 0, projectedDeathSaveUses ?? 0);
+
+        telemetry = new MatchedRouteTelemetry(
+            Won: won,
+            ProjectedBattleHpLost: projectedHpLost.Value,
+            TotalPotionsUsed: totalPotions,
+            Turns: turns,
+            FinalHp: finalHp,
+            DeathSaveUseCount: dsUses,
+            DeathSaveRelicHpRestored: deathSaveRelicHp ?? 0,
+            DeathSavePotionHpRestored: deathSavePotionHp ?? 0);
+        return true;
+    }
+
+    private static string NormalizeModelEntry(string? rawId, string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(rawId))
+            return string.Empty;
+        string trimmed = rawId.Trim();
+        if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            trimmed = trimmed[prefix.Length..];
+        return trimmed.ToUpperInvariant();
+    }
+
+    private static int? TryGetInt(JsonElement obj, string propertyName)
+        => obj.TryGetProperty(propertyName, out JsonElement el)
+            && el.ValueKind == JsonValueKind.Number
+            && el.TryGetInt32(out int value)
+            ? value
+            : null;
+
+    private static string? TryGetString(JsonElement obj, string propertyName)
+        => obj.TryGetProperty(propertyName, out JsonElement el)
+            && el.ValueKind == JsonValueKind.String
+            ? el.GetString()
+            : null;
 
     private static CombatState WaitForPlayableOrEnded(
         MainLoopContext loop,

@@ -314,6 +314,8 @@ internal static partial class HotCombatEngine
 
                     int beforeOccCount = CountPowerOccurrences(in s, owner, defId);
                     HotPowerDef def = rules.Powers[defId];
+                    if (args.CardUid != 0)
+                        RefreshHookCardIdx(in s, ref args);
                     DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, liveIdx, def, ref args);
                     int afterOccCount = CountPowerOccurrences(in s, owner, defId);
                     if (afterOccCount < beforeOccCount)
@@ -373,6 +375,8 @@ internal static partial class HotCombatEngine
 
                     int beforeOccCount = CountPowerOccurrences(in s, owner, defId);
                     HotPowerDef def = rules.Powers[defId];
+                    if (args.CardUid != 0)
+                        RefreshHookCardIdx(in s, ref args);
                     DispatchSinglePowerHook(ref s, ref cold, rules, scratch, hook, liveIdx, def, ref args);
                     int afterOccCount = CountPowerOccurrences(in s, owner, defId);
                     if (afterOccCount < beforeOccCount)
@@ -392,7 +396,11 @@ internal static partial class HotCombatEngine
 
         // 4. Active Dread Dominion
         if (rules.Dominion != HotDominionId.None)
+        {
+            if (args.CardUid != 0)
+                RefreshHookCardIdx(in s, ref args);
             HotFoolTarot.TryDispatchDominionHook(ref s, ref cold, rules, scratch, hook, ref args);
+        }
         }
         finally
         {
@@ -795,7 +803,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.DoubleDamagePower:
-                if (args.ActorSlot == ownerSlot && amount > 0)
+                if ((args.ActorSlot == ownerSlot || (ownerSlot == 0 && args.ActorSlot == 1)) && amount > 0 && args.CardIdx >= 0)
                     args.DecimalMultiplier *= 2m;
                 break;
 
@@ -853,6 +861,10 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.ConductorsBatonPower:
+                if (args.TargetSlot == ownerSlot && amount > 0)
+                    args.DecimalMultiplier *= 0.75m;
+                break;
+
             case HotPowerId.SoarPower:
                 if (args.TargetSlot == ownerSlot && amount > 0)
                     args.DecimalMultiplier *= 0.5m;
@@ -903,12 +915,13 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.HardenedShellPower:
-            {
-                int remainingCap = Math.Max(0, amount - s.Powers[powerIdx].Aux0);
-                if (args.DecimalValue > remainingCap)
-                    args.DecimalValue = remainingCap;
+                if (!args.BoolFlag)
+                {
+                    int remainingCap = Math.Max(0, amount - s.Powers[powerIdx].Aux0);
+                    if (args.DecimalValue > remainingCap)
+                        args.DecimalValue = remainingCap;
+                }
                 break;
-            }
 
             case HotPowerId.BufferPower:
                 if (!args.BoolFlag) // Only post-block HP loss (BoolFlag == false means post-block phase)
@@ -1015,7 +1028,11 @@ internal static partial class HotCombatEngine
 
             case HotPowerId.RupturePower:
                 if (args.UnblockedDamage > 0 && amount > 0 && IsSlotOnCurrentSide(s.CurrentSide, ownerSlot))
-                    ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, ownerSlot, HotPowerId.StrengthPower, amount);
+                {
+                    // 0.113.1 RupturePower.cs:45-58: defer Strength to AfterCardPlayed when damage came from an actively playing card.
+                    if (!TryDeferRuptureStrength(in s, ref s.Powers[powerIdx], in args, amount))
+                        ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, ownerSlot, HotPowerId.StrengthPower, amount);
+                }
                 break;
 
             case HotPowerId.CurlUpPower:
@@ -1088,9 +1105,9 @@ internal static partial class HotCombatEngine
                     }
                     else
                     {
+                        // 0.113.1 SlumberPower.cs:25-30: stun into WakeUpMove -> ROLL_OUT_MOVE; IsAwake becomes true when WakeUpMove executes.
                         RemovePowerAt(ref s, powerIdx);
                         s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
-                        s.Enemies[ownerSlot - 3].Flags |= HotEnemyFlags.Awake;
                         HotMonsters.ForceStunnedMove(ref s, rules, (byte)(ownerSlot - 3), "ROLL_OUT_MOVE");
                     }
                 }
@@ -1412,6 +1429,18 @@ internal static partial class HotCombatEngine
                 if (ownerSlot == 0 && args.TargetSlot != 0xFF)
                     UpdateSurroundedFacingOnPower(ref s, rules, powerIdx, args.TargetSlot);
                 break;
+
+            case HotPowerId.RupturePower:
+                if (ownerSlot == 0 && IsSlotOnCurrentSide(s.CurrentSide, ownerSlot))
+                {
+                    // 0.113.1 RupturePower.cs:31-43: track active player card plays so self-HP-loss defers Strength to AfterCardPlayed.
+                    ushort uid = args.CardUid != 0
+                        ? args.CardUid
+                        : ((uint)args.CardIdx < (uint)s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0);
+                    if (uid != 0)
+                        RegisterRupturePlayedCard(ref s.Powers[powerIdx], uid);
+                }
+                break;
         }
     }
 
@@ -1709,7 +1738,106 @@ internal static partial class HotCombatEngine
                     ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.DrawCardsNextTurnPower, amount);
                 }
                 break;
+
+            case HotPowerId.RupturePower:
+                if (ownerSlot == 0)
+                {
+                    // 0.113.1 RupturePower.cs:60-66: apply any deferred Strength accumulated during this card play.
+                    ushort uid = args.CardUid != 0
+                        ? args.CardUid
+                        : ((uint)args.CardIdx < (uint)s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0);
+                    if (uid != 0 && TryConsumeRuptureStrength(ref s.Powers[powerIdx], uid, out int pendingStrength) && pendingStrength > 0)
+                        ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, ownerSlot, HotPowerId.StrengthPower, pendingStrength);
+                }
+                break;
         }
+    }
+
+    // RupturePower packs up to 2 nested active card plays in Aux0/Aux1: low 16 bits = CardUid, high 16 bits = pending Strength.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void RegisterRupturePlayedCard(ref HotPower p, ushort cardUid)
+    {
+        if ((ushort)p.Aux0 == 0 || (ushort)p.Aux0 == cardUid)
+            p.Aux0 = cardUid;
+        else if ((ushort)p.Aux1 == 0 || (ushort)p.Aux1 == cardUid)
+            p.Aux1 = cardUid;
+        else if ((uint)p.Aux1 >> 16 == 0)
+            p.Aux1 = cardUid;
+    }
+
+    private static bool TryDeferRuptureStrength(
+        in CombatHotState s,
+        ref HotPower p,
+        in HotHookArgs args,
+        int strengthGain)
+    {
+        ushort uid0 = (ushort)p.Aux0;
+        ushort uid1 = (ushort)p.Aux1;
+        if (uid0 == 0 && uid1 == 0)
+            return false;
+
+        ushort sourceUid = args.CardUid;
+        if (sourceUid == 0 && args.CardIdx >= 0)
+        {
+            if ((uint)args.CardIdx < (uint)s.TotalCardCount
+                && (args.CardDefId == 0 || s.Cards[args.CardIdx].CardDefId == args.CardDefId))
+            {
+                sourceUid = s.Cards[args.CardIdx].CardUid;
+            }
+            if ((sourceUid == 0 || (sourceUid != uid0 && sourceUid != uid1)) && args.CardDefId != 0)
+            {
+                int playStart = s.PlayStart;
+                int playEnd = playStart + s.PlayCount;
+                for (int i = playStart; i < playEnd; i++)
+                {
+                    if (s.Cards[i].CardDefId == args.CardDefId)
+                    {
+                        ushort playUid = s.Cards[i].CardUid;
+                        if (playUid == uid1 || playUid == uid0)
+                        {
+                            sourceUid = playUid;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (sourceUid == 0)
+            return false;
+
+        if (uid1 == sourceUid)
+        {
+            int next = (int)((uint)p.Aux1 >> 16) + strengthGain;
+            p.Aux1 = uid1 | (Math.Clamp(next, 0, ushort.MaxValue) << 16);
+            return true;
+        }
+        if (uid0 == sourceUid)
+        {
+            int next = (int)((uint)p.Aux0 >> 16) + strengthGain;
+            p.Aux0 = uid0 | (Math.Clamp(next, 0, ushort.MaxValue) << 16);
+            return true;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool TryConsumeRuptureStrength(ref HotPower p, ushort cardUid, out int pendingStrength)
+    {
+        if ((ushort)p.Aux1 == cardUid)
+        {
+            pendingStrength = (int)((uint)p.Aux1 >> 16);
+            p.Aux1 = 0;
+            return true;
+        }
+        if ((ushort)p.Aux0 == cardUid)
+        {
+            pendingStrength = (int)((uint)p.Aux0 >> 16);
+            p.Aux0 = 0;
+            return true;
+        }
+        pendingStrength = 0;
+        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -2656,15 +2784,18 @@ internal static partial class HotCombatEngine
             return;
         }
 
+        // 0.113.1 HardenedShellPower.cs:76-87: resets damageReceivedThisTurn on every side turn start (both Player and Enemy).
+        if (powerId == HotPowerId.HardenedShellPower)
+        {
+            s.Powers[powerIdx].Aux0 = 0;
+            return;
+        }
+
         if (!IsSlotOnCurrentSide(args.Side, ownerSlot))
             return;
 
         switch (powerId)
         {
-            case HotPowerId.HardenedShellPower:
-                s.Powers[powerIdx].Aux0 = 0;
-                break;
-
             case HotPowerId.SlothPower:
             case HotPowerId.VoidFormPower:
                 s.Powers[powerIdx].Aux0 = 0;
@@ -2868,7 +2999,7 @@ internal static partial class HotCombatEngine
                     {
                         int idx = FindCardIndexByUid(in s, HotPileKind.Hand, pickedUids[i]);
                         if (idx >= 0)
-                            TransformCardToRandomInCombat(ref s, ref cold, rules, idx);
+                            TransformCardToRandomInCombat(ref s, ref cold, rules, scratch, idx);
                     }
                 }
                 break;
@@ -3386,6 +3517,7 @@ internal static partial class HotCombatEngine
         ref CombatHotState s,
         ref HotColdSidecar? cold,
         HotRules rules,
+        HotExecScratch scratch,
         int cardIdx)
     {
         if ((uint)cardIdx >= (uint)s.TotalCardCount)
@@ -3395,13 +3527,17 @@ internal static partial class HotCombatEngine
             return;
 
         HotCardDef origDef = rules.Cards[orig.CardDefId];
+        // 0.113.1 CardFactory.cs:171-182: Status -> StatusCardPool, Curse -> CurseCardPool,
+        // Quest/Event/Ancient/Token/Colorless -> ColorlessCardPool, else character pool.
         ushort[] pool = origDef.Rarity == CardRarity.Curse
             ? rules.UnlockedCurseCardPool
-            : (origDef.Type == CardType.Quest
-                || origDef.Rarity is CardRarity.Event or CardRarity.Ancient or CardRarity.Token
-                || origDef.Domain == HotCardDomain.Colorless
-                ? rules.CombatColorlessPool
-                : rules.UnlockedCharacterCardPool);
+            : origDef.Rarity == CardRarity.Status
+                ? rules.UnlockedStatusCardPool
+                : (origDef.Type == CardType.Quest
+                    || origDef.Rarity is CardRarity.Event or CardRarity.Ancient or CardRarity.Token
+                    || origDef.Domain == HotCardDomain.Colorless
+                    ? rules.CombatColorlessPool
+                    : rules.UnlockedCharacterCardPool);
 
         if (pool.Length == 0)
             return;
@@ -3429,7 +3565,7 @@ internal static partial class HotCombatEngine
             return;
 
         ushort replacementId = candidates[HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatCardGeneration], candCount)];
-        TransformCardInPlace(ref s, ref cold, rules, cardIdx, replacementId, upgraded: false);
+        TransformCardInPlace(ref s, ref cold, rules, scratch, cardIdx, replacementId, upgraded: false);
     }
 
     internal static void RetireTempStat(

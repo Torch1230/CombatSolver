@@ -5,14 +5,17 @@ namespace CombatSolver.HotSearch;
 
 /// <summary>
 /// Zero-LINQ, zero-allocation single-tree domain-agnostic MAP-Elites beam retention:
-/// - Deterministic counting-sort bucketing by <c>PotionCount</c> (<c>0, 1, 2, 3+</c>) with non-starving
-///   potion-signature diversity;
+/// - Deterministic counting-sort bucketing by <c>PotionCount</c> (<c>0, 1, 2, 3+</c>) with turn-aware
+///   Phase-B reserves and non-starving potion-signature diversity;
+/// - Deterministic SplitMix64 tactical-signature clone cap (anti-permutation-clone collapse: max 2 clones/sig
+///   at turn boundaries, 3 mid-turn across Pass 1 niches/Pareto, with uncapped PrimaryScore Pass 2 spillover);
 /// - 5 orthogonal domain-agnostic behavioral niches:
-///   (1) Primary / Rollout-Blended Value (~35%),
-///   (2) Survival / HP Preservation (~18%: min EffectiveNetHpLoss, max PlayerHp + EffectiveDefense),
-///   (3) Tempo / Kill Speed (~15%: min Alive+Reviving, min EnemyHp),
-///   (4) Generic Persistent Board Investment (~18%: unclamped domain-agnostic state delta, zero card IDs),
-///   (5) Optionality + True Full-Pool Pareto (~14%: max Energy+Stars+PlayableHand+DrawNextTurn, and
+///   (1) Primary / Rollout-Blended Value (>=34% guaranteed even with PureRollout / ChoiceLookahead active),
+///   (2) Survival / HP Preservation (~14-16%: min EffectiveNetHpLoss, max PlayerHp + EffectiveDefense, with
+///       optional <see cref="AllowDeathSaveRescue"/> ordering during defeat-rescue passes),
+///   (3) Tempo / Kill Speed (~11-13%: min Alive+Reviving, min EnemyHp),
+///   (4) Generic Persistent Board Investment + SetupScore (~14-16%: 16_000*BoardInvestment + 18_000*SetupScore),
+///   (5) Combo/Optionality + True Full-Pool Pareto (mid-turn Combo >=10% PlayableHandCount+Energy readiness, and
 ///       Pareto scanning the union of top-32 candidates from EACH niche rather than only Top-128 by raw Score).
 /// 100% deterministic across DOP=1 and DOP=N.
 /// </summary>
@@ -27,15 +30,46 @@ internal sealed class HotBeamRetention : IDisposable
     private int[] _bucketBuffer;
     private int[] _scratchIndices;
     private byte[] _selectedMarks;
+    private ulong[] _nodeSigs;
+    private ulong[] _sigKeys;
+    private byte[] _sigCounts;
+    private ulong[] _heapSigKeys;
+    private byte[] _heapSigCounts;
+    private int[] _heapSigWorstIdx;
     private int _capacity;
+    private int _sigCapacity;
     private bool _disposed;
+
+    /// <summary>
+    /// When <c>true</c> alongside <c>preferPotionBuckets: true</c> in <see cref="PruneLayer"/> (Phase B when
+    /// Phase A found no clean zero-potion survival), lowers the turn-aware <c>0</c>-potion reserve from
+    /// <c>30%</c> to <c>25%</c> on <c>turnLayer &lt;= 1</c> and from <c>26%</c> to <c>16%</c> on <c>turnLayer &gt;= 2</c>.
+    /// </summary>
+    public bool RelaxZeroPotionReserve { get; set; }
+
+    /// <summary>
+    /// When <c>true</c> (or when <c>allowDeathSaveRescue: true</c> is passed to <see cref="PruneLayer"/>),
+    /// defers <c>DeathSaveUseCount</c> after <c>PlayerHp</c> in Survival ranking and disables cross-death-save
+    /// Pareto domination so defeat-rescue passes can preserve death-save survival trajectories.
+    /// </summary>
+    public bool AllowDeathSaveRescue { get; set; }
 
     public HotBeamRetention(int initialCapacity = 4096)
     {
-        _capacity = initialCapacity;
-        _bucketBuffer = ArrayPool<int>.Shared.Rent(initialCapacity);
-        _scratchIndices = ArrayPool<int>.Shared.Rent(initialCapacity);
-        _selectedMarks = ArrayPool<byte>.Shared.Rent(initialCapacity);
+        int cap = Math.Max(64, initialCapacity);
+        _capacity = cap;
+        _bucketBuffer = ArrayPool<int>.Shared.Rent(cap);
+        _scratchIndices = ArrayPool<int>.Shared.Rent(cap);
+        _selectedMarks = ArrayPool<byte>.Shared.Rent(cap);
+        _nodeSigs = ArrayPool<ulong>.Shared.Rent(cap);
+
+        int sigCap = ComputeSigTableSize(Math.Min(cap, 2048));
+        _sigCapacity = sigCap;
+        _sigKeys = ArrayPool<ulong>.Shared.Rent(sigCap);
+        _sigCounts = ArrayPool<byte>.Shared.Rent(sigCap);
+        _heapSigKeys = ArrayPool<ulong>.Shared.Rent(sigCap);
+        _heapSigCounts = ArrayPool<byte>.Shared.Rent(sigCap);
+        _heapSigWorstIdx = ArrayPool<int>.Shared.Rent(sigCap);
     }
 
     /// <summary>
@@ -53,13 +87,18 @@ internal sealed class HotBeamRetention : IDisposable
         Span<int> output,
         bool isTurnBoundary = true,
         bool preferPotionBuckets = false,
-        bool useRolloutScores = false)
+        bool useRolloutScores = false,
+        int turnLayer = 0,
+        bool allowDeathSaveRescue = false)
     {
         int n = candidates.Length;
         if (n == 0 || beamWidth <= 0)
             return 0;
 
         int limit = Math.Min(beamWidth, output.Length);
+        if (limit <= 0)
+            return 0;
+
         if (n <= limit)
         {
             candidates.CopyTo(output);
@@ -67,7 +106,8 @@ internal sealed class HotBeamRetention : IDisposable
             return n;
         }
 
-        EnsureCapacity(Math.Max(n, limit + PerNicheParetoTopK));
+        bool effectiveRescue = allowDeathSaveRescue || AllowDeathSaveRescue;
+        EnsureCapacity(Math.Max(n, limit + PerNicheParetoTopK), limit);
 
         // 1. Single-pass counting sort bucketing by PotionCount (0, 1, 2, 3+) — ZERO LINQ GroupBy.
         Span<int> bucketCounts = stackalloc int[MaxPotionBuckets];
@@ -102,7 +142,14 @@ internal sealed class HotBeamRetention : IDisposable
 
         // 2. Allocate beam width quotas across active potion buckets.
         Span<int> bucketQuotas = stackalloc int[MaxPotionBuckets];
-        AllocateBucketQuotas(bucketCounts, activeBuckets, limit, preferPotionBuckets, bucketQuotas);
+        AllocateBucketQuotas(
+            bucketCounts,
+            activeBuckets,
+            limit,
+            preferPotionBuckets,
+            RelaxZeroPotionReserve,
+            turnLayer,
+            bucketQuotas);
 
         // 3. Select diverse MAP-Elites survivors inside each bucket into output.
         int totalSelected = 0;
@@ -122,6 +169,7 @@ internal sealed class HotBeamRetention : IDisposable
                 isTurnBoundary,
                 preferPotionBuckets,
                 useRolloutScores,
+                effectiveRescue,
                 output.Slice(totalSelected, limit - totalSelected));
             totalSelected += picked;
         }
@@ -136,6 +184,8 @@ internal sealed class HotBeamRetention : IDisposable
         int activeBuckets,
         int totalQuota,
         bool preferPotionBuckets,
+        bool relaxZeroPotionReserve,
+        int turnLayer,
         Span<int> quotas)
     {
         quotas.Clear();
@@ -156,12 +206,16 @@ internal sealed class HotBeamRetention : IDisposable
 
         int remaining = totalQuota;
 
-        // Under Smart Stage 2 (where Stage 1 already searched 0-paid-potion deeply), preserve ~35% for 0-potion
-        // prefixes so late-turn potions can still emerge, while giving 65% to 1+/2+ potion routes.
-        // Under Stage 1 / single-beam, preserve 60% for 0-potion routes.
+        // Under Smart Phase B, protect early-turn (turnLayer <= 1) 0-potion setup prefixes (30% / 25% relaxed)
+        // before shifting focus onto potion trajectories from turnLayer >= 2 (26% / 16% relaxed); under Phase A /
+        // single-beam, reserve 60%.
         if (counts[0] > 0)
         {
-            int zeroPct = preferPotionBuckets ? 35 : 60;
+            int zeroPct = !preferPotionBuckets
+                ? 60
+                : (turnLayer <= 1
+                    ? (relaxZeroPotionReserve ? 25 : 30)
+                    : (relaxZeroPotionReserve ? 16 : 26));
             int zeroTarget = Math.Max(1, (totalQuota * zeroPct) / 100);
             int take = Math.Min(counts[0], zeroTarget);
             quotas[0] = take;
@@ -179,7 +233,8 @@ internal sealed class HotBeamRetention : IDisposable
         {
             if (preferPotionBuckets && counts[1] > 0 && otherBuckets > 1)
             {
-                int onePotTarget = Math.Max(1, (remaining * 55) / 100);
+                int onePotPct = (turnLayer <= 1 && counts[2] > 0) ? 45 : 55;
+                int onePotTarget = Math.Max(1, (remaining * onePotPct) / 100);
                 int take1 = Math.Min(counts[1], onePotTarget);
                 quotas[1] = take1;
                 remaining -= take1;
@@ -227,6 +282,7 @@ internal sealed class HotBeamRetention : IDisposable
         bool isTurnBoundary,
         bool preferPotionBuckets,
         bool useRolloutScores,
+        bool allowDeathSaveRescue,
         Span<int> dst)
     {
         int count = bucketNodes.Length;
@@ -239,11 +295,27 @@ internal sealed class HotBeamRetention : IDisposable
         // Canonical primary ranking: index 0..count-1 is sorted descending by PrimaryScore.
         SortByPrimaryScoreDeterministic(bucketNodes, arena, useRolloutScores);
 
+        // Precompute deterministic tactical signatures once per bucket (zero node IDs, zero DiscardPile order).
+        Span<ulong> nodeSigs = _nodeSigs.AsSpan(0, count);
+        for (int i = 0; i < count; i++)
+            nodeSigs[i] = ComputeTacticalSignature(in arena.GetRef(bucketNodes[i]));
+
+        int sigTableSize = ComputeSigTableSize(quota);
+        int sigMask = sigTableSize - 1;
+        Span<ulong> sigKeys = _sigKeys.AsSpan(0, sigTableSize);
+        Span<byte> sigCounts = _sigCounts.AsSpan(0, sigTableSize);
+        sigKeys.Clear();
+        sigCounts.Clear();
+        byte maxClonesPerSig = isTurnBoundary ? (byte)2 : (byte)3;
+
         // Mark values: 0 = unselected, 1 = selected into dst, 2 = queued in full-pool Pareto candidate set.
         Span<byte> marks = _selectedMarks.AsSpan(0, count);
         marks.Clear();
 
         int selectedCount = 0;
+
+        // Pass 1: Enforce sigCount[sig] < maxClonesPerSig across potion-signature diversity, all MAP-Elites
+        // niches, full-pool Pareto, and capped primary spillover.
 
         // 0. Non-starving potion-signature diversity inside potion buckets (b >= 1):
         // Cap strictly so at least 5 slots (and >= 75% of larger buckets) ALWAYS remain for the 5 MAP-Elites niches!
@@ -273,6 +345,8 @@ internal sealed class HotBeamRetention : IDisposable
                 }
                 if (seen)
                     continue;
+                if (!TryConsumeSig(nodeSigs[i], sigKeys, sigCounts, sigMask, maxClonesPerSig))
+                    continue;
 
                 seenKeys[seenCount++] = sig;
                 marks[i] = 1;
@@ -291,7 +365,7 @@ internal sealed class HotBeamRetention : IDisposable
                             continue;
                         ref readonly HotSearchNode cand = ref arena.GetRef(bucketNodes[i]);
                         uint sig = ((uint)cand.PotionMask << 16) | (ushort)cand.PotionStrategicCost;
-                        if (sig == targetSig)
+                        if (sig == targetSig && TryConsumeSig(nodeSigs[i], sigKeys, sigCounts, sigMask, maxClonesPerSig))
                         {
                             marks[i] = 1;
                             dst[selectedCount++] = bucketNodes[i];
@@ -328,13 +402,15 @@ internal sealed class HotBeamRetention : IDisposable
             && !hasRolloutCandidates
             && HasAnyChoiceLookaheadCandidate(bucketNodes, arena);
 
-        // Niche 1 — Primary Value (~35%; when useRolloutScores is active, splits ~70% Blended / ~30% Pure Rollout;
-        // mid-turn with delayed-payoff choice lookahead, protects ~20% of Niche 1 for top choice-lookahead lines).
-        int rolloutPureQuota = (hasRolloutCandidates && primaryQuota >= 3)
-            ? Math.Max(1, (primaryQuota * 30) / 100)
+        // Niche 1 — Primary Value (>=34% guaranteed for blended Primary even when PureRollout / ChoiceLookahead
+        // is active, capping sidecar slices cleanly so Primary & mid-turn Combo never starve).
+        int minBlendedPrimary = Math.Min(primaryQuota, Math.Max(1, (remainingForLanes * 34 + 99) / 100));
+        int maxPrimarySidecar = Math.Max(0, primaryQuota - minBlendedPrimary);
+        int rolloutPureQuota = (hasRolloutCandidates && maxPrimarySidecar > 0 && primaryQuota >= 3)
+            ? Math.Min(Math.Max(1, (primaryQuota * 20) / 100), maxPrimarySidecar)
             : 0;
-        int choiceLookaheadQuota = (hasChoiceLookaheadCandidates && primaryQuota >= 3)
-            ? Math.Max(1, (primaryQuota * 20) / 100)
+        int choiceLookaheadQuota = (hasChoiceLookaheadCandidates && maxPrimarySidecar > 0 && primaryQuota >= 3)
+            ? Math.Min(Math.Max(1, (primaryQuota * 18) / 100), maxPrimarySidecar)
             : 0;
         int blendedPrimaryQuota = primaryQuota - rolloutPureQuota - choiceLookaheadQuota;
 
@@ -344,29 +420,48 @@ internal sealed class HotBeamRetention : IDisposable
         {
             if (marks[i] != 0)
                 continue;
+            ulong sig = nodeSigs[i];
             if (primaryAdded < blendedPrimaryQuota && selectedCount < quota)
             {
+                if (!TryConsumeSig(sig, sigKeys, sigCounts, sigMask, maxClonesPerSig))
+                    continue;
                 marks[i] = 1;
                 dst[selectedCount++] = bucketNodes[i];
                 primaryAdded++;
             }
-            else if (primaryParetoCount < PerNicheParetoTopK)
+            else if (paretoQuota > 0 && selectedCount < quota && primaryParetoCount < PerNicheParetoTopK)
             {
+                int existingCount = GetSigCount(sig, sigKeys, sigCounts, sigMask);
+                if (existingCount >= maxClonesPerSig)
+                    continue;
+                int queuedSameSig = 0;
+                for (int q = 0; q < primaryParetoCount; q++)
+                {
+                    if (nodeSigs[nichePareto[q]] == sig)
+                        queuedSameSig++;
+                }
+                if (existingCount + queuedSameSig >= maxClonesPerSig)
+                    continue;
                 nichePareto[primaryParetoCount++] = i;
             }
-            else
+            else if (primaryAdded >= blendedPrimaryQuota || selectedCount >= quota)
             {
                 break;
             }
         }
         nicheParetoCounts[0] = primaryParetoCount;
 
-        if (hasRolloutCandidates && (rolloutPureQuota > 0 || paretoQuota > 0))
+        if (hasRolloutCandidates && (rolloutPureQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
             int takeRollout = Math.Min(rolloutPureQuota, quota - selectedCount);
             selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
+                nodeSigs,
+                sigKeys,
+                sigCounts,
+                sigMask,
+                maxClonesPerSig,
                 arena,
                 takeRollout,
                 paretoQuota > 0 ? PerNicheParetoTopK : 0,
@@ -375,12 +470,17 @@ internal sealed class HotBeamRetention : IDisposable
                 out nicheParetoCounts[5],
                 new PureRolloutComparer(useRolloutScores));
         }
-        else if (hasChoiceLookaheadCandidates && (choiceLookaheadQuota > 0 || paretoQuota > 0))
+        else if (hasChoiceLookaheadCandidates && (choiceLookaheadQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
             int takeLookahead = Math.Min(choiceLookaheadQuota, quota - selectedCount);
             selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
+                nodeSigs,
+                sigKeys,
+                sigCounts,
+                sigMask,
+                maxClonesPerSig,
                 arena,
                 takeLookahead,
                 paretoQuota > 0 ? PerNicheParetoTopK : 0,
@@ -390,20 +490,26 @@ internal sealed class HotBeamRetention : IDisposable
                 new ChoiceLookaheadComparer(useRolloutScores));
         }
 
-        // Niche 2 — Survival / HP Preservation (~18%: min DeathSave, min EffectiveNetHpLoss, max PlayerHp + EffectiveDefense).
+        // Niche 2 — Survival / HP Preservation (~18%: min DeathSave [or deferred after PlayerHp when rescuing],
+        // min EffectiveNetHpLoss, max PlayerHp + EffectiveDefense).
         if ((survivalQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
             int take = Math.Min(survivalQuota, quota - selectedCount);
             selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
+                nodeSigs,
+                sigKeys,
+                sigCounts,
+                sigMask,
+                maxClonesPerSig,
                 arena,
                 take,
                 paretoQuota > 0 ? PerNicheParetoTopK : 0,
                 dst[selectedCount..],
                 nichePareto.Slice(1 * PerNicheParetoTopK, PerNicheParetoTopK),
                 out nicheParetoCounts[1],
-                new SurvivalComparer(useRolloutScores));
+                new SurvivalComparer(useRolloutScores, allowDeathSaveRescue));
         }
 
         // Niche 3 — Tempo / Kill Speed (~15%: min Alive+Reviving, min EnemyHp).
@@ -413,6 +519,11 @@ internal sealed class HotBeamRetention : IDisposable
             selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
+                nodeSigs,
+                sigKeys,
+                sigCounts,
+                sigMask,
+                maxClonesPerSig,
                 arena,
                 take,
                 paretoQuota > 0 ? PerNicheParetoTopK : 0,
@@ -429,6 +540,11 @@ internal sealed class HotBeamRetention : IDisposable
             selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
+                nodeSigs,
+                sigKeys,
+                sigCounts,
+                sigMask,
+                maxClonesPerSig,
                 arena,
                 take,
                 paretoQuota > 0 ? PerNicheParetoTopK : 0,
@@ -438,20 +554,25 @@ internal sealed class HotBeamRetention : IDisposable
                 new BoardInvestmentComparer(useRolloutScores));
         }
 
-        // Niche 5a — Optionality (max Energy + Stars + PlayableHandCount + DrawNextTurn).
+        // Niche 5a — Optionality / Mid-Turn Combo (max PlayableHandCount + Energy/Stars + DrawNextTurn).
         if ((optionalityQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
             int take = Math.Min(optionalityQuota, quota - selectedCount);
             selectedCount += SelectTopKUnmarked(
                 bucketNodes,
                 marks,
+                nodeSigs,
+                sigKeys,
+                sigCounts,
+                sigMask,
+                maxClonesPerSig,
                 arena,
                 take,
                 paretoQuota > 0 ? PerNicheParetoTopK : 0,
                 dst[selectedCount..],
                 nichePareto.Slice(4 * PerNicheParetoTopK, PerNicheParetoTopK),
                 out nicheParetoCounts[4],
-                new OptionalityComparer(useRolloutScores));
+                new OptionalityComparer(useRolloutScores, isTurnBoundary));
         }
 
         // Niche 5b — True Full-Pool Pareto scanning top-32 from EACH niche (round-robin interleaved so
@@ -473,6 +594,8 @@ internal sealed class HotBeamRetention : IDisposable
                     int idx = nichePareto[slot * PerNicheParetoTopK + rank];
                     if (marks[idx] != 0)
                         continue;
+                    if (GetSigCount(nodeSigs[idx], sigKeys, sigCounts, sigMask) >= maxClonesPerSig)
+                        continue;
                     marks[idx] = 2;
                     paretoPool[paretoPoolCount++] = idx;
                 }
@@ -484,20 +607,34 @@ internal sealed class HotBeamRetention : IDisposable
             for (int p = 0; p < paretoPoolCount && paretoAdded < paretoBudget; p++)
             {
                 int candIdx = paretoPool[p];
+                ulong candSig = nodeSigs[candIdx];
+                if (GetSigCount(candSig, sigKeys, sigCounts, sigMask) >= maxClonesPerSig)
+                    continue;
+
                 int candNodeId = bucketNodes[candIdx];
                 ref readonly HotSearchNode cand = ref arena.GetRef(candNodeId);
 
                 if (IsDominatedInFullPoolPareto(
                         in cand,
                         bucketNodes,
+                        marks,
+                        nodeSigs,
+                        sigKeys,
+                        sigCounts,
+                        sigMask,
+                        maxClonesPerSig,
                         dst[..selectedCount],
                         paretoPool[..paretoPoolCount],
                         p,
                         arena,
-                        useRolloutScores))
+                        useRolloutScores,
+                        allowDeathSaveRescue))
                 {
                     continue;
                 }
+
+                if (!TryConsumeSig(candSig, sigKeys, sigCounts, sigMask, maxClonesPerSig))
+                    continue;
 
                 marks[candIdx] = 1;
                 dst[selectedCount++] = candNodeId;
@@ -505,7 +642,19 @@ internal sealed class HotBeamRetention : IDisposable
             }
         }
 
-        // Spill any unused diversity quota back into Primary Top-K by PrimaryScore.
+        // Pass 1 spillover: fill any unused niche/Pareto quota in PrimaryScore order while still respecting the signature cap.
+        for (int i = 0; i < count && selectedCount < quota; i++)
+        {
+            if (marks[i] == 1)
+                continue;
+            if (!TryConsumeSig(nodeSigs[i], sigKeys, sigCounts, sigMask, maxClonesPerSig))
+                continue;
+            marks[i] = 1;
+            dst[selectedCount++] = bucketNodes[i];
+        }
+
+        // Pass 2 spillover (narrow-tree fallback): if distinct tactical signatures are exhausted before reaching
+        // quota, fill remaining slots in deterministic PrimaryScore order ignoring the cap so zero beam slots are wasted.
         for (int i = 0; i < count && selectedCount < quota; i++)
         {
             if (marks[i] == 1)
@@ -564,15 +713,28 @@ internal sealed class HotBeamRetention : IDisposable
                 paretoQuota = 1;
                 return;
             default:
-                survivalQuota = Math.Max(1, (remaining * 18 + 50) / 100);
-                tempoQuota = Math.Max(1, (remaining * 15 + 50) / 100);
-                investmentQuota = Math.Max(1, (remaining * 18 + 50) / 100);
-                int niche5Total = Math.Max(1, (remaining * 14 + 50) / 100);
-                optionalityQuota = niche5Total >= 2
-                    ? Math.Max(1, isTurnBoundary ? (niche5Total * 35 + 50) / 100 : niche5Total / 2)
-                    : (isTurnBoundary ? 0 : 1);
-                paretoQuota = niche5Total - optionalityQuota;
-                primaryQuota = Math.Max(1, remaining - survivalQuota - tempoQuota - investmentQuota - niche5Total);
+                if (isTurnBoundary)
+                {
+                    survivalQuota = Math.Max(1, (remaining * 16) / 100);
+                    tempoQuota = Math.Max(1, (remaining * 13) / 100);
+                    investmentQuota = Math.Max(1, (remaining * 16) / 100);
+                    int niche5Total = Math.Max(1, (remaining * 12) / 100);
+                    optionalityQuota = niche5Total >= 2
+                        ? Math.Max(1, (niche5Total * 35 + 50) / 100)
+                        : 0;
+                    paretoQuota = niche5Total - optionalityQuota;
+                    primaryQuota = Math.Max(1, remaining - survivalQuota - tempoQuota - investmentQuota - niche5Total);
+                }
+                else
+                {
+                    // Mid-turn protects Combo (PlayableHandCount + Energy readiness) >= 10% and Primary >= 34%.
+                    survivalQuota = Math.Max(1, (remaining * 14) / 100);
+                    tempoQuota = Math.Max(1, (remaining * 11) / 100);
+                    investmentQuota = Math.Max(1, (remaining * 14) / 100);
+                    optionalityQuota = Math.Max((remaining * 10 + 99) / 100, (remaining * 12) / 100);
+                    paretoQuota = remaining >= 10 ? Math.Max(1, (remaining * 7) / 100) : 0;
+                    primaryQuota = Math.Max(1, remaining - survivalQuota - tempoQuota - investmentQuota - optionalityQuota - paretoQuota);
+                }
                 return;
         }
     }
@@ -582,11 +744,11 @@ internal sealed class HotBeamRetention : IDisposable
         int Compare(in HotSearchNode a, in HotSearchNode b);
     }
 
-    private readonly struct SurvivalComparer(bool useRolloutScores) : INodeRankComparer
+    private readonly struct SurvivalComparer(bool useRolloutScores, bool allowDeathSaveRescue) : INodeRankComparer
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(in HotSearchNode a, in HotSearchNode b)
-            => CompareSurvival(in a, in b, useRolloutScores);
+            => CompareSurvival(in a, in b, useRolloutScores, allowDeathSaveRescue);
     }
 
     private readonly struct TempoComparer(bool useRolloutScores) : INodeRankComparer
@@ -603,11 +765,11 @@ internal sealed class HotBeamRetention : IDisposable
             => CompareBoardInvestment(in a, in b, useRolloutScores);
     }
 
-    private readonly struct OptionalityComparer(bool useRolloutScores) : INodeRankComparer
+    private readonly struct OptionalityComparer(bool useRolloutScores, bool isTurnBoundary) : INodeRankComparer
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(in HotSearchNode a, in HotSearchNode b)
-            => CompareOptionality(in a, in b, useRolloutScores);
+            => CompareOptionality(in a, in b, useRolloutScores, isTurnBoundary);
     }
 
     private readonly struct PureRolloutComparer(bool useRolloutScores) : INodeRankComparer
@@ -625,14 +787,22 @@ internal sealed class HotBeamRetention : IDisposable
     }
 
     /// <summary>
-    /// Single-pass O(N) bounded max-heap top-K selection over unmarked candidates:
-    /// selects up to <paramref name="take"/> best unmarked nodes into <paramref name="dst"/> (marking them <c>1</c>)
-    /// AND returns up to <paramref name="paretoExtra"/> next-best unmarked runners-up in <paramref name="paretoOut"/>
-    /// for full-pool Pareto scanning. Zero heap allocations, zero delegate indirection, 100% deterministic.
+    /// Single-pass O(N) per-signature-capped bounded max-heap top-K selection over unmarked candidates:
+    /// enforces <c>globalSigCount[sig] + selectedInCall[sig] &lt;= maxClonesPerSig</c> directly inside the
+    /// bounded heap so permutation clones can never saturate niche top-K or Pareto runner-up slots.
+    /// Selects up to <paramref name="take"/> best unmarked nodes into <paramref name="dst"/> (marking them <c>1</c>
+    /// and incrementing <paramref name="sigCounts"/>) AND returns up to <paramref name="paretoExtra"/> next-best
+    /// unmarked non-saturated runners-up in <paramref name="paretoOut"/> for full-pool Pareto scanning.
+    /// Zero heap allocations, zero delegate indirection, 100% deterministic.
     /// </summary>
     private int SelectTopKUnmarked<TComparer>(
         ReadOnlySpan<int> bucketNodes,
         Span<byte> marks,
+        ReadOnlySpan<ulong> nodeSigs,
+        Span<ulong> sigKeys,
+        Span<byte> sigCounts,
+        int sigMask,
+        byte maxClonesPerSig,
         HotNodeArena arena,
         int take,
         int paretoExtra,
@@ -651,50 +821,126 @@ internal sealed class HotBeamRetention : IDisposable
         Span<int> heap = _scratchIndices.AsSpan(0, totalK);
         int heapSize = 0;
 
+        int heapSigTableSize = ComputeSigTableSize(totalK);
+        int heapSigMask = heapSigTableSize - 1;
+        Span<ulong> heapSigKeys = _heapSigKeys.AsSpan(0, heapSigTableSize);
+        Span<byte> heapSigCounts = _heapSigCounts.AsSpan(0, heapSigTableSize);
+        Span<int> heapSigWorstIdx = _heapSigWorstIdx.AsSpan(0, heapSigTableSize);
+        heapSigKeys.Clear();
+
         for (int i = 0; i < count; i++)
         {
             if (marks[i] != 0)
                 continue;
 
-            if (heapSize < totalK)
+            ulong sig = nodeSigs[i];
+            int rem = maxClonesPerSig - GetSigCount(sig, sigKeys, sigCounts, sigMask);
+            if (rem <= 0)
+                continue;
+
+            int slot = (int)sig & heapSigMask;
+            int inHeap = 0;
+            while (true)
             {
-                int pos = heapSize++;
-                heap[pos] = i;
-                while (pos > 0)
+                ulong k = heapSigKeys[slot];
+                if (k == 0UL)
+                    break;
+                if (k == sig)
                 {
-                    int parent = (pos - 1) >> 1;
-                    // Max-heap by "worse": keep WORST of top-K at heap[0].
-                    if (IsBetter(heap[parent], heap[pos], bucketNodes, arena, comparer))
+                    inHeap = heapSigCounts[slot];
+                    break;
+                }
+                slot = (slot + 1) & heapSigMask;
+            }
+
+            if (inHeap < rem)
+            {
+                if (heapSize < totalK)
+                {
+                    int pos = heapSize++;
+                    heap[pos] = i;
+                    while (pos > 0)
                     {
-                        (heap[parent], heap[pos]) = (heap[pos], heap[parent]);
-                        pos = parent;
+                        int parent = (pos - 1) >> 1;
+                        // Max-heap by "worse": keep WORST of top-K at heap[0].
+                        if (IsBetter(heap[parent], heap[pos], bucketNodes, arena, comparer))
+                        {
+                            (heap[parent], heap[pos]) = (heap[pos], heap[parent]);
+                            pos = parent;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    if (inHeap == 0)
+                    {
+                        heapSigKeys[slot] = sig;
+                        heapSigCounts[slot] = 1;
+                        heapSigWorstIdx[slot] = i;
                     }
                     else
                     {
-                        break;
+                        heapSigCounts[slot] = (byte)(inHeap + 1);
+                        int prevWorst = heapSigWorstIdx[slot];
+                        if (prevWorst >= 0 && IsBetter(prevWorst, i, bucketNodes, arena, comparer))
+                            heapSigWorstIdx[slot] = i;
+                    }
+                }
+                else if (IsBetter(i, heap[0], bucketNodes, arena, comparer))
+                {
+                    int evicted = heap[0];
+                    ulong evictedSig = nodeSigs[evicted];
+                    heap[0] = i;
+                    SiftDownHeap(heap, heapSize, 0, bucketNodes, arena, comparer);
+
+                    if (evictedSig == sig)
+                    {
+                        heapSigWorstIdx[slot] = inHeap == 1 ? i : -1;
+                    }
+                    else
+                    {
+                        HeapSigDecrement(evictedSig, heapSigKeys, heapSigCounts, heapSigWorstIdx, heapSigMask);
+                        HeapSigIncrement(
+                            sig,
+                            i,
+                            heapSigKeys,
+                            heapSigCounts,
+                            heapSigWorstIdx,
+                            heapSigMask,
+                            bucketNodes,
+                            arena,
+                            comparer);
                     }
                 }
             }
-            else if (IsBetter(i, heap[0], bucketNodes, arena, comparer))
+            else
             {
-                heap[0] = i;
-                int pos = 0;
-                while (true)
+                // Heap already holds `rem` candidates for `sig`: only upgrade if `i` strictly beats the worst of `sig`.
+                int cachedWorst = heapSigWorstIdx[slot];
+                if (cachedWorst >= 0 && !IsBetter(i, cachedWorst, bucketNodes, arena, comparer))
+                    continue;
+
+                int worstPos = -1;
+                for (int h = 0; h < heapSize; h++)
                 {
-                    int left = (pos << 1) + 1;
-                    if (left >= heapSize)
-                        break;
-                    int worst = pos;
-                    if (IsBetter(heap[worst], heap[left], bucketNodes, arena, comparer))
-                        worst = left;
-                    int right = left + 1;
-                    if (right < heapSize && IsBetter(heap[worst], heap[right], bucketNodes, arena, comparer))
-                        worst = right;
-                    if (worst == pos)
-                        break;
-                    (heap[pos], heap[worst]) = (heap[worst], heap[pos]);
-                    pos = worst;
+                    if (nodeSigs[heap[h]] != sig)
+                        continue;
+                    if (worstPos < 0 || IsBetter(heap[worstPos], heap[h], bucketNodes, arena, comparer))
+                        worstPos = h;
                 }
+
+                if (worstPos < 0 || !IsBetter(i, heap[worstPos], bucketNodes, arena, comparer))
+                {
+                    if (worstPos >= 0)
+                        heapSigWorstIdx[slot] = heap[worstPos];
+                    continue;
+                }
+
+                heap[worstPos] = i;
+                SiftDownHeap(heap, heapSize, worstPos, bucketNodes, arena, comparer);
+                heapSigWorstIdx[slot] = rem == 1 ? i : -1;
             }
         }
 
@@ -720,6 +966,7 @@ internal sealed class HotBeamRetention : IDisposable
             int idx = heap[i];
             marks[idx] = 1;
             dst[i] = bucketNodes[idx];
+            TryConsumeSig(nodeSigs[idx], sigKeys, sigCounts, sigMask, maxClonesPerSig);
         }
 
         int extraLimit = Math.Min(paretoExtra, Math.Min(heapSize - added, paretoOut.Length));
@@ -728,6 +975,124 @@ internal sealed class HotBeamRetention : IDisposable
         paretoCount = extraLimit;
 
         return added;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void SiftDownHeap<TComparer>(
+        Span<int> heap,
+        int heapSize,
+        int startPos,
+        ReadOnlySpan<int> bucketNodes,
+        HotNodeArena arena,
+        TComparer comparer)
+        where TComparer : struct, INodeRankComparer
+    {
+        int pos = startPos;
+        while (true)
+        {
+            int left = (pos << 1) + 1;
+            if (left >= heapSize)
+                break;
+            int worst = pos;
+            if (IsBetter(heap[worst], heap[left], bucketNodes, arena, comparer))
+                worst = left;
+            int right = left + 1;
+            if (right < heapSize && IsBetter(heap[worst], heap[right], bucketNodes, arena, comparer))
+                worst = right;
+            if (worst == pos)
+                break;
+            (heap[pos], heap[worst]) = (heap[worst], heap[pos]);
+            pos = worst;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void HeapSigIncrement<TComparer>(
+        ulong sig,
+        int candIdx,
+        Span<ulong> keys,
+        Span<byte> counts,
+        Span<int> worstIdx,
+        int mask,
+        ReadOnlySpan<int> bucketNodes,
+        HotNodeArena arena,
+        TComparer comparer)
+        where TComparer : struct, INodeRankComparer
+    {
+        int slot = (int)sig & mask;
+        while (true)
+        {
+            ulong k = keys[slot];
+            if (k == 0UL)
+            {
+                keys[slot] = sig;
+                counts[slot] = 1;
+                worstIdx[slot] = candIdx;
+                return;
+            }
+            if (k == sig)
+            {
+                counts[slot] = (byte)(counts[slot] + 1);
+                int prevWorst = worstIdx[slot];
+                if (prevWorst >= 0 && IsBetter(prevWorst, candIdx, bucketNodes, arena, comparer))
+                    worstIdx[slot] = candIdx;
+                return;
+            }
+            slot = (slot + 1) & mask;
+        }
+    }
+
+    private static void HeapSigDecrement(
+        ulong sig,
+        Span<ulong> keys,
+        Span<byte> counts,
+        Span<int> worstIdx,
+        int mask)
+    {
+        int slot = (int)sig & mask;
+        while (true)
+        {
+            ulong k = keys[slot];
+            if (k == 0UL)
+                return;
+            if (k == sig)
+                break;
+            slot = (slot + 1) & mask;
+        }
+
+        byte c = counts[slot];
+        if (c > 1)
+        {
+            counts[slot] = (byte)(c - 1);
+            worstIdx[slot] = -1;
+            return;
+        }
+
+        // Back-shift delete (Knuth Algorithm R) — preserves open-addressed linear probing with zero tombstones.
+        int hole = slot;
+        int cur = (hole + 1) & mask;
+        while (true)
+        {
+            ulong k = keys[cur];
+            if (k == 0UL)
+            {
+                keys[hole] = 0UL;
+                counts[hole] = 0;
+                worstIdx[hole] = -1;
+                return;
+            }
+
+            int home = (int)k & mask;
+            if (((hole - home) & mask) < ((cur - home) & mask))
+            {
+                keys[hole] = k;
+                counts[hole] = counts[cur];
+                worstIdx[hole] = worstIdx[cur];
+                hole = cur;
+            }
+
+            cur = (cur + 1) & mask;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -778,10 +1143,18 @@ internal sealed class HotBeamRetention : IDisposable
         => n.HpLost - n.HpRecovered + (n.PlayerMaxHpDelta < 0 ? n.PlayerMaxHpDelta * 2 : n.PlayerMaxHpDelta);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CompareSurvival(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
+    private static int CompareSurvival(
+        in HotSearchNode a,
+        in HotSearchNode b,
+        bool useRolloutScores,
+        bool allowDeathSaveRescue)
     {
-        int cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
-        if (cmp != 0) return cmp;
+        int cmp;
+        if (!allowDeathSaveRescue)
+        {
+            cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
+            if (cmp != 0) return cmp;
+        }
         int aNetLoss = EffectiveNetHpLoss(in a);
         int bNetLoss = EffectiveNetHpLoss(in b);
         cmp = aNetLoss.CompareTo(bNetLoss);
@@ -792,6 +1165,11 @@ internal sealed class HotBeamRetention : IDisposable
         if (cmp != 0) return cmp;
         cmp = b.PlayerHp.CompareTo(a.PlayerHp);
         if (cmp != 0) return cmp;
+        if (allowDeathSaveRescue)
+        {
+            cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
+            if (cmp != 0) return cmp;
+        }
         cmp = a.EnemyHp.CompareTo(b.EnemyHp);
         if (cmp != 0) return cmp;
         return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
@@ -816,7 +1194,9 @@ internal sealed class HotBeamRetention : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int CompareBoardInvestment(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
     {
-        int cmp = b.BoardInvestment.CompareTo(a.BoardInvestment);
+        long aInvest = (long)a.BoardInvestment * 16_000L + (long)a.SetupScore * 18_000L;
+        long bInvest = (long)b.BoardInvestment * 16_000L + (long)b.SetupScore * 18_000L;
+        int cmp = bInvest.CompareTo(aInvest);
         if (cmp != 0) return cmp;
         int aNetLoss = EffectiveNetHpLoss(in a);
         int bNetLoss = EffectiveNetHpLoss(in b);
@@ -828,11 +1208,20 @@ internal sealed class HotBeamRetention : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CompareOptionality(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores)
+    private static int CompareOptionality(in HotSearchNode a, in HotSearchNode b, bool useRolloutScores, bool isTurnBoundary)
     {
+        if (!isTurnBoundary)
+        {
+            int aCombo = a.OptionalityScore + a.PlayableHandCount + Math.Min((int)a.Energy, 6);
+            int bCombo = b.OptionalityScore + b.PlayableHandCount + Math.Min((int)b.Energy, 6);
+            int comboCmp = bCombo.CompareTo(aCombo);
+            if (comboCmp != 0) return comboCmp;
+        }
         int cmp = b.OptionalityScore.CompareTo(a.OptionalityScore);
         if (cmp != 0) return cmp;
-        cmp = b.BoardInvestment.CompareTo(a.BoardInvestment);
+        long aInvest = (long)a.BoardInvestment * 16_000L + (long)a.SetupScore * 18_000L;
+        long bInvest = (long)b.BoardInvestment * 16_000L + (long)b.SetupScore * 18_000L;
+        cmp = bInvest.CompareTo(aInvest);
         if (cmp != 0) return cmp;
         int aNetLoss = EffectiveNetHpLoss(in a);
         int bNetLoss = EffectiveNetHpLoss(in b);
@@ -874,18 +1263,27 @@ internal sealed class HotBeamRetention : IDisposable
     /// <summary>
     /// True full-pool Pareto dominance test across all selected niche survivors AND the union of
     /// top-32 runners-up from every niche:
-    /// (1) EffectiveNetHpLoss asc, (2) EnemyHp asc, (3) Alive+Reviving asc,
-    /// (4) BoardInvestment desc, (5) OptionalityScore desc, (6) PotionStrategicCost asc, (7) PrimaryScore desc.
+    /// (1) DeathSaveUseCount asc, (2) EffectiveNetHpLoss asc, (3) PlayerHp desc, (4) EffectiveDefense desc,
+    /// (5) EnemyHp asc, (6) Alive+Reviving asc, (7) SetupScore desc, (8) BoardInvestment desc,
+    /// (9) MaxDarkEvoke desc, (10) TotalPoisonAndDoom desc, (11) OptionalityScore desc,
+    /// (12) PlayableHandCount desc, (13) PotionStrategicCost asc, (14) PrimaryScore desc.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsDominatedInFullPoolPareto(
         in HotSearchNode candidate,
         ReadOnlySpan<int> bucketNodes,
+        ReadOnlySpan<byte> marks,
+        ReadOnlySpan<ulong> nodeSigs,
+        ReadOnlySpan<ulong> sigKeys,
+        ReadOnlySpan<byte> sigCounts,
+        int sigMask,
+        byte maxClonesPerSig,
         ReadOnlySpan<int> selectedNodeIds,
         ReadOnlySpan<int> paretoPoolIndices,
         int candidatePoolPos,
         HotNodeArena arena,
-        bool useRolloutScores)
+        bool useRolloutScores,
+        bool allowDeathSaveRescue)
     {
         int candNetLoss = EffectiveNetHpLoss(in candidate);
         int candRem = candidate.AliveEnemyCount + candidate.RevivingEnemyCount;
@@ -894,7 +1292,7 @@ internal sealed class HotBeamRetention : IDisposable
         for (int s = 0; s < selectedNodeIds.Length; s++)
         {
             ref readonly HotSearchNode other = ref arena.GetRef(selectedNodeIds[s]);
-            if (DominatesCandidate(in other, in candidate, candNetLoss, candRem, candPrimary, useRolloutScores))
+            if (DominatesCandidate(in other, in candidate, candNetLoss, candRem, candPrimary, useRolloutScores, allowDeathSaveRescue))
                 return true;
         }
 
@@ -902,8 +1300,13 @@ internal sealed class HotBeamRetention : IDisposable
         {
             if (j == candidatePoolPos)
                 continue;
-            ref readonly HotSearchNode other = ref arena.GetRef(bucketNodes[paretoPoolIndices[j]]);
-            if (DominatesCandidate(in other, in candidate, candNetLoss, candRem, candPrimary, useRolloutScores))
+            int otherIdx = paretoPoolIndices[j];
+            if (marks[otherIdx] == 1)
+                continue; // Already tested via selectedNodeIds.
+            if (GetSigCount(nodeSigs[otherIdx], sigKeys, sigCounts, sigMask) >= maxClonesPerSig)
+                continue; // Saturated clone cannot be selected in Pass 1; do not let it block unsaturated lines.
+            ref readonly HotSearchNode other = ref arena.GetRef(bucketNodes[otherIdx]);
+            if (DominatesCandidate(in other, in candidate, candNetLoss, candRem, candPrimary, useRolloutScores, allowDeathSaveRescue))
                 return true;
         }
 
@@ -917,15 +1320,36 @@ internal sealed class HotBeamRetention : IDisposable
         int candNetLoss,
         int candRem,
         long candPrimary,
-        bool useRolloutScores)
+        bool useRolloutScores,
+        bool allowDeathSaveRescue)
     {
-        int otherNetLoss = EffectiveNetHpLoss(in other);
-        if (otherNetLoss > candNetLoss || other.EnemyHp > candidate.EnemyHp)
+        if (allowDeathSaveRescue)
+        {
+            if (other.DeathSaveUseCount != candidate.DeathSaveUseCount)
+                return false;
+        }
+        else if (other.DeathSaveUseCount > candidate.DeathSaveUseCount)
+        {
             return false;
+        }
+
+        int otherNetLoss = EffectiveNetHpLoss(in other);
+        if (otherNetLoss > candNetLoss
+            || other.PlayerHp < candidate.PlayerHp
+            || other.EffectiveDefense < candidate.EffectiveDefense
+            || other.EnemyHp > candidate.EnemyHp)
+        {
+            return false;
+        }
+
         int otherRem = other.AliveEnemyCount + other.RevivingEnemyCount;
         if (otherRem > candRem
+            || other.SetupScore < candidate.SetupScore
             || other.BoardInvestment < candidate.BoardInvestment
+            || other.MaxDarkEvoke < candidate.MaxDarkEvoke
+            || other.TotalPoisonAndDoom < candidate.TotalPoisonAndDoom
             || other.OptionalityScore < candidate.OptionalityScore
+            || other.PlayableHandCount < candidate.PlayableHandCount
             || other.PotionStrategicCost > candidate.PotionStrategicCost)
         {
             return false;
@@ -935,13 +1359,119 @@ internal sealed class HotBeamRetention : IDisposable
         if (otherPrimary < candPrimary)
             return false;
 
-        return otherNetLoss < candNetLoss
+        return other.DeathSaveUseCount < candidate.DeathSaveUseCount
+            || otherNetLoss < candNetLoss
+            || other.PlayerHp > candidate.PlayerHp
+            || other.EffectiveDefense > candidate.EffectiveDefense
             || other.EnemyHp < candidate.EnemyHp
             || otherRem < candRem
+            || other.SetupScore > candidate.SetupScore
             || other.BoardInvestment > candidate.BoardInvestment
+            || other.MaxDarkEvoke > candidate.MaxDarkEvoke
+            || other.TotalPoisonAndDoom > candidate.TotalPoisonAndDoom
             || other.OptionalityScore > candidate.OptionalityScore
+            || other.PlayableHandCount > candidate.PlayableHandCount
             || other.PotionStrategicCost < candidate.PotionStrategicCost
             || otherPrimary > candPrimary;
+    }
+
+    /// <summary>
+    /// Deterministic SplitMix64 tactical state signature used to cap discard-order permutation clones
+    /// without inspecting node IDs or <c>DiscardPile</c> ordering. Guaranteed non-zero (<c>0UL</c> is the
+    /// empty-slot sentinel in the open-addressed scratch hash table).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong ComputeTacticalSignature(in HotSearchNode n)
+    {
+        unchecked
+        {
+            ulong w0 = (ulong)n.Turn
+                | ((ulong)n.PotionMask << 8)
+                | ((ulong)n.PotionCount << 24)
+                | ((ulong)n.DeathSaveUseCount << 32)
+                | ((ulong)n.AliveEnemyCount << 40)
+                | ((ulong)n.RevivingEnemyCount << 48)
+                | ((ulong)n.Energy << 56);
+            ulong w1 = (ulong)(uint)n.HpLost | ((ulong)(uint)n.HpRecovered << 32);
+            ulong w2 = (ulong)(uint)n.PlayerHp | ((ulong)(uint)n.EnemyHp << 32);
+            ulong w3 = (ulong)(ushort)n.PlayerMaxHpDelta
+                | ((ulong)(ushort)n.EffectiveDefense << 16)
+                | ((ulong)(ushort)n.OptionalityScore << 32)
+                | ((ulong)n.PlayableHandCount << 48);
+            ulong w4 = (ulong)(uint)n.SetupScore | ((ulong)(uint)n.BoardInvestment << 32);
+            ulong w5 = (ulong)(uint)n.MaxDarkEvoke | ((ulong)(uint)n.TotalPoisonAndDoom << 32);
+
+            ulong h = 0xD1B54A32D192ED03UL;
+            h = SplitMix64(h ^ w0);
+            h = SplitMix64(h ^ w1);
+            h = SplitMix64(h ^ w2);
+            h = SplitMix64(h ^ w3);
+            h = SplitMix64(h ^ w4);
+            h = SplitMix64(h ^ w5);
+            return h == 0UL ? 1UL : h;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong SplitMix64(ulong x)
+    {
+        unchecked
+        {
+            x += 0x9E3779B97F4A7C15UL;
+            x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9UL;
+            x = (x ^ (x >> 27)) * 0x94D049BB133111EBUL;
+            return x ^ (x >> 31);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ComputeSigTableSize(int cap)
+    {
+        long target = Math.Max(64L, (long)cap * 4L);
+        int size = 64;
+        while (size < target && size < (1 << 30))
+            size <<= 1;
+        return size;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static byte GetSigCount(ulong sig, ReadOnlySpan<ulong> keys, ReadOnlySpan<byte> counts, int mask)
+    {
+        int slot = (int)sig & mask;
+        while (true)
+        {
+            ulong k = keys[slot];
+            if (k == 0UL)
+                return 0;
+            if (k == sig)
+                return counts[slot];
+            slot = (slot + 1) & mask;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool TryConsumeSig(ulong sig, Span<ulong> keys, Span<byte> counts, int mask, byte maxClones)
+    {
+        int slot = (int)sig & mask;
+        while (true)
+        {
+            ulong k = keys[slot];
+            if (k == 0UL)
+            {
+                keys[slot] = sig;
+                counts[slot] = 1;
+                return true;
+            }
+            if (k == sig)
+            {
+                byte c = counts[slot];
+                if (c >= maxClones)
+                    return false;
+                counts[slot] = (byte)(c + 1);
+                return true;
+            }
+            slot = (slot + 1) & mask;
+        }
     }
 
     private readonly struct PrimaryScoreNodeComparer(HotNodeArena arena, bool useRolloutScores) : IComparer<int>
@@ -971,7 +1501,9 @@ internal sealed class HotBeamRetention : IDisposable
         if (cmp != 0) return cmp;
         cmp = a.EnemyHp.CompareTo(b.EnemyHp);
         if (cmp != 0) return cmp;
-        if (a.HasChoiceLookahead && b.HasChoiceLookahead)
+        if (a.HasChoiceLookahead != b.HasChoiceLookahead)
+            return b.HasChoiceLookahead.CompareTo(a.HasChoiceLookahead);
+        if (a.HasChoiceLookahead)
         {
             cmp = b.RolloutScore.CompareTo(a.RolloutScore);
             if (cmp != 0) return cmp;
@@ -983,23 +1515,51 @@ internal sealed class HotBeamRetention : IDisposable
         return aId.CompareTo(bId);
     }
 
-    private void EnsureCapacity(int required)
+    private void EnsureCapacity(int required, int maxQuota)
     {
-        if (required <= _capacity)
-            return;
+        if (required > _capacity)
+        {
+            int next = _capacity > 0 ? _capacity : 64;
+            while (next < required)
+                next <<= 1;
 
-        int next = _capacity;
-        while (next < required)
-            next <<= 1;
+            if (_bucketBuffer.Length > 0)
+                ArrayPool<int>.Shared.Return(_bucketBuffer, clearArray: false);
+            if (_scratchIndices.Length > 0)
+                ArrayPool<int>.Shared.Return(_scratchIndices, clearArray: false);
+            if (_selectedMarks.Length > 0)
+                ArrayPool<byte>.Shared.Return(_selectedMarks, clearArray: false);
+            if (_nodeSigs.Length > 0)
+                ArrayPool<ulong>.Shared.Return(_nodeSigs, clearArray: false);
 
-        ArrayPool<int>.Shared.Return(_bucketBuffer, clearArray: false);
-        ArrayPool<int>.Shared.Return(_scratchIndices, clearArray: false);
-        ArrayPool<byte>.Shared.Return(_selectedMarks, clearArray: false);
+            _bucketBuffer = ArrayPool<int>.Shared.Rent(next);
+            _scratchIndices = ArrayPool<int>.Shared.Rent(next);
+            _selectedMarks = ArrayPool<byte>.Shared.Rent(next);
+            _nodeSigs = ArrayPool<ulong>.Shared.Rent(next);
+            _capacity = next;
+        }
 
-        _bucketBuffer = ArrayPool<int>.Shared.Rent(next);
-        _scratchIndices = ArrayPool<int>.Shared.Rent(next);
-        _selectedMarks = ArrayPool<byte>.Shared.Rent(next);
-        _capacity = next;
+        int requiredSigTable = ComputeSigTableSize(maxQuota + PerNicheParetoTopK);
+        if (requiredSigTable > _sigCapacity)
+        {
+            if (_sigKeys.Length > 0)
+                ArrayPool<ulong>.Shared.Return(_sigKeys, clearArray: false);
+            if (_sigCounts.Length > 0)
+                ArrayPool<byte>.Shared.Return(_sigCounts, clearArray: false);
+            if (_heapSigKeys.Length > 0)
+                ArrayPool<ulong>.Shared.Return(_heapSigKeys, clearArray: false);
+            if (_heapSigCounts.Length > 0)
+                ArrayPool<byte>.Shared.Return(_heapSigCounts, clearArray: false);
+            if (_heapSigWorstIdx.Length > 0)
+                ArrayPool<int>.Shared.Return(_heapSigWorstIdx, clearArray: false);
+
+            _sigKeys = ArrayPool<ulong>.Shared.Rent(requiredSigTable);
+            _sigCounts = ArrayPool<byte>.Shared.Rent(requiredSigTable);
+            _heapSigKeys = ArrayPool<ulong>.Shared.Rent(requiredSigTable);
+            _heapSigCounts = ArrayPool<byte>.Shared.Rent(requiredSigTable);
+            _heapSigWorstIdx = ArrayPool<int>.Shared.Rent(requiredSigTable);
+            _sigCapacity = requiredSigTable;
+        }
     }
 
     public void Dispose()
@@ -1023,5 +1583,37 @@ internal sealed class HotBeamRetention : IDisposable
             ArrayPool<byte>.Shared.Return(_selectedMarks, clearArray: false);
             _selectedMarks = [];
         }
+        if (_nodeSigs.Length > 0)
+        {
+            ArrayPool<ulong>.Shared.Return(_nodeSigs, clearArray: false);
+            _nodeSigs = [];
+        }
+        if (_sigKeys.Length > 0)
+        {
+            ArrayPool<ulong>.Shared.Return(_sigKeys, clearArray: false);
+            _sigKeys = [];
+        }
+        if (_sigCounts.Length > 0)
+        {
+            ArrayPool<byte>.Shared.Return(_sigCounts, clearArray: false);
+            _sigCounts = [];
+        }
+        if (_heapSigKeys.Length > 0)
+        {
+            ArrayPool<ulong>.Shared.Return(_heapSigKeys, clearArray: false);
+            _heapSigKeys = [];
+        }
+        if (_heapSigCounts.Length > 0)
+        {
+            ArrayPool<byte>.Shared.Return(_heapSigCounts, clearArray: false);
+            _heapSigCounts = [];
+        }
+        if (_heapSigWorstIdx.Length > 0)
+        {
+            ArrayPool<int>.Shared.Return(_heapSigWorstIdx, clearArray: false);
+            _heapSigWorstIdx = [];
+        }
+        _capacity = 0;
+        _sigCapacity = 0;
     }
 }

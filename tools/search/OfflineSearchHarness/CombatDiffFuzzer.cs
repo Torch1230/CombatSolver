@@ -61,7 +61,7 @@ internal sealed class LockstepCardSelector(IReadOnlyList<RecordedFuzzChoice> pla
 
                 string available = string.Join(", ", optList.Select(static c => $"{c.Id.Entry}+{c.CurrentUpgradeLevel}"));
                 throw Fail(
-                    $"LockstepCardSelector 无法在选项 [{available}] 中找到 {spec.Kind}:{spec.CardEntry}+{spec.UpgradeLevel} " +
+                    $"LockstepCardSelector 无法在选项 [{available}] 中找到 {spec.Kind}:{spec.CardEntry}+{spec.UpgradeLevel}#opt{spec.OptionOccurrence} " +
                     $"(genIdx={spec.GeneratedOptionIndex}, min={minSelect}, max={maxSelect}, cursor={_cursor}/{_queue.Count})。");
             }
 
@@ -111,28 +111,46 @@ internal sealed class LockstepCardSelector(IReadOnlyList<RecordedFuzzChoice> pla
             return null;
         }
 
-        // 1. 精确 StateKey 匹配
+        int targetOcc = Math.Max(0, spec.OptionOccurrence);
+
+        // 1. 精确 StateKey + OptionOccurrence 匹配（按完整 optList 计次，与 CardSelectCmd 多选语义一致）
         if (!string.IsNullOrEmpty(spec.StateKey))
         {
+            int seen = 0;
+            CardModel? firstUnpicked = null;
             foreach (CardModel c in optList)
             {
-                if (pickedSet.Contains(c))
+                if (!string.Equals(HotImportSupport.FormatLiveChoiceCardKey(c), spec.StateKey, StringComparison.Ordinal))
                     continue;
-                if (string.Equals(HotImportSupport.FormatLiveChoiceCardKey(c), spec.StateKey, StringComparison.Ordinal))
+                if (seen == targetOcc && !pickedSet.Contains(c))
                     return c;
+                if (firstUnpicked == null && !pickedSet.Contains(c))
+                    firstUnpicked = c;
+                seen++;
             }
+            if (firstUnpicked != null)
+                return firstUnpicked;
         }
 
-        // 2. 回退到 (CardEntry, UpgradeLevel) 匹配
-        foreach (CardModel c in optList)
+        // 2. 回退到 (CardEntry, UpgradeLevel) + OptionOccurrence 匹配
         {
-            if (pickedSet.Contains(c))
-                continue;
-            if (string.Equals(c.Id.Entry, spec.CardEntry, StringComparison.Ordinal)
-                && c.CurrentUpgradeLevel == spec.UpgradeLevel)
+            int seen = 0;
+            CardModel? firstUnpicked = null;
+            foreach (CardModel c in optList)
             {
-                return c;
+                if (!string.Equals(c.Id.Entry, spec.CardEntry, StringComparison.Ordinal)
+                    || c.CurrentUpgradeLevel != spec.UpgradeLevel)
+                {
+                    continue;
+                }
+                if (seen == targetOcc && !pickedSet.Contains(c))
+                    return c;
+                if (firstUnpicked == null && !pickedSet.Contains(c))
+                    firstUnpicked = c;
+                seen++;
             }
+            if (firstUnpicked != null)
+                return firstUnpicked;
         }
 
         // 3. 最终仅按 CardEntry 匹配（例如状态刚变更前后的升级/费用差异）
@@ -543,7 +561,7 @@ internal static class CombatDiffFuzzer
                 {
                     string chDesc = chosenSpecs.Length == 0
                         ? ""
-                        : $" choices=[{string.Join(",", chosenSpecs.Select(static c => $"{c.Kind}:{c.CardEntry}+{c.UpgradeLevel}"))}]";
+                        : $" choices=[{string.Join(",", chosenSpecs.Select(static c => c.Kind is HotChoiceKind.None or HotChoiceKind.GeneratedCard ? $"{c.Kind}:{c.CardEntry}+{c.UpgradeLevel}" : $"{c.Kind}:{c.CardEntry}+{c.UpgradeLevel}#opt{c.OptionOccurrence}"))}]";
                     Console.WriteLine($"  step {step}: T{hot.PlayerTurnNumber} {chosen.Kind} {entityId} slot={chosen.SlotOrHandIdx} target={chosen.TargetEnemySlot}{chDesc}");
                 }
 
@@ -720,7 +738,7 @@ internal static class CombatDiffFuzzer
                 if (scratch.PendingChoiceMin == 0)
                 {
                     selections.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
-                    specs.Add(new RecordedFuzzChoice(HotChoiceKind.None, string.Empty, 0, string.Empty, -1));
+                    specs.Add(new RecordedFuzzChoice(HotChoiceKind.None, string.Empty, 0, string.Empty, -1, 0));
                     continue;
                 }
                 action = HotAction.EndTurn();
@@ -768,7 +786,7 @@ internal static class CombatDiffFuzzer
             if (chosenOpt.Kind != HotChoiceKind.None && chosenOpt.Kind != HotChoiceKind.GeneratedCard)
                 pickedInAction.Add((chosenOpt.Kind, chosenOpt.CardUidOrIndex));
 
-            specs.Add(CaptureChoiceSpec(in probe, probeCold, rules, chosenOpt));
+            specs.Add(CaptureChoiceSpec(in probe, probeCold, rules, scratch, chosenOpt));
         }
     }
 
@@ -785,6 +803,7 @@ internal static class CombatDiffFuzzer
         out RecordedFuzzChoice[] usedChoices)
     {
         List<HotChoiceSelection> selections = [];
+        List<RecordedFuzzChoice> usedSpecs = new(recordedChoices.Length);
         int recCursor = 0;
 
         while (true)
@@ -801,7 +820,7 @@ internal static class CombatDiffFuzzer
                     throw new InvalidOperationException($"回放动作 {action.Kind} 在 HotCombatEngine 中返回 Executed=false。");
                 nextHot = probe;
                 nextCold = probeCold;
-                usedChoices = recordedChoices;
+                usedChoices = usedSpecs.ToArray();
                 return;
             }
 
@@ -810,8 +829,10 @@ internal static class CombatDiffFuzzer
 
             RecordedFuzzChoice target = recordedChoices[recCursor++];
             int optCount = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, rules, scratch, choiceOptBuf);
-            HotChoiceSelection matched = MatchRecordedChoiceOption(in probe, probeCold, rules, choiceOptBuf.AsSpan(0, optCount), target);
+            HotChoiceSelection matched = MatchRecordedChoiceOption(
+                in probe, probeCold, rules, scratch, choiceOptBuf.AsSpan(0, optCount), target, out RecordedFuzzChoice resolvedSpec);
             selections.Add(matched);
+            usedSpecs.Add(resolvedSpec);
         }
     }
 
@@ -819,31 +840,54 @@ internal static class CombatDiffFuzzer
         in CombatHotState probe,
         HotColdSidecar? probeCold,
         HotRules rules,
+        HotExecScratch scratch,
         ReadOnlySpan<HotChoiceSelection> options,
-        RecordedFuzzChoice target)
+        RecordedFuzzChoice target,
+        out RecordedFuzzChoice resolvedSpec)
     {
         if (target.Kind == HotChoiceKind.None)
+        {
+            resolvedSpec = new RecordedFuzzChoice(HotChoiceKind.None, string.Empty, 0, string.Empty, -1, 0);
             return new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+        }
 
+        int fallbackStateKeyIdx = -1;
+        RecordedFuzzChoice? fallbackStateKeySpec = null;
         for (int i = 0; i < options.Length; i++)
         {
             HotChoiceSelection opt = options[i];
             if (opt.Kind != target.Kind)
                 continue;
-            RecordedFuzzChoice spec = CaptureChoiceSpec(in probe, probeCold, rules, opt);
+            RecordedFuzzChoice spec = CaptureChoiceSpec(in probe, probeCold, rules, scratch, opt);
             if (target.Kind == HotChoiceKind.GeneratedCard)
             {
                 if (spec.GeneratedOptionIndex == target.GeneratedOptionIndex
                     && string.Equals(spec.CardEntry, target.CardEntry, StringComparison.Ordinal))
                 {
+                    resolvedSpec = spec;
                     return opt;
                 }
             }
             else if (!string.IsNullOrEmpty(target.StateKey)
                 && string.Equals(spec.StateKey, target.StateKey, StringComparison.Ordinal))
             {
-                return opt;
+                if (spec.OptionOccurrence == target.OptionOccurrence)
+                {
+                    resolvedSpec = spec;
+                    return opt;
+                }
+                if (fallbackStateKeyIdx < 0)
+                {
+                    fallbackStateKeyIdx = i;
+                    fallbackStateKeySpec = spec;
+                }
             }
+        }
+
+        if (fallbackStateKeyIdx >= 0 && fallbackStateKeySpec != null)
+        {
+            resolvedSpec = fallbackStateKeySpec;
+            return options[fallbackStateKeyIdx];
         }
 
         for (int i = 0; i < options.Length; i++)
@@ -852,25 +896,28 @@ internal static class CombatDiffFuzzer
             if (opt.Kind == target.Kind && opt.CardDefId < rules.Cards.Length
                 && string.Equals(rules.Cards[opt.CardDefId].Entry, target.CardEntry, StringComparison.Ordinal))
             {
+                resolvedSpec = CaptureChoiceSpec(in probe, probeCold, rules, scratch, opt);
                 return opt;
             }
         }
 
-        throw new InvalidOperationException($"回放无法在 HotCombatEngine 候选中找到 {target.Kind}:{target.CardEntry}+{target.UpgradeLevel}。");
+        throw new InvalidOperationException(
+            $"回放无法在 HotCombatEngine 候选中找到 {target.Kind}:{target.CardEntry}+{target.UpgradeLevel}#opt{target.OptionOccurrence}。");
     }
 
     private static RecordedFuzzChoice CaptureChoiceSpec(
         in CombatHotState probe,
         HotColdSidecar? probeCold,
         HotRules rules,
+        HotExecScratch scratch,
         HotChoiceSelection opt)
     {
         if (opt.Kind == HotChoiceKind.None)
-            return new RecordedFuzzChoice(HotChoiceKind.None, string.Empty, 0, string.Empty, -1);
+            return new RecordedFuzzChoice(HotChoiceKind.None, string.Empty, 0, string.Empty, -1, 0);
 
         string entry = opt.CardDefId < rules.Cards.Length ? rules.Cards[opt.CardDefId].Entry : string.Empty;
         if (opt.Kind == HotChoiceKind.GeneratedCard)
-            return new RecordedFuzzChoice(HotChoiceKind.GeneratedCard, entry, 0, string.Empty, opt.CardUidOrIndex);
+            return new RecordedFuzzChoice(HotChoiceKind.GeneratedCard, entry, 0, string.Empty, opt.CardUidOrIndex, 0);
 
         HotPileKind pile = opt.Kind switch
         {
@@ -887,10 +934,74 @@ internal static class CombatDiffFuzzer
         {
             ref readonly HotCard hc = ref probe.Cards[idx];
             string key = HotContinuationStamp.FormatChoiceCardKey(in hc, probeCold, rules);
-            return new RecordedFuzzChoice(opt.Kind, entry, hc.UpgradeLevel, key, -1);
+            int optionOccurrence = ComputeStateKeyOptionOccurrence(in probe, probeCold, rules, scratch, pile, idx, key);
+            return new RecordedFuzzChoice(opt.Kind, entry, hc.UpgradeLevel, key, -1, optionOccurrence);
         }
 
-        return new RecordedFuzzChoice(opt.Kind, entry, 0, string.Empty, -1);
+        return new RecordedFuzzChoice(opt.Kind, entry, 0, string.Empty, -1, 0);
+    }
+
+    /// <summary>
+    /// 计算同 <paramref name="targetKey"/> 牌在本次选牌候选列表中的 0-based 出现次序：
+    /// 同 StateKey 卡牌在原版 <c>CardSelectCmd.FromCombatPile(PileType.Draw)</c> 的稳定排序
+    /// <c>OrderBy(Rarity).ThenBy(CardModel.CompareTo)</c> 下相对顺序与牌堆原序完全一致；
+    /// 刻意不跳过 <c>GetPendingExcludedChoiceUids()</c>，因为实机多选弹窗一次性传入完整候选列表。
+    /// </summary>
+    private static int ComputeStateKeyOptionOccurrence(
+        in CombatHotState probe,
+        HotColdSidecar? probeCold,
+        HotRules rules,
+        HotExecScratch scratch,
+        HotPileKind pile,
+        int targetIdx,
+        string targetKey)
+    {
+        int zoneStart = HotPiles.ZoneStart(in probe, pile);
+        int zoneCount = HotPiles.ZoneCount(in probe, pile);
+        if (targetIdx < zoneStart || targetIdx >= zoneStart + zoneCount)
+            return 0;
+
+        ushort sourceDefId = scratch.PendingChoiceSourceCardDefId;
+        HotCustomCardId sourceCardId = sourceDefId > 0 && sourceDefId < rules.Cards.Length
+            ? rules.Cards[sourceDefId].CardId
+            : HotCustomCardId.None;
+        if (sourceCardId == HotCustomCardId.KiChant && pile == HotPileKind.Draw)
+        {
+            int topLimit = scratch.PendingChoiceMax > 0 ? scratch.PendingChoiceMax : 3;
+            if (targetIdx < zoneStart + topLimit && zoneCount > topLimit)
+                zoneCount = topLimit;
+        }
+
+        if (targetIdx >= zoneStart + zoneCount)
+            return 0;
+
+        ReadOnlySpan<ushort> allowedUids = HotCombatEngine.GetPendingFilteredChoiceUids();
+        ushort targetDefId = probe.Cards[targetIdx].CardDefId;
+        byte targetUpgrade = probe.Cards[targetIdx].UpgradeLevel;
+        int occurrence = 0;
+
+        for (int i = zoneStart; i < targetIdx; i++)
+        {
+            ref readonly HotCard prior = ref probe.Cards[i];
+            if (prior.CardDefId != targetDefId || prior.UpgradeLevel != targetUpgrade)
+                continue;
+            if (!allowedUids.IsEmpty && !ContainsUid(allowedUids, prior.CardUid))
+                continue;
+            if (string.Equals(HotContinuationStamp.FormatChoiceCardKey(in prior, probeCold, rules), targetKey, StringComparison.Ordinal))
+                occurrence++;
+        }
+
+        return occurrence;
+    }
+
+    private static bool ContainsUid(ReadOnlySpan<ushort> uids, ushort uid)
+    {
+        for (int i = 0; i < uids.Length; i++)
+        {
+            if (uids[i] == uid)
+                return true;
+        }
+        return false;
     }
 
     private static RealCombatAction BindToLiveAction(

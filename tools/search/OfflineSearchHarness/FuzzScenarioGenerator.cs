@@ -27,7 +27,8 @@ internal sealed record RecordedFuzzChoice(
     string CardEntry,
     int UpgradeLevel,
     string StateKey,
-    int GeneratedOptionIndex);
+    int GeneratedOptionIndex,
+    int OptionOccurrence = 0);
 
 internal sealed record RecordedFuzzAction(
     int StepIndex,

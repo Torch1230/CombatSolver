@@ -37,6 +37,7 @@ internal sealed class HotRules
     public ushort[] UnlockedCharacterCardPool { get; init; } = [];
     public ushort[] UnlockedColorlessCardPool { get; init; } = [];
     public ushort[] UnlockedCurseCardPool { get; init; } = [];
+    public ushort[] UnlockedStatusCardPool { get; init; } = [];
     public ushort[] OtherCharacterCardPool { get; init; } = [];
     public ushort[] TarotCardPool { get; init; } = [];
     public ushort[] CombatCharacterAttackPool { get; init; } = [];
@@ -52,10 +53,12 @@ internal sealed class HotRules
     public bool IsFurCoatActiveInCurrentRoom { get; init; }
     public bool IsBossEncounter { get; init; }
     public bool IsEliteEncounter { get; init; }
+    public bool IsWeakEncounter { get; init; }
     public bool IsTheftEncounter { get; init; }
     public string CharacterEntry { get; init; } = string.Empty;
     public string EncounterEntry { get; init; } = string.Empty;
     public string[] EncounterSlots { get; init; } = [];
+    public int InitialEncounterMonsterCount { get; init; }
     public int CurrentActIndex { get; init; }
     public int TotalFloor { get; init; }
     public int PostCombatRelicUnconditionalHeal { get; init; }

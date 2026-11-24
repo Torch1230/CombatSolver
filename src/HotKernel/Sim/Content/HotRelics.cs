@@ -41,6 +41,9 @@ internal static class HotRelics
         byte stateSlot = ar.StateSlot;
         bool hasState = stateSlot < s.RelicStateCount;
 
+        if (args.CardUid != 0)
+            HotCombatEngine.RefreshHookCardIdx(in s, ref args);
+
         switch (hook)
         {
             case HotHookMask.ModifyMaxEnergy:
@@ -860,11 +863,11 @@ internal static class HotRelics
                 if (hasState
                     && cardDef.Type == CardType.Attack
                     && s.RelicStates[stateSlot].Current == 0
-                    && s.RelicStates[stateSlot].PreviousOrAux == 0
-                    && args.CardIdx >= 0
-                    && args.CardIdx < s.TotalCardCount)
+                    && s.RelicStates[stateSlot].PreviousOrAux == 0)
                 {
-                    s.RelicStates[stateSlot].PreviousOrAux = s.Cards[args.CardIdx].CardUid;
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
+                    if (playedUid != 0)
+                        s.RelicStates[stateSlot].PreviousOrAux = playedUid;
                 }
                 break;
 
@@ -873,8 +876,12 @@ internal static class HotRelics
                 {
                     ref HotRelicState rs = ref s.RelicStates[stateSlot];
                     rs.Current = (rs.Current + 1) % 10;
-                    if (rs.Current == 0 && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
-                        rs.PreviousOrAux = s.Cards[args.CardIdx].CardUid;
+                    if (rs.Current == 0)
+                    {
+                        ushort playedUid = ResolveHookCardUid(in s, in args);
+                        if (playedUid != 0)
+                            rs.PreviousOrAux = playedUid;
+                    }
                 }
                 break;
         }
@@ -991,10 +998,10 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.MusicBox:
-                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0 && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
+                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0)
                 {
                     ushort trackedUid = (ushort)s.RelicStates[stateSlot].PreviousOrAux;
-                    if (s.Cards[args.CardIdx].CardUid == trackedUid)
+                    if (ResolveHookCardUid(in s, in args) == trackedUid && (uint)args.CardIdx < (uint)s.TotalCardCount)
                     {
                         s.RelicStates[stateSlot].Current = 1;
                         s.RelicStates[stateSlot].PreviousOrAux = 0;
@@ -1030,7 +1037,7 @@ internal static class HotRelics
                 {
                     ref HotRelicState rs = ref s.RelicStates[stateSlot];
                     ushort affectedUid = (ushort)(rs.PreviousOrAux >> 2);
-                    ushort playedUid = args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0;
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
                     if (affectedUid == 0 || affectedUid == playedUid)
                     {
                         rs.Current = 2;
@@ -1040,9 +1047,10 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.PenNib:
-                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0 && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
+                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0)
                 {
-                    if (s.Cards[args.CardIdx].CardUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
+                    if (playedUid != 0 && playedUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
                         s.RelicStates[stateSlot].PreviousOrAux = 0;
                 }
                 break;
@@ -1128,12 +1136,14 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.Vambrace:
-                if (hasState && s.RelicStates[stateSlot].Current == 0 && s.RelicStates[stateSlot].PreviousOrAux != 0
-                    && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount
-                    && s.Cards[args.CardIdx].CardUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
+                if (hasState && s.RelicStates[stateSlot].Current == 0 && s.RelicStates[stateSlot].PreviousOrAux != 0)
                 {
-                    s.RelicStates[stateSlot].Current = 1;
-                    s.RelicStates[stateSlot].PreviousOrAux = 0;
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
+                    if (playedUid != 0 && playedUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
+                    {
+                        s.RelicStates[stateSlot].Current = 1;
+                        s.RelicStates[stateSlot].PreviousOrAux = 0;
+                    }
                 }
                 break;
         }
@@ -1672,13 +1682,15 @@ internal static class HotRelics
         switch (relicId)
         {
             case HotRelicId.Orichalcum:
-                // Relics dispatch before Powers (Plating/Metallicize) in HotCombatEngine.DispatchHooks.
-                if (s.Player.Block == 0)
+                // STS2 0.113.1 Orichalcum.cs:44-66: latches Block == 0 in BeforeSideTurnEndVeryEarly
+                // (carried via args.BoolFlag before PlatingPower/MetallicizePower run), grants +6 Block here.
+                if (args.BoolFlag)
                     HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: 6, isCardBlock: false);
                 break;
 
             case HotRelicId.FakeOrichalcum:
-                if (s.Player.Block == 0)
+                // STS2 0.113.1 FakeOrichalcum.cs:46-68: same BeforeSideTurnEndVeryEarly latch, grants +3 Block.
+                if (args.BoolFlag)
                     HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: 3, isCardBlock: false);
                 break;
 
@@ -2469,7 +2481,8 @@ internal static class HotRelics
             return;
 
         bool retainWholeHand = rules.HasRelic(HotRelicId.RunicPyramid)
-            || HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.RetainHandPower) > 0;
+            || HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.RetainHandPower) > 0
+            || HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.WellLaidPlansPower) > 0;
 
         Span<int> candidates = stackalloc int[HotLimits.MaxCards];
         int count = 0;
@@ -2478,7 +2491,7 @@ internal static class HotRelics
             ref readonly HotCard c = ref s.Cards[i];
             bool retained = retainWholeHand
                 || (c.Flags & HotCardFlags.SingleTurnRetain) != 0
-                || (c.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0;
+                || HotCombatEngine.HasEffectiveRetainKeyword(in s, in c, rules);
             if (!retained || (c.Flags & HotCardFlags.CostsX) != 0)
                 continue;
             if (HotCostModifiers.GetLocalEnergyCost(in c, cold) > 0)
@@ -2592,6 +2605,12 @@ internal static class HotRelics
         HotPileKind pile = HotPiles.PileOfIndex(in s, cardIdx);
         return pile is HotPileKind.Hand or HotPileKind.Play;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ushort ResolveHookCardUid(in CombatHotState s, in HotHookArgs args)
+        => args.CardUid != 0
+            ? args.CardUid
+            : ((uint)args.CardIdx < (uint)s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsCombatGeneratable(HotCardDef def)

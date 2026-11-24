@@ -340,7 +340,7 @@ internal static class DeploymentSoakRunner
             gc_gen2 = gcGen2,
             custom_beam135_stage2_ok = customBeam135Stage2Ok,
             outcomes_path = dumpOutcomesPath,
-            replan_samples = replanSamples.Take(25).ToArray(),
+            replan_samples = replanSamples.Take(100).ToArray(),
             error_samples = errorSamples.Take(25).ToArray(),
         };
 

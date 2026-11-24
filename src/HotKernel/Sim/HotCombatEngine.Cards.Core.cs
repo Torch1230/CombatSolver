@@ -380,7 +380,7 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotEnchantmentId.Corrupted:
-                DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: 0, baseDamage: 2, isPoweredAttack: false, isUnblockable: true);
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: 0, baseDamage: 2, isPoweredAttack: false, isUnblockable: true, cardIdx: livePlayIdx, cardDefId: s.Cards[livePlayIdx].CardDefId);
                 break;
 
             case HotEnchantmentId.Inky:
@@ -530,7 +530,7 @@ internal static partial class HotCombatEngine
             {
                 int hpLoss = GetNamedVarInt(in playedCard, def, "HpLoss", 3);
                 int eGain = GetNamedVarInt(in playedCard, def, "Energy", magic > 0 ? magic : 2);
-                DealDamage(ref s, ref cold, rules, scratch, 0, 0, hpLoss, isPoweredAttack: false, isUnblockable: true);
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: 0, baseDamage: hpLoss, isPoweredAttack: false, isUnblockable: true, cardIdx: livePlayIdx, cardDefId: playedCard.CardDefId);
                 if (!scratch.NeedsChoice && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
                     GainEnergy(ref s, rules, eGain);
                 break;
@@ -539,7 +539,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.Brand:
             {
                 int hpLoss = GetNamedVarInt(in playedCard, def, "HpLoss", 1);
-                DealDamage(ref s, ref cold, rules, scratch, 0, 0, hpLoss, isPoweredAttack: false, isUnblockable: true);
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: 0, baseDamage: hpLoss, isPoweredAttack: false, isUnblockable: true, cardIdx: livePlayIdx, cardDefId: playedCard.CardDefId);
                 if (!scratch.NeedsChoice && (s.Player.Flags & HotCreatureFlags.Alive) != 0 && s.HandCount > 0)
                 {
                     if (!RequestChoice(ref s, scratch, HotChoiceKind.HandCard, playedCard.CardDefId, 1, 1, out HotChoiceSelection sel))
@@ -739,7 +739,7 @@ internal static partial class HotCombatEngine
                 int hpLoss = GetNamedVarInt(in playedCard, def, "HpLoss", 6);
                 int eGain = GetNamedVarInt(in playedCard, def, "Energy", 2);
                 int draw = GetNamedVarInt(in playedCard, def, "Cards", magic > 0 ? magic : 3);
-                DealDamage(ref s, ref cold, rules, scratch, 0, 0, hpLoss, isPoweredAttack: false, isUnblockable: true);
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: 0, baseDamage: hpLoss, isPoweredAttack: false, isUnblockable: true, cardIdx: livePlayIdx, cardDefId: playedCard.CardDefId);
                 if (!scratch.NeedsChoice && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
                 {
                     GainEnergy(ref s, rules, eGain);
@@ -2835,15 +2835,33 @@ internal static partial class HotCombatEngine
         if (newDef.HookMask != HotHookMask.None)
             s.ActiveHookMask |= (ulong)newDef.HookMask;
 
+        ushort transformedUid = transformed.CardUid;
         if (scratch != null && (s.ActiveHookMask & (ulong)HotHookMask.AfterCardEnteredCombat) != 0)
         {
             HotHookArgs enterArgs = new()
             {
                 ActorSlot = 0,
                 CardIdx = cardIdx,
+                CardUid = transformedUid,
                 CardDefId = newCardDefId,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
+            cardIdx = enterArgs.CardIdx;
+        }
+
+        // STS2 0.113.1 CardCmd.Transform (CardCmd.cs:452,534): combat-pile transforms also fire AfterCardGeneratedForCombat.
+        if (scratch != null && !scratch.NeedsChoice && (s.ActiveHookMask & (ulong)HotHookMask.AfterCardGenerated) != 0)
+        {
+            if ((uint)cardIdx >= (uint)s.TotalCardCount || s.Cards[cardIdx].CardUid != transformedUid)
+                cardIdx = FindCardIndexByUidAnyPile(in s, transformedUid);
+            HotHookArgs genArgs = new()
+            {
+                ActorSlot = 0,
+                CardIdx = cardIdx,
+                CardUid = transformedUid,
+                CardDefId = newCardDefId,
+            };
+            DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardGenerated, ref genArgs);
         }
     }
 

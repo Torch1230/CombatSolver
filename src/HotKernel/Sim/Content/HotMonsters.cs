@@ -966,7 +966,18 @@ internal static class HotMonsters
         // STUNNED wake/unstun cleanup.
         if (string.Equals(moveId, "STUNNED", StringComparison.Ordinal))
         {
-            if (monsterId is HotMonsterId.LagavulinMatriarch or HotMonsterId.SlumberingBeetle)
+            if (monsterId == HotMonsterId.SlumberingBeetle
+                && (s.Enemies[slot].Flags & HotEnemyFlags.Awake) == 0
+                && HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.SlumberPower) <= 0)
+            {
+                // 0.113.1 SlumberPower.cs:25-30 & SlumberingBeetle.cs:95-107:
+                // SlumberPower stuns into WakeUpMove, which sets IsAwake = true and removes PlatingPower.
+                s.Enemies[slot].Flags |= HotEnemyFlags.Awake;
+                RemovePowerById(ref s, rules, dealerSlot, HotPowerId.PlatingPower);
+            }
+            else if (monsterId == HotMonsterId.LagavulinMatriarch
+                && (s.Enemies[slot].Flags & HotEnemyFlags.Awake) == 0
+                && HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.AsleepPower) <= 0)
             {
                 s.Enemies[slot].Flags |= HotEnemyFlags.Awake;
                 RemovePowerById(ref s, rules, dealerSlot, HotPowerId.PlatingPower);
@@ -2007,8 +2018,9 @@ internal static class HotMonsters
                 {
                     GainMoveBlock(ref s, ref cold, rules, scratch, dealerSlot,
                         GetStaticInt(monsterDef, "BootUpBlock", IsDeadly(rules) ? 15 : 10));
+                    // 0.113.1 Axebot.cs:54,116: AiRegs[0] encodes (RespawnCount + 1) so 0 = unset fallback.
                     int respawnCount = s.Enemies[slot].AiRegs[0] > 0
-                        ? s.Enemies[slot].AiRegs[0]
+                        ? s.Enemies[slot].AiRegs[0] - 1
                         : GetStaticInt(monsterDef, "RespawnCount", 0);
                     int strGain = GetStaticInt(monsterDef, "BootUpStrGain", IsDeadly(rules) ? 4 : 3) * respawnCount;
                     if (strGain != 0)
@@ -3299,8 +3311,8 @@ internal static class HotMonsters
         // Monster-specific initial private registers.
         if (monsterId == HotMonsterId.TwoTailedRat)
             enemy.AiRegs[0] = 2; // _turnsUntilSummonable starts at 2
-        else if (monsterId == HotMonsterId.Axebot && axebotRespawnCount > 0)
-            enemy.AiRegs[0] = axebotRespawnCount;
+        else if (monsterId == HotMonsterId.Axebot)
+            enemy.AiRegs[0] = Math.Max(0, axebotRespawnCount) + 1;
         else if (monsterId == HotMonsterId.Wriggler && wrigglerSlotIndex > 0)
             enemy.AiRegs[0] = wrigglerSlotIndex;
 

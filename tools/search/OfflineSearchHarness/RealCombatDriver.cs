@@ -12,6 +12,7 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Dread;
+using MegaCrit.Sts2.Core.Models.Encounters;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -111,7 +112,11 @@ internal static class RealCombatDriver
         if (player == null || player.Creature.IsDead || combat.RunState.IsGameOver)
             return HotCombatOutcome.Defeat;
         if (!CombatManager.Instance.IsInProgress || CombatManager.Instance.IsOverOrEnding)
-            return player.Creature.IsDead ? HotCombatOutcome.Defeat : HotCombatOutcome.Victory;
+        {
+            if (combat.Encounter is BattlewornDummyEventEncounter { RanOutOfTime: true })
+                return HotCombatOutcome.EventDefeat;
+            return HotCombatOutcome.Victory;
+        }
         return HotCombatOutcome.Ongoing;
     }
 

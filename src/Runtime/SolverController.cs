@@ -462,7 +462,7 @@ internal static partial class SolverController
             GrowthOpportunityTargets = GrowthOpportunityPolicy.Capture(state),
             IgnoreLongTermRewards = settings.IgnoreLongTermRewards,
             AdaptiveEscalationEnabled = settings.AdaptiveEscalationEnabled,
-            MaxHardFightThinkSeconds = settings.MaxHardFightThinkSeconds,
+            MaxCombatSolveSeconds = settings.MaxCombatSolveSeconds,
         };
         CombatBugReportExporter.RecordSearchPolicy(state, policy);
         return policy;
@@ -1125,7 +1125,7 @@ internal static partial class SolverController
                 $"theft_policy={theftPolicy?.ToString() ?? "-"} " +
                 $"act_transition_boss_hp_strategy={searchPolicy.ActTransitionBossHpStrategy} " +
                 $"final_boss_hp_strategy={searchPolicy.FinalBossHpStrategy} " +
-                $"max_hard_fight_think_seconds={searchPolicy.MaxHardFightThinkSeconds:0.###} " +
+                $"max_combat_solve_seconds={searchPolicy.MaxCombatSolveSeconds:0.###} " +
                 $"max_dop={searchPolicy.MaxDegreeOfParallelism}");
             Entry.Logger.Info(SolverDiagnostics.DescribeStart(
                 state,

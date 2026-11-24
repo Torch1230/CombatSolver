@@ -252,6 +252,10 @@ internal static partial class HotRootBuilder
         RoomType? roomType = state.Encounter?.RoomType;
         bool isBoss = roomType == RoomType.Boss;
         bool isElite = roomType == RoomType.Elite;
+        bool isWeak = state.Encounter?.IsWeak ?? false;
+        int initialEncounterMonsterCount = state.Encounter is { IsMutable: true, HaveMonstersBeenGenerated: true } enc
+            ? enc.MonstersWithSlots.Count
+            : enemies.Count;
 
         hot.EnemyCount = (byte)enemies.Count;
         hot.RosterCount = (byte)enemies.Count;
@@ -303,11 +307,16 @@ internal static partial class HotRootBuilder
         {
             OrbModel orb = orbs[i];
             byte orbDefId = ctx.EnsureOrbDef(orb);
+            // 0.113.1 GlassOrb.cs:15,21,23,38: store unmodified base _passiveVal in PassiveVal
+            // so Focus is applied on read and Passive() decrements base _passiveVal rather than Focus.
+            short passiveVal = orb is GlassOrb glassOrb
+                ? (short)Math.Clamp((int)glassOrb._passiveVal, 0, short.MaxValue)
+                : (short)orb.PassiveVal;
             hot.Orbs[i] = new HotOrb
             {
                 OrbTypeId = orbDefId,
                 Flags = 0,
-                PassiveVal = (short)orb.PassiveVal,
+                PassiveVal = passiveVal,
                 EvokeVal = (int)orb.EvokeVal,
             };
         }
@@ -403,6 +412,18 @@ internal static partial class HotRootBuilder
 
         // Combat history counters & melodies
         CaptureLiveHistoryAndMelodies(state, player, ref hot);
+        if (hot.Counters[(int)HotCounterSlot.ShivPlaysFinishedThisTurn] > 0)
+        {
+            for (int i = 0; i < hot.PowerCount; i++)
+            {
+                if (hot.Powers[i].OwnerSlot == 0
+                    && hot.Powers[i].PowerDefId < ctx.Powers.Count
+                    && ctx.Powers[hot.Powers[i].PowerDefId].PowerId == HotPowerId.PhantomBladesPower)
+                {
+                    hot.Powers[i].Aux0 = 1;
+                }
+            }
+        }
 
         // HistoryCourse: capture last non-dupe Attack from last turn (during TurnSetup) or this turn (during Play).
         if (player.Relics.Any(static r => !r.IsMelted && r is HistoryCourse)
@@ -454,6 +475,7 @@ internal static partial class HotRootBuilder
             unlockedCharCards: player.Character.CardPool.GetUnlockedCards(player.UnlockState, mpConstraint),
             unlockedColorlessCards: ModelDb.CardPool<ColorlessCardPool>().GetUnlockedCards(player.UnlockState, mpConstraint),
             unlockedCurseCards: ModelDb.CardPool<CurseCardPool>().GetUnlockedCards(player.UnlockState, mpConstraint),
+            unlockedStatusCards: ModelDb.CardPool<StatusCardPool>().GetUnlockedCards(player.UnlockState, mpConstraint),
             otherCharCards: otherCharPools.SelectMany(p => p.GetUnlockedCards(player.UnlockState, mpConstraint)),
             tarotCards: TarotCards.All.Where(card => card.IsAllowedInRun(state.RunState)),
             unlockedPotions: PotionFactory.GetPotionOptions(player),
@@ -479,10 +501,12 @@ internal static partial class HotRootBuilder
             isFurCoatActiveInCurrentRoom,
             isBoss,
             isElite,
+            isWeak,
             HotImportSupport.IsTheftEncounter(state),
             player.Character.Id.Entry,
             state.Encounter?.Id.Entry ?? string.Empty,
             state.Encounter?.Slots.ToArray() ?? [],
+            initialEncounterMonsterCount,
             state.RunState.CurrentActIndex,
             state.RunState.TotalFloor,
             postUncondHeal,
@@ -514,10 +538,12 @@ internal static partial class HotRootBuilder
         bool isFurCoatActiveInCurrentRoom,
         bool isBoss,
         bool isElite,
+        bool isWeak,
         bool isTheft,
         string characterEntry,
         string encounterEntry,
         string[] encounterSlots,
+        int initialEncounterMonsterCount,
         int currentActIndex,
         int totalFloor,
         int postUncondHeal,
@@ -636,15 +662,23 @@ internal static partial class HotRootBuilder
         }
         for (int i = 0; i < hot.PowerCount && !hasAnyHealOrUnknown; i++)
         {
+            if (hot.Powers[i].OwnerSlot != 0 || hot.Powers[i].Amount == 0)
+                continue;
             HotPowerDef pd = ctx.Powers[hot.Powers[i].PowerDefId];
-            if (pd.CanHealPlayer)
+            if (pd.CanHealPlayer || PowerCanGenerateUnknownInCombat(pd.PowerId))
                 hasAnyHealOrUnknown = true;
         }
-        for (int i = 0; i < activeRelicDefIds.Count && !hasAnyHealOrUnknown; i++)
+        bool turn1SetupPending = hot.PlayerTurnNumber == 0
+            || (hot.PlayerTurnNumber == 1 && (hot.CombatFlags & HotCombatFlags.PendingTurnSetup) != 0);
+        for (int i = 0; i < activeRelics.Count && !hasAnyHealOrUnknown; i++)
         {
-            HotRelicDef rd = ctx.Relics[activeRelicDefIds[i]];
-            if (rd.CanHealPlayer || rd.CanGenerateUnknown)
+            HotActiveRelic ar = activeRelics[i];
+            HotRelicDef rd = ctx.Relics[ar.RelicDefId];
+            if ((rd.CanHealPlayer || rd.CanGenerateUnknown)
+                && RelicCanHealOrGenerateRemainingInCombat(in hot, in ar, rd, turn1SetupPending))
+            {
                 hasAnyHealOrUnknown = true;
+            }
         }
         for (int s = 0; s < hot.PotionSlotCount && !hasAnyHealOrUnknown; s++)
         {
@@ -689,6 +723,7 @@ internal static partial class HotRootBuilder
             UnlockedCharacterCardPool = pools.UnlockedCharacter,
             UnlockedColorlessCardPool = pools.UnlockedColorless,
             UnlockedCurseCardPool = pools.UnlockedCurse,
+            UnlockedStatusCardPool = pools.UnlockedStatus,
             OtherCharacterCardPool = pools.OtherCharacter,
             TarotCardPool = pools.Tarot,
             CombatCharacterAttackPool = pools.CombatCharAttacks,
@@ -702,10 +737,12 @@ internal static partial class HotRootBuilder
             IsFurCoatActiveInCurrentRoom = isFurCoatActiveInCurrentRoom,
             IsBossEncounter = isBoss,
             IsEliteEncounter = isElite,
+            IsWeakEncounter = isWeak,
             IsTheftEncounter = isTheft,
             CharacterEntry = characterEntry,
             EncounterEntry = encounterEntry,
             EncounterSlots = encounterSlots,
+            InitialEncounterMonsterCount = initialEncounterMonsterCount,
             CurrentActIndex = currentActIndex,
             TotalFloor = totalFloor,
             PostCombatRelicUnconditionalHeal = postUncondHeal,
@@ -884,6 +921,14 @@ internal static partial class HotRootBuilder
                     enemy.AiRegs[0] = wIdx;
                 }
                 break;
+            case "Axebot":
+            {
+                // 0.113.1 Axebot.cs:54,116: encode RespawnCount (2 - StockAmount) as (respawnCount + 1)
+                // so 0 = unset fallback to StaticInts["RespawnCount"], 1 = 0, 2 = 1, 3 = 2.
+                int respawnCount = Math.Max(0, HotImportSupport.ReadMonsterInt(monster, "RespawnCount"));
+                enemy.AiRegs[0] = (byte)Math.Clamp(respawnCount + 1, 1, byte.MaxValue);
+                break;
+            }
         }
 
         enemy.Flags = eFlags;
@@ -1270,6 +1315,41 @@ internal static partial class HotRootBuilder
                 // 0.113.1 FeralPower.cs:15-35: preserve mid-turn zero-cost attacks played count (Aux0).
                 aux0 = feral.GetInternalData<FeralPower.Data>().zeroCostAttacksPlayed;
                 break;
+
+            case WitheringPresencePower withering:
+                // 0.113.1 WitheringPresencePower.cs:24,28,50: preserve CardsLeft (Aux0) across pre-capture Imbued auto-plays.
+                aux0 = withering.DynamicVars["CardsLeft"].IntValue;
+                break;
+
+            case PossessStrengthPower possessStrength:
+                // 0.113.1 PossessStrengthPower.cs:15,53,65: stolenStrength accumulates negative Strength deltas per player creature;
+                // HotMonsters.RefundPossessedStats checks Aux0 < 0 and refunds -Aux0 on death.
+                if (possessStrength.GetInternalData<PossessStrengthPower.Data>() is { stolenStrength: { } stolenStrength })
+                {
+                    decimal totalStolen = 0m;
+                    foreach (KeyValuePair<Creature, decimal> kvp in stolenStrength)
+                    {
+                        if (creatureToOwnerSlot.TryGetValue(kvp.Key, out byte cSlot) && cSlot == 0)
+                            totalStolen += kvp.Value;
+                    }
+                    aux0 = (int)totalStolen;
+                }
+                break;
+
+            case PossessSpeedPower possessSpeed:
+                // 0.113.1 PossessSpeedPower.cs:15,53,65: stolenDexterity accumulates negative Dexterity deltas per player creature;
+                // HotMonsters.RefundPossessedStats checks Aux0 < 0 and refunds -Aux0 on death.
+                if (possessSpeed.GetInternalData<PossessSpeedPower.Data>() is { stolenDexterity: { } stolenDexterity })
+                {
+                    decimal totalStolen = 0m;
+                    foreach (KeyValuePair<Creature, decimal> kvp in stolenDexterity)
+                    {
+                        if (creatureToOwnerSlot.TryGetValue(kvp.Key, out byte cSlot) && cSlot == 0)
+                            totalStolen += kvp.Value;
+                    }
+                    aux0 = (int)totalStolen;
+                }
+                break;
         }
 
         return new HotPower
@@ -1384,6 +1464,58 @@ internal static partial class HotRootBuilder
         }
     }
 
+    private static bool PowerCanGenerateUnknownInCombat(HotPowerId powerId)
+        => powerId is HotPowerId.CalamityPower
+            or HotPowerId.CallOfTheVoidPower
+            or HotPowerId.CreativeAiPower
+            or HotPowerId.EntropyPower
+            or HotPowerId.HelloWorldPower
+            or HotPowerId.MythicFormPower
+            or HotPowerId.SpectrumShiftPower;
+
+    private static bool RelicCanHealOrGenerateRemainingInCombat(
+        in CombatHotState hot,
+        in HotActiveRelic ar,
+        HotRelicDef rd,
+        bool turn1SetupPending)
+    {
+        switch (rd.RelicId)
+        {
+            // Post-combat heals: BurningBlood/BlackBlood are modeled monotonically by PostCombatRelicHeal,
+            // and MeatOnTheBone is intentionally excluded from MonotoneHealFor ranking.
+            case HotRelicId.BurningBlood:
+            case HotRelicId.BlackBlood:
+            case HotRelicId.MeatOnTheBone:
+                return false;
+
+            // Pre-Turn-1 BeforeCombatStart / Turn <= 1 BeforeSideTurnStart relics:
+            // already resolved before Turn 1 Setup/Play begins.
+            case HotRelicId.Pantograph:
+            case HotRelicId.BathRobes:
+                return hot.PlayerTurnNumber == 0;
+
+            // Turn-1-only setup relics (BeforeHandDraw / AfterPlayerTurnStart / AfterSideTurnStart):
+            // cannot fire again once Turn 1 Play begins or on Turn >= 2.
+            case HotRelicId.BathTowel:
+            case HotRelicId.BloodVial:
+            case HotRelicId.FakeBloodVial:
+            case HotRelicId.BigHat:
+            case HotRelicId.ChoicesParadox:
+            case HotRelicId.Ocarina:
+            case HotRelicId.OrangeDough:
+            case HotRelicId.Toolbox:
+            case HotRelicId.VexingPuzzlebox:
+                return turn1SetupPending;
+
+            // Death-save heal only triggers while unused (Current == 0).
+            case HotRelicId.LizardTail:
+                return ar.StateSlot >= hot.RelicStateCount || hot.RelicStates[ar.StateSlot].Current == 0;
+
+            default:
+                return true;
+        }
+    }
+
     private static void CaptureLiveHistoryAndMelodies(CombatState combatState, Player player, ref CombatHotState hot)
     {
         CombatHistory? history = CombatManager.Instance?.History;
@@ -1414,6 +1546,7 @@ internal static partial class HotRootBuilder
         int wasDoomAppliedThisTurn = 0;
         int ostyAttacks = 0;
         int cardBlockGains = 0;
+        int shivPlaysFinished = 0;
 
         int[] melodyStarted = new int[3];
         int[] melodyFinished = new int[3];
@@ -1471,6 +1604,8 @@ internal static partial class HotRootBuilder
                         if (finished.WasEthereal) etherealPlays++;
                         if (thisTurn)
                         {
+                            if (finished.CardPlay.Card.Tags.Contains(CardTag.Shiv))
+                                shivPlaysFinished++;
                             bool anyMelody = false;
                             for (int m = 0; m < 3; m++)
                             {
@@ -1555,6 +1690,7 @@ internal static partial class HotRootBuilder
         hot.Counters[(int)HotCounterSlot.OstyAttacksThisTurn] = ostyAttacks;
         hot.Counters[(int)HotCounterSlot.SadnessGeneratedBefore] = sadnessGenerated;
         hot.Counters[(int)HotCounterSlot.CardBlockGainsThisTurn] = cardBlockGains;
+        hot.Counters[(int)HotCounterSlot.ShivPlaysFinishedThisTurn] = shivPlaysFinished;
 
         hot.BrightestFlameMaxHpSpent = brightestFlameMaxHp;
         hot.HistoryFinishedPlays = finishedPlays;
@@ -1734,6 +1870,7 @@ internal static partial class HotRootBuilder
         ushort[] UnlockedCharacter,
         ushort[] UnlockedColorless,
         ushort[] UnlockedCurse,
+        ushort[] UnlockedStatus,
         ushort[] OtherCharacter,
         ushort[] Tarot,
         ushort[] CombatCharAttacks,
@@ -2516,6 +2653,7 @@ internal static partial class HotRootBuilder
             IEnumerable<CardModel> unlockedCharCards,
             IEnumerable<CardModel> unlockedColorlessCards,
             IEnumerable<CardModel> unlockedCurseCards,
+            IEnumerable<CardModel> unlockedStatusCards,
             IEnumerable<CardModel> otherCharCards,
             IEnumerable<CardModel> tarotCards,
             IEnumerable<PotionModel> unlockedPotions,
@@ -2566,6 +2704,7 @@ internal static partial class HotRootBuilder
             ushort[] colorlessPool = RegisterPool(unlockedColorlessCards);
             ushort[] combatColorless = RegisterPool(HotImportSupport.FilterForCombatAndPlayerCount(unlockedColorlessCards, mpConstraint));
             ushort[] cursePool = RegisterPool(unlockedCurseCards);
+            ushort[] statusPool = RegisterPool(unlockedStatusCards);
             ushort[] otherCharPool = RegisterPool(HotImportSupport.FilterForCombatAndPlayerCount(otherCharCards, mpConstraint));
             ushort[] tarotPool = RegisterPool(tarotCards);
 
@@ -2603,6 +2742,7 @@ internal static partial class HotRootBuilder
                 UnlockedCharacter: charPool,
                 UnlockedColorless: colorlessPool,
                 UnlockedCurse: cursePool,
+                UnlockedStatus: statusPool,
                 OtherCharacter: otherCharPool,
                 Tarot: tarotPool,
                 CombatCharAttacks: charAttacks.ToArray(),

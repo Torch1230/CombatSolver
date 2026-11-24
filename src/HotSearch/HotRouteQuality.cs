@@ -361,14 +361,14 @@ internal static class HotRouteQuality
 
     /// <summary>
     /// Returns the persistent post-combat HP weight per 1 raw HP in centi-HP:
-    /// <c>100</c> (1.0x Normal/MinimizeHpLoss), <c>20</c> (0.2x ActClearHeal), <c>0</c> (0.0x RunEnding).
+    /// <c>100</c> (1.0x Normal/MinimizeHpLoss), <c>35</c> (0.35x ActClearHeal), <c>20</c> (0.20x RunEnding).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int PersistentHpScale(BossHpRelief bossHpRelief)
         => bossHpRelief switch
         {
-            BossHpRelief.ActClearHeal => 20,
-            BossHpRelief.RunEnding => 0,
+            BossHpRelief.ActClearHeal => 35,
+            BossHpRelief.RunEnding => 20,
             _ => 100,
         };
 
@@ -594,7 +594,8 @@ internal static class HotRouteQuality
 
     /// <summary>
     /// Compares two routes under the single unified lexicographic objective:
-    /// <c>(Won, Survives, -DeathSaveCount, -TheftLoss, NetPersistentHpDelta - NetPotionOpportunityCost, NetPersistentHpDelta, Growth, Turn, RawHpLost, Potions, EnemyHp, Score)</c>.
+    /// <c>(Won, Survives, -DeathSaveCount, -TheftLoss, NetPersistentHpDelta - NetPotionOpportunityCost, NetPersistentHpDelta, Growth, RawHpLost, Potions, Turn, EnemyHp, Score)</c>
+    /// (with defeat-only routes ranked by optional paid potion cost/count ASC when <paramref name="includeOptionalPotionCost"/> is enabled, then <c>(EnemyHp ASC, RouteTurn DESC, Score DESC)</c>).
     /// Returns negative if <paramref name="a"/> is better than <paramref name="b"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -628,6 +629,42 @@ internal static class HotRouteQuality
             cmp = a.ForfeitsGold.CompareTo(b.ForfeitsGold);
             if (cmp != 0)
                 return cmp;
+        }
+
+        // Defeat-only routes: hopeless unwinnable fights must never burn optional paid potions just to shave enemy HP
+        // (Phase B still freely uses potions whenever they achieve survival or victory in Steps 1-2 above).
+        // Rank by lower paid-potion cost/count first, then lower remaining enemy HP, longer survival turn, and higher score.
+        if (!a.Won && !a.Survives && !b.Won && !b.Survives)
+        {
+            if (includeOptionalPotionCost)
+            {
+                if (a.HasCentiPrecision && b.HasCentiPrecision)
+                {
+                    cmp = a.NetPotionOpportunityCostCenti.CompareTo(b.NetPotionOpportunityCostCenti);
+                    if (cmp != 0)
+                        return cmp;
+
+                    cmp = a.OptionalPaidPotionCount.CompareTo(b.OptionalPaidPotionCount);
+                    if (cmp != 0)
+                        return cmp;
+                }
+                else
+                {
+                    cmp = a.OptionalPotionStrategicCost.CompareTo(b.OptionalPotionStrategicCost);
+                    if (cmp != 0)
+                        return cmp;
+                }
+            }
+
+            cmp = a.EnemyHp.CompareTo(b.EnemyHp);
+            if (cmp != 0)
+                return cmp;
+
+            cmp = b.RouteTurn.CompareTo(a.RouteTurn);
+            if (cmp != 0)
+                return cmp;
+
+            return b.Score.CompareTo(a.Score);
         }
 
         // 5. Unified persistent-HP economic value V = NetPersistentHpDelta - NetPotionOpportunityCost
@@ -672,27 +709,18 @@ internal static class HotRouteQuality
         if (cmp != 0)
             return cmp;
 
-        // 7. Faster victory turn; for defeat-only routes, prefer surviving MORE turns before death.
-        if (!a.Won && !a.Survives && !b.Won && !b.Survives)
-        {
-            cmp = b.RouteTurn.CompareTo(a.RouteTurn);
-            if (cmp != 0)
-                return cmp;
-        }
-        else
-        {
-            cmp = a.CombatEndedTurn.CompareTo(b.CombatEndedTurn);
-            if (cmp != 0)
-                return cmp;
-        }
-
-        // 8. Lower raw projected battle HP loss on equal persistent HP
+        // 7. Lower raw projected battle HP loss on equal persistent HP
         cmp = a.ProjectedBattleHpLost.CompareTo(b.ProjectedBattleHpLost);
         if (cmp != 0)
             return cmp;
 
-        // 9. Fewer potions used (prevents wasting 0-cost/free potions for 0 gain)
+        // 8. Fewer potions used (prevents wasting 0-cost/free potions for 0 gain)
         cmp = a.ProjectedBattlePotionCount.CompareTo(b.ProjectedBattlePotionCount);
+        if (cmp != 0)
+            return cmp;
+
+        // 9. Faster victory turn
+        cmp = a.CombatEndedTurn.CompareTo(b.CombatEndedTurn);
         if (cmp != 0)
             return cmp;
 

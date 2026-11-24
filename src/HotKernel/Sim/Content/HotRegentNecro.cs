@@ -1515,7 +1515,7 @@ internal static class HotRegentNecro
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
-                if (HasHandCardWithoutKeyword(in s, HotCardKeywordMask.Retain))
+                if (HasHandCardWithoutRetain(in s, rules))
                 {
                     if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
                         return PauseForChoice(in s, out result);
@@ -2934,6 +2934,33 @@ internal static class HotRegentNecro
             appliers[count] = p.ApplierSlot;
             count++;
         }
+
+        // Vanilla Misery.cs:30-42: each snapshotted ITemporaryPower debuff (e.g. EnfeeblingTouchPower,
+        // DarkShacklesPower, PiercingWailPower, HyperbeamFocusDownPower) will re-apply its
+        // InternallyAppliedPower delta when copied to another enemy. Offset the snapshotted base stat
+        // by retireSign * amount (+amount for negative temporary stat debuffs) before copying so
+        // Misery does not double-dip (e.g. Strength=-8 + EnfeeblingTouch=8 -> 0 skipped;
+        // Strength=-12 + EnfeeblingTouch=16 -> +4 applied, then EnfeeblingTouch(16) applies -16).
+        for (int i = 0; i < count; i++)
+        {
+            HotPowerId pid = rules.Powers[defIds[i]].PowerId;
+            if (!HotCombatEngine.TryGetTemporaryStatInfo(pid, out HotPowerId baseStatId, out int retireSign))
+                continue;
+
+            int offset = retireSign * amounts[i];
+            if (offset == 0)
+                continue;
+
+            for (int j = 0; j < count; j++)
+            {
+                if (rules.Powers[defIds[j]].PowerId == baseStatId)
+                {
+                    amounts[j] += offset;
+                    break;
+                }
+            }
+        }
+
         return count;
     }
 
@@ -3239,6 +3266,16 @@ internal static class HotRegentNecro
         for (int i = 0; i < s.HandCount; i++)
         {
             if ((s.Cards[i].LocalKeywordsMask & kw) == 0)
+                return true;
+        }
+        return false;
+    }
+
+    private static bool HasHandCardWithoutRetain(in CombatHotState s, HotRules rules)
+    {
+        for (int i = 0; i < s.HandCount; i++)
+        {
+            if (!HotCombatEngine.HasEffectiveRetainKeyword(in s, in s.Cards[i], rules))
                 return true;
         }
         return false;

@@ -466,8 +466,25 @@ internal static class HotPotions
 
             case HotCustomPotionId.GlowwaterPotion:
             {
-                while (s.HandCount > 0 && !HotCombatEngine.IsOverOrEnding(in s) && !scratch.NeedsChoice)
-                    HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, 0, causedByEthereal: false);
+                // STS2 0.113.1 GlowwaterPotion.cs:34-39: snapshot Hand before exhausting
+                // so cards drawn/added mid-loop (e.g. JossPaper, DarkEmbrace, BurningSticks) are NOT re-exhausted.
+                Span<ushort> handUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+                int snapCount = Math.Min((int)s.HandCount, handUids.Length);
+                for (int i = 0; i < snapCount; i++)
+                    handUids[i] = s.Cards[i].CardUid;
+
+                for (int i = 0; i < snapCount && !HotCombatEngine.IsOverOrEnding(in s) && (s.Player.Flags & HotCreatureFlags.Alive) != 0 && !scratch.NeedsChoice; i++)
+                {
+                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, handUids[i]);
+                    if (idx < 0)
+                    {
+                        idx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, handUids[i]);
+                        if (idx >= 0 && HotPiles.PileOfIndex(in s, idx) == HotPileKind.Exhaust)
+                            idx = -1;
+                    }
+                    if (idx >= 0)
+                        HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
+                }
                 if (!scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s))
                     HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, PrimaryOrDefault(def, 10), fromHandDraw: false);
                 break;

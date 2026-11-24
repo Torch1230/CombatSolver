@@ -59,6 +59,7 @@ internal struct HotResolvedChoice
     public long LookaheadScore;
     public int LookaheadHpLost;
     public int LookaheadBoardInvestment;
+    public int LookaheadSetupScore;
     public bool HasLookahead;
     public bool LookaheadVictory;
 }
@@ -186,6 +187,7 @@ internal readonly struct HotWaveExpansionConfig
     public readonly int MaxPileChoiceBranches;
     public readonly HotEvalMode EvalMode;
     public readonly bool AllowEndTurn;
+    public readonly bool EnableTurnBoundaryRollouts;
 
     public bool AllowAnyPotions => AllowPaidOptionalPotions || AllowZeroCostOptionalPotions || AllowForcedPotions;
 
@@ -198,7 +200,8 @@ internal readonly struct HotWaveExpansionConfig
         int maxHandChoiceBranches,
         int maxPileChoiceBranches,
         HotEvalMode evalMode = HotEvalMode.Balanced,
-        bool allowEndTurn = true)
+        bool allowEndTurn = true,
+        bool enableTurnBoundaryRollouts = true)
     {
         AllowPaidOptionalPotions = allowPaidOptionalPotions;
         AllowZeroCostOptionalPotions = allowZeroCostOptionalPotions;
@@ -209,6 +212,7 @@ internal readonly struct HotWaveExpansionConfig
         MaxPileChoiceBranches = maxPileChoiceBranches;
         EvalMode = evalMode;
         AllowEndTurn = allowEndTurn;
+        EnableTurnBoundaryRollouts = enableTurnBoundaryRollouts;
     }
 }
 
@@ -1841,12 +1845,13 @@ internal sealed class HotParallelExpander : IDisposable
         for (int a = n - 1; a >= 0 && tailAnchorCount < 4; a--)
             tailAnchors[tailAnchorCount++] = ws.ChoiceOptBuf[a].CardUidOrIndex;
 
-        Span<ushort> headAnchors = stackalloc ushort[4];
-        int headAnchorCount = 0;
-        headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[0].CardUidOrIndex;
-        if (n > 2) headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[n / 2].CardUidOrIndex;
-        if (n > 1) headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[1].CardUidOrIndex;
-        if (n > 3) headAnchors[headAnchorCount++] = ws.ChoiceOptBuf[(n / 2) + 1].CardUidOrIndex;
+        // Combined mid+head anchor list eliminates toxic-edge bias for k=2..4 while keeping Round 1 to 2 anchors.
+        Span<ushort> headMidAnchors = stackalloc ushort[4];
+        int headMidAnchorCount = 0;
+        if (n > 2) headMidAnchors[headMidAnchorCount++] = ws.ChoiceOptBuf[n / 2].CardUidOrIndex;
+        headMidAnchors[headMidAnchorCount++] = ws.ChoiceOptBuf[0].CardUidOrIndex;
+        if (n > 3) headMidAnchors[headMidAnchorCount++] = ws.ChoiceOptBuf[(n / 2) + 1].CardUidOrIndex;
+        if (n > 1) headMidAnchors[headMidAnchorCount++] = ws.ChoiceOptBuf[1].CardUidOrIndex;
 
         long probe0Tail = ProbeFixedKItem(
             ws,
@@ -1868,9 +1873,9 @@ internal sealed class HotParallelExpander : IDisposable
         if (observedK <= 1)
             return false;
 
-        // Round 1: Evaluate every option i against BOTH tail and head/mid anchors (immune to a toxic idx0 trap!).
+        // Round 1: Evaluate every option i across 2 complementary anchors (tail + head/mid).
         ws.MarginalOrderBuf[0] = 0;
-        long probe0Head = ProbeFixedKItem(
+        long probe0HeadMid = ProbeFixedKItem(
             ws,
             in replayBaseState,
             replayBaseCold,
@@ -1882,11 +1887,11 @@ internal sealed class HotParallelExpander : IDisposable
             isEndTurnStartPrefix,
             firstGroupSeq,
             ws.ChoiceOptBuf[0],
-            headAnchors[..headAnchorCount],
+            headMidAnchors[..headMidAnchorCount],
             netPotionCostCenti,
             parent.ActionCount + 1,
             out _);
-        ws.MarginalScoreBuf[0] = Math.Max(probe0Tail, probe0Head);
+        ws.MarginalScoreBuf[0] = Math.Max(probe0Tail, probe0HeadMid);
 
         for (int i = 1; i < n; i++)
         {
@@ -1910,7 +1915,7 @@ internal sealed class HotParallelExpander : IDisposable
             if (kSeen > observedK)
                 observedK = kSeen;
 
-            long sHead = ProbeFixedKItem(
+            long sHeadMid = ProbeFixedKItem(
                 ws,
                 in replayBaseState,
                 replayBaseCold,
@@ -1922,11 +1927,11 @@ internal sealed class HotParallelExpander : IDisposable
                 isEndTurnStartPrefix,
                 firstGroupSeq,
                 ws.ChoiceOptBuf[i],
-                headAnchors[..headAnchorCount],
+                headMidAnchors[..headMidAnchorCount],
                 netPotionCostCenti,
                 parent.ActionCount + 1,
                 out _);
-            ws.MarginalScoreBuf[i] = Math.Max(sTail, sHead);
+            ws.MarginalScoreBuf[i] = Math.Max(sTail, sHeadMid);
         }
 
         // Round 2 (Coordinate Ascent): Pair every option i directly alongside the Round-1 MVP winners
@@ -2122,7 +2127,7 @@ internal sealed class HotParallelExpander : IDisposable
                     in policy,
                     in evalLookup,
                     config.EvalMode,
-                    maxTurnsAhead: 1,
+                    maxTurnsAhead: 0,
                     parentNetPotionCostCenti: netPotionCostCenti,
                     parentActionCount: childActionCount);
                 return EncodeProbeRankScore(in probe);
@@ -2250,6 +2255,7 @@ internal sealed class HotParallelExpander : IDisposable
             LookaheadScore = 0,
             LookaheadHpLost = summary.HpLost,
             LookaheadBoardInvestment = eval.BoardInvestment,
+            LookaheadSetupScore = eval.SetupScore,
             HasLookahead = false,
             LookaheadVictory = summary.IsVictory,
         };
@@ -2273,57 +2279,57 @@ internal sealed class HotParallelExpander : IDisposable
         byte explicitPotionDelta,
         byte ambergrisDelta)
     {
+        int maxPrefixLen = 0;
+        for (int i = 0; i < resolvedCount; i++)
+        {
+            int len = ws.ChoiceResolved[i].Prefix.Count;
+            if (len > maxPrefixLen)
+                maxPrefixLen = len;
+        }
+
+        bool isStartTurn = parent.Turn == policy.StartTurnNumber;
+        int effectiveMaxBranches = (isStartTurn && maxPrefixLen >= 2)
+            ? Math.Max(maxBranches, 36)
+            : maxBranches;
+        int cap = Math.Min(resolvedCount, effectiveMaxBranches);
+        bool needsPruning = resolvedCount > cap;
+
         bool isDelayedOrTurnSetup = isEndTurnStartPrefix
             || action.Kind == HotActionKind.TurnSetup
             || firstKind is HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile;
-        bool runMiniRollout = resolvedCount >= 2 && (resolvedCount > maxBranches || isDelayedOrTurnSetup);
 
         int nextOptionalPaid = parent.OptionalPaidPotionCount + optionalPaidCountDelta;
         short nextPotionCost = (short)Math.Clamp(parent.PotionStrategicCost + potionCostDelta, 0, short.MaxValue);
 
-        if (runMiniRollout)
-        {
-            for (int i = 0; i < resolvedCount; i++)
-            {
-                ref HotResolvedChoice cand = ref ws.ChoiceResolved[i];
-                HotStatePacker.Unpack(ws.StagingArena.GetSpan(cand.StagedHandle), ref ws.WorkingState);
-                AssignDeterministicCardUids(ref ws.WorkingState);
-
-                int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
-                    nextPotionCost,
-                    nextOptionalPaid,
-                    cand.Summary.AlchemizeCount,
-                    cand.Summary.EmptyPotionSlots,
-                    in policy);
-
-                HotMiniRolloutResult probe = HotRolloutEvaluator.EvaluateChoiceProbe(
-                    in ws.WorkingState,
-                    cand.Cold,
-                    ref ws.ChoiceProbeState,
-                    ws.ChoiceProbeScratch,
-                    ws.ChoiceProbeActionBuf,
-                    ws.ChoiceProbeChoiceBuf,
-                    rules,
-                    in policy,
-                    in evalLookup,
-                    config.EvalMode,
-                    maxTurnsAhead: 1,
-                    parentNetPotionCostCenti: netPotionCostCenti,
-                    parentActionCount: parent.ActionCount + 1);
-
-                cand.LookaheadScore = EncodeProbeRankScore(in probe);
-                cand.LookaheadHpLost = probe.HpLost;
-                cand.LookaheadBoardInvestment = probe.BoardInvestment;
-                cand.LookaheadVictory = probe.IsVictory;
-                cand.HasLookahead = true;
-            }
-        }
-
         Span<int> selectedIndices = stackalloc int[HotExpansionWorkspace.ChoiceResolvedCapacity];
         int selectedCount;
 
-        if (resolvedCount <= maxBranches)
+        if (!needsPruning)
         {
+            bool turnBoundaryRolloutsEnabled = config.EnableTurnBoundaryRollouts;
+            bool runUnprunedProbe = resolvedCount >= 2
+                && (action.Kind == HotActionKind.TurnSetup
+                    || (isStartTurn && isDelayedOrTurnSetup && !isEndTurnStartPrefix && resolvedCount <= 12)
+                    || (isEndTurnStartPrefix && !turnBoundaryRolloutsEnabled));
+
+            if (runUnprunedProbe)
+            {
+                for (int i = 0; i < resolvedCount; i++)
+                {
+                    EvaluateResolvedChoiceLookahead(
+                        ws,
+                        in parent,
+                        rules,
+                        in policy,
+                        in evalLookup,
+                        in config,
+                        nextPotionCost,
+                        nextOptionalPaid,
+                        maxTurnsAhead: 1,
+                        ref ws.ChoiceResolved[i]);
+                }
+            }
+
             selectedCount = resolvedCount;
             for (int i = 0; i < resolvedCount; i++)
                 selectedIndices[i] = i;
@@ -2331,25 +2337,82 @@ internal sealed class HotParallelExpander : IDisposable
         }
         else
         {
-            // Domain-agnostic MAP-Elites choice shortlisting (zero card-ID hardcoding):
-            // ~55% Lookahead/Primary, ~15% Immediate Eval, ~15% Survival (min HpLost), ~15% BoardInvestment+Optionality.
+            int probeBudget = Math.Min(resolvedCount, Math.Max(16, effectiveMaxBranches * 2));
+            Span<int> probeIndices = stackalloc int[HotExpansionWorkspace.ChoiceResolvedCapacity];
+            int probeCount;
+
+            if (probeBudget >= resolvedCount)
+            {
+                probeCount = resolvedCount;
+                for (int i = 0; i < resolvedCount; i++)
+                    probeIndices[i] = i;
+            }
+            else
+            {
+                Span<byte> preFilterMarks = ws.ResolvedSelectedMarks.AsSpan(0, resolvedCount);
+                PreFilterStaticProbeCandidates(
+                    ws.ChoiceResolved,
+                    resolvedCount,
+                    probeBudget,
+                    preFilterMarks,
+                    probeIndices,
+                    out probeCount);
+            }
+
+            int probeMaxTurnsAhead = firstKind == HotChoiceKind.HandCard ? 0 : 1;
+            for (int p = 0; p < probeCount; p++)
+            {
+                EvaluateResolvedChoiceLookahead(
+                    ws,
+                    in parent,
+                    rules,
+                    in policy,
+                    in evalLookup,
+                    in config,
+                    nextPotionCost,
+                    nextOptionalPaid,
+                    probeMaxTurnsAhead,
+                    ref ws.ChoiceResolved[probeIndices[p]]);
+            }
+
+            // Domain-agnostic Depth-0 diversity + MAP-Elites choice shortlisting (zero card-ID hardcoding):
+            // First guarantee 1 best Primary representative per distinct Depth-0 option (up to cap / 2),
+            // then fill remaining slots via ~55% Lookahead/Primary, ~15% Immediate Eval, ~15% Survival, ~15% Investment.
             Span<byte> marks = ws.ResolvedSelectedMarks.AsSpan(0, resolvedCount);
             marks.Clear();
             selectedCount = 0;
 
-            int cap = Math.Min(maxBranches, resolvedCount);
-            int primaryQuota = Math.Max(1, (cap * 55 + 50) / 100);
-            int immediateQuota = cap >= 4 ? Math.Max(1, (cap * 15) / 100) : 0;
-            int survivalQuota = cap >= 3 ? Math.Max(1, (cap * 15) / 100) : 0;
-            int investQuota = Math.Max(0, cap - primaryQuota - immediateQuota - survivalQuota);
+            Span<int> probedPool = probeIndices[..probeCount];
+            SortResolvedIndicesByPrimary(probedPool, ws.ChoiceResolved);
 
-            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, primaryQuota, 0, selectedIndices, ref selectedCount);
-            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, immediateQuota, 1, selectedIndices, ref selectedCount);
-            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, survivalQuota, 2, selectedIndices, ref selectedCount);
-            SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, investQuota, 3, selectedIndices, ref selectedCount);
+            int depth0Cap = cap / 2;
+            if (depth0Cap > 0)
+            {
+                SelectDepth0RepresentativesFromSortedPool(
+                    ws.ChoiceResolved,
+                    probedPool,
+                    marks,
+                    depth0Cap,
+                    selectedIndices,
+                    ref selectedCount);
+            }
 
-            if (selectedCount < cap)
-                SelectResolvedTopK(ws.ChoiceResolved, resolvedCount, marks, cap - selectedCount, 0, selectedIndices, ref selectedCount);
+            int remaining = cap - selectedCount;
+            if (remaining > 0)
+            {
+                int primaryQuota = Math.Max(1, (remaining * 55 + 50) / 100);
+                int immediateQuota = remaining >= 4 ? Math.Max(1, (remaining * 15) / 100) : 0;
+                int survivalQuota = remaining >= 3 ? Math.Max(1, (remaining * 15) / 100) : 0;
+                int investQuota = Math.Max(0, remaining - primaryQuota - immediateQuota - survivalQuota);
+
+                SelectResolvedTopKFromPool(ws.ChoiceResolved, probedPool, marks, primaryQuota, 0, selectedIndices, ref selectedCount);
+                SelectResolvedTopKFromPool(ws.ChoiceResolved, probedPool, marks, immediateQuota, 1, selectedIndices, ref selectedCount);
+                SelectResolvedTopKFromPool(ws.ChoiceResolved, probedPool, marks, survivalQuota, 2, selectedIndices, ref selectedCount);
+                SelectResolvedTopKFromPool(ws.ChoiceResolved, probedPool, marks, investQuota, 3, selectedIndices, ref selectedCount);
+
+                if (selectedCount < cap)
+                    SelectResolvedTopKFromPool(ws.ChoiceResolved, probedPool, marks, cap - selectedCount, 0, selectedIndices, ref selectedCount);
+            }
 
             SortResolvedIndicesByPrimary(selectedIndices[..selectedCount], ws.ChoiceResolved);
         }
@@ -2389,12 +2452,133 @@ internal sealed class HotParallelExpander : IDisposable
         }
     }
 
-    private static void SelectResolvedTopK(
+    private static void EvaluateResolvedChoiceLookahead(
+        HotExpansionWorkspace ws,
+        in HotSearchNode parent,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
+        in HotWaveExpansionConfig config,
+        short nextPotionCost,
+        int nextOptionalPaid,
+        int maxTurnsAhead,
+        ref HotResolvedChoice cand)
+    {
+        HotStatePacker.Unpack(ws.StagingArena.GetSpan(cand.StagedHandle), ref ws.WorkingState);
+        AssignDeterministicCardUids(ref ws.WorkingState);
+
+        int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
+            nextPotionCost,
+            nextOptionalPaid,
+            cand.Summary.AlchemizeCount,
+            cand.Summary.EmptyPotionSlots,
+            in policy);
+
+        HotMiniRolloutResult probe = HotRolloutEvaluator.EvaluateChoiceProbe(
+            in ws.WorkingState,
+            cand.Cold,
+            ref ws.ChoiceProbeState,
+            ws.ChoiceProbeScratch,
+            ws.ChoiceProbeActionBuf,
+            ws.ChoiceProbeChoiceBuf,
+            rules,
+            in policy,
+            in evalLookup,
+            config.EvalMode,
+            maxTurnsAhead: maxTurnsAhead,
+            parentNetPotionCostCenti: netPotionCostCenti,
+            parentActionCount: parent.ActionCount + 1);
+
+        cand.LookaheadScore = EncodeProbeRankScore(in probe);
+        cand.LookaheadHpLost = probe.HpLost;
+        cand.LookaheadBoardInvestment = probe.BoardInvestment;
+        cand.LookaheadSetupScore = probe.SetupScore;
+        cand.LookaheadVictory = probe.IsVictory;
+        cand.HasLookahead = true;
+    }
+
+    private static void PreFilterStaticProbeCandidates(
+        HotResolvedChoice[] resolved,
+        int resolvedCount,
+        int probeBudget,
+        Span<byte> marks,
+        Span<int> probeIndices,
+        out int probeCount)
+    {
+        marks.Clear();
+        probeCount = 0;
+
+        Span<int> staticOrder = stackalloc int[HotExpansionWorkspace.ChoiceResolvedCapacity];
+        Span<int> orderedSlice = staticOrder[..resolvedCount];
+        for (int i = 0; i < resolvedCount; i++)
+            orderedSlice[i] = i;
+        SortResolvedIndicesByStatic(orderedSlice, resolved);
+
+        // 1) Guarantee at least 1 best static representative per distinct Depth-0 option while reserving
+        //    at least ~35% (min 6) of probeBudget for immediate Eval, Survival, and BoardInvestment+Setup.
+        int minNicheReserve = Math.Max(6, (probeBudget * 35) / 100);
+        int depth0ProbeCap = Math.Clamp(probeBudget - minNicheReserve, 0, probeBudget);
+        SelectDepth0RepresentativesFromSortedPool(
+            resolved,
+            orderedSlice,
+            marks,
+            depth0ProbeCap,
+            probeIndices,
+            ref probeCount);
+
+        // 2) Fill remaining probe slots across static Eval.Score, Survival (min HpLost), and BoardInvestment+Setup.
+        int remaining = probeBudget - probeCount;
+        if (remaining > 0)
+        {
+            int survQuota = remaining >= 3 ? Math.Max(1, (remaining * 25 + 50) / 100) : 0;
+            int invQuota = remaining >= 2 ? Math.Max(1, (remaining * 25 + 50) / 100) : 0;
+            int evalQuota = Math.Max(0, remaining - survQuota - invQuota);
+
+            SelectResolvedStaticTopK(resolved, resolvedCount, marks, evalQuota, 0, probeIndices, ref probeCount);
+            SelectResolvedStaticTopK(resolved, resolvedCount, marks, survQuota, 1, probeIndices, ref probeCount);
+            SelectResolvedStaticTopK(resolved, resolvedCount, marks, invQuota, 2, probeIndices, ref probeCount);
+
+            if (probeCount < probeBudget)
+                SelectResolvedStaticTopK(resolved, resolvedCount, marks, probeBudget - probeCount, 0, probeIndices, ref probeCount);
+        }
+    }
+
+    private static void SelectDepth0RepresentativesFromSortedPool(
+        HotResolvedChoice[] resolved,
+        ReadOnlySpan<int> sortedPool,
+        Span<byte> marks,
+        int maxTake,
+        Span<int> dst,
+        ref int dstCount)
+    {
+        if (maxTake <= 0 || sortedPool.Length == 0)
+            return;
+
+        Span<HotChoiceSelection> seenDepth0 = stackalloc HotChoiceSelection[HotExpansionWorkspace.ChoiceResolvedCapacity];
+        int seenCount = 0;
+
+        for (int i = 0; i < sortedPool.Length && seenCount < maxTake; i++)
+        {
+            int idx = sortedPool[i];
+            if (marks[idx] != 0)
+                continue;
+
+            HotChoiceSelection d0 = GetDepth0Selection(in resolved[idx]);
+            if (ContainsChoiceSelection(seenDepth0[..seenCount], d0))
+                continue;
+
+            seenDepth0[seenCount++] = d0;
+            marks[idx] = 1;
+            dst[dstCount++] = idx;
+        }
+    }
+
+    private static void SelectResolvedStaticTopK(
         HotResolvedChoice[] resolved,
         int count,
         Span<byte> marks,
         int take,
-        int criterion,
+        int staticCriterion,
         Span<int> dst,
         ref int dstCount)
     {
@@ -2405,8 +2589,108 @@ internal sealed class HotParallelExpander : IDisposable
             {
                 if (marks[i] != 0)
                     continue;
-                if (bestIdx < 0 || CompareResolved(in resolved[i], in resolved[bestIdx], criterion) < 0)
+                if (bestIdx < 0 || CompareResolvedStatic(in resolved[i], in resolved[bestIdx], staticCriterion) < 0)
                     bestIdx = i;
+            }
+            if (bestIdx < 0)
+                break;
+            marks[bestIdx] = 1;
+            dst[dstCount++] = bestIdx;
+        }
+    }
+
+    private static void SortResolvedIndicesByStatic(Span<int> indices, HotResolvedChoice[] resolved)
+    {
+        for (int i = 1; i < indices.Length; i++)
+        {
+            int key = indices[i];
+            int j = i - 1;
+            while (j >= 0 && CompareResolvedStatic(in resolved[key], in resolved[indices[j]], staticCriterion: 0) < 0)
+            {
+                indices[j + 1] = indices[j];
+                j--;
+            }
+            indices[j + 1] = key;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CompareResolvedStatic(in HotResolvedChoice a, in HotResolvedChoice b, int staticCriterion)
+    {
+        int cmp = b.Summary.IsVictory.CompareTo(a.Summary.IsVictory);
+        if (cmp != 0) return cmp;
+
+        switch (staticCriterion)
+        {
+            case 1: // Static survival (alive > defeat, min HpLost, max EffectiveDefense)
+                cmp = a.Summary.IsDefeat.CompareTo(b.Summary.IsDefeat);
+                if (cmp != 0) return cmp;
+                cmp = a.Summary.HpLost.CompareTo(b.Summary.HpLost);
+                if (cmp != 0) return cmp;
+                cmp = b.Eval.EffectiveDefense.CompareTo(a.Eval.EffectiveDefense);
+                if (cmp != 0) return cmp;
+                break;
+            case 2: // Static board investment + setup + optionality
+            {
+                long aInvest = (long)a.Eval.BoardInvestment * 16_000L + (long)a.Eval.SetupScore * 18_000L;
+                long bInvest = (long)b.Eval.BoardInvestment * 16_000L + (long)b.Eval.SetupScore * 18_000L;
+                cmp = bInvest.CompareTo(aInvest);
+                if (cmp != 0) return cmp;
+                cmp = b.Eval.OptionalityScore.CompareTo(a.Eval.OptionalityScore);
+                if (cmp != 0) return cmp;
+                break;
+            }
+        }
+
+        cmp = b.Eval.Score.CompareTo(a.Eval.Score);
+        if (cmp != 0) return cmp;
+        cmp = a.Hash.Lo.CompareTo(b.Hash.Lo);
+        if (cmp != 0) return cmp;
+        return a.Hash.Hi.CompareTo(b.Hash.Hi);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static HotChoiceSelection GetDepth0Selection(in HotResolvedChoice cand)
+    {
+        ReadOnlySpan<HotChoiceSelection> span = cand.Prefix.AsSpan();
+        return span.Length > 0 ? span[0] : default;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ContainsChoiceSelection(ReadOnlySpan<HotChoiceSelection> span, HotChoiceSelection value)
+    {
+        for (int i = 0; i < span.Length; i++)
+        {
+            HotChoiceSelection s = span[i];
+            if (s.Kind == value.Kind
+                && s.CardUidOrIndex == value.CardUidOrIndex
+                && s.CardDefId == value.CardDefId)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void SelectResolvedTopKFromPool(
+        HotResolvedChoice[] resolved,
+        ReadOnlySpan<int> pool,
+        Span<byte> marks,
+        int take,
+        int criterion,
+        Span<int> dst,
+        ref int dstCount)
+    {
+        for (int k = 0; k < take; k++)
+        {
+            int bestIdx = -1;
+            for (int p = 0; p < pool.Length; p++)
+            {
+                int idx = pool[p];
+                if (marks[idx] != 0)
+                    continue;
+                if (bestIdx < 0 || CompareResolved(in resolved[idx], in resolved[bestIdx], criterion) < 0)
+                    bestIdx = idx;
             }
             if (bestIdx < 0)
                 break;
@@ -2446,20 +2730,28 @@ internal sealed class HotParallelExpander : IDisposable
                 cmp = a.Summary.HpLost.CompareTo(b.Summary.HpLost);
                 if (cmp != 0) return cmp;
                 break;
-            case 3: // Persistent board investment + optionality
-                cmp = b.LookaheadBoardInvestment.CompareTo(a.LookaheadBoardInvestment);
+            case 3: // Persistent board investment + SetupScore + optionality (aligned with HotBeamRetention Niche 4)
+            {
+                long aLookInvest = (long)a.LookaheadBoardInvestment * 16_000L + (long)a.LookaheadSetupScore * 18_000L;
+                long bLookInvest = (long)b.LookaheadBoardInvestment * 16_000L + (long)b.LookaheadSetupScore * 18_000L;
+                cmp = bLookInvest.CompareTo(aLookInvest);
                 if (cmp != 0) return cmp;
-                cmp = b.Eval.BoardInvestment.CompareTo(a.Eval.BoardInvestment);
+                long aEvalInvest = (long)a.Eval.BoardInvestment * 16_000L + (long)a.Eval.SetupScore * 18_000L;
+                long bEvalInvest = (long)b.Eval.BoardInvestment * 16_000L + (long)b.Eval.SetupScore * 18_000L;
+                cmp = bEvalInvest.CompareTo(aEvalInvest);
                 if (cmp != 0) return cmp;
                 cmp = b.Eval.OptionalityScore.CompareTo(a.Eval.OptionalityScore);
                 if (cmp != 0) return cmp;
                 break;
+            }
         }
 
-        // Primary criterion & tie-break: Victory -> LookaheadScore -> Immediate Eval -> deterministic Hash.
+        // Primary criterion & tie-break: Victory -> HasLookahead -> LookaheadScore -> Immediate Eval -> deterministic Hash.
         cmp = b.LookaheadVictory.CompareTo(a.LookaheadVictory);
         if (cmp != 0) return cmp;
-        if (a.HasLookahead && b.HasLookahead)
+        if (a.HasLookahead != b.HasLookahead)
+            return b.HasLookahead.CompareTo(a.HasLookahead);
+        if (a.HasLookahead)
         {
             cmp = b.LookaheadScore.CompareTo(a.LookaheadScore);
             if (cmp != 0) return cmp;

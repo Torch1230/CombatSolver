@@ -112,7 +112,7 @@ internal sealed record SolverSettingsData
     public int AcceptableBattleHpLoss { get; init; }
     public bool StopAtAcceptableBattleHpLoss { get; init; } = true;
     public int PerformanceMigrationVersion { get; init; }
-    public int MaxHardFightThinkSeconds { get; init; } = SolverSettings.DefaultMaxHardFightThinkSeconds;
+    public int MaxCombatSolveSeconds { get; init; } = SolverSettings.DefaultMaxCombatSolveSeconds;
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SolverPerformancePreset? PerformancePreset { get; init; }
     public int? SearchMaxDegreeOfParallelism { get; init; }
@@ -167,15 +167,15 @@ internal sealed record SolverSettingsSnapshot(
     public bool IgnoreLongTermRewards { get; init; }
     public bool PredictPotionReward { get; init; }
     public PotionHpThresholds PotionThresholds { get; init; } = PotionHpThresholds.Default;
-    public int MaxHardFightThinkSeconds { get; init; } = SolverSettings.DefaultMaxHardFightThinkSeconds;
+    public int MaxCombatSolveSeconds { get; init; } = SolverSettings.DefaultMaxCombatSolveSeconds;
     public bool AdaptiveEscalationEnabled { get; init; } = true;
 }
 
 internal static class SolverSettings
 {
-    public const int MinimumMaxHardFightThinkSeconds = 1;
-    public const int MaximumMaxHardFightThinkSeconds = 15;
-    public const int DefaultMaxHardFightThinkSeconds = 4;
+    public const int MinimumMaxCombatSolveSeconds = 1;
+    public const int MaximumMaxCombatSolveSeconds = 15;
+    public const int DefaultMaxCombatSolveSeconds = 4;
     public const int MaximumAcceptableBattleHpLoss = 100_000;
     public const float MinimumOverlayWidth = 400f;
     public const float MinimumOverlayHeight = 300f;
@@ -268,7 +268,7 @@ internal static class SolverSettings
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"potion_threshold_overrides={effective.PotionThresholds.Count} " +
-            $"max_hard_fight_think_seconds={effective.MaxHardFightThinkSeconds} " +
+            $"max_combat_solve_seconds={effective.MaxCombatSolveSeconds} " +
             $"max_dop={effective.SearchMaxDegreeOfParallelism} " +
             $"search_budget_ms={effective.Profile.SoftTimeBudgetMilliseconds} " +
             $"deployment_fast_mode={migrated.DeploymentFastMode} " +
@@ -306,7 +306,7 @@ internal static class SolverSettings
             IgnoreLongTermRewards = data.IgnoreLongTermRewards,
             PredictPotionReward = data.PredictPotionReward,
             PotionThresholds = ResolvePotionThresholds(data),
-            MaxHardFightThinkSeconds = data.MaxHardFightThinkSeconds,
+            MaxCombatSolveSeconds = data.MaxCombatSolveSeconds,
             AdaptiveEscalationEnabled = true,
         };
     }
@@ -337,7 +337,7 @@ internal static class SolverSettings
             return new SolverPerformanceValues(
                 SolverSearchProfile.Default with
                 {
-                    SoftTimeBudgetMilliseconds = checked(data.MaxHardFightThinkSeconds * 1000),
+                    SoftTimeBudgetMilliseconds = checked(data.MaxCombatSolveSeconds * 1000),
                 });
         }
         return ResolvePerformancePreset(data) switch
@@ -564,10 +564,10 @@ internal static class SolverSettings
         if (data.PerformanceMigrationVersion < 0)
             throw new InvalidDataException("PerformanceMigrationVersion must be non-negative.");
         ValidateRange(
-            data.MaxHardFightThinkSeconds,
-            MinimumMaxHardFightThinkSeconds,
-            MaximumMaxHardFightThinkSeconds,
-            nameof(data.MaxHardFightThinkSeconds));
+            data.MaxCombatSolveSeconds,
+            MinimumMaxCombatSolveSeconds,
+            MaximumMaxCombatSolveSeconds,
+            nameof(data.MaxCombatSolveSeconds));
         ValidateRange(data.SearchTimeLimitSeconds, 0.1d, 600d, nameof(data.SearchTimeLimitSeconds));
         ValidateRange(
             data.SearchMaxDegreeOfParallelism,
@@ -700,14 +700,14 @@ internal static class SolverSettings
         if (data.PerformanceMigrationVersion >= CurrentPerformanceMigrationVersion)
             return data;
 
-        int thinkSeconds = data.MaxHardFightThinkSeconds is >= MinimumMaxHardFightThinkSeconds
-            and <= MaximumMaxHardFightThinkSeconds
-                ? data.MaxHardFightThinkSeconds
-                : DefaultMaxHardFightThinkSeconds;
+        int solveSeconds = data.MaxCombatSolveSeconds is >= MinimumMaxCombatSolveSeconds
+            and <= MaximumMaxCombatSolveSeconds
+                ? data.MaxCombatSolveSeconds
+                : DefaultMaxCombatSolveSeconds;
         return data with
         {
             PerformanceMigrationVersion = CurrentPerformanceMigrationVersion,
-            MaxHardFightThinkSeconds = thinkSeconds,
+            MaxCombatSolveSeconds = solveSeconds,
             PerformancePreset = null,
             SearchTimeLimitSeconds = null,
             SearchBeamWidth = null,

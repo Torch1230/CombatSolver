@@ -1114,7 +1114,8 @@ internal static class HotFoolTarot
             case HotCustomCardId.TheHangedMan:
             {
                 int hpLoss = HotRegentNecro.GetVarInt(in card, def, "HpLoss", Math.Max(1, def.GetMagic(card.UpgradeLevel)));
-                HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, 0, hpLoss, isPoweredAttack: false, isUnblockable: true);
+                int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
+                HotCombatEngine.DealDamageInternal(ref s, ref cold, rules, scratch, 0, 0, hpLoss, isPoweredAttack: false, isUnblockable: true, cardIdx: playIdx, cardDefId: cardDefId);
                 if (!scratch.NeedsChoice && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
                     HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.ExtraTurnPower, 1, isCardSource: true);
                 return Complete(in s, scratch, out result);
@@ -1529,6 +1530,8 @@ internal static class HotFoolTarot
                 {
                     case HotHookMask.BeforeCardPlayed:
                     {
+                        if (args.CardUid != 0)
+                            HotCombatEngine.RefreshHookCardIdx(in s, ref args);
                         bool cardGainsBlock = args.CardDefId < rules.Cards.Length && rules.Cards[args.CardDefId].GainsBlock;
                         if (!cardGainsBlock && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
                         {
@@ -2061,7 +2064,13 @@ internal static class HotFoolTarot
             case HotDominionId.WaterfallGiantDominion:
                 if (HotCombatEngine.GetPowerAmountById(in s, rules, creatureSlot, HotPowerId.MinionPower) <= 0)
                 {
-                    int amount = rules.EncounterSlots.Length > 1 ? 3 : rules.IsEliteEncounter ? 7 : 5;
+                    // STS2 0.113.1 WaterfallGiantDominion.cs:44-59:
+                    // MonstersWithSlots.Count > 1 -> 3; IsWeak -> 4; RoomType.Elite -> 7; else -> 5.
+                    int amount = rules.InitialEncounterMonsterCount > 1
+                        ? 3
+                        : rules.IsWeakEncounter
+                            ? 4
+                            : rules.IsEliteEncounter ? 7 : 5;
                     HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, creatureSlot, 0xFF, HotPowerId.ExplosivePower, amount, isCardSource: false);
                 }
                 break;
@@ -2113,8 +2122,14 @@ internal static class HotFoolTarot
     {
         if ((uint)melodyIdx >= 3 || s.Fool.MelodyStarted[melodyIdx] == 0)
             return false;
-        if ((uint)args.CardIdx < (uint)s.TotalCardCount && s.Fool.FirstPlayCardUid[melodyIdx] != 0)
-            return s.Fool.FirstPlayCardUid[melodyIdx] == s.Cards[args.CardIdx].CardUid && args.PlayIndex == 0;
+        if (s.Fool.FirstPlayCardUid[melodyIdx] != 0)
+        {
+            ushort playedUid = args.CardUid != 0
+                ? args.CardUid
+                : ((uint)args.CardIdx < (uint)s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0);
+            if (playedUid != 0)
+                return s.Fool.FirstPlayCardUid[melodyIdx] == playedUid && args.PlayIndex == 0;
+        }
         return s.Fool.MelodyStarted[melodyIdx] == 1 && args.PlayIndex == 0;
     }
 
@@ -2835,9 +2850,26 @@ internal static class HotFoolTarot
             {
                 ActorSlot = 0,
                 CardIdx = livePlayIdx,
+                CardUid = cardUid,
                 CardDefId = sadnessDefId,
             };
             HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardEnteredCombat, ref enterArgs);
+            livePlayIdx = enterArgs.CardIdx;
+        }
+        // STS2 0.113.1 CardCmd.Transform (CardCmd.cs:534): fire AfterCardGeneratedForCombat for player-created Sadness
+        // so Fertilizer (+1 Strength), PillarOfCreationPower, AllIsWellPower, ArsenalPower, and Regalite trigger.
+        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardGenerated) != 0)
+        {
+            if ((uint)livePlayIdx >= (uint)s.TotalCardCount || s.Cards[livePlayIdx].CardUid != cardUid)
+                livePlayIdx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, cardUid);
+            HotHookArgs genArgs = new()
+            {
+                ActorSlot = 0,
+                CardIdx = livePlayIdx,
+                CardUid = cardUid,
+                CardDefId = sadnessDefId,
+            };
+            HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardGenerated, ref genArgs);
         }
     }
 }
