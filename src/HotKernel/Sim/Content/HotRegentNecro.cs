@@ -81,7 +81,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.BeatIntoShape:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int hitsBefore = s.Enemies[targetEnemySlot].PoweredHitsFromPlayer;
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
@@ -133,7 +133,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Bombardment:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
@@ -198,7 +198,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.CollisionCourse:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -215,7 +215,7 @@ internal static class HotRegentNecro
             case HotCustomCardId.FallingStar:
             case HotCustomCardId.GammaBlast:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     byte targetSlot = (byte)(3 + targetEnemySlot);
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
@@ -295,7 +295,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.CrescentSpear:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int calcBase = GetVarInt(in card, def, "CalculationBase", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
                     int extra = GetVarInt(in card, def, "ExtraDamage", GetVarInt(in card, def, "CalculationExtra", 2));
@@ -308,6 +308,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.CrushUnder:
             {
+                // STS2 0.113.1 CrushUnder.cs:37-46: snapshot CombatState.HittableEnemies BEFORE the attack
+                // so enemies spawned during the attack (e.g. Wrigglers from InfestedPower) are NOT debuffed.
+                Span<byte> enemiesBefore = stackalloc byte[HotLimits.MaxEnemies];
+                int enemyCountBefore = SnapshotLivingEnemies(in s, enemiesBefore);
                 int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                 ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, dmg, hits: 1);
                 if (scratch.NeedsChoice)
@@ -315,7 +319,7 @@ internal static class HotRegentNecro
 
                 int loss = GetVarInt(in card, def, "StrengthLoss", def.GetMagic(card.UpgradeLevel));
                 if (loss > 0)
-                    ApplyTempStrengthLossAllEnemies(ref s, ref cold, rules, scratch, HotPowerId.CrushUnderPower, loss);
+                    ApplyTempStrengthLossToEnemies(ref s, ref cold, rules, scratch, enemiesBefore[..enemyCountBefore], HotPowerId.CrushUnderPower, loss);
                 return Complete(in s, scratch, out result);
             }
 
@@ -347,6 +351,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.DyingStar:
             {
+                // STS2 0.113.1 DyingStar.cs:38-47: snapshot CombatState.HittableEnemies BEFORE the attack
+                // so enemies spawned during the attack (e.g. Wrigglers from InfestedPower) are NOT debuffed.
+                Span<byte> enemiesBefore = stackalloc byte[HotLimits.MaxEnemies];
+                int enemyCountBefore = SnapshotLivingEnemies(in s, enemiesBefore);
                 int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                 ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, dmg, hits: 1);
                 if (scratch.NeedsChoice)
@@ -354,7 +362,7 @@ internal static class HotRegentNecro
 
                 int loss = GetVarInt(in card, def, "StrengthLoss", def.GetMagic(card.UpgradeLevel));
                 if (loss > 0)
-                    ApplyTempStrengthLossAllEnemies(ref s, ref cold, rules, scratch, HotPowerId.DyingStarPower, loss);
+                    ApplyTempStrengthLossToEnemies(ref s, ref cold, rules, scratch, enemiesBefore[..enemyCountBefore], HotPowerId.DyingStarPower, loss);
                 return Complete(in s, scratch, out result);
             }
 
@@ -434,7 +442,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.GuidingStar:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -450,7 +458,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.HeavenlyDrill:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int hits = ResolveEnergyX(in s, rules, in card);
                     int threshold = GetVarInt(in card, def, "Energy", 4);
@@ -464,7 +472,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.HeirloomHammer:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -501,10 +509,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.KnockoutBlow:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                    bool aliveBefore = (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0;
+                    bool aliveBefore = HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
@@ -552,7 +560,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.LunarBlast:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int hits = s.Counters[(int)HotCounterSlot.SkillsPlayedThisTurn];
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
@@ -623,7 +631,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.PhotonCut:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -746,7 +754,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Supermassive:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int calcBase = GetVarInt(in card, def, "CalculationBase", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
                     int extra = GetVarInt(in card, def, "ExtraDamage", GetVarInt(in card, def, "CalculationExtra", 3));
@@ -800,7 +808,7 @@ internal static class HotRegentNecro
                 {
                     ExecutePlayedCardAllEnemiesAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, dmg, hits: hits);
                 }
-                else if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                else if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: hits);
                 }
@@ -819,7 +827,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.BlightStrike:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     byte targetSlot = (byte)(3 + targetEnemySlot);
                     int hpBefore = s.Enemies[targetEnemySlot].Vital.CurrentHp;
@@ -933,7 +941,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.DeathMarch:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int calcBase = GetVarInt(in card, def, "CalculationBase", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
                     int extra = GetVarInt(in card, def, "ExtraDamage", GetVarInt(in card, def, "CalculationExtra", 4));
@@ -976,7 +984,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.DrainPower:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -984,7 +992,7 @@ internal static class HotRegentNecro
                         return PauseForChoice(in s, out result);
                 }
                 int count = GetVarInt(in card, def, "Cards", 2);
-                UpgradeRandomDiscardCards(ref s, rules, count);
+                UpgradeRandomDiscardCards(ref s, ref cold, rules, count);
                 return Complete(in s, scratch, out result);
             }
 
@@ -1074,7 +1082,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Eradicate:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int hits = ResolveEnergyX(in s, rules, in card);
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
@@ -1085,21 +1093,17 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Fetch:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int ostyDmg = GetVarInt(in card, def, "OstyDamage", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: ostyDmg, hits: 1, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, ostyDmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
 
+                    // STS2 0.113.1 Fetch.cs:30,45-48: FetchPlayedThisTurn is set unconditionally in
+                    // RecordCardPlayFinished (matching CardModel.OnPlayWrapper), so check it here without mutating it.
                     if ((card.Flags & HotCardFlags.FetchPlayedThisTurn) == 0)
                     {
-                        int liveIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                        if (liveIdx >= 0)
-                            s.Cards[liveIdx].Flags |= HotCardFlags.FetchPlayedThisTurn;
                         int drawCount = GetVarInt(in card, def, "Cards", 1);
                         if (drawCount > 0)
                             HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, drawCount, fromHandDraw: false);
@@ -1112,13 +1116,10 @@ internal static class HotRegentNecro
             case HotCustomCardId.Poke:
             case HotCustomCardId.RightHandHand:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int ostyDmg = GetVarInt(in card, def, "OstyDamage", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: ostyDmg, hits: 1, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, ostyDmg, hits: 1);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -1143,7 +1144,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Graveblast:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -1175,7 +1176,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Hang:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     byte targetSlot = (byte)(3 + targetEnemySlot);
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
@@ -1232,7 +1233,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Misery:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     byte targetSlot = (byte)(3 + targetEnemySlot);
                     Span<ushort> debuffDefIds = stackalloc ushort[HotLimits.MaxPowers];
@@ -1312,22 +1313,19 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Protector:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int calcBase = GetVarInt(in card, def, "CalculationBase", 10);
                     int extra = GetVarInt(in card, def, "ExtraDamage", GetVarInt(in card, def, "CalculationExtra", 1));
                     int dmg = calcBase + extra * s.Osty.MaxHp + card.Var0Delta;
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: dmg, hits: 1, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                 }
                 return Complete(in s, scratch, out result);
             }
 
             case HotCustomCardId.PullFromBelow:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int hits = s.HistoryEtherealPlays;
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
@@ -1351,21 +1349,18 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Rattle:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int hits = 1 + s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn];
                     int ostyDmg = GetVarInt(in card, def, "OstyDamage", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: ostyDmg, hits: hits, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, ostyDmg, hits: hits);
                 }
                 return Complete(in s, scratch, out result);
             }
 
             case HotCustomCardId.Reave:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -1408,7 +1403,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.SculptingStrike:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
@@ -1465,7 +1460,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Severance:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -1506,13 +1501,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.SicEm:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int ostyDmg = GetVarInt(in card, def, "OstyDamage", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: ostyDmg, hits: 1, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, ostyDmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -1528,13 +1520,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Snap:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int ostyDmg = GetVarInt(in card, def, "OstyDamage", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: ostyDmg, hits: 1, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, ostyDmg, hits: 1);
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
@@ -1554,7 +1543,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.SoulStorm:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int calcBase = GetVarInt(in card, def, "CalculationBase", def.GetDamage(card.UpgradeLevel, card.Var0Delta));
                     int extra = GetVarInt(in card, def, "ExtraDamage", GetVarInt(in card, def, "CalculationExtra", 4));
@@ -1577,23 +1566,20 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Squeeze:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int calcBase = GetVarInt(in card, def, "CalculationBase", 25);
                     int extra = GetVarInt(in card, def, "ExtraDamage", GetVarInt(in card, def, "CalculationExtra", 5));
                     int otherOstyCards = CountOtherOstyAttackCards(in s, rules, card.CardUid);
                     int dmg = calcBase + extra * otherOstyCards + card.Var0Delta;
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: dmg, hits: 1, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                 }
                 return Complete(in s, scratch, out result);
             }
 
             case HotCustomCardId.TheScythe:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
                     ExecutePlayedCardSingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
@@ -1618,7 +1604,7 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.TimesUp:
             {
-                if (HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if ((uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     byte targetSlot = (byte)(3 + targetEnemySlot);
                     int calcBase = GetVarInt(in card, def, "CalculationBase", 0);
@@ -1668,15 +1654,12 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Unleash:
             {
-                if (IsOstyAlive(in s) && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+                if (IsOstyAlive(in s) && (uint)targetEnemySlot < (uint)s.EnemyCount)
                 {
                     int calcBase = GetVarInt(in card, def, "CalculationBase", 6);
                     int extra = GetVarInt(in card, def, "ExtraDamage", GetVarInt(in card, def, "CalculationExtra", 1));
                     int dmg = calcBase + extra * s.Osty.CurrentHp + card.Var0Delta;
-                    int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                    HotCombatEngine.ExecuteDealerSingleTargetAttack(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId, targetEnemySlot: targetEnemySlot, baseDamage: dmg, hits: 1, powered: true);
-                    s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-                    NotifyOstyAttacked(ref s, ref cold, rules);
+                    ExecutePlayedCardOstySingleAttack(ref s, ref cold, rules, scratch, card.CardUid, cardDefId, targetEnemySlot, dmg, hits: 1);
                 }
                 return Complete(in s, scratch, out result);
             }
@@ -2780,13 +2763,35 @@ internal static class HotRegentNecro
         int dmg,
         int hits = 1)
     {
-        if (!HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
+        if ((uint)targetEnemySlot >= (uint)s.EnemyCount)
             return;
         int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
         HotCombatEngine.ExecuteDealerSingleTargetAttack(
             ref s, ref cold, rules, scratch,
             dealerSlot: 0, cardIdx: playIdx, cardDefId: cardDefId,
             targetEnemySlot: targetEnemySlot, baseDamage: dmg, hits: hits, powered: true);
+    }
+
+    private static void ExecutePlayedCardOstySingleAttack(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        ushort cardUid,
+        ushort cardDefId,
+        int targetEnemySlot,
+        int dmg,
+        int hits = 1)
+    {
+        if (HotCombatEngine.IsOverOrEnding(in s) || !IsOstyAlive(in s) || (uint)targetEnemySlot >= (uint)s.EnemyCount)
+            return;
+        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+        HotCombatEngine.ExecuteDealerSingleTargetAttack(
+            ref s, ref cold, rules, scratch,
+            dealerSlot: 1, cardIdx: playIdx, cardDefId: cardDefId,
+            targetEnemySlot: targetEnemySlot, baseDamage: dmg, hits: hits, powered: true);
+        s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
+        NotifyOstyAttacked(ref s, ref cold, rules);
     }
 
     private static void ExecutePlayedCardAllEnemiesAttack(
@@ -2839,7 +2844,7 @@ internal static class HotRegentNecro
             cardIdx: playIdx, cardDefId: cardDefId);
     }
 
-    private static void NotifyOstyAttacked(ref CombatHotState s, ref HotColdSidecar? cold, HotRules rules)
+    internal static void NotifyOstyAttacked(ref CombatHotState s, ref HotColdSidecar? cold, HotRules rules)
     {
         int total = s.TotalCardCount;
         for (int i = 0; i < total; i++)
@@ -2877,17 +2882,16 @@ internal static class HotRegentNecro
         }
     }
 
-    private static void ApplyTempStrengthLossAllEnemies(
+    private static void ApplyTempStrengthLossToEnemies(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
         HotRules rules,
         HotExecScratch scratch,
+        ReadOnlySpan<byte> enemies,
         HotPowerId tempPowerId,
         int amount)
     {
-        Span<byte> enemies = stackalloc byte[HotLimits.MaxEnemies];
-        int count = SnapshotLivingEnemies(in s, enemies);
-        for (int i = 0; i < count && !scratch.NeedsChoice; i++)
+        for (int i = 0; i < enemies.Length && !scratch.NeedsChoice; i++)
         {
             byte enemySlot = enemies[i];
             if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
@@ -3140,7 +3144,7 @@ internal static class HotRegentNecro
         return true;
     }
 
-    private static void UpgradeRandomDiscardCards(ref CombatHotState s, HotRules rules, int count)
+    private static void UpgradeRandomDiscardCards(ref CombatHotState s, ref HotColdSidecar? cold, HotRules rules, int count)
     {
         if (count <= 0)
             return;
@@ -3161,7 +3165,7 @@ internal static class HotRegentNecro
         HotRng.UnstableShuffle(candidates[..candCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
         int toUpgrade = Math.Min(count, candCount);
         for (int i = 0; i < toUpgrade; i++)
-            HotCombatEngine.UpgradeCard(ref s, rules, candidates[i]);
+            HotCombatEngine.UpgradeCard(ref s, rules, candidates[i], ref cold);
     }
 
     private static ReadOnlySpan<ushort> GetColorlessPool(HotRules rules)

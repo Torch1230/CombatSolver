@@ -18,6 +18,19 @@ internal static partial class HotCombatEngine
     internal static void RequestPlayerTurnEnd()
         => t_requestEndPlayerTurn = true;
 
+    internal static void ClearPlayerTurnEndRequest()
+    {
+        t_requestEndPlayerTurn = false;
+        HotRegentNecro.ClearPendingEndTurnRequest();
+    }
+
+    internal static bool ConsumePlayerTurnEndRequest()
+    {
+        bool requested = t_requestEndPlayerTurn | HotRegentNecro.ConsumePendingEndTurnRequest();
+        t_requestEndPlayerTurn = false;
+        return requested;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void EnterCardOrPotionEffect()
         => t_cardOrPotionEffectDepth++;
@@ -152,8 +165,7 @@ internal static partial class HotCombatEngine
         if (refreshedPlayIdx >= 0)
             playOffsetInPlay = refreshedPlayIdx - s.PlayStart;
 
-        t_requestEndPlayerTurn = false;
-        HotRegentNecro.ClearPendingEndTurnRequest();
+        ClearPlayerTurnEndRequest();
         int savedCardBlockGains = scratch.CardBlockGainsInCurrentPlay;
         bool played;
         EnterCardOrPotionEffect();
@@ -166,10 +178,9 @@ internal static partial class HotCombatEngine
             scratch.CardBlockGainsInCurrentPlay = savedCardBlockGains;
             ExitCardOrPotionEffect();
         }
-        bool endTurnRequested = t_requestEndPlayerTurn | HotRegentNecro.ConsumePendingEndTurnRequest();
-        t_requestEndPlayerTurn = false;
         if (played)
             CheckForEmptyHand(ref s, ref cold, rules, scratch);
+        bool endTurnRequested = ConsumePlayerTurnEndRequest();
         if (played && endTurnRequested && !scratch.NeedsChoice && !CheckWinCondition(ref s, rules) && !IsOverOrEnding(in s))
             ExecuteEndTurn(ref s, ref cold, rules, scratch);
         return played;
@@ -391,7 +402,7 @@ internal static partial class HotCombatEngine
                 break;
 
             if (upgradeBeforePlay)
-                UpgradeCard(ref s, rules, s.DrawStart);
+                UpgradeCard(ref s, rules, s.DrawStart, ref cold);
             ushort uid = EnsureCardUid(ref s, s.DrawStart);
             HotPiles.MoveCard(ref s, s.DrawStart, HotPileKind.Play, s.PlayCount);
             stagedUids[stagedCount++] = uid;
@@ -624,10 +635,12 @@ internal static partial class HotCombatEngine
             curPlayIdx = FindCardIndexByUid(in s, HotPileKind.Play, playCardUid);
             if (curPlayIdx < 0)
                 curPlayIdx = FindCardIndexByUidAnyPile(in s, playCardUid);
-            if (cardDef.CardId is HotCustomCardId.Bounce or HotCustomCardId.ThrummingHatchet or HotCustomCardId.Bolas
-                && curPlayIdx >= 0)
+            if (curPlayIdx >= 0)
             {
-                s.Cards[curPlayIdx].CardPrivate = (short)s.PlayerTurnNumber;
+                if (cardDef.CardId is HotCustomCardId.Bounce or HotCustomCardId.ThrummingHatchet or HotCustomCardId.Bolas)
+                    s.Cards[curPlayIdx].CardPrivate = (short)s.PlayerTurnNumber;
+                if (cardDef.CardId == HotCustomCardId.Fetch)
+                    s.Cards[curPlayIdx].Flags |= HotCardFlags.FetchPlayedThisTurn;
             }
             bool playedWasEthereal = curPlayIdx >= 0
                 ? IsCardEthereal(in s, in s.Cards[curPlayIdx], rules)
@@ -775,11 +788,19 @@ internal static partial class HotCombatEngine
                 {
                     if (!IsOverOrEnding(in s))
                     {
+                        // STS2 0.113.1 CardModel.OnPlayWrapper (CardModel.cs:2177, 2186-2193):
+                        // CardCmd.Exhaust (and AfterCardExhausted hooks like BurningSticks cloning the card)
+                        // runs BEFORE AfterCardPlayedCleanup expires WhenPlayed energy/star cost modifiers.
                         int dstIdx = HotPiles.MoveCard(ref s, finalPlayIdx, HotPileKind.Exhaust, s.ExhaustCount);
-                        HotCostModifiers.ExpireAfterPlay(ref s.Cards[dstIdx], ref cold);
+                        ushort exhaustedUid = s.Cards[dstIdx].CardUid;
                         s.Counters[(int)HotCounterSlot.CardsExhaustedThisTurn]++;
                         s.Counters[(int)HotCounterSlot.HistoryCardsExhausted]++;
                         FireAfterCardExhausted(ref s, ref cold, rules, scratch, dstIdx, causedByEthereal: false);
+                        int liveIdx = FindCardIndexByUid(in s, HotPileKind.Exhaust, exhaustedUid);
+                        if (liveIdx < 0)
+                            liveIdx = FindCardIndexByUidAnyPile(in s, exhaustedUid);
+                        if (liveIdx >= 0)
+                            HotCostModifiers.ExpireAfterPlay(ref s.Cards[liveIdx], ref cold);
                     }
                     else
                     {
@@ -1164,20 +1185,33 @@ internal static partial class HotCombatEngine
 
     internal static bool UpgradeCard(ref CombatHotState s, HotRules rules, int cardIdx)
     {
+        HotColdSidecar? noCold = null;
+        return UpgradeCard(ref s, rules, cardIdx, ref noCold);
+    }
+
+    internal static bool UpgradeCard(ref CombatHotState s, HotRules rules, int cardIdx, ref HotColdSidecar? cold)
+    {
         if ((uint)cardIdx >= (uint)s.TotalCardCount)
             return false;
         ref HotCard card = ref s.Cards[cardIdx];
         if (card.CardDefId == 0 || card.CardDefId >= rules.Cards.Length)
             return false;
         HotCardDef def = rules.Cards[card.CardDefId];
-        if (card.UpgradeLevel >= def.MaxUpgradeLevel)
+        if (card.UpgradeLevel >= def.MaxUpgradeLevel || card.UpgradeLevel == byte.MaxValue)
             return false;
 
         card.UpgradeLevel++;
+        if (def.CardId == HotCustomCardId.DingyDagger)
+        {
+            int gain = 3 + card.UpgradeLevel;
+            if (card.UpgradeLevel == 1)
+                gain -= (def.UpgradedDamage - def.BaseDamage);
+            card.Var0Delta = (short)(card.Var0Delta + gain);
+        }
         if (card.UpgradeLevel == 1)
         {
-            if (def.UpgradedCost != def.BaseCost && card.BaseEnergyCost == def.BaseCost)
-                card.BaseEnergyCost = def.UpgradedCost;
+            if (def.UpgradedCost != def.BaseCost && def.BaseCost >= 0 && def.UpgradedCost >= 0)
+                HotCostModifiers.UpgradeEnergyCostBy(ref card, ref cold, def.UpgradedCost - def.BaseCost);
             ApplyUpgradeKeywords(ref card, def.CardId);
         }
         return true;
@@ -1335,7 +1369,8 @@ internal static partial class HotCombatEngine
         ushort srcUid = clone.CardUid;
         ushort cloneUid = s.NextCardUid++;
         clone.CardUid = cloneUid;
-        clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
+        clone.DampenOrigUpg = 0;
+        clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
         clone.Flags |= HotCardFlags.IsClone;
 
         if ((clone.Flags & HotCardFlags.HasCostOverflow) != 0 && cold?.CostOverflow is { Length: > 0 } overflows)

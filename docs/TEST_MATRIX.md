@@ -1,5 +1,29 @@
 # CombatSolver 测试入口
 
+## 1.0.2（开发中）Wave 4 收口验证基线
+
+当前工作树已完成 Release 零警告编译、4 项快速内核/策略门禁、2,600 场零差异差分模糊、400 场零重算实机模拟及 170-Root A/B 对照（与 `1.0.1` 基线相比总均值 V `+2.00`、总耗时 `-19.0%`，存在 `PB-052` 单例 `W->L` 与 `holdout` `-0.51` 待后续收敛）。
+
+| 验证项 | 命令／参数 | 结果摘要 | 结论 |
+|---|---|---|---|
+| Release 编译 | `dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false` & `OfflineSearchHarness.csproj -c Release` | 双工程均 `0` 警告 `0` 错误 | PASS |
+| 布局与篡改 | `OfflineSearchHarness.exe --check-hot-layout` | `7/7` 通过（`62 ms`，`FixedCore=1128 B`、`Total=17256 B`、`2808/2808` 字节翻转检出） | PASS |
+| 静态覆盖与反射 | `OfflineSearchHarness.exe --audit-hot-coverage` | `0` gaps、`183/183` reflection 检查（`3205 ms`） | PASS |
+|  parity 与并行一致性 | `OfflineSearchHarness.exe --verify-hot-parity --dop 8` | Gate A `19/19`、Gate B1 6 角色 `246` 步 `0` 失败、Gate B2 `DOP1==DOP8` `0` 失败、Gate C `0.51 us/step` / `0.0 B/step` | PASS |
+| 策略门禁 | `OfflineSearchHarness.exe --verify-strategy-policies` | `4/4` 套件 `25/25` 通过（`7655 ms`） | PASS |
+| 差分模糊（全通过） | `--fuzz-combat` 4 种子（`hr7026` 800、`hr11026` 800、`all12026` 500、`hr13026` 500） | 合计 **2,600/2,600**（`62,910` 步，`0` diffs，`0` crashes） | PASS |
+| 实机模拟 `--soak-deploy` | `seed=7777` (200 all) + `seed=7026` (200 high-risk), `--profile Medium --dop 4` | `soak7777`: `95.0% -> 95.5%` (`191/200`, `B:W=16:10=1.60x`, `Replans 1->0`, `p50 -21.0%`, `p95 -19.0%`)；`soak7026`: `96.5%` (`193/200`, 0 重算/0 错误) | PASS |
+| 170-Root A/B (`vs 1.0.1`) | `--bench-corpora` (18) + `--bench-choices` (17) + `--bench-player-corpus` (135), `--profile Medium --dop 4` | 合计 `164/170`（`PB-097` L->W、`PB-052` W->L），Avg V `-15.25 -> -13.25 (+2.00)`，总耗时 `-19.0%`；`corpora` V `0.00`、`choices` `17/17 OPT`、`player dev` V `+3.84`、`holdout` V `-0.51` | 记录放行（附跟进） |
+
+```text
+dotnet build CombatSolver.csproj -c Release -p:CopyModOnBuild=false
+dotnet build tools\search\OfflineSearchHarness\OfflineSearchHarness.csproj -c Release
+.\.local\tool-build\OfflineSearchHarness\bin\Release\net9.0\OfflineSearchHarness.exe --check-hot-layout
+.\.local\tool-build\OfflineSearchHarness\bin\Release\net9.0\OfflineSearchHarness.exe --audit-hot-coverage
+.\.local\tool-build\OfflineSearchHarness\bin\Release\net9.0\OfflineSearchHarness.exe --verify-hot-parity --dop 8
+.\.local\tool-build\OfflineSearchHarness\bin\Release\net9.0\OfflineSearchHarness.exe --verify-strategy-policies
+```
+
 ## 1.0.1 策略通路恢复与高风险重算清零
 
 全部 25 项策略端到端合同、双 500 场差分模糊（`seed=4026` high-risk 与 `seed=3026` all）、`seed=4026` 高风险 300 场部署零重算与 `seed=9001` 120 场零重算验证见[历史卷 34](archive/testing/volume-34.md)。

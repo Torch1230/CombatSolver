@@ -253,7 +253,7 @@ internal static class HotMonsters
         {
             if (s.Enemies[slot].SteamPhase == 1)
             {
-                ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE");
+                ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE", forceTransition: true);
             }
             else if (s.Enemies[slot].SteamPhase == 2)
             {
@@ -266,7 +266,7 @@ internal static class HotMonsters
                 }
                 else
                 {
-                    ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE");
+                    ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE", forceTransition: true);
                 }
             }
             return;
@@ -324,7 +324,7 @@ internal static class HotMonsters
         {
             if (s.Enemies[slot].SteamPhase == 1)
             {
-                ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE");
+                ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE", forceTransition: true);
             }
             else if (s.Enemies[slot].SteamPhase == 2)
             {
@@ -337,7 +337,7 @@ internal static class HotMonsters
                 }
                 else
                 {
-                    ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE");
+                    ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE", forceTransition: true);
                 }
             }
             return;
@@ -475,7 +475,8 @@ internal static class HotMonsters
             s.Enemies[slot].Vital.Flags |= HotCreatureFlags.Alive;
             s.Enemies[slot].SteamPhase = 1; // AboutToBlow
             s.Enemies[slot].DeathPhase = HotDeathPhase.None;
-            ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE");
+            // STS2 0.113.1 WaterfallGiant.cs:320: SetMoveImmediate(AboutToBlowState, forceTransition: true).
+            ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE", forceTransition: true);
             s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
             return;
         }
@@ -530,7 +531,8 @@ internal static class HotMonsters
         if (hasAdaptable)
         {
             s.Enemies[slot].DeathPhase = HotDeathPhase.Reviving;
-            ForceMonsterMove(ref s, rules, slot, "RESPAWN_MOVE");
+            // STS2 0.113.1 TestSubject.cs:181: SetMoveImmediate(DeadState, forceTransition: true).
+            ForceMonsterMove(ref s, rules, slot, "RESPAWN_MOVE", forceTransition: true);
         }
 
         if (hasIllusion && HasAnyLivingOrRevivingPrimaryEnemy(in s, rules))
@@ -2565,12 +2567,15 @@ internal static class HotMonsters
                 if (cardIdx < 0)
                     continue;
                 for (int u = 0; u < entry.OriginalUpgrade; u++)
-                    HotCombatEngine.UpgradeCard(ref s, rules, cardIdx);
+                    HotCombatEngine.UpgradeCard(ref s, rules, cardIdx, ref cold);
                 s.Cards[cardIdx].DampenOrigUpg = 0;
             }
 
-            HotColdSidecar updated = cold with { DampenEntries = null };
-            cold = updated.IsEmpty ? null : updated;
+            if (cold is not null)
+            {
+                HotColdSidecar updated = cold with { DampenEntries = null };
+                cold = updated.IsEmpty ? null : updated;
+            }
         }
 
         // Fallback sweep: restore any dampened card whose CardUid wasn't matched via DampenEntries.
@@ -2581,7 +2586,7 @@ internal static class HotMonsters
             if (origUpg == 0)
                 continue;
             for (int u = 0; u < origUpg; u++)
-                HotCombatEngine.UpgradeCard(ref s, rules, i);
+                HotCombatEngine.UpgradeCard(ref s, rules, i, ref cold);
             s.Cards[i].DampenOrigUpg = 0;
         }
     }
@@ -3851,6 +3856,12 @@ internal static class HotMonsters
         }
 
         s.Enemies[slot].DeathPhase = HotDeathPhase.Reviving;
+        // STS2 0.113.1 IllusionPower.cs:88 calls SetMoveImmediate(state) with forceTransition: false.
+        if (s.Enemies[slot].CurrentMoveNode == SyntheticReviveNodeSentinel
+            || (machine != null && IsMoveTransitionBlocked(in s, machine, slot)))
+        {
+            return;
+        }
         s.Enemies[slot].Flags &= ~HotEnemyFlags.NeedsInitialRoll;
         s.Enemies[slot].AiRegs[3] = followUp >= 0 ? followUp + 1 : 0;
 
@@ -4118,10 +4129,27 @@ internal static class HotMonsters
     // Move Forcing, State Log & General Helpers
     // -------------------------------------------------------------------------
 
-    internal static void ForceMonsterMove(ref CombatHotState s, HotRules rules, byte slot, string moveId)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsMoveTransitionBlocked(in CombatHotState s, HotMonsterMachine machine, byte slot)
+    {
+        short cur = s.Enemies[slot].CurrentMoveNode;
+        if (cur == SyntheticReviveNodeSentinel)
+            return true;
+        return cur >= 0 && cur < machine.Nodes.Length && machine.Nodes[cur].MustPerformOnceBeforeRepeat;
+    }
+
+    internal static void ForceMonsterMove(
+        ref CombatHotState s,
+        HotRules rules,
+        byte slot,
+        string moveId,
+        bool forceTransition = false)
     {
         HotMonsterMachine? machine = rules.GetMonsterMachine(s.Enemies[slot].MonsterDefId);
         if (machine == null)
+            return;
+        // STS2 0.113.1 MonsterModel.cs:425-427: if (!NextMove.CanTransitionAway && !forceTransition) do not overwrite.
+        if (!forceTransition && IsMoveTransitionBlocked(in s, machine, slot))
             return;
         short nodeId = machine.FindNode(moveId);
         if (nodeId >= 0)
@@ -4138,12 +4166,22 @@ internal static class HotMonsters
             && ResolveMonsterId(rules.Monsters[mDefId]) == HotMonsterId.Tunneler
             && string.Equals(nextMoveId, "BITE_MOVE", StringComparison.Ordinal);
 
+        // 0.113.1 BurrowedPower.AfterBlockBroken calls Tunneler.GetStunned() -> IsStunned = true
+        // BEFORE CreatureCmd.Stun (cleared when STUNNED / StillDizzyMove executes at line 996).
+        if (isTunnelerStun)
+            s.Enemies[slot].Flags |= HotEnemyFlags.Stunned;
+
         HotMonsterMachine? machine = rules.GetMonsterMachine(mDefId);
         if (machine == null)
         {
-            s.Enemies[slot].Flags |= HotEnemyFlags.Stunned | HotEnemyFlags.SkipNextMove;
+            if (s.Enemies[slot].CurrentMoveNode != SyntheticReviveNodeSentinel)
+                s.Enemies[slot].Flags |= HotEnemyFlags.Stunned | HotEnemyFlags.SkipNextMove;
             return;
         }
+
+        // STS2 0.113.1 Creature.cs:542 StunInternal calls Monster.SetMoveImmediate(state) with forceTransition: false.
+        if (IsMoveTransitionBlocked(in s, machine, slot))
+            return;
 
         short stunnedNode = machine.FindNode("STUNNED");
         short followUp = nextMoveId != null
@@ -4156,10 +4194,6 @@ internal static class HotMonsters
         {
             s.Enemies[slot].CurrentMoveNode = stunnedNode;
             s.Enemies[slot].Flags &= ~HotEnemyFlags.NeedsInitialRoll;
-            // 0.113.1 BurrowedPower.AfterBlockBroken calls Tunneler.GetStunned() -> IsStunned = true
-            // (cleared when STUNNED / StillDizzyMove executes at line 975).
-            if (isTunnelerStun)
-                s.Enemies[slot].Flags |= HotEnemyFlags.Stunned;
             if (followUp >= 0)
                 s.Enemies[slot].AiRegs[3] = followUp + 1;
         }
@@ -4183,6 +4217,10 @@ internal static class HotMonsters
             ForceStunnedMove(ref s, rules, slot, null);
             return;
         }
+
+        // STS2 0.113.1 FlutterPower.cs:49 -> CreatureCmd.Stun -> Monster.SetMoveImmediate(state, forceTransition: false).
+        if (IsMoveTransitionBlocked(in s, machine, slot))
+            return;
 
         short cur = s.Enemies[slot].CurrentMoveNode;
         short stunnedNode = machine.FindNode("STUNNED");
@@ -4421,14 +4459,23 @@ internal static class HotMonsters
 
     private static void RemoveAllPowersExceptMinion(ref CombatHotState s, HotRules rules, byte ownerSlot)
     {
+        // STS2 0.113.1 ToughEgg.cs:161 preserves both MinionPower and ImpaledPower across HatchMove.
         ushort minionDefId = rules.GetPowerDefId(HotPowerId.MinionPower);
+        ushort impaledDefId = rules.GetPowerDefId(HotPowerId.ImpaledPower);
         int i = 0;
         while (i < s.PowerCount)
         {
-            if (s.Powers[i].OwnerSlot == ownerSlot && s.Powers[i].PowerDefId != minionDefId)
+            ushort powerDefId = s.Powers[i].PowerDefId;
+            if (s.Powers[i].OwnerSlot == ownerSlot
+                && (minionDefId == 0 || powerDefId != minionDefId)
+                && (impaledDefId == 0 || powerDefId != impaledDefId))
+            {
                 HotCombatEngine.RemovePowerAt(ref s, i);
+            }
             else
+            {
                 i++;
+            }
         }
         s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
     }

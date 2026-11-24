@@ -123,8 +123,8 @@ internal static partial class HotCombatEngine
 
         decimal block = baseAmount;
 
-        // Card enchantment additive block (Nimble / Goopy — powered card block only)
-        if (isCardBlock && !isUnpowered && cardIdx >= 0 && cardIdx < s.TotalCardCount && s.Cards[cardIdx].EnchId != 0)
+        // Card enchantment additive block (Nimble / Goopy — applies on card block including unpowered e.g. Entrench)
+        if (isCardBlock && cardIdx >= 0 && cardIdx < s.TotalCardCount && s.Cards[cardIdx].EnchId != 0)
         {
             byte eId = s.Cards[cardIdx].EnchId;
             if (eId < rules.Enchantments.Length)
@@ -439,7 +439,12 @@ internal static partial class HotCombatEngine
         int unblockedDamage = hpPrev - target.CurrentHp;
         int overkillDamage = wasTargetKilled ? Math.Max(hpLoss - hpPrev, 0) : 0;
         int hitTotalPlusOverkill = blockedInt + unblockedDamage + overkillDamage;
-        bool wasFullyBlocked = !isUnblockable && (blockedInt > 0 || target.Block > 0) && unblockedDamage == 0 && ostyLoss == 0;
+        bool wasFullyBlocked = !isUnblockable && (blockedDamage > 0m || target.Block > 0) && unblockedDamage == 0 && ostyLoss == 0;
+
+        // STS2 0.113.1 CreatureCmd.cs:339,364: History.DamageReceived records every hit unconditionally
+        // before AfterDamageReceived/Kill (including fatal hits revived by LizardTail/FairyInABottle,
+        // 0-damage unblocked hits when Block == 0, unblockable hits, and LoseMaxHp overflow).
+        HotRelics.RecordEmotionChipDamageIfEligible(ref s, rules, targetSlot, wasFullyBlocked);
 
         // Post-HP-loss hooks for Wuppy / Osty results (CreatureCmd.cs:455-465) — run AFTER target HP loss.
         if (wuppyLoss > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterHpLost) != 0)
@@ -580,7 +585,7 @@ internal static partial class HotCombatEngine
             HotRegentNecro.OnAnyCreatureDeath(ref s, ref cold, rules);
 
         if (!deferKill && (wasTargetKilled || GetCreatureRef(ref s, targetSlot).CurrentHp <= 0))
-            KillCreature(ref s, ref cold, rules, scratch, targetSlot, force: false);
+            KillCreature(ref s, ref cold, rules, scratch, targetSlot, force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
 
         t_lastHitTotalPlusOverkill = hitTotalPlusOverkill;
         return unblockedDamage;
@@ -664,7 +669,9 @@ internal static partial class HotCombatEngine
     {
         t_lastAttackUnblockedDamage = 0;
         t_lastAttackTotalPlusOverkill = 0;
-        if (IsOverOrEnding(in s) || !IsValidEnemyTarget(in s, targetEnemySlot))
+        if (IsOverOrEnding(in s) || (uint)targetEnemySlot >= (uint)s.EnemyCount)
+            return;
+        if (dealerSlot == 0 && (s.Player.Flags & HotCreatureFlags.Alive) == 0)
             return;
         if (dealerSlot == 1 && ((s.CombatFlags & HotCombatFlags.HasOsty) == 0 || (s.Osty.Flags & HotCreatureFlags.Alive) == 0))
             return;
@@ -684,7 +691,7 @@ internal static partial class HotCombatEngine
         for (int h = 0; h < hits; h++)
         {
             if (IsOverOrEnding(in s)
-                || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
+                || !IsValidEnemyTarget(in s, targetEnemySlot)
                 || scratch.NeedsChoice)
             {
                 break;
@@ -768,7 +775,7 @@ internal static partial class HotCombatEngine
                 if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
                     && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
                 {
-                    KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false);
+                    KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
                 }
             }
         }
@@ -1633,7 +1640,9 @@ internal static partial class HotCombatEngine
         HotRules rules,
         HotExecScratch scratch,
         byte targetSlot,
-        bool force = false)
+        bool force = false,
+        ushort sourceCardDefId = 0,
+        ushort sourceCardUid = 0)
     {
         if (!IsCreatureSlotValid(in s, targetSlot))
             return;
@@ -1768,6 +1777,9 @@ internal static partial class HotCombatEngine
             {
                 TargetSlot = targetSlot,
                 ActorSlot = 0,
+                CardIdx = -1,
+                CardDefId = sourceCardDefId,
+                CardUid = sourceCardUid,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterDeath, ref deathArgs);
         }

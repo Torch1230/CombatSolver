@@ -903,7 +903,7 @@ internal static class HotPlanMaterializer
                 timing));
 
             int effectiveMax = totalCandidates > 0 ? Math.Min(meta.MaxSelect, totalCandidates) : meta.MaxSelect;
-            if (pendingKind != HotChoiceKind.GeneratedCard && (effectiveMax > 1 || meta.IsOptional))
+            if (pendingKind != HotChoiceKind.GeneratedCard && (effectiveMax > 1 || (meta.IsOptional && meta.MaxSelect > 1)))
             {
                 OpenMultiSelectPrompt nextPrompt = new()
                 {
@@ -927,7 +927,8 @@ internal static class HotPlanMaterializer
                 nextPrompt.PickedOptionIndices.Add(optionIndex);
                 nextPrompt.PickedTokens.Add(token);
 
-                if (!meta.IsOptional && nextPrompt.PickedUids.Count >= nextPrompt.MaxSelect)
+                if (nextPrompt.PickedUids.Count >= meta.MaxSelect
+                    || (!meta.IsOptional && nextPrompt.PickedUids.Count >= nextPrompt.MaxSelect))
                 {
                     FinalizeOpenPrompt(nextPrompt, result);
                 }
@@ -1615,14 +1616,106 @@ internal static class HotPlanMaterializer
         HotPileKind pile = MapHotPileKind(pendingKind);
         int zoneStart = HotPiles.ZoneStart(in pausedState, pile);
         int zoneCount = HotPiles.ZoneCount(in pausedState, pile);
+        HotCustomCardId sourceCardId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
+            ? rules.Cards[sourceCardDefId].CardId
+            : HotCustomCardId.None;
         int foundIdx = HotCombatEngine.FindCardIndexByUid(in pausedState, pile, sel.CardUidOrIndex);
 
         if (foundIdx < 0)
         {
-            string fallbackId = sel.CardDefId > 0 && sel.CardDefId < rules.Cards.Length
-                ? rules.Cards[sel.CardDefId].Entry
-                : string.Empty;
-            return new PlanCardToken(fallbackId, 0, fallbackId, 0, 0, displayNames.Card(fallbackId, 0));
+            bool hasValidDefId = sel.CardDefId > 0 && sel.CardDefId < rules.Cards.Length;
+
+            // (a) Probe target pile by CardDefId (filtered first, then full pile) to recover foundIdx
+            // and run the normal occurrence/candidate path.
+            if (hasValidDefId)
+            {
+                int probeLimit = sourceCardId == HotCustomCardId.KiChant && pile == HotPileKind.Draw && kiChantTopLimit > 0
+                    ? Math.Min(zoneCount, kiChantTopLimit)
+                    : zoneCount;
+                for (int offset = 0; offset < probeLimit; offset++)
+                {
+                    int idx = zoneStart + offset;
+                    ref readonly HotCard candidate = ref pausedState.Cards[idx];
+                    if (candidate.CardDefId != sel.CardDefId)
+                        continue;
+                    if (!allowedUids.IsEmpty && !ContainsUid(allowedUids, candidate.CardUid))
+                        continue;
+                    if (!MatchesLiveChoiceFilter(in pausedState, in candidate, pausedCold, rules, sourceCardId, isTouchOfInsanity))
+                        continue;
+                    foundIdx = idx;
+                    break;
+                }
+
+                if (foundIdx < 0)
+                {
+                    for (int offset = 0; offset < zoneCount; offset++)
+                    {
+                        int idx = zoneStart + offset;
+                        if (pausedState.Cards[idx].CardDefId == sel.CardDefId)
+                        {
+                            foundIdx = idx;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // (b) If still not found in the target pile, scan all zones of pausedState, then stateBefore,
+            // by CardUid to recover real UpgradeLevel & FormatChoiceCardKey.
+            if (foundIdx < 0 && sel.CardUidOrIndex != 0)
+            {
+                int pausedTotal = pausedState.TotalCardCount;
+                for (int i = 0; i < pausedTotal; i++)
+                {
+                    ref readonly HotCard crossCard = ref pausedState.Cards[i];
+                    if (crossCard.CardUid == sel.CardUidOrIndex
+                        && crossCard.CardDefId > 0 && crossCard.CardDefId < rules.Cards.Length)
+                    {
+                        string crossId = rules.Cards[crossCard.CardDefId].Entry;
+                        string crossKey = HotContinuationStamp.FormatChoiceCardKey(in crossCard, pausedCold, rules);
+                        return new PlanCardToken(
+                            crossId,
+                            crossCard.UpgradeLevel,
+                            crossKey,
+                            0,
+                            0,
+                            displayNames.Card(crossId, crossCard.UpgradeLevel));
+                    }
+                }
+
+                int beforeTotal = stateBefore.TotalCardCount;
+                for (int i = 0; i < beforeTotal; i++)
+                {
+                    ref readonly HotCard crossCard = ref stateBefore.Cards[i];
+                    if (crossCard.CardUid == sel.CardUidOrIndex
+                        && crossCard.CardDefId > 0 && crossCard.CardDefId < rules.Cards.Length)
+                    {
+                        string crossId = rules.Cards[crossCard.CardDefId].Entry;
+                        string crossKey = HotContinuationStamp.FormatChoiceCardKey(in crossCard, pausedCold, rules);
+                        return new PlanCardToken(
+                            crossId,
+                            crossCard.UpgradeLevel,
+                            crossKey,
+                            0,
+                            0,
+                            displayNames.Card(crossId, crossCard.UpgradeLevel));
+                    }
+                }
+            }
+
+            // (c) Last resort: synthesize a canonical HotCard token + FormatChoiceCardKey instead of bare fallbackId.
+            if (foundIdx < 0)
+            {
+                if (hasValidDefId)
+                {
+                    HotCardDef fallbackDef = rules.Cards[sel.CardDefId];
+                    string fallbackId = fallbackDef.Entry;
+                    HotCard syntheticFallback = BuildSyntheticGeneratedChoiceCard(sel.CardDefId, fallbackDef, (byte)0, false);
+                    string fallbackKey = HotContinuationStamp.FormatChoiceCardKey(in syntheticFallback, cold: null, rules);
+                    return new PlanCardToken(fallbackId, 0, fallbackKey, 0, 0, displayNames.Card(fallbackId, 0));
+                }
+                return new PlanCardToken(string.Empty, 0, string.Empty, 0, 0, displayNames.Card(string.Empty, 0));
+            }
         }
 
         ref readonly HotCard card = ref pausedState.Cards[foundIdx];
@@ -1639,10 +1732,6 @@ internal static class HotPlanMaterializer
                 sourceOccurrence++;
             }
         }
-
-        HotCustomCardId sourceCardId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
-            ? rules.Cards[sourceCardDefId].CardId
-            : HotCustomCardId.None;
 
         int scanCount = zoneCount;
         if (sourceCardId == HotCustomCardId.KiChant && pile == HotPileKind.Draw && kiChantTopLimit > 0)

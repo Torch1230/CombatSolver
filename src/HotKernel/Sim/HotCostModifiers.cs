@@ -216,6 +216,65 @@ internal static class HotCostModifiers
             clearStarPlayed: true);
     }
 
+    /// <summary>
+    /// Mirrors STS2 0.113.1 <c>CardEnergyCost.UpgradeBy(int addend)</c>:
+    /// updates <see cref="HotCard.BaseEnergyCost"/> to <c>Math.Max(0, card.BaseEnergyCost + addend)</c>
+    /// and, when <c>newBase &lt; oldBase</c>, clamps every <see cref="HotEnergyCostMod.IsAbsolute"/>
+    /// local modifier with <c>Amount &gt; newBase</c> down to <c>newBase</c> (inline slots and
+    /// COW-cloned <see cref="HotColdSidecar.CostOverflow"/>).
+    /// </summary>
+    public static void UpgradeEnergyCostBy(ref HotCard card, ref HotColdSidecar? cold, int addend)
+    {
+        if ((card.Flags & HotCardFlags.CostsX) != 0 || card.BaseEnergyCost < 0 || addend == 0)
+            return;
+
+        int oldBase = card.BaseEnergyCost;
+        int newBase = Math.Clamp(oldBase + addend, 0, sbyte.MaxValue);
+
+        if (newBase < oldBase)
+        {
+            if ((card.Flags & HotCardFlags.HasCostOverflow) != 0)
+            {
+                HotCardCostOverflow? overflow = FindOverflow(cold, card.CardUid);
+                if (overflow != null && overflow.EnergyMods.Length > 0)
+                {
+                    HotEnergyCostMod[] oldMods = overflow.EnergyMods;
+                    bool anyChanged = false;
+                    for (int i = 0; i < oldMods.Length; i++)
+                    {
+                        if (oldMods[i].IsAbsolute && oldMods[i].Amount > newBase)
+                        {
+                            anyChanged = true;
+                            break;
+                        }
+                    }
+
+                    if (anyChanged)
+                    {
+                        HotEnergyCostMod[] updated = (HotEnergyCostMod[])oldMods.Clone();
+                        for (int i = 0; i < updated.Length; i++)
+                        {
+                            if (updated[i].IsAbsolute && updated[i].Amount > newBase)
+                                updated[i].Amount = (short)newBase;
+                        }
+                        UpsertOverflow(ref cold, card.CardUid, updated, overflow.TempStarCosts);
+                    }
+                }
+            }
+            else
+            {
+                int inlineCount = Math.Min((int)card.CostModCount, HotLimits.MaxEnergyCostMods);
+                for (int i = 0; i < inlineCount; i++)
+                {
+                    if (card.EnergyCostMods[i].IsAbsolute && card.EnergyCostMods[i].Amount > newBase)
+                        card.EnergyCostMods[i].Amount = (short)newBase;
+                }
+            }
+        }
+
+        card.BaseEnergyCost = (sbyte)newBase;
+    }
+
     public static int GetEnergyModifierCount(in HotCard card, HotColdSidecar? cold)
     {
         if ((card.Flags & HotCardFlags.HasCostOverflow) != 0)

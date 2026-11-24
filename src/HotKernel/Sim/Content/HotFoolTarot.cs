@@ -1653,6 +1653,13 @@ internal static class HotFoolTarot
                         if (args.CardUid != 0)
                             HotCombatEngine.RefreshHookCardIdx(in s, ref args);
                         bool cardGainsBlock = args.CardDefId < rules.Cards.Length && rules.Cards[args.CardDefId].GainsBlock;
+                        if (!cardGainsBlock
+                            && args.CardDefId < rules.Cards.Length
+                            && rules.Cards[args.CardDefId].CardId == HotCustomCardId.SovereignBlade
+                            && HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.ParryPower) > 0)
+                        {
+                            cardGainsBlock = true;
+                        }
                         if (!cardGainsBlock && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
                         {
                             byte enchId = s.Cards[args.CardIdx].EnchId;
@@ -2731,6 +2738,8 @@ internal static class HotFoolTarot
         increasedAim += amt;
         int currentAim = baseAim + increasedAim;
         showOffCard.CardPrivate = ((short)currentAim & 0xFFFF) | (((short)increasedAim & 0xFFFF) << 16);
+        if (def.Var0Index < def.OrderedVarNames.Length && def.OrderedVarNames[def.Var0Index] == "AimPower")
+            showOffCard.Var0Delta = (short)(showOffCard.Var0Delta + amt);
 
         if ((showOffCard.Flags & HotCardFlags.HasDeckVersion) != 0)
         {
@@ -3002,6 +3011,11 @@ internal static class HotFoolTarot
         };
         HotCombatEngine.InitFreshCardPrivate(ref sadCard, sadDef);
         s.Cards[livePlayIdx] = sadCard;
+        // STS2 0.113.1 CardModel.cs:2130,2142: HistoryCourse recorded MourningBlow before Transform replaced it
+        // with a distinct Sadness instance; clear HistoryCourseUid since this in-place transform reuses cardUid
+        // while keeping s.HistoryCourseCard intact.
+        if (s.HistoryCourseUid == cardUid)
+            s.HistoryCourseUid = 0;
         s.HistoryCardsGenerated++;
         s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
         if (sadDef.HookMask != HotHookMask.None)

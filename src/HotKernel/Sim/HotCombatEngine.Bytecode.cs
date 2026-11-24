@@ -114,7 +114,7 @@ internal static partial class HotCombatEngine
 
                 case HotCardOpKind.Attack:
                 {
-                    if (IsOverOrEnding(in s) || !IsValidEnemyTarget(in s, targetEnemySlot))
+                    if (IsOverOrEnding(in s) || (uint)targetEnemySlot >= (uint)s.EnemyCount)
                         break;
 
                     int dmg = ResolveOpAmount(op, in playedCard, cardDef, potionPrimaryValue);
@@ -159,7 +159,7 @@ internal static partial class HotCombatEngine
                     if (IsOverOrEnding(in s)
                         || (s.CombatFlags & HotCombatFlags.HasOsty) == 0
                         || (s.Osty.Flags & HotCreatureFlags.Alive) == 0
-                        || !IsValidEnemyTarget(in s, targetEnemySlot))
+                        || (uint)targetEnemySlot >= (uint)s.EnemyCount)
                     {
                         break;
                     }
@@ -357,8 +357,7 @@ internal static partial class HotCombatEngine
 
                 case HotCardOpKind.DiscardHand:
                 {
-                    while (s.HandCount > 0 && !IsOverOrEnding(in s) && !scratch.NeedsChoice)
-                        DiscardCard(ref s, ref cold, rules, scratch, 0);
+                    DiscardHandSnapshot(ref s, ref cold, rules, scratch);
                     break;
                 }
 
@@ -376,6 +375,25 @@ internal static partial class HotCombatEngine
             if (scratch.NeedsChoice)
                 return;
         }
+    }
+
+    private static void DiscardHandSnapshot(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch)
+    {
+        if (s.HandCount <= 0 || IsOverOrEnding(in s) || scratch.NeedsChoice)
+            return;
+
+        // STS2 0.113.1 StormOfSteel.cs:22-24 / CardCmd.Discard(IEnumerable):
+        // snapshot initial hand UIDs and discard as a batch so Sly cards (e.g. Reflex)
+        // auto-play only after all snapshotted cards are discarded.
+        Span<ushort> handUids = stackalloc ushort[HotLimits.MaxStackAllocElements];
+        int count = Math.Min(s.HandCount, handUids.Length);
+        for (int i = 0; i < count; i++)
+            handUids[i] = s.Cards[i].CardUid;
+        DiscardCardsAndDraw(ref s, ref cold, rules, scratch, handUids[..count], drawCount: 0);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -406,7 +424,7 @@ internal static partial class HotCombatEngine
     {
         t_lastAttackUnblockedDamage = 0;
         t_lastAttackTotalPlusOverkill = 0;
-        if (IsOverOrEnding(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0 || !IsValidEnemyTarget(in s, targetEnemySlot))
+        if (IsOverOrEnding(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0 || (uint)targetEnemySlot >= (uint)s.EnemyCount)
             return;
         if (hits < 0)
             hits = 0;
@@ -423,7 +441,7 @@ internal static partial class HotCombatEngine
         for (int h = 0; h < hits; h++)
         {
             if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
-                || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
+                || !IsValidEnemyTarget(in s, targetEnemySlot)
                 || scratch.NeedsChoice)
             {
                 break;
@@ -553,7 +571,7 @@ internal static partial class HotCombatEngine
         if (IsOverOrEnding(in s)
             || (s.CombatFlags & HotCombatFlags.HasOsty) == 0
             || (s.Osty.Flags & HotCreatureFlags.Alive) == 0
-            || !IsValidEnemyTarget(in s, targetEnemySlot))
+            || (uint)targetEnemySlot >= (uint)s.EnemyCount)
         {
             return;
         }
@@ -570,7 +588,7 @@ internal static partial class HotCombatEngine
         for (int h = 0; h < hits; h++)
         {
             if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0
-                || (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
+                || !IsValidEnemyTarget(in s, targetEnemySlot)
                 || scratch.NeedsChoice)
             {
                 break;
@@ -584,6 +602,7 @@ internal static partial class HotCombatEngine
         scratch.AttackActive = false;
         cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
         EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
+        HotRegentNecro.NotifyOstyAttacked(ref s, ref cold, rules);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

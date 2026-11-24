@@ -30,7 +30,9 @@ internal static partial class HotCombatEngine
 
         decimal mult = EvaluateCalcVarMultiplier(in s, rules, in card, def, kind, targetEnemySlot, currentPlayEnergySpent);
         decimal result = calcBase + calcExtra * mult;
-        return Math.Max(0, (int)Math.Floor(result));
+        // STS2 0.113.1 CalculatedVar.Calculate returns unclamped base + extra * mult (e.g. PreciseCut
+        // can go negative when remaining hand >= 9 so Vigorous/Strength apply before final >= 0 clamp).
+        return (int)Math.Floor(result);
     }
 
     internal static decimal EvaluateCalcVarMultiplier(
@@ -49,7 +51,22 @@ internal static partial class HotCombatEngine
         switch (kind)
         {
             case HotCalcVarKind.PreciseCut:
-                return -s.HandCount;
+            {
+                int num = s.HandCount;
+                ushort uid = card.CardUid;
+                if (uid != 0)
+                {
+                    for (int i = 0; i < num; i++)
+                    {
+                        if (s.Cards[i].CardUid == uid)
+                        {
+                            num--;
+                            break;
+                        }
+                    }
+                }
+                return -num;
+            }
 
             case HotCalcVarKind.MelodicShot:
             case HotCalcVarKind.HarmonicShield:
@@ -511,14 +528,14 @@ internal static partial class HotCombatEngine
                 if (upgrade > 0)
                 {
                     for (int i = 0; i < s.HandCount; i++)
-                        UpgradeCard(ref s, rules, i);
+                        UpgradeCard(ref s, rules, i, ref cold);
                 }
                 else
                 {
                     if (!TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, playedCard.CardDefId, HotCustomCardId.Armaments, out int idx))
                         return;
                     if (idx >= 0)
-                        UpgradeCard(ref s, rules, idx);
+                        UpgradeCard(ref s, rules, idx, ref cold);
                 }
                 break;
 
@@ -761,23 +778,68 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotCustomCardId.Pillage:
+            {
                 ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
                 if (!scratch.NeedsChoice && !IsOverOrEnding(in s))
                 {
                     // STS2 0.113.1 Pillage.cs:28-33: inspect the actually drawn CardModel's Type,
                     // not Hand[^1] (AfterCardDrawn hooks like HellraiserPower may auto-play the drawn card,
                     // leaving Hand empty or ending with a different card).
+                    // Defensive bounds: hard draw cap + zero-progress cycle break prevent livelocks
+                    // against 0-damage/Invincible recycle combos without affecting finite fights.
+                    const int MaxPillageDraws = 256;
                     int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
-                    while (!IsOverOrEnding(in s) && s.HandCount < maxHand)
+                    Span<byte> enemySlots = stackalloc byte[HotLimits.MaxEnemies];
+                    int prevHandCount = s.HandCount;
+                    int prevPlayerHp = s.Player.CurrentHp;
+                    long prevEnemyHpBlock = SumAliveEnemyHpAndBlock(in s, enemySlots);
+                    int noProgressDraws = 0;
+                    int draws = 0;
+                    while (draws < MaxPillageDraws && !IsOverOrEnding(in s) && s.HandCount < maxHand)
                     {
+                        draws++;
                         int drawn = DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false, out ushort drawnCardDefId);
                         if (drawn <= 0 || scratch.NeedsChoice || drawnCardDefId == 0 || drawnCardDefId >= rules.Cards.Length)
                             break;
                         if (rules.Cards[drawnCardDefId].Type != CardType.Attack)
                             break;
+
+                        int curHandCount = s.HandCount;
+                        int curPlayerHp = s.Player.CurrentHp;
+                        long curEnemyHpBlock = SumAliveEnemyHpAndBlock(in s, enemySlots);
+                        if (curHandCount == prevHandCount && curPlayerHp == prevPlayerHp && curEnemyHpBlock == prevEnemyHpBlock)
+                        {
+                            noProgressDraws++;
+                            if (noProgressDraws >= s.TotalCardCount + 1)
+                                break;
+                        }
+                        else
+                        {
+                            prevHandCount = curHandCount;
+                            prevPlayerHp = curPlayerHp;
+                            prevEnemyHpBlock = curEnemyHpBlock;
+                            noProgressDraws = 0;
+                        }
+                    }
+
+                    static long SumAliveEnemyHpAndBlock(in CombatHotState curState, Span<byte> slotBuf)
+                    {
+                        int aliveCount = SnapshotLivingEnemies(in curState, slotBuf);
+                        long totalHpBlock = 0;
+                        for (int slotIdx = 0; slotIdx < aliveCount; slotIdx++)
+                        {
+                            byte aliveSlot = slotBuf[slotIdx];
+                            if ((curState.Enemies[aliveSlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                                && curState.Enemies[aliveSlot].Vital.CurrentHp > 0)
+                            {
+                                totalHpBlock += (long)curState.Enemies[aliveSlot].Vital.CurrentHp + curState.Enemies[aliveSlot].Vital.Block;
+                            }
+                        }
+                        return totalHpBlock;
                     }
                 }
                 break;
+            }
 
             case HotCustomCardId.PrimalForce:
             {
@@ -1116,10 +1178,13 @@ internal static partial class HotCombatEngine
                 Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
                 BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
                 scratch.AttackActive = true;
+                const int MaxWaves = 64;
                 int waves = 1;
-                while (waves > 0 && !IsOverOrEnding(in s) && (s.Player.Flags & HotCreatureFlags.Alive) != 0 && !scratch.NeedsChoice)
+                int executedWaves = 0;
+                while (waves > 0 && executedWaves < MaxWaves && !IsOverOrEnding(in s) && (s.Player.Flags & HotCreatureFlags.Alive) != 0 && !scratch.NeedsChoice)
                 {
                     waves--;
+                    executedWaves++;
                     int targetCount = SnapshotLivingEnemies(in s, targets);
                     if (targetCount == 0)
                         break;
@@ -1152,7 +1217,7 @@ internal static partial class HotCombatEngine
                         if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
                             && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
                         {
-                            KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false);
+                            KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
                         }
                     }
                     waves += waveKills;
@@ -1291,7 +1356,7 @@ internal static partial class HotCombatEngine
                         if (idx < 0)
                             continue;
                         if (upgrade > 0)
-                            UpgradeCard(ref s, rules, idx);
+                            UpgradeCard(ref s, rules, idx, ref cold);
                         AutoPlayCard(ref s, ref cold, rules, scratch, idx, targetEnemySlot);
                         if (scratch.NeedsChoice)
                             return;
@@ -1354,6 +1419,7 @@ internal static partial class HotCombatEngine
                             HotCard clone = s.Cards[idx];
                             ushort srcUid = clone.CardUid;
                             clone.CardUid = 0;
+                            clone.DampenOrigUpg = 0;
                             clone.AfflId = 0;
                             clone.AfflAmt = 0;
                             clone.Flags &= ~(HotCardFlags.SingleTurnRetain
@@ -1544,7 +1610,8 @@ internal static partial class HotCombatEngine
                 {
                     HotCard copy = s.Cards[s.PlayStart + playOffsetInPlay];
                     copy.CardUid = s.NextCardUid++;
-                    copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
+                    copy.DampenOrigUpg = 0;
+                    copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
                     copy.Flags |= HotCardFlags.IsClone;
                     CostSetThisCombat(ref copy, ref cold, 0);
                     AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Discard, -1, createdByPlayer: true);
@@ -1942,10 +2009,14 @@ internal static partial class HotCombatEngine
             }
 
             case HotCustomCardId.Shatter:
+            {
                 ExecuteAllEnemiesAttack(ref s, ref cold, rules, scratch, livePlayIdx, baseDmg, 1, powered: true);
-                while (s.OrbCount > 0 && !scratch.NeedsChoice && !IsOverOrEnding(in s))
+                // STS2 0.113.1 Shatter.cs:32-37: snapshot initial orb count so newly channeled orbs are not evoked in a loop.
+                int orbCount = s.OrbCount;
+                for (int i = 0; i < orbCount && s.OrbCount > 0 && !scratch.NeedsChoice && !IsOverOrEnding(in s); i++)
                     EvokeOrb(ref s, ref cold, rules, scratch, orbIdx: 0, repeat: 2, dequeue: true);
                 break;
+            }
 
             case HotCustomCardId.Spinner:
                 if (upgrade > 0)
@@ -2079,7 +2150,7 @@ internal static partial class HotCombatEngine
                 for (int i = 0; i < total; i++)
                 {
                     if (s.Cards[i].CardUid != selfUid)
-                        UpgradeCard(ref s, rules, i);
+                        UpgradeCard(ref s, rules, i, ref cold);
                 }
                 break;
             }
@@ -2458,7 +2529,8 @@ internal static partial class HotCombatEngine
                     {
                         HotCard copy = tpl;
                         copy.CardUid = s.NextCardUid++;
-                        copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
+                        copy.DampenOrigUpg = 0;
+                        copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
                         copy.Flags |= HotCardFlags.IsClone;
                         HotColdSidecar.CloneDecimalVar(ref cold, tpl.CardUid, copy.CardUid);
                         AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, -1, createdByPlayer: true);
@@ -2707,7 +2779,7 @@ internal static partial class HotCombatEngine
                             if ((s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) != 0
                                 && s.Enemies[otherSlot].Vital.CurrentHp <= 0)
                             {
-                                KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + otherSlot), force: false);
+                                KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + otherSlot), force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
                             }
                         }
                     }
@@ -2861,6 +2933,19 @@ internal static partial class HotCombatEngine
                 GainPlayedCardBlock(ref s, ref cold, rules, scratch, playOffsetInPlay, playedCard.CardDefId, blk);
                 break;
             }
+
+            case HotCustomCardId.TheBall:
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg, 1, powered: true);
+                if (!scratch.NeedsChoice)
+                {
+                    int curIdx = RefreshCardIdxByUid(in s, s.PlayStart + playOffsetInPlay, playedCard.CardUid);
+                    if (curIdx >= 0)
+                    {
+                        int inc = GetNamedVarInt(in playedCard, def, "Increase", upgrade > 0 ? 15 : 10);
+                        s.Cards[curIdx].Var0Delta = (short)(s.Cards[curIdx].Var0Delta + inc);
+                    }
+                }
+                break;
 
             case HotCustomCardId.TheBomb:
             {

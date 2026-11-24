@@ -55,6 +55,7 @@ internal static class HotPotions
         if (needsEnemyTarget && targetEnemySlot >= 0)
             HotCombatEngine.UpdateSurroundedFacingForTarget(ref s, rules, (byte)(3 + targetEnemySlot));
 
+        HotCombatEngine.ClearPlayerTurnEndRequest();
         HotCombatEngine.EnterCardOrPotionEffect();
         try
         {
@@ -73,7 +74,10 @@ internal static class HotPotions
         }
 
         if (scratch.NeedsChoice)
+        {
+            HotCombatEngine.ClearPlayerTurnEndRequest();
             return new HotStepResult(Executed: true, NeedsChoice: true, Outcome: s.TerminalOutcome);
+        }
 
         if ((s.Player.Flags & HotCreatureFlags.Alive) != 0)
         {
@@ -82,8 +86,18 @@ internal static class HotPotions
                 HotCombatEngine.CheckForEmptyHand(ref s, ref cold, rules, scratch);
         }
 
+        bool endTurnRequested = HotCombatEngine.ConsumePlayerTurnEndRequest();
+
         if (!scratch.NeedsChoice)
             HotCombatEngine.CheckWinCondition(ref s, rules);
+
+        if (endTurnRequested
+            && !scratch.NeedsChoice
+            && !HotCombatEngine.CheckWinCondition(ref s, rules)
+            && !HotCombatEngine.IsOverOrEnding(in s))
+        {
+            HotCombatEngine.ExecuteEndTurn(ref s, ref cold, rules, scratch);
+        }
 
         return new HotStepResult(Executed: true, NeedsChoice: scratch.NeedsChoice, Outcome: s.TerminalOutcome);
     }
@@ -212,7 +226,7 @@ internal static class HotPotions
             {
                 int handCount = s.HandCount;
                 for (int i = 0; i < handCount; i++)
-                    HotCombatEngine.UpgradeCard(ref s, rules, i);
+                    HotCombatEngine.UpgradeCard(ref s, rules, i, ref cold);
                 break;
             }
 

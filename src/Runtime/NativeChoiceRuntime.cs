@@ -509,7 +509,8 @@ internal sealed class NativeChoiceSession : IDisposable
                 && request.MaxSelect == 0)
             {
                 bool consumedEmptyPlan = planIndex < plans.Count
-                    && plans[planIndex].Cards.Count == 0;
+                    && plans[planIndex].Cards.Count == 0
+                    && IsEmptyNoOpPlanCompatible(request, plans[planIndex]);
                 if (consumedEmptyPlan)
                 {
                     planIndex++;
@@ -618,23 +619,13 @@ internal sealed class NativeChoiceSession : IDisposable
     {
         if (useObservedIdentity && request.ObservedOptions == null)
             throw new InvalidOperationException("隐式原生选牌请求缺少冻结候选身份。");
+        if (useObservedIdentity && request.ObservedOptions!.Count != request.Options.Count)
+            throw new InvalidOperationException("隐式原生选牌请求的冻结候选数量与候选列表不一致。");
 
         List<CardModel> selected = [];
         foreach (PlanCardToken token in plan.Cards)
         {
-            CardModel? card = useObservedIdentity
-                ? request.Options
-                    .Select((option, index) => (Option: option, Observed: request.ObservedOptions![index]))
-                    .Where(option => option.Observed.CardId == token.CardId
-                        && option.Observed.UpgradeLevel == token.UpgradeLevel)
-                    .Skip(token.OptionOccurrence)
-                    .Select(static option => option.Option)
-                    .FirstOrDefault()
-                : request.Options
-                    .Where(option => option.Id.Entry == token.CardId
-                        && option.CurrentUpgradeLevel == token.UpgradeLevel)
-                    .Skip(token.OptionOccurrence)
-                    .FirstOrDefault();
+            CardModel? card = SelectPlannedCard(token, request, useObservedIdentity, selected);
             if (card == null)
             {
                 throw new NativeChoicePlanMismatchException(
@@ -686,6 +677,15 @@ internal sealed class NativeChoiceSession : IDisposable
         return true;
     }
 
+    private static bool IsEmptyNoOpPlanCompatible(NativeChoiceRequest request, PlanCardChoice plan)
+    {
+        if (!IsImplicitPlanSourceCompatible(request, plan))
+            return false;
+        if (plan.SourcePile == PileType.None && string.IsNullOrEmpty(plan.SourceId))
+            return true;
+        return IsImplicitPlanPileCompatible(request, plan);
+    }
+
     private static bool IsImplicitPlanSourceCompatible(NativeChoiceRequest request, PlanCardChoice plan)
         => string.IsNullOrEmpty(request.SourceId)
             || string.IsNullOrEmpty(plan.SourceId)
@@ -723,20 +723,7 @@ internal sealed class NativeChoiceSession : IDisposable
         List<CardModel> resolved = new(plan.Cards.Count);
         foreach (PlanCardToken token in plan.Cards)
         {
-            CardModel? card = null;
-            int remainingOccurrence = token.OptionOccurrence;
-            for (int i = 0; i < request.Options.Count; i++)
-            {
-                NativeChoiceObservedOption option = observed[i];
-                if (option.CardId != token.CardId || option.UpgradeLevel != token.UpgradeLevel)
-                    continue;
-                if (remainingOccurrence <= 0)
-                {
-                    card = request.Options[i];
-                    break;
-                }
-                remainingOccurrence--;
-            }
+            CardModel? card = SelectPlannedCard(token, request, useObservedIdentity: true, resolved);
             if (card == null || resolved.Contains(card))
                 return false;
             resolved.Add(card);
@@ -744,6 +731,82 @@ internal sealed class NativeChoiceSession : IDisposable
 
         selected = resolved;
         return true;
+    }
+
+    private static CardModel? SelectPlannedCard(
+        PlanCardToken token,
+        NativeChoiceRequest request,
+        bool useObservedIdentity,
+        List<CardModel> alreadySelected)
+    {
+        IReadOnlyList<CardModel> options = request.Options;
+        IReadOnlyList<NativeChoiceObservedOption>? observed = useObservedIdentity
+            ? request.ObservedOptions!
+            : null;
+
+        List<int>? matchingIndices = null;
+        int firstMatchIndex = -1;
+        for (int i = 0; i < options.Count; i++)
+        {
+            bool matches = observed != null
+                ? observed[i].CardId == token.CardId && observed[i].UpgradeLevel == token.UpgradeLevel
+                : options[i].Id.Entry == token.CardId && options[i].CurrentUpgradeLevel == token.UpgradeLevel;
+            if (!matches)
+                continue;
+
+            if (firstMatchIndex < 0)
+            {
+                firstMatchIndex = i;
+            }
+            else
+            {
+                matchingIndices ??= [firstMatchIndex];
+                matchingIndices.Add(i);
+            }
+        }
+
+        if (firstMatchIndex < 0)
+            return null;
+
+        int rawOccurrence = Math.Max(0, token.OptionOccurrence);
+        if (matchingIndices == null)
+            return rawOccurrence == 0 ? options[firstMatchIndex] : null;
+
+        if (!string.IsNullOrEmpty(token.StateKey))
+        {
+            if (rawOccurrence < matchingIndices.Count)
+            {
+                int rawOptionIndex = matchingIndices[rawOccurrence];
+                CardModel rawCandidate = options[rawOptionIndex];
+                if (!alreadySelected.Contains(rawCandidate))
+                {
+                    string rawStateKey = observed != null
+                        ? observed[rawOptionIndex].StateKey
+                        : HotImportSupport.FormatLiveChoiceCardKey(rawCandidate);
+                    if (string.Equals(rawStateKey, token.StateKey, StringComparison.Ordinal))
+                        return rawCandidate;
+                }
+            }
+
+            for (int m = 0; m < matchingIndices.Count; m++)
+            {
+                if (m == rawOccurrence)
+                    continue;
+                int optionIndex = matchingIndices[m];
+                CardModel candidate = options[optionIndex];
+                if (alreadySelected.Contains(candidate))
+                    continue;
+                string candidateStateKey = observed != null
+                    ? observed[optionIndex].StateKey
+                    : HotImportSupport.FormatLiveChoiceCardKey(candidate);
+                if (string.Equals(candidateStateKey, token.StateKey, StringComparison.Ordinal))
+                    return candidate;
+            }
+        }
+
+        return rawOccurrence < matchingIndices.Count
+            ? options[matchingIndices[rawOccurrence]]
+            : null;
     }
 
     private static bool IsValidImplicitSelection(
@@ -1260,7 +1323,23 @@ internal sealed class SimpleGridObservationPatch : IPatchMethod
             prefs.MinSelect,
             prefs.MaxSelect,
             cardsIn.Count > 0 && (prefs.RequireManualConfirmation || cardsIn.Count > prefs.MinSelect),
-            requireManualConfirmation: prefs.RequireManualConfirmation);
+            requireManualConfirmation: prefs.RequireManualConfirmation,
+            sourcePile: InferUniformCombatSourcePile(cardsIn));
+
+    private static PileType InferUniformCombatSourcePile(IReadOnlyList<CardModel> cards)
+    {
+        if (cards.Count == 0)
+            return PileType.None;
+        PileType first = cards[0].Pile?.Type ?? PileType.None;
+        if (first is not (PileType.Hand or PileType.Draw or PileType.Discard or PileType.Exhaust))
+            return PileType.None;
+        for (int i = 1; i < cards.Count; i++)
+        {
+            if ((cards[i].Pile?.Type ?? PileType.None) != first)
+                return PileType.None;
+        }
+        return first;
+    }
     public static void Postfix(Task __result, NativeChoiceRequest? __state)
     {
         if (__state != null) __state.Completion = __result;

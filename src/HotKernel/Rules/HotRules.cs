@@ -39,6 +39,7 @@ internal sealed class HotRules
     public ushort[] UnlockedColorlessCardPool { get; init; } = [];
     public ushort[] UnlockedCurseCardPool { get; init; } = [];
     public ushort[] UnlockedStatusCardPool { get; init; } = [];
+    public ushort[] UnlockedTokenCardPool { get; init; } = [];
     public ushort[] OtherCharacterCardPool { get; init; } = [];
     public ushort[] TarotCardPool { get; init; } = [];
     public ushort[] CombatCharacterAttackPool { get; init; } = [];
@@ -230,17 +231,16 @@ internal sealed class HotRules
             return CombatColorlessPool;
         }
 
-        if (origDef.Rarity == CardRarity.Curse)
-            return UnlockedCurseCardPool;
-        if (origDef.Rarity == CardRarity.Status)
-            return UnlockedStatusCardPool;
-
+        // Dispatch by card domain (= vanilla CardModel.Pool) rather than intercepting Status/Curse
+        // rarity first: KnowledgeDemon Status cards (Amnesia, Disintegration, MindRot, Sloth, WasteAway)
+        // have CardRarity.Status but belong to TokenCardPool (HotCardDomain.Token).
         HotCardDomain domain = origDef.Domain;
         return domain switch
         {
             HotCardDomain.Curse => UnlockedCurseCardPool,
             HotCardDomain.Status => UnlockedStatusCardPool,
-            HotCardDomain.Colorless or HotCardDomain.Event or HotCardDomain.Quest or HotCardDomain.Token => CombatColorlessPool,
+            HotCardDomain.Token => UnlockedTokenCardPool,
+            HotCardDomain.Colorless or HotCardDomain.Event or HotCardDomain.Quest => CombatColorlessPool,
             HotCardDomain.Tarot => TarotCardPool,
             HotCardDomain.Ironclad
                 or HotCardDomain.Silent
@@ -248,7 +248,12 @@ internal sealed class HotRules
                 or HotCardDomain.Regent
                 or HotCardDomain.Necrobinder
                 or HotCardDomain.Fool => ResolveCharacterDomainTransformPool(domain),
-            _ => UnlockedCharacterCardPool,
+            _ => origDef.Rarity switch
+            {
+                CardRarity.Curse => UnlockedCurseCardPool,
+                CardRarity.Status => UnlockedStatusCardPool,
+                _ => UnlockedCharacterCardPool,
+            },
         };
     }
 

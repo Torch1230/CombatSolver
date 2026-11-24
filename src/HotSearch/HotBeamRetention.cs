@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace CombatSolver.HotSearch;
@@ -43,9 +44,18 @@ internal sealed class HotBeamRetention : IDisposable
     /// <summary>
     /// When <c>true</c> alongside <c>preferPotionBuckets: true</c> in <see cref="PruneLayer"/> (Phase B when
     /// Phase A found no clean zero-potion survival), lowers the turn-aware <c>0</c>-potion reserve from
-    /// <c>30%</c> to <c>25%</c> on <c>turnLayer &lt;= 1</c> and from <c>26%</c> to <c>16%</c> on <c>turnLayer &gt;= 2</c>.
+    /// <c>30%</c> to <c>25%</c> on <c>turnLayer &lt;= 1</c> and from <c>26%</c> to <c>25%</c> on <c>turnLayer &gt;= 2</c>,
+    /// never collapsing below the <c>25%</c> Bucket 0 survival floor so delayed-potion lines survive.
     /// </summary>
     public bool RelaxZeroPotionReserve { get; set; }
+
+    /// <summary>
+    /// Optional minimum percentage (<c>0..60</c>) of beam width protected for Bucket 0 (0 optional paid potions)
+    /// during <c>preferPotionBuckets: true</c> passes when no forced potion directives require immediate spending.
+    /// When <c>&gt; 0</c>, acts as a survival floor across all turns (<c>turnLayer &gt;= 0</c>) so late-turn
+    /// T2-T6 hold-potion trajectories survive Turn 1 pruning.
+    /// </summary>
+    public int MinZeroPotionReservePercent { get; set; }
 
     /// <summary>
     /// When <c>true</c> (or when <c>allowDeathSaveRescue: true</c> is passed to <see cref="PruneLayer"/>),
@@ -135,13 +145,12 @@ internal sealed class HotBeamRetention : IDisposable
         bool effectiveRescue = allowDeathSaveRescue || AllowDeathSaveRescue;
         EnsureCapacity(Math.Max(n, limit + PerNicheParetoTopK), limit);
 
-        // 1. Single-pass counting sort bucketing by PotionCount (0, 1, 2, 3+) — ZERO LINQ GroupBy.
+        // 1. Single-pass counting sort bucketing by policy-aware paid/forced potion count (0, 1, 2, 3+) — ZERO LINQ GroupBy.
         Span<int> bucketCounts = stackalloc int[MaxPotionBuckets];
         bucketCounts.Clear();
         for (int i = 0; i < n; i++)
         {
-            byte pCount = arena.GetRef(candidates[i]).PotionCount;
-            int b = pCount >= MaxPotionBuckets ? MaxPotionBuckets - 1 : pCount;
+            int b = ComputePotionBucketIndex(in arena.GetRef(candidates[i]), in policy);
             bucketCounts[b]++;
         }
 
@@ -161,8 +170,7 @@ internal sealed class HotBeamRetention : IDisposable
         for (int i = 0; i < n; i++)
         {
             int nodeId = candidates[i];
-            byte pCount = arena.GetRef(nodeId).PotionCount;
-            int b = pCount >= MaxPotionBuckets ? MaxPotionBuckets - 1 : pCount;
+            int b = ComputePotionBucketIndex(in arena.GetRef(nodeId), in policy);
             _bucketBuffer[bucketWrite[b]++] = nodeId;
         }
 
@@ -174,6 +182,8 @@ internal sealed class HotBeamRetention : IDisposable
             limit,
             preferPotionBuckets,
             RelaxZeroPotionReserve,
+            MinZeroPotionReservePercent,
+            hasForcedDirectives: policy.ForcedDirectiveCount > 0,
             turnLayer,
             bucketQuotas);
 
@@ -206,12 +216,43 @@ internal sealed class HotBeamRetention : IDisposable
         return totalSelected;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ComputePotionBucketIndex(in HotSearchNode node, in HotSearchPolicy policy)
+    {
+        int count;
+        if (policy.InitialPlayerMaxHp <= 0)
+        {
+            // Legacy 9-arg PruneLayer overload with default(HotSearchPolicy): preserve synthetic PotionCount tests.
+            count = node.OptionalPaidPotionCount > 0 ? node.OptionalPaidPotionCount : node.PotionCount;
+        }
+        else
+        {
+            count = node.OptionalPaidPotionCount;
+            if (policy.ForcedDirectiveCount > 0)
+            {
+                ushort forcedUsedMask = (ushort)(node.PotionMask & policy.ForcedPotionSlotMask);
+                if (forcedUsedMask != 0)
+                    count += BitOperations.PopCount(forcedUsedMask);
+            }
+            if (count == 0
+                && policy.EffectivePotionPolicy == SolverPotionPolicy.RequireAtLeastOne
+                && node.ExplicitPotionCount > 0)
+            {
+                count = 1;
+            }
+        }
+
+        return count >= MaxPotionBuckets ? MaxPotionBuckets - 1 : count;
+    }
+
     private static void AllocateBucketQuotas(
         ReadOnlySpan<int> counts,
         int activeBuckets,
         int totalQuota,
         bool preferPotionBuckets,
         bool relaxZeroPotionReserve,
+        int minZeroPotionReservePercent,
+        bool hasForcedDirectives,
         int turnLayer,
         Span<int> quotas)
     {
@@ -233,17 +274,41 @@ internal sealed class HotBeamRetention : IDisposable
 
         int remaining = totalQuota;
 
-        // Under Smart Phase B, protect early-turn (turnLayer <= 1) 0-potion setup prefixes (30% / 25% relaxed)
-        // before shifting focus onto potion trajectories from turnLayer >= 2 (26% / 16% relaxed); under Phase A /
-        // single-beam, reserve 60%.
+        // Bucket 0 reserve:
+        // - When ForcedDirectiveCount > 0, shift quota out of Bucket 0 into forced-potion progress buckets (1..3+).
+        // - Under Smart Phase B, protect early-turn 0-potion setup prefixes and enforce a >=25% Bucket 0 survival
+        //   floor across all turns (turnLayer >= 0), honoring any higher MinZeroPotionReservePercent (up to 60%),
+        //   so delayed T2-T6 potion trajectories survive even when Phase A lost.
+        // - Under Phase A / single-beam without forced directives, reserve 60%.
         if (counts[0] > 0)
         {
-            int zeroPct = !preferPotionBuckets
-                ? 60
-                : (turnLayer <= 1
+            int zeroPct;
+            bool enforceCeilFloor = false;
+            if (hasForcedDirectives)
+            {
+                zeroPct = !preferPotionBuckets
+                    ? (turnLayer <= 1 ? 25 : 15)
+                    : (turnLayer <= 1 ? 20 : 12);
+            }
+            else if (!preferPotionBuckets)
+            {
+                zeroPct = 60;
+            }
+            else
+            {
+                zeroPct = turnLayer <= 1
                     ? (relaxZeroPotionReserve ? 25 : 30)
-                    : (relaxZeroPotionReserve ? 16 : 26));
-            int zeroTarget = Math.Max(1, (totalQuota * zeroPct) / 100);
+                    : (relaxZeroPotionReserve ? 25 : 26);
+                int floorPct = Math.Clamp(Math.Max(25, minZeroPotionReservePercent), 25, 60);
+                if (zeroPct < floorPct)
+                    zeroPct = floorPct;
+                enforceCeilFloor = true;
+            }
+            int zeroTarget = enforceCeilFloor
+                ? Math.Max(1, (totalQuota * zeroPct + 99) / 100)
+                : Math.Max(1, (totalQuota * zeroPct) / 100);
+            if (enforceCeilFloor && totalQuota > 1 && activeBuckets > 1 && zeroTarget >= totalQuota)
+                zeroTarget = totalQuota - 1;
             int take = Math.Min(counts[0], zeroTarget);
             quotas[0] = take;
             remaining -= take;
@@ -258,31 +323,58 @@ internal sealed class HotBeamRetention : IDisposable
 
         if (otherBuckets > 0 && remaining > 0)
         {
-            if (preferPotionBuckets && counts[1] > 0 && otherBuckets > 1)
+            if (!preferPotionBuckets)
             {
-                int onePotPct = (turnLayer <= 1 && counts[2] > 0) ? 45 : 55;
-                int onePotTarget = Math.Max(1, (remaining * onePotPct) / 100);
-                int take1 = Math.Min(counts[1], onePotTarget);
-                quotas[1] = take1;
-                remaining -= take1;
-                otherBuckets--;
-            }
+                // Phase A tapering across non-zero buckets: 55% / 30% / 15% for buckets 1 / 2 / 3+.
+                ReadOnlySpan<int> phaseAWeights = [0, 55, 30, 15];
+                int weightSum = 0;
+                for (int b = 1; b < MaxPotionBuckets; b++)
+                {
+                    if (counts[b] > 0)
+                        weightSum += phaseAWeights[b];
+                }
 
-            if (otherBuckets > 0 && remaining > 0)
-            {
-                int share = Math.Max(1, remaining / otherBuckets);
+                int budgetForOther = remaining;
                 for (int b = 1; b < MaxPotionBuckets && remaining > 0; b++)
                 {
-                    if (counts[b] == 0 || quotas[b] > 0)
+                    if (counts[b] == 0)
                         continue;
-                    int take = Math.Min(counts[b], Math.Min(share, remaining));
+                    int target = otherBuckets == 1
+                        ? remaining
+                        : Math.Max(1, (budgetForOther * phaseAWeights[b]) / weightSum);
+                    int take = Math.Min(counts[b], Math.Min(target, remaining));
                     quotas[b] = take;
                     remaining -= take;
                 }
             }
+            else
+            {
+                if (counts[1] > 0 && otherBuckets > 1)
+                {
+                    int onePotPct = (turnLayer <= 1 && counts[2] > 0) ? 45 : 55;
+                    int onePotTarget = Math.Max(1, (remaining * onePotPct) / 100);
+                    int take1 = Math.Min(counts[1], onePotTarget);
+                    quotas[1] = take1;
+                    remaining -= take1;
+                    otherBuckets--;
+                }
+
+                if (otherBuckets > 0 && remaining > 0)
+                {
+                    int share = Math.Max(1, remaining / otherBuckets);
+                    for (int b = 1; b < MaxPotionBuckets && remaining > 0; b++)
+                    {
+                        if (counts[b] == 0 || quotas[b] > 0)
+                            continue;
+                        int take = Math.Min(counts[b], Math.Min(share, remaining));
+                        quotas[b] = take;
+                        remaining -= take;
+                    }
+                }
+            }
         }
 
-        int startBucket = preferPotionBuckets ? 1 : 0;
+        int startBucket = (preferPotionBuckets || hasForcedDirectives) ? 1 : 0;
         while (remaining > 0)
         {
             bool progressed = false;
@@ -323,8 +415,11 @@ internal sealed class HotBeamRetention : IDisposable
         bool hasPureGrowth = policy.HasPureGrowthTargets;
         bool hasRelic = policy.HasRelicTargets;
         bool hasAnyStrategy = policy.HasAnyStrategyTargets;
-        bool ignoreLongTerm = policy.IgnoreLongTermRewards;
-        byte feedMaxHpPerKill = policy.FeedMaxHpPerKill;
+        bool preserveTheft = policy.TheftPolicy == SolverTheftPolicy.PreserveResources;
+        ushort forcedPotionSlotMask = policy.ForcedPotionSlotMask;
+        bool requireExplicitPotion = policy.InitialPlayerMaxHp > 0
+            && policy.EffectivePotionPolicy == SolverPotionPolicy.RequireAtLeastOne;
+        HpEvalContext hpCtx = new(in policy);
 
         // Canonical primary ranking: index 0..count-1 is sorted descending by PrimaryScore.
         SortByPrimaryScoreDeterministic(bucketNodes, arena, useRolloutScores);
@@ -332,7 +427,7 @@ internal sealed class HotBeamRetention : IDisposable
         // Precompute deterministic tactical signatures once per bucket (zero node IDs, zero DiscardPile order).
         Span<ulong> nodeSigs = _nodeSigs.AsSpan(0, count);
         for (int i = 0; i < count; i++)
-            nodeSigs[i] = ComputeTacticalSignature(in arena.GetRef(bucketNodes[i]), hasPureGrowth, hasRelic);
+            nodeSigs[i] = ComputeTacticalSignature(in arena.GetRef(bucketNodes[i]), hasPureGrowth, hasRelic, preserveTheft);
 
         int sigTableSize = ComputeSigTableSize(quota);
         int sigMask = sigTableSize - 1;
@@ -474,15 +569,20 @@ internal sealed class HotBeamRetention : IDisposable
             && !hasRolloutCandidates
             && HasAnyChoiceLookaheadCandidate(bucketNodes, arena);
 
-        // Niche 1 — Primary Value (>=34% guaranteed for blended Primary even when PureRollout / ChoiceLookahead
-        // is active, capping sidecar slices cleanly so Primary & mid-turn Combo never starve).
-        int minBlendedPrimary = Math.Min(primaryQuota, Math.Max(1, (remainingForLanes * 34 + 99) / 100));
+        // Niche 1 — Primary Value (>=34% of post-carve non-strategy budget guaranteed for blended Primary,
+        // while guaranteeing >=2 sidecar slots for PureRollout / ChoiceLookahead whenever eligible candidates
+        // exist and primaryQuota >= 6 so strategy carve never starves choice/rollout lookahead).
+        int nonStrategyBudget = Math.Max(1, remainingForLanes - strategyQuota);
+        int minBlendedPrimary = Math.Min(primaryQuota, Math.Max(1, (nonStrategyBudget * 34 + 99) / 100));
         int maxPrimarySidecar = Math.Max(0, primaryQuota - minBlendedPrimary);
+        int sidecarFloor = primaryQuota >= 6 ? 2 : (primaryQuota >= 3 ? 1 : 0);
+        if ((hasRolloutCandidates || hasChoiceLookaheadCandidates) && primaryQuota >= 6 && maxPrimarySidecar < 2)
+            maxPrimarySidecar = Math.Min(2, primaryQuota - 1);
         int rolloutPureQuota = (hasRolloutCandidates && maxPrimarySidecar > 0 && primaryQuota >= 3)
-            ? Math.Min(Math.Max(1, (primaryQuota * 20) / 100), maxPrimarySidecar)
+            ? Math.Min(Math.Max(sidecarFloor, (primaryQuota * 20) / 100), maxPrimarySidecar)
             : 0;
         int choiceLookaheadQuota = (hasChoiceLookaheadCandidates && maxPrimarySidecar > 0 && primaryQuota >= 3)
-            ? Math.Min(Math.Max(1, (primaryQuota * 18) / 100), maxPrimarySidecar)
+            ? Math.Min(Math.Max(sidecarFloor, (primaryQuota * 18) / 100), maxPrimarySidecar)
             : 0;
         int blendedPrimaryQuota = primaryQuota - rolloutPureQuota - choiceLookaheadQuota;
 
@@ -580,11 +680,11 @@ internal sealed class HotBeamRetention : IDisposable
                 dst[selectedCount..],
                 nichePareto.Slice(6 * PerNicheParetoTopK, PerNicheParetoTopK),
                 out nicheParetoCounts[6],
-                new StrategyComparer(useRolloutScores, allowDeathSaveRescue, ignoreLongTerm, feedMaxHpPerKill));
+                new StrategyComparer(useRolloutScores, allowDeathSaveRescue, preserveTheft, hpCtx));
         }
 
         // Niche 2 — Survival / HP Preservation (~18%: min DeathSave [or deferred after PlayerHp when rescuing],
-        // min EffectiveNetHpLoss, max PlayerHp + EffectiveDefense).
+        // min EffectiveNetHpLossCenti, max PlayerHp + EffectiveDefense).
         if ((survivalQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
             int take = Math.Min(survivalQuota, quota - selectedCount);
@@ -602,10 +702,10 @@ internal sealed class HotBeamRetention : IDisposable
                 dst[selectedCount..],
                 nichePareto.Slice(1 * PerNicheParetoTopK, PerNicheParetoTopK),
                 out nicheParetoCounts[1],
-                new SurvivalComparer(useRolloutScores, allowDeathSaveRescue, ignoreLongTerm, feedMaxHpPerKill, hasAnyStrategy));
+                new SurvivalComparer(useRolloutScores, allowDeathSaveRescue, preserveTheft, hpCtx, hasAnyStrategy));
         }
 
-        // Niche 3 — Tempo / Kill Speed (~15%: min Alive+Reviving, min EnemyHp).
+        // Niche 3 — Tempo / Kill Speed (~15%: min DeathSave, min Alive+Reviving, min EnemyHp).
         if ((tempoQuota > 0 || paretoQuota > 0) && selectedCount < quota)
         {
             int take = Math.Min(tempoQuota, quota - selectedCount);
@@ -623,7 +723,7 @@ internal sealed class HotBeamRetention : IDisposable
                 dst[selectedCount..],
                 nichePareto.Slice(2 * PerNicheParetoTopK, PerNicheParetoTopK),
                 out nicheParetoCounts[2],
-                new TempoComparer(useRolloutScores, ignoreLongTerm, feedMaxHpPerKill));
+                new TempoComparer(useRolloutScores, allowDeathSaveRescue, preserveTheft, hpCtx));
         }
 
         // Niche 4 — Generic Persistent Board Investment (~18%: unclamped domain-agnostic state delta, ZERO card IDs).
@@ -644,7 +744,7 @@ internal sealed class HotBeamRetention : IDisposable
                 dst[selectedCount..],
                 nichePareto.Slice(3 * PerNicheParetoTopK, PerNicheParetoTopK),
                 out nicheParetoCounts[3],
-                new BoardInvestmentComparer(useRolloutScores, ignoreLongTerm, feedMaxHpPerKill));
+                new BoardInvestmentComparer(useRolloutScores, allowDeathSaveRescue, preserveTheft, hpCtx));
         }
 
         // Niche 5a — Optionality / Mid-Turn Combo (max PlayableHandCount + Energy/Stars + DrawNextTurn).
@@ -665,7 +765,7 @@ internal sealed class HotBeamRetention : IDisposable
                 dst[selectedCount..],
                 nichePareto.Slice(4 * PerNicheParetoTopK, PerNicheParetoTopK),
                 out nicheParetoCounts[4],
-                new OptionalityComparer(useRolloutScores, isTurnBoundary, ignoreLongTerm, feedMaxHpPerKill));
+                new OptionalityComparer(useRolloutScores, isTurnBoundary, allowDeathSaveRescue, preserveTheft, hpCtx));
         }
 
         // Niche 5b — True Full-Pool Pareto scanning top-32 from EACH niche (round-robin interleaved so
@@ -724,10 +824,12 @@ internal sealed class HotBeamRetention : IDisposable
                         arena,
                         useRolloutScores,
                         allowDeathSaveRescue,
+                        preserveTheft,
+                        forcedPotionSlotMask,
+                        requireExplicitPotion,
                         hasPureGrowth,
                         hasRelic,
-                        ignoreLongTerm,
-                        feedMaxHpPerKill))
+                        in hpCtx))
                 {
                     continue;
                 }
@@ -838,6 +940,28 @@ internal sealed class HotBeamRetention : IDisposable
         }
     }
 
+    private readonly struct HpEvalContext
+    {
+        public readonly PostCombatRelicHealProfile PostCombatRelicHeal;
+        public readonly BossHpRelief BossHpRelief;
+        public readonly int InitialPlayerHp;
+        public readonly int InitialPlayerMaxHp;
+        public readonly byte FeedMaxHpPerKill;
+        public readonly bool IgnoreLongTermRewards;
+        public readonly bool HasMeatOnTheBoneTarget;
+
+        public HpEvalContext(in HotSearchPolicy policy)
+        {
+            PostCombatRelicHeal = policy.PostCombatRelicHeal;
+            BossHpRelief = policy.StrategicBossHpRelief;
+            InitialPlayerHp = policy.InitialPlayerHp;
+            InitialPlayerMaxHp = policy.InitialPlayerMaxHp;
+            FeedMaxHpPerKill = policy.FeedMaxHpPerKill;
+            IgnoreLongTermRewards = policy.IgnoreLongTermRewards;
+            HasMeatOnTheBoneTarget = policy.HasMeatOnTheBoneTarget;
+        }
+    }
+
     private interface INodeRankComparer
     {
         int Compare(in HotSearchNode a, in HotSearchNode b);
@@ -846,55 +970,68 @@ internal sealed class HotBeamRetention : IDisposable
     private readonly struct StrategyComparer(
         bool useRolloutScores,
         bool allowDeathSaveRescue,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill) : INodeRankComparer
+        bool preserveTheft,
+        HpEvalContext hpCtx) : INodeRankComparer
     {
+        private readonly HpEvalContext _hpCtx = hpCtx;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(in HotSearchNode a, in HotSearchNode b)
-            => CompareStrategy(in a, in b, useRolloutScores, allowDeathSaveRescue, ignoreLongTermRewards, feedMaxHpPerKill);
+            => CompareStrategy(in a, in b, useRolloutScores, allowDeathSaveRescue, preserveTheft, in _hpCtx);
     }
 
     private readonly struct SurvivalComparer(
         bool useRolloutScores,
         bool allowDeathSaveRescue,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill,
+        bool preserveTheft,
+        HpEvalContext hpCtx,
         bool hasAnyStrategyTargets) : INodeRankComparer
     {
+        private readonly HpEvalContext _hpCtx = hpCtx;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(in HotSearchNode a, in HotSearchNode b)
-            => CompareSurvival(in a, in b, useRolloutScores, allowDeathSaveRescue, ignoreLongTermRewards, feedMaxHpPerKill, hasAnyStrategyTargets);
+            => CompareSurvival(in a, in b, useRolloutScores, allowDeathSaveRescue, preserveTheft, in _hpCtx, hasAnyStrategyTargets);
     }
 
     private readonly struct TempoComparer(
         bool useRolloutScores,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill) : INodeRankComparer
+        bool allowDeathSaveRescue,
+        bool preserveTheft,
+        HpEvalContext hpCtx) : INodeRankComparer
     {
+        private readonly HpEvalContext _hpCtx = hpCtx;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(in HotSearchNode a, in HotSearchNode b)
-            => CompareTempo(in a, in b, useRolloutScores, ignoreLongTermRewards, feedMaxHpPerKill);
+            => CompareTempo(in a, in b, useRolloutScores, allowDeathSaveRescue, preserveTheft, in _hpCtx);
     }
 
     private readonly struct BoardInvestmentComparer(
         bool useRolloutScores,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill) : INodeRankComparer
+        bool allowDeathSaveRescue,
+        bool preserveTheft,
+        HpEvalContext hpCtx) : INodeRankComparer
     {
+        private readonly HpEvalContext _hpCtx = hpCtx;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(in HotSearchNode a, in HotSearchNode b)
-            => CompareBoardInvestment(in a, in b, useRolloutScores, ignoreLongTermRewards, feedMaxHpPerKill);
+            => CompareBoardInvestment(in a, in b, useRolloutScores, allowDeathSaveRescue, preserveTheft, in _hpCtx);
     }
 
     private readonly struct OptionalityComparer(
         bool useRolloutScores,
         bool isTurnBoundary,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill) : INodeRankComparer
+        bool allowDeathSaveRescue,
+        bool preserveTheft,
+        HpEvalContext hpCtx) : INodeRankComparer
     {
+        private readonly HpEvalContext _hpCtx = hpCtx;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(in HotSearchNode a, in HotSearchNode b)
-            => CompareOptionality(in a, in b, useRolloutScores, isTurnBoundary, ignoreLongTermRewards, feedMaxHpPerKill);
+            => CompareOptionality(in a, in b, useRolloutScores, isTurnBoundary, allowDeathSaveRescue, preserveTheft, in _hpCtx);
     }
 
     private readonly struct PureRolloutComparer(bool useRolloutScores) : INodeRankComparer
@@ -957,6 +1094,8 @@ internal sealed class HotBeamRetention : IDisposable
         {
             if (marks[i] != 0)
                 continue;
+            if (heapSize == totalK && !IsBetter(i, heap[0], bucketNodes, arena, comparer))
+                continue;
 
             ulong sig = nodeSigs[i];
             int rem = maxClonesPerSig - GetSigCount(sig, sigKeys, sigCounts, sigMask);
@@ -1013,7 +1152,7 @@ internal sealed class HotBeamRetention : IDisposable
                             heapSigWorstIdx[slot] = i;
                     }
                 }
-                else if (IsBetter(i, heap[0], bucketNodes, arena, comparer))
+                else
                 {
                     int evicted = heap[0];
                     ulong evictedSig = nodeSigs[evicted];
@@ -1264,29 +1403,90 @@ internal sealed class HotBeamRetention : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int EffectiveNetHpLoss(
-        in HotSearchNode n,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill)
+    private static int CompareTheft(in HotSearchNode a, in HotSearchNode b)
     {
+        int cmp = a.OutstandingStolen.CompareTo(b.OutstandingStolen);
+        if (cmp != 0) return cmp;
+        bool aForfeit = (a.Flags & HotNodeFlags.ForfeitsGold) != 0;
+        bool bForfeit = (b.Flags & HotNodeFlags.ForfeitsGold) != 0;
+        return aForfeit.CompareTo(bForfeit);
+    }
+
+    /// <summary>
+    /// Intermediate persistent net HP loss in centi-HP (<c>100 = 1.00 Persistent HP</c>, lower is better),
+    /// aligned with <see cref="HotRouteQuality.ComputeNetPersistentHpDeltaCenti"/>:
+    /// applies <see cref="HotSearchPolicy.StrategicBossHpRelief"/> scaling (<c>35%</c>/<c>20%</c>, <c>0</c> MaxHp
+    /// loss on <see cref="BossHpRelief.RunEnding"/>), <see cref="HotSearchNode.DeathSaveHpRestored"/>, and
+    /// <see cref="PostCombatRelicHealProfile"/> strictly without subtracting unconditional post-combat heal
+    /// (Burning Blood / Black Blood) on non-victory intermediate nodes (preventing early damage erasure up to 6 HP),
+    /// while preserving safe Meat on the Bone threshold preview when targeted.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int EffectiveNetHpLossCenti(
+        in HotSearchNode n,
+        in HpEvalContext ctx)
+    {
+        int hpScale = HotRouteQuality.PersistentHpScale(ctx.BossHpRelief);
+        int deathSaveHp = n.DeathSaveHpRestored > 0 ? n.DeathSaveHpRestored : 0;
+
+        int rawHpLoss;
+        if (ctx.InitialPlayerMaxHp > 0)
+        {
+            int endMaxHp = Math.Max(1, ctx.InitialPlayerMaxHp - n.PlayerMaxHpDelta);
+            int projectedHeal = 0;
+            if (n.PlayerHp > 0 && ctx.PostCombatRelicHeal.HasAnyHeal)
+            {
+                if (n.IsVictory)
+                {
+                    projectedHeal = ctx.PostCombatRelicHeal.MonotoneHealFor(n.PlayerHp, endMaxHp);
+                }
+                else if (ctx.HasMeatOnTheBoneTarget
+                    && n.DeathSaveUseCount == 0
+                    && (n.Flags & HotNodeFlags.HasRisk) == 0)
+                {
+                    int safeFloor = Math.Max(4, Math.Min(12, endMaxHp / 4));
+                    if (n.PlayerHp >= safeFloor)
+                    {
+                        int woundedBonus = ctx.PostCombatRelicHeal.HealFor(n.PlayerHp, endMaxHp)
+                            - ctx.PostCombatRelicHeal.MonotoneHealFor(n.PlayerHp, endMaxHp);
+                        if (woundedBonus > 0)
+                            projectedHeal = woundedBonus;
+                    }
+                }
+                int maxCap = Math.Max(0, endMaxHp - n.PlayerHp);
+                if (projectedHeal > maxCap)
+                    projectedHeal = maxCap;
+            }
+
+            rawHpLoss = (ctx.InitialPlayerHp - n.PlayerHp) + deathSaveHp - projectedHeal;
+        }
+        else
+        {
+            // Fallback when default(HotSearchPolicy) is supplied (legacy 9-arg PruneLayer overload).
+            rawHpLoss = n.HpLost - n.HpRecovered + deathSaveHp;
+        }
+
         int maxHpDelta = n.PlayerMaxHpDelta;
-        int maxHpTerm;
+        int maxHpTermCenti;
         if (maxHpDelta >= 0)
         {
-            maxHpTerm = maxHpDelta;
+            maxHpTermCenti = ctx.BossHpRelief != BossHpRelief.RunEnding
+                ? maxHpDelta * HotSearchConstants.MaxHpLossWeightCenti
+                : 0;
         }
-        else if (ignoreLongTermRewards)
+        else if (ctx.IgnoreLongTermRewards || ctx.BossHpRelief == BossHpRelief.RunEnding)
         {
-            maxHpTerm = 0;
+            maxHpTermCenti = 0;
         }
         else
         {
             int maxHpGain = -maxHpDelta;
-            int feedExcluded = n.FeedCount * feedMaxHpPerKill;
+            int feedExcluded = n.FeedCount * ctx.FeedMaxHpPerKill;
             int creditedGain = maxHpGain > feedExcluded ? maxHpGain - feedExcluded : 0;
-            maxHpTerm = -(creditedGain * 2);
+            maxHpTermCenti = -(creditedGain * HotSearchConstants.MaxHpGainWeightCenti);
         }
-        return n.HpLost - n.HpRecovered + maxHpTerm;
+
+        return rawHpLoss * hpScale + maxHpTermCenti;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1295,13 +1495,18 @@ internal sealed class HotBeamRetention : IDisposable
         in HotSearchNode b,
         bool useRolloutScores,
         bool allowDeathSaveRescue,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill)
+        bool preserveTheft,
+        in HpEvalContext hpCtx)
     {
         int cmp;
         if (!allowDeathSaveRescue)
         {
             cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
+            if (cmp != 0) return cmp;
+        }
+        if (preserveTheft)
+        {
+            cmp = CompareTheft(in a, in b);
             if (cmp != 0) return cmp;
         }
         cmp = b.StrategyGoalHpCredit.CompareTo(a.StrategyGoalHpCredit);
@@ -1310,8 +1515,8 @@ internal sealed class HotBeamRetention : IDisposable
         if (cmp != 0) return cmp;
         cmp = a.RelicDistance.CompareTo(b.RelicDistance);
         if (cmp != 0) return cmp;
-        int aNetLoss = EffectiveNetHpLoss(in a, ignoreLongTermRewards, feedMaxHpPerKill);
-        int bNetLoss = EffectiveNetHpLoss(in b, ignoreLongTermRewards, feedMaxHpPerKill);
+        int aNetLoss = EffectiveNetHpLossCenti(in a, in hpCtx);
+        int bNetLoss = EffectiveNetHpLossCenti(in b, in hpCtx);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
         return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
@@ -1323,8 +1528,8 @@ internal sealed class HotBeamRetention : IDisposable
         in HotSearchNode b,
         bool useRolloutScores,
         bool allowDeathSaveRescue,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill,
+        bool preserveTheft,
+        in HpEvalContext hpCtx,
         bool hasAnyStrategyTargets)
     {
         int cmp;
@@ -1333,12 +1538,17 @@ internal sealed class HotBeamRetention : IDisposable
             cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
             if (cmp != 0) return cmp;
         }
-        int aNetLoss = EffectiveNetHpLoss(in a, ignoreLongTermRewards, feedMaxHpPerKill);
-        int bNetLoss = EffectiveNetHpLoss(in b, ignoreLongTermRewards, feedMaxHpPerKill);
+        if (preserveTheft)
+        {
+            cmp = CompareTheft(in a, in b);
+            if (cmp != 0) return cmp;
+        }
+        int aNetLoss = EffectiveNetHpLossCenti(in a, in hpCtx);
+        int bNetLoss = EffectiveNetHpLossCenti(in b, in hpCtx);
         if (hasAnyStrategyTargets)
         {
-            aNetLoss -= a.StrategicHpCredit;
-            bNetLoss -= b.StrategicHpCredit;
+            aNetLoss -= a.StrategicHpCredit * HotSearchConstants.HpFixedScale;
+            bNetLoss -= b.StrategicHpCredit * HotSearchConstants.HpFixedScale;
         }
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
@@ -1363,17 +1573,29 @@ internal sealed class HotBeamRetention : IDisposable
         in HotSearchNode a,
         in HotSearchNode b,
         bool useRolloutScores,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill)
+        bool allowDeathSaveRescue,
+        bool preserveTheft,
+        in HpEvalContext hpCtx)
     {
+        int cmp;
+        if (!allowDeathSaveRescue)
+        {
+            cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
+            if (cmp != 0) return cmp;
+        }
+        if (preserveTheft)
+        {
+            cmp = CompareTheft(in a, in b);
+            if (cmp != 0) return cmp;
+        }
         int aRem = a.AliveEnemyCount + a.RevivingEnemyCount;
         int bRem = b.AliveEnemyCount + b.RevivingEnemyCount;
-        int cmp = aRem.CompareTo(bRem);
+        cmp = aRem.CompareTo(bRem);
         if (cmp != 0) return cmp;
         cmp = a.EnemyHp.CompareTo(b.EnemyHp);
         if (cmp != 0) return cmp;
-        int aNetLoss = EffectiveNetHpLoss(in a, ignoreLongTermRewards, feedMaxHpPerKill);
-        int bNetLoss = EffectiveNetHpLoss(in b, ignoreLongTermRewards, feedMaxHpPerKill);
+        int aNetLoss = EffectiveNetHpLossCenti(in a, in hpCtx);
+        int bNetLoss = EffectiveNetHpLossCenti(in b, in hpCtx);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
         return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
@@ -1384,15 +1606,27 @@ internal sealed class HotBeamRetention : IDisposable
         in HotSearchNode a,
         in HotSearchNode b,
         bool useRolloutScores,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill)
+        bool allowDeathSaveRescue,
+        bool preserveTheft,
+        in HpEvalContext hpCtx)
     {
+        int cmp;
+        if (!allowDeathSaveRescue)
+        {
+            cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
+            if (cmp != 0) return cmp;
+        }
+        if (preserveTheft)
+        {
+            cmp = CompareTheft(in a, in b);
+            if (cmp != 0) return cmp;
+        }
         long aInvest = (long)a.BoardInvestment * 16_000L + (long)a.SetupScore * 18_000L;
         long bInvest = (long)b.BoardInvestment * 16_000L + (long)b.SetupScore * 18_000L;
-        int cmp = bInvest.CompareTo(aInvest);
+        cmp = bInvest.CompareTo(aInvest);
         if (cmp != 0) return cmp;
-        int aNetLoss = EffectiveNetHpLoss(in a, ignoreLongTermRewards, feedMaxHpPerKill);
-        int bNetLoss = EffectiveNetHpLoss(in b, ignoreLongTermRewards, feedMaxHpPerKill);
+        int aNetLoss = EffectiveNetHpLossCenti(in a, in hpCtx);
+        int bNetLoss = EffectiveNetHpLossCenti(in b, in hpCtx);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
         cmp = b.SetupScore.CompareTo(a.SetupScore);
@@ -1406,9 +1640,21 @@ internal sealed class HotBeamRetention : IDisposable
         in HotSearchNode b,
         bool useRolloutScores,
         bool isTurnBoundary,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill)
+        bool allowDeathSaveRescue,
+        bool preserveTheft,
+        in HpEvalContext hpCtx)
     {
+        int cmp;
+        if (!allowDeathSaveRescue)
+        {
+            cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
+            if (cmp != 0) return cmp;
+        }
+        if (preserveTheft)
+        {
+            cmp = CompareTheft(in a, in b);
+            if (cmp != 0) return cmp;
+        }
         if (!isTurnBoundary)
         {
             int aCombo = a.OptionalityScore + a.PlayableHandCount + Math.Min((int)a.Energy, 6);
@@ -1416,14 +1662,14 @@ internal sealed class HotBeamRetention : IDisposable
             int comboCmp = bCombo.CompareTo(aCombo);
             if (comboCmp != 0) return comboCmp;
         }
-        int cmp = b.OptionalityScore.CompareTo(a.OptionalityScore);
+        cmp = b.OptionalityScore.CompareTo(a.OptionalityScore);
         if (cmp != 0) return cmp;
         long aInvest = (long)a.BoardInvestment * 16_000L + (long)a.SetupScore * 18_000L;
         long bInvest = (long)b.BoardInvestment * 16_000L + (long)b.SetupScore * 18_000L;
         cmp = bInvest.CompareTo(aInvest);
         if (cmp != 0) return cmp;
-        int aNetLoss = EffectiveNetHpLoss(in a, ignoreLongTermRewards, feedMaxHpPerKill);
-        int bNetLoss = EffectiveNetHpLoss(in b, ignoreLongTermRewards, feedMaxHpPerKill);
+        int aNetLoss = EffectiveNetHpLossCenti(in a, in hpCtx);
+        int bNetLoss = EffectiveNetHpLossCenti(in b, in hpCtx);
         cmp = aNetLoss.CompareTo(bNetLoss);
         if (cmp != 0) return cmp;
         return PrimaryScore(in b, useRolloutScores).CompareTo(PrimaryScore(in a, useRolloutScores));
@@ -1483,12 +1729,14 @@ internal sealed class HotBeamRetention : IDisposable
         HotNodeArena arena,
         bool useRolloutScores,
         bool allowDeathSaveRescue,
+        bool preserveTheft,
+        ushort forcedPotionSlotMask,
+        bool requireExplicitPotion,
         bool hasPureGrowthTargets,
         bool hasRelicTargets,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill)
+        in HpEvalContext hpCtx)
     {
-        int candNetLoss = EffectiveNetHpLoss(in candidate, ignoreLongTermRewards, feedMaxHpPerKill);
+        int candNetLoss = EffectiveNetHpLossCenti(in candidate, in hpCtx);
         int candRem = candidate.AliveEnemyCount + candidate.RevivingEnemyCount;
         long candPrimary = PrimaryScore(in candidate, useRolloutScores);
 
@@ -1497,7 +1745,8 @@ internal sealed class HotBeamRetention : IDisposable
             ref readonly HotSearchNode other = ref arena.GetRef(selectedNodeIds[s]);
             if (DominatesCandidate(
                 in other, in candidate, candNetLoss, candRem, candPrimary,
-                useRolloutScores, allowDeathSaveRescue, hasPureGrowthTargets, hasRelicTargets, ignoreLongTermRewards, feedMaxHpPerKill))
+                useRolloutScores, allowDeathSaveRescue, preserveTheft, forcedPotionSlotMask, requireExplicitPotion,
+                hasPureGrowthTargets, hasRelicTargets, in hpCtx))
             {
                 return true;
             }
@@ -1515,7 +1764,8 @@ internal sealed class HotBeamRetention : IDisposable
             ref readonly HotSearchNode other = ref arena.GetRef(bucketNodes[otherIdx]);
             if (DominatesCandidate(
                 in other, in candidate, candNetLoss, candRem, candPrimary,
-                useRolloutScores, allowDeathSaveRescue, hasPureGrowthTargets, hasRelicTargets, ignoreLongTermRewards, feedMaxHpPerKill))
+                useRolloutScores, allowDeathSaveRescue, preserveTheft, forcedPotionSlotMask, requireExplicitPotion,
+                hasPureGrowthTargets, hasRelicTargets, in hpCtx))
             {
                 return true;
             }
@@ -1533,10 +1783,12 @@ internal sealed class HotBeamRetention : IDisposable
         long candPrimary,
         bool useRolloutScores,
         bool allowDeathSaveRescue,
+        bool preserveTheft,
+        ushort forcedPotionSlotMask,
+        bool requireExplicitPotion,
         bool hasPureGrowthTargets,
         bool hasRelicTargets,
-        bool ignoreLongTermRewards,
-        byte feedMaxHpPerKill)
+        in HpEvalContext hpCtx)
     {
         if (allowDeathSaveRescue)
         {
@@ -1548,7 +1800,43 @@ internal sealed class HotBeamRetention : IDisposable
             return false;
         }
 
-        int otherNetLoss = EffectiveNetHpLoss(in other, ignoreLongTermRewards, feedMaxHpPerKill);
+        bool strictlyBetterSpecial = false;
+
+        if (preserveTheft)
+        {
+            bool otherForfeit = (other.Flags & HotNodeFlags.ForfeitsGold) != 0;
+            bool candForfeit = (candidate.Flags & HotNodeFlags.ForfeitsGold) != 0;
+            if (other.OutstandingStolen > candidate.OutstandingStolen
+                || (otherForfeit && !candForfeit))
+            {
+                return false;
+            }
+            if (other.OutstandingStolen < candidate.OutstandingStolen
+                || (!otherForfeit && candForfeit))
+            {
+                strictlyBetterSpecial = true;
+            }
+        }
+
+        if (forcedPotionSlotMask != 0)
+        {
+            ushort otherForced = (ushort)(other.PotionMask & forcedPotionSlotMask);
+            ushort candForced = (ushort)(candidate.PotionMask & forcedPotionSlotMask);
+            if ((otherForced & candForced) != candForced)
+                return false;
+            if (otherForced != candForced)
+                strictlyBetterSpecial = true;
+        }
+
+        if (requireExplicitPotion)
+        {
+            if (candidate.ExplicitPotionCount > 0 && other.ExplicitPotionCount == 0)
+                return false;
+            if (other.ExplicitPotionCount > 0 && candidate.ExplicitPotionCount == 0)
+                strictlyBetterSpecial = true;
+        }
+
+        int otherNetLoss = EffectiveNetHpLossCenti(in other, in hpCtx);
         if (otherNetLoss > candNetLoss
             || other.PlayerHp < candidate.PlayerHp
             || other.EffectiveDefense < candidate.EffectiveDefense
@@ -1565,12 +1853,12 @@ internal sealed class HotBeamRetention : IDisposable
             || other.TotalPoisonAndDoom < candidate.TotalPoisonAndDoom
             || other.OptionalityScore < candidate.OptionalityScore
             || other.PlayableHandCount < candidate.PlayableHandCount
+            || other.OptionalPaidPotionCount > candidate.OptionalPaidPotionCount
             || other.PotionStrategicCost > candidate.PotionStrategicCost)
         {
             return false;
         }
 
-        bool strictlyBetterStrategy = false;
         if (hasPureGrowthTargets)
         {
             if (other.GrowthHpCredit < candidate.GrowthHpCredit
@@ -1581,7 +1869,7 @@ internal sealed class HotBeamRetention : IDisposable
             if (other.GrowthHpCredit > candidate.GrowthHpCredit
                 || other.GrowthRewardCount > candidate.GrowthRewardCount)
             {
-                strictlyBetterStrategy = true;
+                strictlyBetterSpecial = true;
             }
         }
 
@@ -1602,7 +1890,7 @@ internal sealed class HotBeamRetention : IDisposable
                 || other.RelicSatisfiedPriority > candidate.RelicSatisfiedPriority
                 || other.RelicDistance < candidate.RelicDistance)
             {
-                strictlyBetterStrategy = true;
+                strictlyBetterSpecial = true;
             }
         }
 
@@ -1610,7 +1898,7 @@ internal sealed class HotBeamRetention : IDisposable
         if (otherPrimary < candPrimary)
             return false;
 
-        return strictlyBetterStrategy
+        return strictlyBetterSpecial
             || other.DeathSaveUseCount < candidate.DeathSaveUseCount
             || otherNetLoss < candNetLoss
             || other.PlayerHp > candidate.PlayerHp
@@ -1623,6 +1911,7 @@ internal sealed class HotBeamRetention : IDisposable
             || other.TotalPoisonAndDoom > candidate.TotalPoisonAndDoom
             || other.OptionalityScore > candidate.OptionalityScore
             || other.PlayableHandCount > candidate.PlayableHandCount
+            || other.OptionalPaidPotionCount < candidate.OptionalPaidPotionCount
             || other.PotionStrategicCost < candidate.PotionStrategicCost
             || otherPrimary > candPrimary;
     }
@@ -1636,7 +1925,8 @@ internal sealed class HotBeamRetention : IDisposable
     private static ulong ComputeTacticalSignature(
         in HotSearchNode n,
         bool hasPureGrowthTargets,
-        bool hasRelicTargets)
+        bool hasRelicTargets,
+        bool preserveTheft)
     {
         unchecked
         {
@@ -1663,6 +1953,12 @@ internal sealed class HotBeamRetention : IDisposable
             h = SplitMix64(h ^ w3);
             h = SplitMix64(h ^ w4);
             h = SplitMix64(h ^ w5);
+            if (preserveTheft)
+            {
+                ulong wTheft = (ulong)(ushort)n.OutstandingStolen
+                    | ((n.Flags & HotNodeFlags.ForfeitsGold) != 0 ? (1UL << 16) : 0UL);
+                h = SplitMix64(h ^ wTheft);
+            }
             if (hasPureGrowthTargets)
             {
                 ulong wGrowth = (ulong)(ushort)n.GrowthHpCredit

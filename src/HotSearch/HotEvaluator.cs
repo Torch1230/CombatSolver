@@ -254,6 +254,8 @@ internal readonly struct HotEvalLookup
     public readonly ushort StarNextTurnDefId;
     public readonly ushort SummonNextTurnDefId;
     public readonly ushort ReattachDefId;
+    public readonly ushort AdaptableDefId;
+    public readonly ushort IllusionDefId;
     public readonly ushort SandpitDefId;
     public readonly ushort FurnaceDefId;
     public readonly ushort SelfFormingClayDefId;
@@ -268,9 +270,21 @@ internal readonly struct HotEvalLookup
     public readonly ushort SeekingEdgeDefId;
     public readonly ushort ParryDefId;
     public readonly ushort NoDrawDefId;
+    public readonly ushort DisintegrationDefId;
+    public readonly ushort ConstrictDefId;
+    public readonly ushort DemiseDefId;
+    public readonly ushort MinionDefId;
     public readonly ushort SovereignBladeDefId;
     public readonly ushort TheHuntCardDefId;
     public readonly ushort TheHuntPowerDefId;
+    public readonly ushort BurnCardDefId;
+    public readonly ushort DecayCardDefId;
+    public readonly ushort BeckonCardDefId;
+    public readonly ushort FeedCardDefId;
+    public readonly ushort HandOfGreedCardDefId;
+    public readonly ushort LessonLearnedCardDefId;
+    public readonly ushort RitualDaggerCardDefId;
+    public readonly byte BeckonHpLoss;
     public readonly byte PaelsEyeStateSlot;
     public readonly byte PaelsLegionStateSlot;
     public readonly byte ArtOfWarStateSlot;
@@ -315,6 +329,8 @@ internal readonly struct HotEvalLookup
         StarNextTurnDefId = rules.GetPowerDefId(HotPowerId.StarNextTurnPower);
         SummonNextTurnDefId = rules.GetPowerDefId(HotPowerId.SummonNextTurnPower);
         ReattachDefId = rules.GetPowerDefId(HotPowerId.ReattachPower);
+        AdaptableDefId = rules.GetPowerDefId(HotPowerId.AdaptablePower);
+        IllusionDefId = rules.GetPowerDefId(HotPowerId.IllusionPower);
         SandpitDefId = rules.GetPowerDefId(HotPowerId.SandpitPower);
         FurnaceDefId = rules.GetPowerDefId(HotPowerId.FurnacePower);
         SelfFormingClayDefId = rules.GetPowerDefId(HotPowerId.SelfFormingClayPower);
@@ -329,9 +345,21 @@ internal readonly struct HotEvalLookup
         SeekingEdgeDefId = rules.GetPowerDefId(HotPowerId.SeekingEdgePower);
         ParryDefId = rules.GetPowerDefId(HotPowerId.ParryPower);
         NoDrawDefId = rules.GetPowerDefId(HotPowerId.NoDrawPower);
+        DisintegrationDefId = rules.GetPowerDefId(HotPowerId.DisintegrationPower);
+        ConstrictDefId = rules.GetPowerDefId(HotPowerId.ConstrictPower);
+        DemiseDefId = rules.GetPowerDefId(HotPowerId.DemisePower);
+        MinionDefId = HotEvaluator.TryGetPowerDefIdByName(rules, "MinionPower");
         SovereignBladeDefId = rules.GetCardDefId(HotCustomCardId.SovereignBlade);
         TheHuntCardDefId = rules.GetCardDefId(HotCustomCardId.TheHunt);
         TheHuntPowerDefId = rules.GetPowerDefId(HotPowerId.TheHuntPower);
+        BurnCardDefId = rules.FindCardDefId("BURN");
+        DecayCardDefId = rules.FindCardDefId("DECAY");
+        BeckonCardDefId = rules.FindCardDefId("BECKON");
+        FeedCardDefId = rules.FindCardDefId("FEED");
+        HandOfGreedCardDefId = rules.FindCardDefId("HAND_OF_GREED");
+        LessonLearnedCardDefId = rules.FindCardDefId("LESSON_LEARNED");
+        RitualDaggerCardDefId = rules.FindCardDefId("RITUAL_DAGGER");
+        BeckonHpLoss = HotEvaluator.ResolveCardHpLoss(rules, BeckonCardDefId, fallback: 6);
         PaelsEyeStateSlot = rules.HasRelic(HotRelicId.PaelsEye) ? rules.GetRelicStateSlot(HotRelicId.PaelsEye) : (byte)0xFF;
         PaelsLegionStateSlot = rules.HasRelic(HotRelicId.PaelsLegion) ? rules.GetRelicStateSlot(HotRelicId.PaelsLegion) : (byte)0xFF;
         ArtOfWarStateSlot = rules.HasRelic(HotRelicId.ArtOfWar) ? rules.GetRelicStateSlot(HotRelicId.ArtOfWar) : (byte)0xFF;
@@ -374,6 +402,31 @@ internal static class HotEvaluator
             map[id.ToString()] = id;
         }
         return map.ToFrozenDictionary(StringComparer.Ordinal);
+    }
+
+    internal static ushort TryGetPowerDefIdByName(HotRules rules, string powerName)
+        => PowerIdByName.TryGetValue(powerName, out HotPowerId powerId)
+            ? rules.GetPowerDefId(powerId)
+            : (ushort)0;
+
+    internal static byte ResolveCardHpLoss(HotRules rules, ushort cardDefId, byte fallback)
+    {
+        if (cardDefId == 0 || cardDefId >= rules.Cards.Length)
+            return fallback;
+        HotCardDef? def = rules.Cards[cardDefId];
+        if (def == null)
+            return fallback;
+        string[] varNames = def.OrderedVarNames;
+        for (int i = 0; i < varNames.Length && i < def.BaseVarValues.Length; i++)
+        {
+            if (string.Equals(varNames[i], "HpLoss", StringComparison.Ordinal))
+            {
+                int val = (int)def.BaseVarValues[i];
+                if (val > 0)
+                    return (byte)Math.Min(val, byte.MaxValue);
+            }
+        }
+        return fallback;
     }
 
     internal static HotCardRoleFlags[] BuildCardRoles(HotRules rules)
@@ -1045,6 +1098,10 @@ internal static class HotEvaluator
         // 3. Ongoing combat: single-pass scan over powers, enemies, orbs, hand, and resources.
         int playerVuln = 0;
         int playerIntangible = 0;
+        int playerBuffer = 0;
+        int playerDisintegration = 0;
+        int playerConstrict = 0;
+        int playerDemise = 0;
         int playerAccelerant = 0;
         int playerEndTurnBlock = 0;
         int playerRetainHand = 0;
@@ -1071,11 +1128,13 @@ internal static class HotEvaluator
         Span<int> enemyTempStrRecovery = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyVigor = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyPaperCuts = stackalloc int[HotLimits.MaxEnemies];
-        Span<byte> enemyWeak = stackalloc byte[HotLimits.MaxEnemies];
+        Span<int> enemyWeak = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyPoison = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyDoom = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyReattachHp = stackalloc int[HotLimits.MaxEnemies];
         Span<byte> enemyHasDamageCap = stackalloc byte[HotLimits.MaxEnemies];
+        Span<byte> enemyCanRevive = stackalloc byte[HotLimits.MaxEnemies];
+        Span<byte> enemyIsMinion = stackalloc byte[HotLimits.MaxEnemies];
 
         int powerCount = s.PowerCount;
         for (int i = 0; i < powerCount; i++)
@@ -1092,6 +1151,10 @@ internal static class HotEvaluator
                 bool isOneTurnCarryover = false;
                 if (defId == lookup.VulnerableDefId) playerVuln += p.Amount;
                 else if (defId == lookup.IntangibleDefId) playerIntangible += p.Amount;
+                else if (defId == lookup.BufferDefId && p.Amount > 0) playerBuffer += p.Amount;
+                else if (defId == lookup.DisintegrationDefId && p.Amount > 0) playerDisintegration += p.Amount;
+                else if (defId == lookup.ConstrictDefId && p.Amount > 0) playerConstrict += p.Amount;
+                else if (defId == lookup.DemiseDefId && p.Amount > 0) playerDemise += p.Amount;
                 else if (defId == lookup.AccelerantDefId) playerAccelerant += p.Amount;
                 else if ((defId == lookup.RetainHandDefId || defId == lookup.WellLaidPlansDefId) && p.Amount > 0) playerRetainHand += p.Amount;
                 else if (defId == lookup.CorruptionDefId && p.Amount > 0) hasPlayerCorruption = true;
@@ -1151,6 +1214,9 @@ internal static class HotEvaluator
                 if (!isAlive)
                     continue;
 
+                if (defId == lookup.MinionDefId && p.Amount > 0)
+                    enemyIsMinion[eSlot] = 1;
+
                 bool isTempStrDown = defId < rules.Powers.Length
                     && IsTemporaryEnemyStrengthDownPower(rules.Powers[defId].PowerId);
 
@@ -1180,7 +1246,7 @@ internal static class HotEvaluator
                 }
                 else if (defId == lookup.WeakDefId && p.Amount > 0)
                 {
-                    enemyWeak[eSlot] = 1;
+                    enemyWeak[eSlot] += p.Amount;
                     enemyDebuffValue += Math.Min(p.Amount, 5) * 4;
                 }
                 else if (defId == lookup.VulnerableDefId && p.Amount > 0)
@@ -1191,7 +1257,6 @@ internal static class HotEvaluator
                 {
                     enemyPoison[eSlot] += p.Amount;
                     totalPoisonAndDoom += Math.Min(p.Amount, 100_000);
-                    enemyDebuffValue += SoftCapPositive(p.Amount, knee: 40, secondKnee: 160) * 3;
                 }
                 else if (defId == lookup.DoomDefId && p.Amount > 0)
                 {
@@ -1215,6 +1280,12 @@ internal static class HotEvaluator
                         || defId == lookup.HardenedShellDefId))
                 {
                     enemyHasDamageCap[eSlot] = 1;
+                }
+                else if (p.Amount > 0
+                    && (defId == lookup.AdaptableDefId
+                        || defId == lookup.IllusionDefId))
+                {
+                    enemyCanRevive[eSlot] = 1;
                 }
             }
         }
@@ -1260,17 +1331,63 @@ internal static class HotEvaluator
         }
         int orbCapacity = Math.Min((int)s.OrbCapacity, HotLimits.MaxOrbs);
 
-        // Precompute end-of-turn defense buffer so unblocked-hit triggers (PaperCuts) track per-hit block consumption accurately.
+        // Precompute end-of-turn defense pools so multi-hit Osty/Wuppy, Block, Buffer, and PaperCuts track accurately.
         int endTurnBlock = summary.PlayerBlock + playerEndTurnBlock + frostPassiveBlock;
-        int petDefenseBuffer = 0;
-        if ((s.CombatFlags & HotCombatFlags.HasWuppy) != 0 && (s.Wuppy.Flags & HotCreatureFlags.Alive) != 0)
-            petDefenseBuffer += Math.Max(0, s.Wuppy.CurrentHp);
-        if ((s.CombatFlags & HotCombatFlags.HasOsty) != 0 && (s.Osty.Flags & HotCreatureFlags.Alive) != 0)
-            petDefenseBuffer += Math.Max(0, s.Osty.CurrentHp);
-        int remainingDefenseForPaperCuts = endTurnBlock + petDefenseBuffer;
+        int wuppyHp = ((s.CombatFlags & HotCombatFlags.HasWuppy) != 0 && (s.Wuppy.Flags & HotCreatureFlags.Alive) != 0)
+            ? Math.Max(0, s.Wuppy.CurrentHp)
+            : 0;
+        int ostyHp = ((s.CombatFlags & HotCombatFlags.HasOsty) != 0 && (s.Osty.Flags & HotCreatureFlags.Alive) != 0)
+            ? Math.Max(0, s.Osty.CurrentHp)
+            : 0;
+        int petDefenseBuffer = wuppyHp + ostyHp;
+        int remainingBlock = endTurnBlock;
+        int remainingOsty = ostyHp;
+        int remainingWuppy = wuppyHp;
+        int remainingBuffer = playerBuffer;
+        int ostyAbsorbed = 0;
 
-        // Scan active roster: incoming attack threat, permanent vs temp -Strength, PaperCuts, conditional phase enrage, reviving HP, Doom, and focus/AOE shape.
+        // Player turn-end self-damage (hand Burn/Decay/Beckon and Disintegration/Constrict/Demise powers)
+        // resolves BEFORE enemy attacks and bypasses Osty/Wuppy, consuming player Block/Buffer/Intangible.
         int incomingDamage = 0;
+        int enemyAttackDamage = 0;
+        int unblockedIncoming = 0;
+        if (lookup.BurnCardDefId != 0 || lookup.DecayCardDefId != 0 || lookup.BeckonCardDefId != 0)
+        {
+            int hc = s.HandCount;
+            for (int h = 0; h < hc; h++)
+            {
+                ref readonly HotCard c = ref s.Cards[h];
+                ushort cDefId = c.CardDefId;
+                if (cDefId == 0 || cDefId >= rules.Cards.Length)
+                    continue;
+                if (cDefId == lookup.BurnCardDefId)
+                {
+                    int dmg = rules.Cards[cDefId].GetDamage(c.UpgradeLevel, c.Var0Delta);
+                    if (dmg <= 0)
+                        dmg = c.UpgradeLevel > 0 ? 4 : 2;
+                    ApplySelfEndTurnHit(dmg, blockable: true, playerIntangible > 0, ref remainingBlock, ref remainingBuffer, ref incomingDamage, ref unblockedIncoming);
+                }
+                else if (cDefId == lookup.DecayCardDefId)
+                {
+                    int dmg = rules.Cards[cDefId].GetDamage(c.UpgradeLevel, c.Var0Delta);
+                    if (dmg <= 0)
+                        dmg = 2;
+                    ApplySelfEndTurnHit(dmg, blockable: true, playerIntangible > 0, ref remainingBlock, ref remainingBuffer, ref incomingDamage, ref unblockedIncoming);
+                }
+                else if (cDefId == lookup.BeckonCardDefId)
+                {
+                    ApplySelfEndTurnHit(lookup.BeckonHpLoss, blockable: false, playerIntangible > 0, ref remainingBlock, ref remainingBuffer, ref incomingDamage, ref unblockedIncoming);
+                }
+            }
+        }
+        if (playerDisintegration > 0)
+            ApplySelfEndTurnHit(playerDisintegration, blockable: true, playerIntangible > 0, ref remainingBlock, ref remainingBuffer, ref incomingDamage, ref unblockedIncoming);
+        if (playerConstrict > 0)
+            ApplySelfEndTurnHit(playerConstrict, blockable: true, playerIntangible > 0, ref remainingBlock, ref remainingBuffer, ref incomingDamage, ref unblockedIncoming);
+        if (playerDemise > 0)
+            ApplySelfEndTurnHit(playerDemise, blockable: false, playerIntangible > 0, ref remainingBlock, ref remainingBuffer, ref incomingDamage, ref unblockedIncoming);
+
+        // Scan active roster: incoming attack threat, permanent vs temp -Strength, PaperCuts, conditional phase enrage, reviving HP, Doom, Poison, and focus/AOE shape.
         int paperCutsMaxHpThreat = 0;
         int enragePhaseThreatDmg = 0;
         int lowestEnemyHp = int.MaxValue;
@@ -1278,7 +1395,13 @@ internal static class HotEvaluator
         int revivingHpPenalty = 0;
         int reattachAliveCount = 0;
         int doomLethalCount = 0;
+        int poisonLethalCount = 0;
+        int poisonLethalHpOffset = 0;
         int effectiveDoomValue = 0;
+        int aliveNonMinionEnemies = 0;
+        long enemyPoisonScore = 0;
+        long poisonWeight = Math.Min(4_800L, (enemyHpWeight * 48L) / 100L);
+        int clampedAccelerant = Math.Clamp(playerAccelerant, 0, 16);
         int rosterCount = s.RosterCount;
 
         for (int r = 0; r < rosterCount; r++)
@@ -1299,13 +1422,40 @@ internal static class HotEvaluator
 
             int curHp = Math.Max(0, enemy.Vital.CurrentHp);
             bool hasReattach = enemyReattachHp[eSlot] > 0;
+            bool isRevivingEnemy = hasReattach || enemyCanRevive[eSlot] != 0;
             if (hasReattach)
                 reattachAliveCount++;
+            if (curHp > highestAliveEnemyHp)
+                highestAliveEnemyHp = curHp;
 
+            // Poison ticks at start of enemy turn BEFORE enemy attacks (1 + Accelerant ticks, HotCombatEngine.Turn.cs:402-446).
+            int poison = enemyPoison[eSlot];
+            long poisonTickDamage = 0;
+            if (poison > 0)
+            {
+                int ticks = Math.Min(poison, 1 + clampedAccelerant);
+                poisonTickDamage = ((long)ticks * (2L * poison - ticks + 1L)) / 2L;
+            }
+            bool poisonLethalBeforeAttack = curHp > 0
+                && poisonTickDamage >= curHp
+                && !isRevivingEnemy
+                && enemyHasDamageCap[eSlot] == 0;
+
+            if (poisonLethalBeforeAttack)
+            {
+                poisonLethalCount++;
+                poisonLethalHpOffset += curHp;
+                if (0 < lowestEnemyHp)
+                    lowestEnemyHp = 0;
+                continue;
+            }
+
+            bool doomLethal = false;
             if (enemyDoom[eSlot] > 0)
             {
-                if (enemyDoom[eSlot] >= curHp && !hasReattach)
+                if (enemyDoom[eSlot] >= curHp && !isRevivingEnemy)
                 {
+                    doomLethal = true;
                     doomLethalCount++;
                     effectiveDoomValue += curHp;
                 }
@@ -1315,28 +1465,22 @@ internal static class HotEvaluator
                 }
             }
 
-            // Poison ticks at start of enemy turn BEFORE enemy attacks (1 + Accelerant ticks, HotCombatEngine.Turn.cs:402-446).
-            int poison = enemyPoison[eSlot];
-            long poisonTickDamage = 0;
-            if (poison > 0)
+            if (poison > 0 && curHp > 0 && !doomLethal)
             {
-                int ticks = Math.Min(poison, 1 + Math.Max(0, playerAccelerant));
-                poisonTickDamage = ((long)ticks * (2L * poison - ticks + 1L)) / 2L;
+                int expectedTicks = Math.Min(poison, 2 + clampedAccelerant);
+                long expectedPoisonDmg = ((long)expectedTicks * (2L * poison - expectedTicks + 1L)) / 2L;
+                long effectivePoisonHp = Math.Min((long)curHp, expectedPoisonDmg);
+                long enemyPoisonWeight = isRevivingEnemy ? (poisonWeight / 2L) : poisonWeight;
+                enemyPoisonScore += effectivePoisonHp * enemyPoisonWeight;
             }
-            bool poisonLethalBeforeAttack = curHp > 0
-                && poisonTickDamage >= curHp
-                && !hasReattach
-                && enemyHasDamageCap[eSlot] == 0;
 
             int effectivePoisonReduction = (int)Math.Min((long)curHp, poisonTickDamage);
             int effectiveEnemyHp = Math.Max(0, curHp - effectivePoisonReduction - enemyDoom[eSlot]);
             if (effectiveEnemyHp < lowestEnemyHp)
                 lowestEnemyHp = effectiveEnemyHp;
-            if (curHp > highestAliveEnemyHp)
-                highestAliveEnemyHp = curHp;
 
-            if (poisonLethalBeforeAttack)
-                continue;
+            if (!doomLethal && enemyIsMinion[eSlot] == 0)
+                aliveNonMinionEnemies++;
 
             // Distinguish permanent Strength / -Strength (e.g. Malaise) from temporary 1-turn -Strength (PiercingWail/EnfeeblingTouch).
             int permanentEnemyStr = enemyStr[eSlot] + Math.Max(0, enemyTempStrRecovery[eSlot]);
@@ -1360,13 +1504,20 @@ internal static class HotEvaluator
                 enemyStr[eSlot],
                 enemyVigor[eSlot],
                 enemyPaperCuts[eSlot],
-                enemyWeak[eSlot] != 0,
+                enemyWeak[eSlot] > 0,
                 playerVuln > 0,
                 playerIntangible > 0,
                 in lookup,
-                ref remainingDefenseForPaperCuts,
+                ref remainingBlock,
+                ref remainingOsty,
+                ref remainingWuppy,
+                ref remainingBuffer,
+                ref ostyAbsorbed,
+                out int enemyUnblocked,
                 out int enemyPaperCutsLoss);
+            enemyAttackDamage += rawIncoming;
             incomingDamage += rawIncoming;
+            unblockedIncoming += enemyUnblocked;
             paperCutsMaxHpThreat += enemyPaperCutsLoss;
 
             if (rawIncoming == 0)
@@ -1375,15 +1526,15 @@ internal static class HotEvaluator
                     in enemy,
                     rules,
                     enemyStr[eSlot],
-                    enemyWeak[eSlot] != 0,
-                    playerVuln > 0,
-                    playerIntangible > 0,
+                    enemyWeak[eSlot] > 1,
+                    playerVuln > 1,
+                    playerIntangible > 1,
                     summary.AliveEnemyCount,
                     in lookup);
             }
         }
 
-        int unblockedIncoming = Math.Max(0, incomingDamage - (endTurnBlock + petDefenseBuffer));
+        bool lethalIncoming = unblockedIncoming >= summary.PlayerHp;
 
         // In-combat survival runway computes un-discounted NetPersistentHpDeltaCenti; Offense/DesperateRescue
         // apply controlled BossHpRelief non-lethal scaling while keeping lethal guards 100% intact.
@@ -1405,24 +1556,20 @@ internal static class HotEvaluator
             - (long)netPotionCostCenti * hpWeightPerCenti
             - (long)summary.DeathSaveUseCount * deathSavePenalty;
 
-        // Threat evaluation: full lethal guard and full threat weight on lethal incoming hits;
+        // Threat evaluation: full threat weight on lethal incoming hits (lethal guard applied after hand scan once playableCards is known);
         // mode-scaled non-lethal threat weight otherwise.
         if (unblockedIncoming > 0)
         {
-            bool lethalIncoming = unblockedIncoming >= summary.PlayerHp;
-            if (lethalIncoming)
-                runningScore -= summary.Energy == 0 ? 4_000_000L : 800_000L;
-
             runningScore -= (long)unblockedIncoming * (lethalIncoming ? threatWeight : nonLethalThreatWeight);
         }
-        else if (preservesExcessBlock && endTurnBlock > incomingDamage)
+        else if (preservesExcessBlock && remainingBlock > 0)
         {
-            int carriedBlock = Math.Min(endTurnBlock - incomingDamage, 60);
+            int carriedBlock = Math.Min(remainingBlock, 60);
             runningScore += (long)carriedBlock * 20_000L;
         }
 
-        // Armed PaelsLegion preserved-readiness credit on 0-damage turns (cooldown <= 0 and unspent).
-        if (incomingDamage == 0 && lookup.PaelsLegionStateSlot < s.RelicStateCount)
+        // Armed PaelsLegion preserved-readiness credit on 0-attack-damage turns (cooldown <= 0 and unspent).
+        if (enemyAttackDamage == 0 && lookup.PaelsLegionStateSlot < s.RelicStateCount)
         {
             ref readonly HotRelicState legionState = ref s.RelicStates[lookup.PaelsLegionStateSlot];
             if (legionState.Current <= 0 && (legionState.PreviousOrAux & 2) == 0)
@@ -1439,7 +1586,7 @@ internal static class HotEvaluator
 
         if (enragePhaseThreatDmg > 0)
         {
-            int excessCarriedBlock = preservesExcessBlock ? Math.Max(0, endTurnBlock - incomingDamage) : 0;
+            int excessCarriedBlock = preservesExcessBlock ? remainingBlock : 0;
             int intangibleShield = playerIntangible > 1 ? enragePhaseThreatDmg : 0;
             int unbufferedEnrage = Math.Max(0, enragePhaseThreatDmg - excessCarriedBlock - nextTurnBlock - intangibleShield);
             if (unbufferedEnrage > 0)
@@ -1476,12 +1623,18 @@ internal static class HotEvaluator
         if (nextTurnSummon > 0)
             runningScore += (long)Math.Min(nextTurnSummon, 20) * 6_000L;
 
-        // Offense, permanent kills, reviving-enemy correction, Doom lethal, and focus/AOE shaping
+        // Offense, permanent kills, reviving-enemy correction, Doom/Poison lethal, enemy Poison credit, and focus/AOE shaping
         int remainingNonDead = summary.AliveEnemyCount + summary.RevivingEnemyCount;
-        int permanentKills = Math.Max(0, policy.InitialEnemyCount - remainingNonDead) + doomLethalCount;
+        int permanentKills = Math.Max(0, policy.InitialEnemyCount - remainingNonDead) + doomLethalCount + poisonLethalCount;
         runningScore += (long)permanentKills * EnemyKillBonus;
         runningScore -= (long)summary.EnemyHpSum * enemyHpWeight;
         runningScore -= (long)summary.EnemyBlockSum * EnemyBlockWeight;
+
+        if (poisonLethalHpOffset > 0)
+            runningScore += (long)poisonLethalHpOffset * ((enemyHpWeight * 95L) / 100L);
+
+        if (enemyPoisonScore > 0)
+            runningScore += enemyPoisonScore;
 
         if (revivingHpPenalty > 0)
             runningScore -= (long)revivingHpPenalty * ((enemyHpWeight * 92L) / 100L);
@@ -1530,16 +1683,15 @@ internal static class HotEvaluator
             runningScore += (long)SoftCapPositive(orbScore, knee: 120, secondKnee: 360) * 2_500L;
         }
 
-        // Osty (Necrobinder): smooth scaling without hard 80/12 ceiling
-        int ostyHp = 0;
-        if ((s.CombatFlags & HotCombatFlags.HasOsty) != 0 && (s.Osty.Flags & HotCreatureFlags.Alive) != 0)
-        {
-            ostyHp = Math.Max(0, s.Osty.CurrentHp);
-            runningScore += (long)SoftCapPositive(ostyHp, knee: 80, secondKnee: 320) * 4_500L;
+        // Osty (Necrobinder): keep full Osty HP for setup/board-investment niches so soaking hits
+        // does not evict Necrobinder lines, while scoring the direct HP bonus on surviving post-hit HP.
+        int survivingOstyHp = Math.Max(0, ostyHp - ostyAbsorbed);
+        if (survivingOstyHp > 0)
+            runningScore += (long)SoftCapPositive(survivingOstyHp, knee: 80, secondKnee: 320) * 4_500L;
+        if (ostyHp > 0)
             playerSetup += SoftCapPositive(ostyHp / 4, knee: 12, secondKnee: 48);
-        }
 
-        // Fool arrows & melodies
+        // Fool arrows & melodies (melodies scored regardless of arrow count)
         if (s.ArrowCount > 0)
         {
             int readyArrows = 0;
@@ -1550,8 +1702,9 @@ internal static class HotEvaluator
                     readyArrows++;
             }
             runningScore += (long)readyArrows * 6_000L;
-            runningScore += (long)s.Fool.MelodyCardsFinished * 5_000L;
         }
+        if (s.Fool.MelodyCardsFinished > 0)
+            runningScore += (long)s.Fool.MelodyCardsFinished * 5_000L;
 
         // Hand potential, retained cards, block-scalers, cost-zeroed plays, SovereignBlade, and deck clutter
         int handCount = s.HandCount;
@@ -1568,6 +1721,9 @@ internal static class HotEvaluator
         long bladeSynergyMult = hasBladeSynergy ? 130L : 100L;
         long retainedHoldBonus = 0;
         bool hasNightmareInHand = false;
+        bool trackOngoingGrowth = !policy.IgnoreLongTermRewards && policy.HasPureGrowthTargets && !summary.AllGrowthTargetsSatisfied;
+        int activeGrowthHandBudget = -1;
+        int activeGrowthDeckBudget = -1;
         bool handRetainedAtTurnEnd = playerRetainHand > 0 || lookup.HasRunicPyramid;
         byte hexedAfflId = lookup.HexDefId != 0 ? rules.GetAfflictionDefId(HotAfflictionId.Hexed) : (byte)0;
         bool hasPlayerHex = hexedAfflId != 0 && s.ActiveHookMask != 0 && HasPlayerPower(in s, lookup.HexDefId);
@@ -1580,6 +1736,18 @@ internal static class HotEvaluator
             {
                 handClutter++;
                 continue;
+            }
+
+            if (trackOngoingGrowth)
+            {
+                int growthBudget = GetTrackedFatalGrowthBudget(c.CardDefId, in lookup, in policy);
+                if (growthBudget >= 0)
+                {
+                    if (growthBudget > activeGrowthHandBudget)
+                        activeGrowthHandBudget = growthBudget;
+                    if (growthBudget > activeGrowthDeckBudget)
+                        activeGrowthDeckBudget = growthBudget;
+                }
             }
 
             bool isEthereal = (c.LocalKeywordsMask & HotCardKeywordMask.Ethereal) != 0
@@ -1675,6 +1843,10 @@ internal static class HotEvaluator
             }
         }
 
+        // Lethal guard gated on playableCards == 0 (respecting Stars > 0, 0-cost cards, and Energy > 0 with no playable cards).
+        if (lethalIncoming)
+            runningScore -= playableCards == 0 ? 4_000_000L : 800_000L;
+
         int extraRetainedCap = hasCopyOrPowerInHand ? 4 : 2;
         retainedCards += Math.Min(extraRetainedCandidates, extraRetainedCap);
 
@@ -1708,6 +1880,13 @@ internal static class HotEvaluator
             {
                 deckClutter++;
                 continue;
+            }
+
+            if (trackOngoingGrowth)
+            {
+                int growthBudget = GetTrackedFatalGrowthBudget(pileCard.CardDefId, in lookup, in policy);
+                if (growthBudget > activeGrowthDeckBudget)
+                    activeGrowthDeckBudget = growthBudget;
             }
 
             if (pileDef.CardId == HotCustomCardId.SovereignBlade)
@@ -1811,6 +1990,42 @@ internal static class HotEvaluator
                 int missedTheHuntRewards = Math.Max(0, exhaustedTheHunts - rewardedTheHunts);
                 if (missedTheHuntRewards > 0)
                     runningScore -= (long)missedTheHuntRewards * 30_000L;
+
+                // Gentle, budget-bounded ongoing Growth shaping: reward preserving an active fatal growth card
+                // while targets are unsatisfied, capped below 1 HP when safe and smoothly tapered so it never
+                // induces taking avoidable HP damage worth more than the growth budget or max HP gain.
+                if (!summary.AllGrowthTargetsSatisfied && !lethalIncoming && aliveNonMinionEnemies > 0 && activeGrowthDeckBudget >= 0)
+                {
+                    if (activeGrowthDeckBudget > 0)
+                    {
+                        long deckBonus = Math.Min(24_000L, (long)activeGrowthDeckBudget * 6_000L);
+                        long handBonus = activeGrowthHandBudget > 0
+                            ? Math.Min(14_000L, (long)activeGrowthHandBudget * 3_500L)
+                            : 0L;
+                        if (unblockedIncoming == 0)
+                        {
+                            runningScore += deckBonus + handBonus;
+                        }
+                        else
+                        {
+                            int maxSafeDmg = Math.Min(2, activeGrowthDeckBudget);
+                            if (unblockedIncoming <= maxSafeDmg
+                                && 2L * (summary.PlayerHp - unblockedIncoming) >= (long)summary.PlayerMaxHp)
+                            {
+                                long totalBonus = deckBonus + handBonus;
+                                runningScore += unblockedIncoming == 1 ? (totalBonus / 2L) : (totalBonus / 4L);
+                            }
+                        }
+                    }
+                    else if (unblockedIncoming == 0 && lowestEnemyHp <= 20)
+                    {
+                        // Zero-budget (free-only) fatal growth: never incentivize taking any damage or stalling
+                        // high-HP fights; apply only a small tie-break (< 1 enemy HP) when a lethal finish is close.
+                        runningScore += 4_000L;
+                        if (activeGrowthHandBudget >= 0)
+                            runningScore += 4_000L;
+                    }
+                }
             }
             else if (summary.GrowthRewardCount > 0)
             {
@@ -1913,6 +2128,105 @@ internal static class HotEvaluator
             or HotPowerId.MonarchsGazeStrengthDownPower;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetTrackedFatalGrowthBudget(
+        ushort cardDefId,
+        in HotEvalLookup lookup,
+        in HotSearchPolicy policy)
+    {
+        if (cardDefId == 0)
+            return -1;
+        GrowthValues b = policy.EffectiveGrowthBudgets;
+        if (cardDefId == lookup.FeedCardDefId)
+            return Math.Max(0, b.Feed);
+        if (cardDefId == lookup.HandOfGreedCardDefId)
+            return Math.Max(0, b.HandOfGreed);
+        if (cardDefId == lookup.TheHuntCardDefId)
+            return Math.Max(0, b.TheHunt);
+        if (cardDefId == lookup.LessonLearnedCardDefId || cardDefId == lookup.RitualDaggerCardDefId)
+            return 0;
+        return -1;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplySelfEndTurnHit(
+        int rawDamage,
+        bool blockable,
+        bool playerIntangible,
+        ref int remainingBlock,
+        ref int remainingBuffer,
+        ref int incomingDamage,
+        ref int unblockedIncoming)
+    {
+        if (rawDamage <= 0)
+            return;
+        int dmg = (playerIntangible && rawDamage > 1) ? 1 : rawDamage;
+        if (blockable)
+        {
+            incomingDamage += dmg;
+            if (remainingBlock > 0)
+            {
+                int blocked = Math.Min(remainingBlock, dmg);
+                remainingBlock -= blocked;
+                dmg -= blocked;
+            }
+        }
+        if (dmg > 0)
+        {
+            if (remainingBuffer > 0)
+                remainingBuffer--;
+            else
+                unblockedIncoming += dmg;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplySingleEnemyHit(
+        int hit,
+        int enemyPaperCuts,
+        ref int remainingBlock,
+        ref int remainingOsty,
+        ref int remainingWuppy,
+        ref int remainingBuffer,
+        ref int ostyAbsorbed,
+        ref int unblockedDamage,
+        ref int paperCutsMaxHpLoss)
+    {
+        int rem = hit;
+        if (remainingOsty > 0 && rem > 0)
+        {
+            int absorbed = Math.Min(remainingOsty, rem);
+            remainingOsty -= absorbed;
+            ostyAbsorbed += absorbed;
+            rem -= absorbed;
+        }
+        if (remainingWuppy > 0 && rem > 0)
+        {
+            int absorbed = Math.Min(remainingWuppy, rem);
+            remainingWuppy -= absorbed;
+            rem -= absorbed;
+        }
+        if (remainingBlock > 0 && rem > 0)
+        {
+            int blocked = Math.Min(remainingBlock, rem);
+            remainingBlock -= blocked;
+            rem -= blocked;
+        }
+        if (rem > 0)
+        {
+            if (remainingBuffer > 0)
+            {
+                remainingBuffer--;
+            }
+            else
+            {
+                unblockedDamage += rem;
+                if (enemyPaperCuts > 0)
+                    paperCutsMaxHpLoss += enemyPaperCuts;
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int EstimateEnemyIncomingDamage(
         in HotEnemy enemy,
         HotRules rules,
@@ -1923,9 +2237,15 @@ internal static class HotEvaluator
         bool playerVulnerable,
         bool playerIntangible,
         in HotEvalLookup lookup,
-        ref int remainingDefense,
+        ref int remainingBlock,
+        ref int remainingOsty,
+        ref int remainingWuppy,
+        ref int remainingBuffer,
+        ref int ostyAbsorbed,
+        out int unblockedDamage,
         out int paperCutsMaxHpLoss)
     {
+        unblockedDamage = 0;
         paperCutsMaxHpLoss = 0;
         if (enemy.MonsterDefId == 0 || enemy.CurrentMoveNode < 0)
             return 0;
@@ -1946,7 +2266,12 @@ internal static class HotEvaluator
             playerVulnerable,
             playerIntangible,
             in lookup,
-            ref remainingDefense,
+            ref remainingBlock,
+            ref remainingOsty,
+            ref remainingWuppy,
+            ref remainingBuffer,
+            ref ostyAbsorbed,
+            out unblockedDamage,
             out paperCutsMaxHpLoss);
     }
 
@@ -1962,9 +2287,15 @@ internal static class HotEvaluator
         bool playerVulnerable,
         bool playerIntangible,
         in HotEvalLookup lookup,
-        ref int remainingDefense,
+        ref int remainingBlock,
+        ref int remainingOsty,
+        ref int remainingWuppy,
+        ref int remainingBuffer,
+        ref int ostyAbsorbed,
+        out int unblockedDamage,
         out int paperCutsMaxHpLoss)
     {
+        unblockedDamage = 0;
         paperCutsMaxHpLoss = 0;
         int total = 0;
         int vigorRemaining = Math.Max(0, enemyVigor);
@@ -1983,16 +2314,16 @@ internal static class HotEvaluator
                 {
                     for (int rep = 0; rep < atk.Repeats; rep++)
                     {
-                        if (remainingDefense >= hit)
-                        {
-                            remainingDefense -= hit;
-                        }
-                        else
-                        {
-                            remainingDefense = 0;
-                            if (enemyPaperCuts > 0)
-                                paperCutsMaxHpLoss += enemyPaperCuts;
-                        }
+                        ApplySingleEnemyHit(
+                            hit,
+                            enemyPaperCuts,
+                            ref remainingBlock,
+                            ref remainingOsty,
+                            ref remainingWuppy,
+                            ref remainingBuffer,
+                            ref ostyAbsorbed,
+                            ref unblockedDamage,
+                            ref paperCutsMaxHpLoss);
                     }
                 }
             }
@@ -2011,16 +2342,16 @@ internal static class HotEvaluator
             {
                 for (int rep = 0; rep < hits; rep++)
                 {
-                    if (remainingDefense >= hit)
-                    {
-                        remainingDefense -= hit;
-                    }
-                    else
-                    {
-                        remainingDefense = 0;
-                        if (enemyPaperCuts > 0)
-                            paperCutsMaxHpLoss += enemyPaperCuts;
-                    }
+                    ApplySingleEnemyHit(
+                        hit,
+                        enemyPaperCuts,
+                        ref remainingBlock,
+                        ref remainingOsty,
+                        ref remainingWuppy,
+                        ref remainingBuffer,
+                        ref ostyAbsorbed,
+                        ref unblockedDamage,
+                        ref paperCutsMaxHpLoss);
                 }
             }
         }
@@ -2083,7 +2414,11 @@ internal static class HotEvaluator
             HotMonsterNode node = machine.Nodes[cursor];
             if (node.NodeKind == HotMonsterNodeKind.Move)
             {
-                int dummyDef = 0;
+                int dummyBlock = 0;
+                int dummyOsty = 0;
+                int dummyWuppy = 0;
+                int dummyBuffer = 0;
+                int dummyOstyAbsorbed = 0;
                 return EstimateNodeAttackDamage(
                     in enemy,
                     rules,
@@ -2095,7 +2430,12 @@ internal static class HotEvaluator
                     playerVulnerable,
                     playerIntangible,
                     in lookup,
-                    ref dummyDef,
+                    ref dummyBlock,
+                    ref dummyOsty,
+                    ref dummyWuppy,
+                    ref dummyBuffer,
+                    ref dummyOstyAbsorbed,
+                    out _,
                     out _);
             }
 
@@ -2277,12 +2617,12 @@ internal static class HotEvaluator
             case HotPowerId.ToricToughnessPower:
                 return Math.Min(Math.Max(0, amount) / 4, 14);
             case HotPowerId.EnergyNextTurnPower:
-                return Math.Min(Math.Max(0, amount) * 3, 12);
+                return Math.Min(Math.Max(0, amount), 4) * 3;
             case HotPowerId.DrawCardsNextTurnPower:
-                return Math.Min(Math.Max(0, amount) * 2, 10);
+                return Math.Min(Math.Max(0, amount), 5) * 2;
             case HotPowerId.StarNextTurnPower:
             case HotPowerId.SummonNextTurnPower:
-                return Math.Min(Math.Max(0, amount) * 2, 8);
+                return Math.Min(Math.Max(0, amount), 4) * 2;
         }
 
         int posAmt = Math.Clamp(amount, 0, 16);
