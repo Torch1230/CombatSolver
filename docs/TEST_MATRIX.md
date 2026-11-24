@@ -2,8 +2,12 @@
 
 ## 下一版本（开发中）：原生 Rust 战斗内核集成
 
-- Rust workspace（`-D warnings`）：`CARGO_BUILD_JOBS=8 RUSTFLAGS="-D warnings" cargo test --workspace --release --manifest-path rust/Cargo.toml`
-- 战斗内 Rust 内核无头合同（Turn 1 DOP4、零重算部署、Turn 2 中途捕获、`UseRustCombatKernel=false` 回退 `HotKernel`、损坏库 fail-closed 回退）：runId `42c3d2a28d324ec4baf93b9dd17b63aa` Passed（`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）。
+- Rust workspace（Linux 与 Windows MSVC，`RUSTFLAGS="-D warnings"`）：`CARGO_BUILD_JOBS=8 RUSTFLAGS="-D warnings" cargo test --workspace --release --manifest-path rust/Cargo.toml` 全部通过且零编译器警告；`bench_throughput` 验证 `MAWLER`（Linux `51.46/18.60/13.92 ms`、Windows `34.65/15.64/12.54 ms`）、`BENCH`（Linux `235.56/82.87/48.44 ms`、Windows `154.91/50.32/38.71 ms`）与 `QUEEN`（Linux `470.42/136.83/80.81 ms`、Windows `299.46/96.71/64.70 ms`）在 `DOP 1 / 4 / 16` 下严格确定。
+- 战斗内 Rust 内核无头合同（Turn 1 DOP4、零重算部署、Turn 2 中途捕获、`UseRustCombatKernel=false` 回退 `HotKernel`、损坏库 fail-closed 回退）：
+  - Linux runId `6bded7eb97954499afc117c60fc505ea` Passed（`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）。
+  - Windows runId `a6a424c878774b8cbda8830cbd8a23cb` Passed（`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）。
+- 8 场景 Linux 无头实机对照（`Medium` 预设、`DOP=16`、`60s` 预算，上游 `1.0.0 HotKernel` 与 `rust-kernel`）：8/8 Passed，`rustFallback=0`，搜索期间托管 GC 暂停为 `0 ms`，8 场景总耗时由上游 `23,810.1 ms` 降至 `17,127.8 ms`。
+- Windows `queen-boss` 无头跨平台校验：runId `d5d22b2511304c699f36afe10491a76f` Passed（展开 `60,266`、转移 `419,731`、生命损失 `33`、药水 `3`、第 6 回合胜，与 Linux 路线结果一致，端到端 `3,234.0 ms` / 纯搜索 `3,103 ms`、`rustFallback=0`、`gcPauseMs=0`）。
 
 ```bash
 ./tools/testing/run-unattended-test.sh --verify-in-combat-rust-kernel-contract --cleanup-instance-on-exit
