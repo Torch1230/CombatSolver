@@ -575,8 +575,8 @@ internal static class HotKernelChecks
 
         HotCostModifiers.AddEnergyModifier(ref card, ref cold, -1, false, (int)LocalCostModifierExpiration.EndOfTurn, false);
         HotCostModifiers.AddEnergyModifier(ref card, ref cold, -1, false, (int)LocalCostModifierExpiration.EndOfTurn, false);
-        Check(card.CostModCount == 1 && HotCostModifiers.GetLocalEnergyCost(in card, cold) == 0 && cold == null,
-            "Consecutive relative cost modifier merge failed.");
+        Check(card.CostModCount == 2 && HotCostModifiers.GetLocalEnergyCost(in card, cold) == 0 && cold == null,
+            "Consecutive relative cost modifiers should stay verbatim inline.");
 
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, 1, false, (int)LocalCostModifierExpiration.WhenPlayed, false);
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, 1, false, (int)LocalCostModifierExpiration.EndOfCombat, false);
@@ -588,7 +588,7 @@ internal static class HotKernelChecks
             $"Unexpected overflow local energy cost: {HotCostModifiers.GetLocalEnergyCost(in card, cold)}.");
 
         HotCostModifiers.ExpireAfterPlay(ref card, ref cold);
-        Check((card.Flags & HotCardFlags.HasCostOverflow) == 0 && card.CostModCount == 3 && cold == null,
+        Check((card.Flags & HotCardFlags.HasCostOverflow) == 0 && card.CostModCount == 4 && cold == null,
             "Overflow demotion after ExpireAfterPlay failed.");
         Check(HotCostModifiers.GetLocalEnergyCost(in card, cold) == 2,
             $"Unexpected cost after ExpireAfterPlay: {HotCostModifiers.GetLocalEnergyCost(in card, cold)}.");

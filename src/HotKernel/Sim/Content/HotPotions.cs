@@ -89,10 +89,17 @@ internal static class HotPotions
     }
 
     /// <summary>
-    /// Automatically consumes the first <c>FairyInABottle</c> potion in the player's belt to prevent
-    /// player death, restoring <c>max(1, floor(MaxHp * 30%))</c> HP and recording death-save metrics.
+    /// Automatically consumes <c>FairyInABottle</c> potion(s) in the player's belt to prevent
+    /// player death, restoring <c>max(1, floor(MaxHp * 30%))</c> HP via <see cref="HotCombatEngine.HealCreature"/>
+    /// (respecting heal-modification hooks such as <c>MarkOfTheBloom</c>) and firing <c>AfterPotionUsed</c>
+    /// if the player survives (<c>CurrentHp &gt; 0</c>), matching STS2 0.113.1 <c>FairyInABottle.cs:30-45</c>,
+    /// <c>PotionModel.cs:346-353</c>, and <c>CreatureCmd.cs:675-679</c>.
     /// </summary>
-    public static bool TryTriggerAutoFairy(ref CombatHotState s, HotRules rules)
+    public static bool TryTriggerAutoFairy(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch)
     {
         int slotCount = GetSlotCount(in s);
         for (int i = 0; i < slotCount; i++)
@@ -112,17 +119,16 @@ internal static class HotPotions
 
             int healPct = def.PrimaryValue > 0 ? def.PrimaryValue : 30;
             int healAmt = Math.Max(1, (int)((decimal)s.Player.MaxHp * ((decimal)healPct / 100m)));
-            int prevHp = Math.Max(0, s.Player.CurrentHp);
-            int nextHp = Math.Min(s.Player.MaxHp, prevHp + healAmt);
-            int healed = Math.Max(0, nextHp - prevHp);
-            s.Player.CurrentHp = nextHp;
+            int healed = HotCombatEngine.HealCreature(ref s, ref cold, rules, scratch, targetSlot: 0, amount: healAmt);
 
             s.DeathSavePotionHpRestored += healed;
             s.DeathSaveUseCount++;
-            if (healed > 0)
-                s.Counters[(int)HotCounterSlot.PlayerRecoveredHp] += healed;
 
-            return true;
+            if (s.Player.CurrentHp > 0)
+            {
+                HotRelics.OnPotionUsed(ref s, ref cold, rules, scratch, potionDefId);
+                return true;
+            }
         }
 
         return false;
@@ -861,18 +867,20 @@ internal static class HotPotions
         ref HotColdSidecar? cold,
         HotRules rules,
         HotExecScratch scratch,
-        ushort cardDefId)
+        ushort cardDefId,
+        bool upgraded = false)
     {
         if (cardDefId == 0 || cardDefId >= rules.Cards.Length || HotCombatEngine.IsOverOrEnding(in s))
             return;
 
         HotCardDef def = rules.Cards[cardDefId];
+        bool doUpgrade = upgraded && def.MaxUpgradeLevel > 0;
         HotCard card = new()
         {
             CardDefId = cardDefId,
             CardUid = s.NextCardUid++,
-            UpgradeLevel = 0,
-            BaseEnergyCost = def.BaseCost,
+            UpgradeLevel = doUpgrade ? (byte)1 : (byte)0,
+            BaseEnergyCost = doUpgrade ? def.UpgradedCost : def.BaseCost,
             BaseStarCost = def.BaseStarCost,
             BaseReplayCount = 0,
             ExtraReplayThisTurn = 0,
@@ -881,6 +889,9 @@ internal static class HotPotions
             KeywordsRemovedOutsideMask = HotCardKeywordMask.None,
             Flags = HotCombatEngine.GetInitialCardFlags(def),
         };
+        if (doUpgrade)
+            HotCombatEngine.ApplyUpgradeKeywords(ref card, def.CardId);
+        HotCombatEngine.InitFreshCardPrivate(ref card, def);
         SetCardFreeThisTurn(ref card, ref cold);
         HotCombatEngine.AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in card, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
     }
@@ -923,6 +934,8 @@ internal static class HotPotions
                 expiration: (int)(LocalCostModifierExpiration.EndOfTurn | LocalCostModifierExpiration.WhenPlayed),
                 isReduceOnly: false);
         }
+        // STS2 0.113.1 CardModel.SetToFreeThisTurn -> SetStarCostThisTurn(0) -> TemporaryCardCost.ThisTurn(0)
+        // sets BOTH ClearsWhenTurnEnds = true AND ClearsWhenCardIsPlayed = true (TemporaryCardCost.cs:51-59).
         HotCostModifiers.AddTempStarCost(
             ref card,
             ref cold,

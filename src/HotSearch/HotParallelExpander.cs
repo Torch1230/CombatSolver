@@ -508,6 +508,10 @@ internal sealed class HotParallelExpander : IDisposable
                 if (staged.Summary.DeathSaveUseCount > 0) flags |= HotNodeFlags.HasDeathSave;
                 if (staged.Summary.ForfeitsGold) flags |= HotNodeFlags.ForfeitsGold;
                 if (!isOngoing) flags |= HotNodeFlags.IsTerminal;
+                if (staged.Summary.AllGrowthTargetsSatisfied) flags |= HotNodeFlags.AllGrowthTargetsSatisfied;
+                else flags &= ~HotNodeFlags.AllGrowthTargetsSatisfied;
+                if (staged.Summary.AllRelicTargetsSatisfied) flags |= HotNodeFlags.AllRelicTargetsSatisfied;
+                else flags &= ~HotNodeFlags.AllRelicTargetsSatisfied;
 
                 HotSearchNode childNode = new()
                 {
@@ -532,6 +536,12 @@ internal sealed class HotParallelExpander : IDisposable
                     OptionalityScore = staged.Eval.OptionalityScore,
                     OutstandingStolen = (short)Math.Clamp(staged.Summary.OutstandingStolen, 0, short.MaxValue),
                     GrowthHpCredit = (short)Math.Clamp(staged.Summary.GrowthHpCredit, short.MinValue, short.MaxValue),
+                    RelicHpCredit = staged.Summary.RelicHpCredit,
+                    RelicHealingHpCredit = staged.Summary.RelicHealingHpCredit,
+                    RelicSatisfiedMask = staged.Summary.RelicSatisfiedMask,
+                    RelicDistance = staged.Summary.RelicDistance,
+                    RelicSatisfiedPriority = staged.Summary.RelicSatisfiedPriority,
+                    FeedCount = staged.Summary.FeedCount,
                     PotionStrategicCost = nextPotionCost,
                     DeathSaveHpRestored = (short)Math.Clamp(staged.Summary.DeathSaveHpRestored, 0, short.MaxValue),
                     PotionMask = nextPotionMask,
@@ -719,6 +729,13 @@ internal sealed class HotParallelExpander : IDisposable
                     Hash: staged.Hash);
                 _standPatCache[parent.Hash] = cached;
 
+                HotNodeFlags standPatFlags = HotNodeFlags.EndedTurn | HotNodeFlags.StandPat
+                    | (staged.Summary.Outcome != HotCombatOutcome.Ongoing ? HotNodeFlags.IsTerminal : HotNodeFlags.None);
+                if (staged.Summary.DeathSaveUseCount > 0) standPatFlags |= HotNodeFlags.HasDeathSave;
+                if (staged.Summary.ForfeitsGold) standPatFlags |= HotNodeFlags.ForfeitsGold;
+                if (staged.Summary.AllGrowthTargetsSatisfied) standPatFlags |= HotNodeFlags.AllGrowthTargetsSatisfied;
+                if (staged.Summary.AllRelicTargetsSatisfied) standPatFlags |= HotNodeFlags.AllRelicTargetsSatisfied;
+
                 HotSearchNode childNode = new()
                 {
                     Hash = staged.Hash,
@@ -742,13 +759,18 @@ internal sealed class HotParallelExpander : IDisposable
                     OptionalityScore = staged.Eval.OptionalityScore,
                     OutstandingStolen = (short)Math.Clamp(staged.Summary.OutstandingStolen, 0, short.MaxValue),
                     GrowthHpCredit = (short)Math.Clamp(staged.Summary.GrowthHpCredit, short.MinValue, short.MaxValue),
+                    RelicHpCredit = staged.Summary.RelicHpCredit,
+                    RelicHealingHpCredit = staged.Summary.RelicHealingHpCredit,
+                    RelicSatisfiedMask = staged.Summary.RelicSatisfiedMask,
+                    RelicDistance = staged.Summary.RelicDistance,
+                    RelicSatisfiedPriority = staged.Summary.RelicSatisfiedPriority,
+                    FeedCount = staged.Summary.FeedCount,
                     PotionStrategicCost = parent.PotionStrategicCost,
                     DeathSaveHpRestored = (short)Math.Clamp(staged.Summary.DeathSaveHpRestored, 0, short.MaxValue),
                     PotionMask = parent.PotionMask,
                     ActionCount = (ushort)Math.Min(ushort.MaxValue, parent.ActionCount + 1),
                     GrowthRewardCount = (ushort)Math.Clamp(staged.Summary.GrowthRewardCount, 0, ushort.MaxValue),
-                    Flags = HotNodeFlags.EndedTurn | HotNodeFlags.StandPat
-                        | (staged.Summary.Outcome != HotCombatOutcome.Ongoing ? HotNodeFlags.IsTerminal : HotNodeFlags.None),
+                    Flags = standPatFlags,
                     Action = HotAction.EndTurn(),
                     ChoiceCount = 0,
                     PotionCount = parent.PotionCount,
@@ -829,6 +851,13 @@ internal sealed class HotParallelExpander : IDisposable
         }
 
         if (!res.Executed || res.NeedsChoice)
+        {
+            staged = default;
+            return false;
+        }
+
+        if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+            && !policy.AllowsBrightestFlame(ws.WorkingState.BrightestFlameMaxHpSpent))
         {
             staged = default;
             return false;
@@ -1005,6 +1034,17 @@ internal sealed class HotParallelExpander : IDisposable
                 {
                     ws.WaveDuplicateCardsPruned++;
                     continue;
+                }
+                if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue && handIdx < ws.ParentState.HandCount)
+                {
+                    ref readonly HotCard playCard = ref ws.ParentState.Cards[handIdx];
+                    if (playCard.CardDefId < rules.Cards.Length
+                        && rules.Cards[playCard.CardDefId].CardId == HotCustomCardId.BrightestFlame)
+                    {
+                        int flameCost = HotCombatEngine.GetNamedVarInt(in playCard, rules.Cards[playCard.CardDefId], "MaxHp", 2);
+                        if (!policy.AllowsBrightestFlame(ws.ParentState.BrightestFlameMaxHpSpent + flameCost))
+                            continue;
+                    }
                 }
                 if (filterPlayCards)
                 {
@@ -1612,6 +1652,12 @@ internal sealed class HotParallelExpander : IDisposable
                 }
                 else if (pfx.Count < HotLimits.MaxChoicesPerAction)
                 {
+                    if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+                        && !policy.AllowsBrightestFlame(ws.WorkingState.BrightestFlameMaxHpSpent))
+                    {
+                        continue;
+                    }
+
                     int subOptCount;
                     try
                     {
@@ -2034,6 +2080,12 @@ internal sealed class HotParallelExpander : IDisposable
 
             if (!res.NeedsChoice)
             {
+                if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+                    && !policy.AllowsBrightestFlame(ws.WorkingState.BrightestFlameMaxHpSpent))
+                {
+                    return long.MinValue / 4;
+                }
+
                 AssignDeterministicCardUids(ref ws.WorkingState);
                 HotMiniRolloutResult probe = HotRolloutEvaluator.EvaluateChoiceProbe(
                     in ws.WorkingState,
@@ -2049,7 +2101,7 @@ internal sealed class HotParallelExpander : IDisposable
                     maxTurnsAhead: 1,
                     parentNetPotionCostCenti: netPotionCostCenti,
                     parentActionCount: childActionCount);
-                return EncodeProbeRankScore(in probe);
+                return EncodeProbeRankScore(in probe, in policy);
             }
 
             if (pfx.Count >= HotLimits.MaxChoicesPerAction)
@@ -2115,6 +2167,12 @@ internal sealed class HotParallelExpander : IDisposable
 
             if (!res.NeedsChoice)
             {
+                if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+                    && !policy.AllowsBrightestFlame(ws.WorkingState.BrightestFlameMaxHpSpent))
+                {
+                    return long.MinValue / 4;
+                }
+
                 AssignDeterministicCardUids(ref ws.WorkingState);
                 HotMiniRolloutResult probe = HotRolloutEvaluator.EvaluateChoiceProbe(
                     in ws.WorkingState,
@@ -2130,7 +2188,7 @@ internal sealed class HotParallelExpander : IDisposable
                     maxTurnsAhead: 0,
                     parentNetPotionCostCenti: netPotionCostCenti,
                     parentActionCount: childActionCount);
-                return EncodeProbeRankScore(in probe);
+                return EncodeProbeRankScore(in probe, in policy);
             }
 
             if (pfx.Count >= HotLimits.MaxChoicesPerAction)
@@ -2201,6 +2259,12 @@ internal sealed class HotParallelExpander : IDisposable
     {
         if (resolvedCount >= HotExpansionWorkspace.ChoiceResolvedCapacity)
             return;
+
+        if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+            && !policy.AllowsBrightestFlame(ws.WorkingState.BrightestFlameMaxHpSpent))
+        {
+            return;
+        }
 
         HotFastSummary summary = HotEvaluator.ExtractStage1(in ws.WorkingState, in policy);
         int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
@@ -2489,7 +2553,7 @@ internal sealed class HotParallelExpander : IDisposable
             parentNetPotionCostCenti: netPotionCostCenti,
             parentActionCount: parent.ActionCount + 1);
 
-        cand.LookaheadScore = EncodeProbeRankScore(in probe);
+        cand.LookaheadScore = EncodeProbeRankScore(in probe, in policy);
         cand.LookaheadHpLost = probe.HpLost;
         cand.LookaheadBoardInvestment = probe.BoardInvestment;
         cand.LookaheadSetupScore = probe.SetupScore;
@@ -2764,11 +2828,19 @@ internal sealed class HotParallelExpander : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static long EncodeProbeRankScore(in HotMiniRolloutResult probe)
+    private static long EncodeProbeRankScore(in HotMiniRolloutResult probe, in HotSearchPolicy policy)
     {
         long s = Math.Clamp(probe.Score, -1_000_000_000_000_000L, 1_000_000_000_000_000L);
         if (probe.IsVictory)
-            return 2_000_000_000_000_000L + s - (long)probe.HpLost * 100_000L;
+        {
+            long rank = 2_000_000_000_000_000L + s - (long)probe.HpLost * 100_000L;
+            if (policy.HasAnyStrategyTargets)
+            {
+                rank += (long)probe.StrategyGoalHpCredit * 100_000L
+                    + (long)probe.StrategyGoalCount * 25_000L;
+            }
+            return rank;
+        }
         if (probe.IsDefeat)
             return -2_000_000_000_000_000L + s;
         if (probe.IsEventDefeat)
@@ -2889,6 +2961,12 @@ internal sealed class HotParallelExpander : IDisposable
         byte explicitPotionDelta,
         byte ambergrisDelta)
     {
+        if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+            && !policy.AllowsBrightestFlame(ws.WorkingState.BrightestFlameMaxHpSpent))
+        {
+            return;
+        }
+
         byte autoPotionDelta = DetectAutoPotionDelta(in ws.ParentState, in ws.WorkingState, explicitPotionDelta);
         byte totalPotionDelta = (byte)(explicitPotionDelta + autoPotionDelta);
 

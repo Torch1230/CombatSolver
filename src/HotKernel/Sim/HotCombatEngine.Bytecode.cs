@@ -215,6 +215,20 @@ internal static partial class HotCombatEngine
                             }
                         }
                     }
+                    else if (applied > 0 && powerDefId < rules.Powers.Length)
+                    {
+                        HotPowerId appliedPowerId = rules.Powers[powerDefId].PowerId;
+                        if (appliedPowerId == HotPowerId.RoyaltiesPower)
+                        {
+                            s.Growth[3]++;
+                            s.LongTermResourceValue += applied;
+                        }
+                        else if (appliedPowerId == HotPowerId.ForbiddenGrimoirePower)
+                        {
+                            s.Growth[8]++;
+                            s.LongTermResourceValue += 20;
+                        }
+                    }
                     break;
                 }
 
@@ -397,7 +411,8 @@ internal static partial class HotCombatEngine
         if (hits < 0)
             hits = 0;
 
-        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        ushort cardUid = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardUid : (ushort)0;
+        ushort cardDefId = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
 
@@ -413,6 +428,7 @@ internal static partial class HotCombatEngine
             {
                 break;
             }
+            cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
             totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
             totalPlusOverkill += t_lastHitTotalPlusOverkill;
             if (IsOverOrEnding(in s))
@@ -421,6 +437,7 @@ internal static partial class HotCombatEngine
         scratch.AttackActive = false;
         t_lastAttackUnblockedDamage = totalUnblocked;
         t_lastAttackTotalPlusOverkill = totalPlusOverkill;
+        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
         EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
         t_lastAttackUnblockedDamage = totalUnblocked;
         t_lastAttackTotalPlusOverkill = totalPlusOverkill;
@@ -441,7 +458,8 @@ internal static partial class HotCombatEngine
         if (hits < 0)
             hits = 0;
 
-        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        ushort cardUid = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardUid : (ushort)0;
+        ushort cardDefId = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
 
@@ -463,6 +481,7 @@ internal static partial class HotCombatEngine
                 byte enemySlot = targets[t];
                 if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
                     continue;
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
                 DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId, deferKill: true);
             }
             for (int t = 0; t < targetCount; t++)
@@ -478,6 +497,7 @@ internal static partial class HotCombatEngine
             }
         }
         scratch.AttackActive = false;
+        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
         EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
     }
 
@@ -496,7 +516,8 @@ internal static partial class HotCombatEngine
         if (hits < 0)
             hits = 0;
 
-        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        ushort cardUid = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardUid : (ushort)0;
+        ushort cardDefId = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
 
         BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
@@ -510,9 +531,11 @@ internal static partial class HotCombatEngine
             if (enemySlot < 0)
                 break;
 
+            cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
             DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
         }
         scratch.AttackActive = false;
+        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
         EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
     }
 
@@ -537,7 +560,8 @@ internal static partial class HotCombatEngine
         if (hits < 0)
             hits = 0;
 
-        ushort cardDefId = cardIdx >= 0 && cardIdx < s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
+        ushort cardUid = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardUid : (ushort)0;
+        ushort cardDefId = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
 
@@ -551,17 +575,19 @@ internal static partial class HotCombatEngine
             {
                 break;
             }
+            cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
             DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 1, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
             if (IsOverOrEnding(in s))
                 break;
         }
         s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
         scratch.AttackActive = false;
+        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
         EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void BeginAttackHooks(
+    internal static void BeginAttackHooks(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
         HotRules rules,
@@ -578,6 +604,7 @@ internal static partial class HotCombatEngine
         {
             ActorSlot = dealerSlot,
             CardIdx = cardIdx,
+            CardUid = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardUid : (ushort)0,
             CardDefId = cardDefId,
             IsPoweredAttack = powered,
         };
@@ -585,7 +612,7 @@ internal static partial class HotCombatEngine
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void EndAttackHooks(
+    internal static void EndAttackHooks(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
         HotRules rules,
@@ -601,6 +628,7 @@ internal static partial class HotCombatEngine
         {
             ActorSlot = dealerSlot,
             CardIdx = cardIdx,
+            CardUid = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardUid : (ushort)0,
             CardDefId = cardDefId,
             IsPoweredAttack = powered,
         };

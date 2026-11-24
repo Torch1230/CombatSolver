@@ -249,6 +249,7 @@ internal static class SolverSettings
                 SaveLocked(migrated);
         }
         SolverSettingsSnapshot effective = Capture();
+        int activeRelicCounterRules = effective.RelicCounterRules.Count(static rule => rule.Enabled);
         Entry.Logger.Info(
             $"[CombatSolver/Test] SETTINGS_LOADED persisted={persisted} " +
             $"automatic_calculation={migrated.AutomaticCalculationEnabled.ToString().ToLowerInvariant()} " +
@@ -268,6 +269,11 @@ internal static class SolverSettings
             $"potion_policy={migrated.PotionPolicy} " +
             $"potion_directives={migrated.PotionDirectives.Length} " +
             $"potion_threshold_overrides={effective.PotionThresholds.Count} " +
+            $"relic_strategy_enabled={migrated.RelicStrategyEnabled.ToString().ToLowerInvariant()} " +
+            $"active_relic_counter_rules={activeRelicCounterRules} " +
+            $"growth_budgets={FormatGrowthBudgetsSummary(migrated.GrowthBudgets)} " +
+            $"ignore_long_term_rewards={migrated.IgnoreLongTermRewards.ToString().ToLowerInvariant()} " +
+            $"brightest_flame_max_hp_loss_limit={migrated.BrightestFlameMaxHpLossLimit?.ToString() ?? "-"} " +
             $"max_combat_solve_seconds={effective.MaxCombatSolveSeconds} " +
             $"max_dop={effective.SearchMaxDegreeOfParallelism} " +
             $"search_budget_ms={effective.Profile.SoftTimeBudgetMilliseconds} " +
@@ -275,6 +281,25 @@ internal static class SolverSettings
             $"deployment_delay_seconds={migrated.DeploymentInterActionDelaySeconds ?? 0d:0.###} " +
             $"overlay_theme={migrated.OverlayTheme} " +
             $"overlay_opacity={migrated.OverlayOpacity:0.##}");
+    }
+
+    private static string FormatGrowthBudgetsSummary(GrowthValues budgets)
+    {
+        if (!budgets.IsEnabled)
+            return "-";
+        List<string> parts = [];
+        foreach (GrowthSource source in Enum.GetValues<GrowthSource>())
+        {
+            int value = budgets.Get(source);
+            if (value > 0)
+                parts.Add($"{source}={value}");
+        }
+        foreach (KeyValuePair<string, int> entry in budgets.Extras.Entries)
+        {
+            if (entry.Value > 0)
+                parts.Add($"{entry.Key}={entry.Value}");
+        }
+        return parts.Count == 0 ? "-" : string.Join(",", parts);
     }
 
     public static SolverSettingsSnapshot Capture()

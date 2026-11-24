@@ -252,9 +252,23 @@ internal static class HotMonsters
         if (monsterId == HotMonsterId.WaterfallGiant && s.Enemies[slot].SteamPhase != 0)
         {
             if (s.Enemies[slot].SteamPhase == 1)
+            {
                 ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE");
+            }
             else if (s.Enemies[slot].SteamPhase == 2)
-                ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE");
+            {
+                short explodeNode = machine.FindNode("EXPLODE_MOVE");
+                if (explodeNode >= 0)
+                {
+                    s.Enemies[slot].CurrentMoveNode = explodeNode;
+                    s.Enemies[slot].Flags &= ~HotEnemyFlags.NeedsInitialRoll;
+                    AppendMonsterMoveLog(ref s, ref cold, slot, explodeNode);
+                }
+                else
+                {
+                    ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE");
+                }
+            }
             return;
         }
 
@@ -309,9 +323,23 @@ internal static class HotMonsters
         if (monsterId == HotMonsterId.WaterfallGiant && s.Enemies[slot].SteamPhase != 0)
         {
             if (s.Enemies[slot].SteamPhase == 1)
+            {
                 ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE");
+            }
             else if (s.Enemies[slot].SteamPhase == 2)
-                ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE");
+            {
+                short explodeNode = machine.FindNode("EXPLODE_MOVE");
+                if (explodeNode >= 0)
+                {
+                    s.Enemies[slot].CurrentMoveNode = explodeNode;
+                    s.Enemies[slot].Flags &= ~HotEnemyFlags.NeedsInitialRoll;
+                    AppendMonsterMoveLog(ref s, ref cold, slot, explodeNode);
+                }
+                else
+                {
+                    ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE");
+                }
+            }
             return;
         }
 
@@ -436,6 +464,8 @@ internal static class HotMonsters
             : HotMonsterId.None;
 
         // 1. WaterfallGiant SteamEruptionPower survival (becomes 999,999,999 HP AboutToBlow).
+        // Powers remain intact here so KillCreature dispatches HotHookMask.AfterDeath (e.g. ImpaledPower)
+        // before calling RemovePowersAfterDeath(removeAllBecauseDeparted: false).
         if (monsterId == HotMonsterId.WaterfallGiant
             && s.Enemies[slot].SteamPhase == 0
             && HotCombatEngine.GetPowerAmountById(in s, rules, deadSlot, HotPowerId.SteamEruptionPower) > 0)
@@ -446,7 +476,6 @@ internal static class HotMonsters
             s.Enemies[slot].SteamPhase = 1; // AboutToBlow
             s.Enemies[slot].DeathPhase = HotDeathPhase.None;
             ForceMonsterMove(ref s, rules, slot, "ABOUT_TO_BLOW_MOVE");
-            RemovePowersAfterDeath(ref s, rules, deadSlot, removeAllBecauseDeparted: false);
             s.ActiveHookMask = HotCombatEngine.RecomputeActiveHookMask(in s, rules);
             return;
         }
@@ -455,7 +484,6 @@ internal static class HotMonsters
         bool isPrimaryEnemy = HotCombatEngine.GetPowerAmountById(in s, rules, deadSlot, HotPowerId.MinionPower) <= 0;
         bool hasReattach = HotCombatEngine.GetPowerAmountById(in s, rules, deadSlot, HotPowerId.ReattachPower) > 0;
         bool allOtherReattachDead = !hasReattach || AreAllOtherReattachSegmentsDead(in s, rules, slot);
-        bool shouldTriggerFatal = isPrimaryEnemy && (!hasReattach || allOtherReattachDead);
         bool shouldRemoveFromCombat = ShouldEnemyBeRemovedFromCombatAfterDeath(in s, rules, deadSlot);
 
         int explosiveAmt = HotCombatEngine.GetPowerAmountById(in s, rules, deadSlot, HotPowerId.ExplosivePower);
@@ -555,30 +583,10 @@ internal static class HotMonsters
         // 12. Clean up applier-linked debuffs (Constrict, Hex, Shrink, MagicBomb).
         CleanupApplierLinkedDebuffs(ref s, rules, deadSlot);
 
-        // 13. Cross-module Regent / Necrobinder (Melancholy) & Fool / Tarot death hooks.
-        // Note: on permanent death (!isNowReviving), HotCombatEngine.KillCreature dispatches HotHookMask.AfterDeath
-        // immediately after we return, which already triggers HotFoolTarot ShowOffPower / ImpaledPower / CompostPower.
-        // Only invoke HotFoolTarot.OnEnemyFatalDeath directly if KillCreature will skip AfterDeath (isNowReviving).
-        if (shouldTriggerFatal)
-        {
-            if (isNowReviving)
-            {
-                HotFoolTarot.OnEnemyFatalDeath(ref s, ref cold, rules, scratch, enemySlot);
-                if (scratch.NeedsChoice)
-                    return;
-            }
-            HotRegentNecro.OnEnemyFatalDeath(ref s, ref cold, rules, scratch, enemySlot);
-            if (scratch.NeedsChoice)
-                return;
-        }
-
-        // 14. Remove from roster if not retained/reviving, and clean up powers for reviving enemies.
-        // For permanently dead enemies, leave deadSlot's own powers intact until HotCombatEngine.KillCreature
-        // dispatches HotHookMask.AfterDeath (e.g. ImpaledPower / TheSpecimen) and calls RemoveAllPowersForOwner.
+        // 13-14. Update roster and DeathPhase while leaving deadSlot's powers intact until
+        // HotCombatEngine.KillCreature dispatches OnAnyCreatureDeath + HotHookMask.AfterDeath
+        // (e.g. Melancholy, ShowOffPower, ImpaledPower, CompostPower) and removes dead powers.
         bool removeFromRoster = shouldRemoveFromCombat && !isNowReviving;
-
-        if (isNowReviving)
-            RemovePowersAfterDeath(ref s, rules, deadSlot, removeAllBecauseDeparted: false);
 
         if (removeFromRoster)
         {
@@ -843,12 +851,14 @@ internal static class HotMonsters
             return false;
         }
 
-        int playerHpBefore = s.Player.CurrentHp;
         int playerBlockBefore = s.Player.Block;
         int ostyHpBefore = s.Osty.CurrentHp;
         int wuppyHpBefore = s.Wuppy.CurrentHp;
 
-        HotCombatEngine.DealDamage(
+        // Capture exact pre-kill unblocked damage directly from DealDamage (HotCombatEngine.Damage.cs:411,555)
+        // so death-preventing revives (e.g. FairyInABottle / LizardTail) healing above pre-hit HP
+        // do not zero out playerUnblocked and miss PainfulStabsPower / SuckPower or trigger ImbalancedPower.
+        int playerUnblocked = HotCombatEngine.DealDamage(
             ref s,
             ref cold,
             rules,
@@ -861,7 +871,6 @@ internal static class HotMonsters
         if (scratch.NeedsChoice)
             return false;
 
-        int playerUnblocked = Math.Max(0, playerHpBefore - s.Player.CurrentHp);
         int ostyUnblocked = Math.Max(0, ostyHpBefore - s.Osty.CurrentHp);
         int wuppyUnblocked = Math.Max(0, wuppyHpBefore - s.Wuppy.CurrentHp);
         int blocked = Math.Max(0, playerBlockBefore - s.Player.Block);
@@ -2605,8 +2614,7 @@ internal static class HotMonsters
         int steam = Math.Max(0, HotCombatEngine.GetPowerAmountById(in s, rules, ownerSlot, HotPowerId.SteamEruptionPower));
         s.Enemies[slot].AiRegs[1] = steam;
         RemovePowerById(ref s, rules, ownerSlot, HotPowerId.SteamEruptionPower);
-        s.Enemies[slot].SteamPhase = 2; // Explode next
-        ForceMonsterMove(ref s, rules, slot, "EXPLODE_MOVE");
+        s.Enemies[slot].SteamPhase = 2; // Explode next (resolved & logged in PrepareNextMove / RollNextMove)
     }
 
     private static void FakeUpgradeAllWitherCards(ref CombatHotState s, HotRules rules)

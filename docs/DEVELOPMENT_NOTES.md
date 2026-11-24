@@ -2,6 +2,8 @@
 
 这里只记录当前未发布的行为变化。发布定稿后将该批次完整移入历史卷。
 
+1.0.1 的遗物计数／局外成长全链路恢复与高风险重算清零见[历史卷 34](archive/development/volume-34.md)，玩家说明见[1.0.1 更新日志](releases/1.0.1-RELEASE_NOTES.md)。
+
 1.0.0 的 HotKernel v2 新一代高速引擎、药水省血阈值与 0.113.1 全量适配见[历史卷 33](archive/development/volume-33.md)，玩家说明见[1.0.0 更新日志](releases/1.0.0-RELEASE_NOTES.md)。
 
 0.50.1 本地定稿的智能药水修复及 PR #213、#224、#226 见[历史卷22](archive/development/volume-22.md)，玩家说明见[0.50.1 更新日志](releases/0.50.1-RELEASE_NOTES.md)。外部发布状态以对应标签及发布记录为准。

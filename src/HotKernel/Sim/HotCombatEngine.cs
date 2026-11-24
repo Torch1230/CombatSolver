@@ -577,7 +577,8 @@ internal static partial class HotCombatEngine
         in CombatHotState s,
         in HotCard card,
         HotCardDef def,
-        HotRules rules)
+        HotRules rules,
+        bool isAutoPlay = false)
     {
         int playStarts = s.Counters[(int)HotCounterSlot.CardPlayStartsThisTurn];
 
@@ -593,6 +594,7 @@ internal static partial class HotCombatEngine
         }
 
         // In-hand restriction curses (Enthralled, Normality)
+        // STS2 0.113.1 Enthralled.cs:36-39: autoPlayType != AutoPlayType.None bypasses Enthralled.
         int handCount = s.HandCount;
         for (int i = 0; i < handCount; i++)
         {
@@ -600,7 +602,7 @@ internal static partial class HotCombatEngine
             if (handCardDefId >= rules.Cards.Length)
                 continue;
             HotCustomCardId handCardId = rules.Cards[handCardDefId].CardId;
-            if (handCardId == HotCustomCardId.Enthralled && def.CardId != HotCustomCardId.Enthralled)
+            if (!isAutoPlay && handCardId == HotCustomCardId.Enthralled && def.CardId != HotCustomCardId.Enthralled)
                 return false;
             if (handCardId == HotCustomCardId.Normality && playStarts >= 3)
                 return false;
@@ -636,8 +638,12 @@ internal static partial class HotCombatEngine
                     break;
 
                 case HotPowerId.SlothPower:
-                case HotPowerId.EncorePower:
                     if (p.Aux0 >= p.Amount)
+                        return false;
+                    break;
+
+                case HotPowerId.EncorePower:
+                    if (p.Aux0 + p.Aux1 >= p.Amount)
                         return false;
                     break;
             }

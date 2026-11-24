@@ -39,7 +39,7 @@ internal readonly record struct RelicCounterEvaluation(ulong SatisfiedMask, ulon
 
 internal static class RelicCounterPolicy
 {
-    internal const int MaxTurnTickHorizon = 24;
+    internal const int MaxTurnTickHorizon = 60;
     private const int MaxActionTickHorizon = 1000;
     private const int EventStreamCount = (int)RelicCounterEventStream.StarSpent + 1;
 

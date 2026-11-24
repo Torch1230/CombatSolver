@@ -170,6 +170,12 @@ internal static class HotContinuationStamp
                 int activations = (rs.PreviousOrAux >> 16) & 0xFFFF;
                 text.Append(activations).Append("/0");
             }
+            else if (def.SpecialKind == HotRelicSpecialKind.EmotionChip)
+            {
+                text.Append(rs.Current != 0 ? 1 : 0)
+                    .Append('/')
+                    .Append(HotRelics.DecodeEmotionChipThisTurn(in rs, state.PlayerTurnNumber));
+            }
             else
             {
                 text.Append(rs.Current).Append('/').Append(rs.PreviousOrAux);
@@ -494,7 +500,7 @@ internal static class HotContinuationStamp
         for (int i = 0; i < def.OrderedVarNames.Length; i++)
         {
             text.Append(def.OrderedVarNames[i]).Append('=');
-            AppendNormalizedDecimal(text, HotRules.GetCardVarValue(in card, def, i));
+            AppendNormalizedDecimal(text, HotRules.GetCardVarValue(in card, def, i, cold));
             if (def.OrderedVarStrings != null && def.OrderedVarStrings[i] is { } strVal)
                 text.Append(':').Append(strVal);
             text.Append(',');
@@ -693,7 +699,7 @@ internal static class HotContinuationStamp
         {
             if (i > 0) text.Append(';');
             text.Append(def.OrderedVarNames[i]).Append('=');
-            AppendNormalizedDecimal(text, HotRules.GetCardVarValue(in card, def, i));
+            AppendNormalizedDecimal(text, HotRules.GetCardVarValue(in card, def, i, cold));
         }
         text.Append('|');
         if (card.EnchId == 0)
@@ -870,9 +876,9 @@ internal static class HotContinuationStamp
                 break;
 
             case HotPowerId.SlowPower:
-                if (string.Equals(varName, "SlowAmount", StringComparison.Ordinal) && p.Aux0 > 0)
+                if (string.Equals(varName, "SlowAmount", StringComparison.Ordinal))
                     return p.Aux0;
-                if (string.Equals(varName, "DisplayAmount", StringComparison.Ordinal) && p.Aux0 > 0)
+                if (string.Equals(varName, "DisplayAmount", StringComparison.Ordinal))
                     return p.Aux0 * 10m;
                 break;
 
@@ -897,12 +903,12 @@ internal static class HotContinuationStamp
                 break;
 
             case HotPowerId.MonologuePower:
-                if (string.Equals(varName, "StrengthApplied", StringComparison.Ordinal) && p.Aux1 > 0)
+                if (string.Equals(varName, "StrengthApplied", StringComparison.Ordinal))
                     return p.Aux1;
                 break;
 
             case HotPowerId.MythicFormPower:
-                if (string.Equals(varName, "Upgraded", StringComparison.Ordinal) && p.Aux0 > 0)
+                if (string.Equals(varName, "Upgraded", StringComparison.Ordinal))
                     return p.Aux0;
                 break;
 
@@ -982,7 +988,7 @@ internal static class HotContinuationStamp
                     continue;
                 HotEnergyCostMod[] keptEnergy = Array.FindAll(overflows[i].EnergyMods, static m => !m.ClearsOnTurnEnd);
                 HotTempStarCost[] keptStars = Array.FindAll(overflows[i].TempStarCosts, static t => !t.ClearsWhenTurnEnds);
-                adjustedCold = new HotColdSidecar(CostOverflow: [new HotCardCostOverflow(copy.CardUid, keptEnergy, keptStars)]);
+                adjustedCold = cold with { CostOverflow = [new HotCardCostOverflow(copy.CardUid, keptEnergy, keptStars)] };
                 return copy;
             }
         }

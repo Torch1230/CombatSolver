@@ -1613,6 +1613,7 @@ internal static class SolverOverlay
 
     public static void Hide()
     {
+        _ = CommitPendingGrowthStrategy();
         if (_layer != null && GodotObject.IsInstanceValid(_layer))
             _layer.Visible = false;
     }
@@ -1651,6 +1652,7 @@ internal static class SolverOverlay
         SolverUiTokens.ConfigureTheme(SolverSettings.Current.OverlayTheme);
         if (_layer == null || !GodotObject.IsInstanceValid(_layer))
             return;
+        _ = CommitPendingGrowthStrategy();
         Node host = _layer.GetParent()
             ?? throw new InvalidOperationException("CombatSolver overlay has no host node.");
         bool wasVisible = _layer.Visible;
@@ -2616,6 +2618,8 @@ internal static class SolverOverlay
         {
             return false;
         }
+        if (!_userHiddenFromShortcut)
+            _ = CommitPendingGrowthStrategy();
         _userHiddenFromShortcut = !_userHiddenFromShortcut;
         _layer.Visible = !_userHiddenFromShortcut;
         Entry.Logger.Info($"[CombatSolver/Test] UI_ACTION action=toggle_visibility visible={_layer.Visible}");
@@ -2632,6 +2636,8 @@ internal static class SolverOverlay
     {
         _relicStrategyVisible = false;
         if (_settingsVisible && _settingsPanel?.CommitPending() == false)
+            return;
+        if (!CommitPendingGrowthStrategy())
             return;
         if (_collapsed)
             SetCollapsed(false);
@@ -2651,6 +2657,8 @@ internal static class SolverOverlay
     {
         _relicStrategyVisible = false;
         if (_settingsVisible && _settingsPanel?.CommitPending() == false)
+            return;
+        if (!CommitPendingGrowthStrategy())
             return;
         if (_collapsed)
             SetCollapsed(false);
@@ -2805,6 +2813,8 @@ internal static class SolverOverlay
 
     private static void SetCollapsed(bool collapsed)
     {
+        if (collapsed && !_collapsed)
+            _ = CommitPendingGrowthStrategy();
         _collapsed = collapsed;
         if (_collapseButton != null)
             _collapseButton.Text = collapsed ? SolverText.Get("+  展开") : SolverText.Get("−  收起");
@@ -3476,10 +3486,18 @@ internal static class SolverOverlay
         }
     }
 
+    private static bool CommitPendingGrowthStrategy()
+        => !_growthStrategyVisible
+            || _growthStrategyPanel == null
+            || !GodotObject.IsInstanceValid(_growthStrategyPanel)
+            || _growthStrategyPanel.CommitPending();
+
     private static void ToggleGrowthStrategy()
     {
         _relicStrategyVisible = false;
         if (_settingsVisible && _settingsPanel?.CommitPending() == false)
+            return;
+        if (!CommitPendingGrowthStrategy())
             return;
         if (_collapsed)
             SetCollapsed(false);
@@ -3498,7 +3516,15 @@ internal static class SolverOverlay
         NGame? host = NGame.Instance;
         CombatState? state = CombatManager.Instance.DebugOnlyGetState();
         if (host != null && state != null && CombatManager.Instance.IsInProgress)
+        {
             SolverController.SetBrightestFlameLimit(host, state, limit);
+            return;
+        }
+        SolverSettingsData current = SolverSettings.Current;
+        if (current.BrightestFlameMaxHpLossLimit == limit)
+            return;
+        SolverSettings.Update(current with { BrightestFlameMaxHpLossLimit = limit });
+        RefreshControls();
     }
 
     private static void OnGrowthPolicyChanged(GrowthValues budgets)
@@ -3506,12 +3532,21 @@ internal static class SolverOverlay
         NGame? host = NGame.Instance;
         CombatState? state = CombatManager.Instance.DebugOnlyGetState();
         if (host != null && state != null && CombatManager.Instance.IsInProgress)
+        {
             SolverController.SetGrowthPolicy(host, state, budgets);
+            return;
+        }
+        SolverSettingsData current = SolverSettings.Current;
+        if (current.GrowthBudgets == budgets)
+            return;
+        SolverSettings.Update(current with { GrowthBudgets = budgets });
+        RefreshControls();
     }
 
     private static void ToggleRelicStrategy()
     {
         if (_settingsVisible && _settingsPanel?.CommitPending() == false) return;
+        if (!CommitPendingGrowthStrategy()) return;
         if (_collapsed) SetCollapsed(false);
         _settingsVisible = false;
         _potionStrategyVisible = false;
@@ -3555,7 +3590,16 @@ internal static class SolverOverlay
         var host = NGame.Instance;
         var state = CombatManager.Instance.DebugOnlyGetState();
         if (host != null && state != null && CombatManager.Instance.IsInProgress)
+        {
             SolverController.SetRelicCounterPolicy(host, state, enabled, rules);
+            return;
+        }
+        RelicCounterRule[] copied = RelicCounterPolicy.ValidateAndCopy(rules);
+        SolverSettingsData current = SolverSettings.Current;
+        if (current.RelicStrategyEnabled == enabled && current.RelicCounterRules.SequenceEqual(copied))
+            return;
+        SolverSettings.Update(current with { RelicStrategyEnabled = enabled, RelicCounterRules = copied });
+        RefreshControls();
     }
 
     private static void OnIgnoreLongTermRewardsChanged(bool ignore)
@@ -3563,7 +3607,15 @@ internal static class SolverOverlay
         NGame? host = NGame.Instance;
         CombatState? state = CombatManager.Instance.DebugOnlyGetState();
         if (host != null && state != null && CombatManager.Instance.IsInProgress)
+        {
             SolverController.SetIgnoreLongTermRewards(host, state, ignore);
+            return;
+        }
+        SolverSettingsData current = SolverSettings.Current;
+        if (current.IgnoreLongTermRewards == ignore)
+            return;
+        SolverSettings.Update(current with { IgnoreLongTermRewards = ignore });
+        RefreshControls();
     }
 
     private static void OnPotionDirectiveChanged(

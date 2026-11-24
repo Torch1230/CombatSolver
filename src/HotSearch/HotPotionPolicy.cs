@@ -292,8 +292,16 @@ internal static class HotPotionPolicy
                 Math.Max(0, alchemizeCount - policy.EmptyRootPotionSlots));
             if (alchemizeRefills > 0)
             {
-                replacementCenti += alchemizeRefills
-                    * (PotionHpThresholds.DefaultStandard * HotSearchConstants.HpFixedScale);
+                // Avoid double-crediting a refilled potion slot beyond real standard potion value
+                // when Alchemize growth budget already credits it in NetPersistentHpDeltaCenti.
+                int alchemizePerRefillHp = Math.Max(
+                    0,
+                    PotionHpThresholds.DefaultStandard - policy.EffectiveGrowthBudgets.Alchemize);
+                if (alchemizePerRefillHp > 0)
+                {
+                    replacementCenti += alchemizeRefills
+                        * (alchemizePerRefillHp * HotSearchConstants.HpFixedScale);
+                }
             }
         }
 
@@ -372,8 +380,6 @@ internal static class HotPotionPolicy
             return false;
         if (!key.Won || !key.Survives || key.DeathSaveUseCount > 0)
             return true;
-        if (policy.HasGrowthTargets)
-            return true;
 
         int hpScale = HotRouteQuality.PersistentHpScale(policy.StrategicBossHpRelief);
 
@@ -421,6 +427,54 @@ internal static class HotPotionPolicy
                 ? 5 * HotSearchConstants.MaxHpGainWeightCenti
                 : 0;
             maxPossibleGainCenti += 5L * hpScale + maxHpGainBonus;
+        }
+
+        if (policy.HasAnyStrategyTargets && !key.AllStrategyTargetsSatisfied)
+        {
+            if (policy.HasPureGrowthTargets && !key.AllGrowthTargetsSatisfied && policy.EffectiveGrowthBudgets.IsEnabled)
+            {
+                if (!policy.HasBoundedGrowthTargets)
+                    return true;
+
+                int[] req = policy.RequiredGrowthCounts;
+                GrowthValues b = policy.EffectiveGrowthBudgets;
+                long maxGrowthCreditHp = (long)req[0] * b.HandOfGreed
+                    + (long)req[1] * b.TheHunt
+                    + (long)req[2] * b.Feed
+                    + (long)req[3] * b.Royalties
+                    + (long)req[4] * b.Alchemize
+                    + (long)req[5] * b.GeneticAlgorithm
+                    + (long)req[6] * b.TheScythe
+                    + (long)req[7] * b.Goopy
+                    + (long)req[8] * b.ForbiddenGrimoire
+                    + (long)req[9] * b.MadScience
+                    + (long)req[10] * b.ShowOff;
+                long unrealizedGrowthHp = Math.Max(0L, maxGrowthCreditHp - key.GrowthHpCredit);
+                maxPossibleGainCenti += unrealizedGrowthHp * HotSearchConstants.HpFixedScale;
+            }
+
+            if (policy.HasRelicTargets && !key.AllRelicTargetsSatisfied)
+            {
+                HotRelicTargetEntry[] targets = policy.RelicTargets;
+                long unrealizedRelicHp = 0L;
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    HotRelicTargetEntry t = targets[i];
+                    if ((key.RelicSatisfiedMask & (1U << (int)t.Id)) != 0)
+                        continue;
+                    if (t.Id == RelicCounterId.MeatOnTheBone)
+                    {
+                        unrealizedRelicHp += ActEndingBossPolicy.PersistentValueOfRecoveredHp(
+                            policy.PostCombatRelicHeal.WoundedHeal,
+                            policy.StrategicBossHpRelief);
+                    }
+                    else if (t.HpAllowance > 0)
+                    {
+                        unrealizedRelicHp += t.HpAllowance;
+                    }
+                }
+                maxPossibleGainCenti += unrealizedRelicHp * HotSearchConstants.HpFixedScale;
+            }
         }
 
         return maxPossibleGainCenti >= minNetCostCenti;

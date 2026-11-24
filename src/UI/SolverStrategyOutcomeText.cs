@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
 
 namespace CombatSolver;
@@ -40,9 +41,7 @@ internal static class SolverStrategyOutcomeText
         {
             int count = rewards.Get(source);
             if (count <= 0) continue;
-            string name = source == GrowthSource.Goopy
-                ? ModelDb.Enchantment<Goopy>().Title.GetFormattedText()
-                : ModelDb.AllCards.Single(card => card.GetType().Name == source.ToString()).Title;
+            string name = FormatGrowthSourceName(source);
             growth.Add(count == 1 ? name : $"{name} ×{count}");
         }
         foreach (var entry in GrowthSourceMirrors.All)
@@ -60,4 +59,20 @@ internal static class SolverStrategyOutcomeText
         if (growth.Count > 0) parts.Add(new(SolverText.Format($"已获得：{Join(growth)}"), true));
         return parts;
     }
+
+    private static string FormatGrowthSourceName(GrowthSource source) => source switch
+    {
+        GrowthSource.HandOfGreed => ModelDb.Card<HandOfGreed>().Title,
+        GrowthSource.TheHunt => ModelDb.Card<TheHunt>().Title,
+        GrowthSource.Feed => ModelDb.Card<Feed>().Title,
+        GrowthSource.Royalties => ModelDb.Card<Royalties>().Title,
+        GrowthSource.Alchemize => ModelDb.Card<Alchemize>().Title,
+        GrowthSource.GeneticAlgorithm => ModelDb.Card<GeneticAlgorithm>().Title,
+        GrowthSource.TheScythe => ModelDb.Card<TheScythe>().Title,
+        GrowthSource.Goopy => ModelDb.Enchantment<Goopy>().Title.GetFormattedText(),
+        GrowthSource.ForbiddenGrimoire => ModelDb.Card<ForbiddenGrimoire>().Title,
+        GrowthSource.MadScience => ModelDb.Card<MadScience>().Title,
+        GrowthSource.ShowOff => ModelDb.Card<ShowOff>().Title,
+        _ => throw new ArgumentOutOfRangeException(nameof(source)),
+    };
 }

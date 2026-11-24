@@ -22,9 +22,12 @@ internal sealed class LockstepChoiceMismatchException(string message) : InvalidO
 /// 锁步选牌器：按 HotCombatEngine.Step 选出的 RecordedFuzzChoice 序列，
 /// 为实机 sts2.dll 的 CardSelectCmd 精确喂回相同卡牌实例。
 /// </summary>
-internal sealed class LockstepCardSelector(IReadOnlyList<RecordedFuzzChoice> plannedChoices) : ICardSelector
+internal sealed class LockstepCardSelector(
+    IReadOnlyList<RecordedFuzzChoice> plannedChoices,
+    IReadOnlyList<bool>? autoSkippable = null) : ICardSelector
 {
     private readonly IReadOnlyList<RecordedFuzzChoice> _queue = plannedChoices;
+    private readonly IReadOnlyList<bool>? _autoSkippable = autoSkippable;
     private int _cursor;
 
     public int ConsumedCount => _cursor;
@@ -37,18 +40,85 @@ internal sealed class LockstepCardSelector(IReadOnlyList<RecordedFuzzChoice> pla
         return ex;
     }
 
+    private bool IsAutoSkippable(int index)
+        => _autoSkippable != null && index >= 0 && index < _autoSkippable.Count && _autoSkippable[index];
+
     public Task<IEnumerable<CardModel>> GetSelectedCards(IEnumerable<CardModel> options, int minSelect, int maxSelect)
     {
         List<CardModel> optList = options.ToList();
-        List<CardModel> picked = new(Math.Min(maxSelect, optList.Count));
-        HashSet<CardModel> pickedSet = new(ReferenceEqualityComparer.Instance);
 
-        while (picked.Count < maxSelect && _cursor < _queue.Count)
+        // 原版 CardSelectCmd（FromHand / FromCombatPile / FromSimpleGrid / FromHandForUpgrade）在
+        // !prefs.RequireManualConfirmation && eligibleCount <= prefs.MinSelect 时会直接自动返回全部候选而不调用 ICardSelector。
+        // 当实机本次候选数大于 minSelect 时，队首标记为可自动跳过的强制窗口必然已被原版跳过；
+        // 优先对齐到跳过前缀后的首个匹配窗口，避免同牌名误撞或 minSelect==0 时漏消耗队首。
+        if (optList.Count > minSelect && IsAutoSkippable(_cursor))
         {
-            RecordedFuzzChoice spec = _queue[_cursor];
+            int skipEnd = _cursor;
+            while (skipEnd < _queue.Count && IsAutoSkippable(skipEnd))
+                skipEnd++;
+
+            if (skipEnd < _queue.Count
+                && TryConsumeWindow(skipEnd, optList, minSelect, maxSelect, out List<CardModel> skippedPicked, out int skippedNext, out _))
+            {
+                _cursor = skippedNext;
+                return Task.FromResult<IEnumerable<CardModel>>(skippedPicked);
+            }
+        }
+
+        if (TryConsumeWindow(_cursor, optList, minSelect, maxSelect, out List<CardModel> picked, out int nextCursor, out string? error))
+        {
+            _cursor = nextCursor;
+            return Task.FromResult<IEnumerable<CardModel>>(picked);
+        }
+
+        // 兜底对齐（镜像 DeploymentSoakRunner.PlanDrivenCardSelector）：
+        // 若前置强制窗口被原版隐式自动选择跳过（包含后续窗口 RequireManualConfirmation 导致 optList.Count <= minSelect 的情形），
+        // 跳过可自动跳过的队首条目并尝试命中当前候选窗口。
+        if (_autoSkippable != null)
+        {
+            int candidateCursor = _cursor;
+            while (candidateCursor < _queue.Count && IsAutoSkippable(candidateCursor))
+            {
+                candidateCursor++;
+                if (candidateCursor < _queue.Count
+                    && TryConsumeWindow(candidateCursor, optList, minSelect, maxSelect, out List<CardModel> alignedPicked, out int alignedNext, out _))
+                {
+                    _cursor = alignedNext;
+                    return Task.FromResult<IEnumerable<CardModel>>(alignedPicked);
+                }
+            }
+        }
+        else if (_cursor + 1 < _queue.Count
+            && _queue[_cursor].Kind != HotChoiceKind.GeneratedCard
+            && _queue[_cursor].Kind != HotChoiceKind.None
+            && TryConsumeWindow(_cursor + 1, optList, minSelect, maxSelect, out List<CardModel> fallbackPicked, out int fallbackNext, out _))
+        {
+            _cursor = fallbackNext;
+            return Task.FromResult<IEnumerable<CardModel>>(fallbackPicked);
+        }
+
+        throw Fail(error ?? "LockstepCardSelector 选牌失败。");
+    }
+
+    private bool TryConsumeWindow(
+        int startCursor,
+        List<CardModel> optList,
+        int minSelect,
+        int maxSelect,
+        out List<CardModel> picked,
+        out int nextCursor,
+        out string? error)
+    {
+        picked = new List<CardModel>(Math.Min(maxSelect, optList.Count));
+        HashSet<CardModel> pickedSet = new(ReferenceEqualityComparer.Instance);
+        int cursor = startCursor;
+
+        while (picked.Count < maxSelect && cursor < _queue.Count)
+        {
+            RecordedFuzzChoice spec = _queue[cursor];
             if (spec.Kind == HotChoiceKind.None)
             {
-                _cursor++;
+                cursor++;
                 break;
             }
 
@@ -60,25 +130,31 @@ internal sealed class LockstepCardSelector(IReadOnlyList<RecordedFuzzChoice> pla
                     break;
 
                 string available = string.Join(", ", optList.Select(static c => $"{c.Id.Entry}+{c.CurrentUpgradeLevel}"));
-                throw Fail(
+                nextCursor = cursor;
+                error =
                     $"LockstepCardSelector 无法在选项 [{available}] 中找到 {spec.Kind}:{spec.CardEntry}+{spec.UpgradeLevel}#opt{spec.OptionOccurrence} " +
-                    $"(genIdx={spec.GeneratedOptionIndex}, min={minSelect}, max={maxSelect}, cursor={_cursor}/{_queue.Count})。");
+                    $"(genIdx={spec.GeneratedOptionIndex}, min={minSelect}, max={maxSelect}, cursor={cursor}/{_queue.Count})。";
+                return false;
             }
 
             picked.Add(match);
             pickedSet.Add(match);
-            _cursor++;
+            cursor++;
         }
 
         if (picked.Count < minSelect)
         {
             string available = string.Join(", ", optList.Select(static c => $"{c.Id.Entry}+{c.CurrentUpgradeLevel}"));
-            throw Fail(
+            nextCursor = cursor;
+            error =
                 $"LockstepCardSelector 选出 {picked.Count} 张牌，少于要求最小数 {minSelect} " +
-                $"(max={maxSelect}, cursor={_cursor}/{_queue.Count}, options=[{available}])。");
+                $"(max={maxSelect}, cursor={cursor}/{_queue.Count}, options=[{available}])。";
+            return false;
         }
 
-        return Task.FromResult<IEnumerable<CardModel>>(picked);
+        nextCursor = cursor;
+        error = null;
+        return true;
     }
 
     public CardRewardSelection GetSelectedCardReward(
@@ -268,8 +344,8 @@ internal static class CombatDiffFuzzer
                 default: throw new ArgumentException($"--fuzz-combat 未知选项：{key}");
             }
         }
-        if (phase is not ("all" or "sweep" or "synergy"))
-            throw new ArgumentException("--phase 只支持 all|sweep|synergy。");
+        if (phase is not ("all" or "sweep" or "synergy" or "high-risk"))
+            throw new ArgumentException("--phase 只支持 all|sweep|synergy|high-risk。");
 
         Directory.CreateDirectory(dumpDir);
 
@@ -523,6 +599,7 @@ internal static class CombatDiffFuzzer
 
                 HotAction chosen;
                 RecordedFuzzChoice[] chosenSpecs;
+                bool[] autoSkippableChoices;
                 CombatHotState nextHot;
                 HotColdSidecar? nextCold;
                 string entityId;
@@ -533,7 +610,7 @@ internal static class CombatDiffFuzzer
                     chosen = new HotAction(rec.Kind, (byte)rec.SlotOrHandIdx, (sbyte)rec.TargetEnemySlot);
                     entityId = rec.EntityId;
                     ResolveReplayChoices(in hot, hotCold, rules, scratch, chosen, rec.Choices, choiceOptBuf,
-                        out nextHot, out nextCold, out chosenSpecs);
+                        out nextHot, out nextCold, out chosenSpecs, out autoSkippableChoices);
                 }
                 else
                 {
@@ -541,7 +618,7 @@ internal static class CombatDiffFuzzer
                         in hot, rules, legalBuf.AsSpan(0, legalCount), actionsThisTurn, coverage, rng);
                     ResolveRandomChoices(
                         in hot, hotCold, rules, scratch, ref chosen, choiceOptBuf, coverage, rng,
-                        out nextHot, out nextCold, out chosenSpecs);
+                        out nextHot, out nextCold, out chosenSpecs, out autoSkippableChoices);
                     entityId = DescribeActionEntity(in hot, rules, chosen);
                 }
 
@@ -567,7 +644,7 @@ internal static class CombatDiffFuzzer
 
                 // 同步在实机 sts2.dll 上执行同一个动作与相同选牌
                 HotCombatOutcome liveOutcome;
-                LockstepCardSelector lockstepSelector = new(chosenSpecs);
+                LockstepCardSelector lockstepSelector = new(chosenSpecs, autoSkippableChoices);
                 using (RunManager.Instance.CardSelectorStack.PushSelector(player, lockstepSelector))
                 {
                     liveOutcome = RealCombatDriver.RunRealCombatAction(
@@ -684,6 +761,78 @@ internal static class CombatDiffFuzzer
         return legal[rng.Next(legal.Length)];
     }
 
+    private readonly record struct ChoiceWindowMeta(
+        ushort GroupSeq,
+        bool IsOptional,
+        bool IsGenerated,
+        int RawEligibleCount);
+
+    private static int ComputeRawEligibleChoiceCount(
+        HotChoiceSelection[] choiceOptBuf,
+        ReadOnlySpan<byte> classMultBuf,
+        int optCount)
+    {
+        int rawEligible = HotCombatEngine.GetPendingExcludedChoiceUids().Length;
+        for (int i = 0; i < optCount; i++)
+        {
+            if (choiceOptBuf[i].Kind != HotChoiceKind.None)
+                rawEligible += classMultBuf[i];
+        }
+        return rawEligible;
+    }
+
+    private static ChoiceWindowMeta CaptureChoiceWindowMeta(
+        HotExecScratch scratch,
+        HotChoiceSelection[] choiceOptBuf,
+        ReadOnlySpan<byte> classMultBuf,
+        int optCount)
+    {
+        bool isOptional = scratch.PendingChoiceMin == 0
+            || (scratch.PendingChoiceGroupFlags & HotChoiceGroupFlags.Optional) != 0;
+        bool isGenerated = scratch.PendingChoiceKind is HotChoiceKind.GeneratedCard or HotChoiceKind.None;
+        int rawEligible = isGenerated
+            ? 0
+            : ComputeRawEligibleChoiceCount(choiceOptBuf, classMultBuf, optCount);
+        return new ChoiceWindowMeta(scratch.PendingChoiceGroupSeq, isOptional, isGenerated, rawEligible);
+    }
+
+    private static bool[] BuildAutoSkippableFlags(
+        IReadOnlyList<RecordedFuzzChoice> specs,
+        IReadOnlyList<ChoiceWindowMeta> metas)
+    {
+        bool[] flags = new bool[specs.Count];
+        int i = 0;
+        while (i < specs.Count)
+        {
+            ChoiceWindowMeta first = metas[i];
+            int j = i + 1;
+            while (j < specs.Count && first.GroupSeq != 0 && metas[j].GroupSeq == first.GroupSeq)
+                j++;
+
+            int pickedNonNone = 0;
+            for (int k = i; k < j; k++)
+            {
+                if (specs[k].Kind != HotChoiceKind.None)
+                    pickedNonNone++;
+            }
+
+            // 原版 CardSelectCmd（FromHand / FromCombatPile / FromSimpleGrid / FromHandForUpgrade）在
+            // !prefs.RequireManualConfirmation && eligibleCount <= prefs.MinSelect 时自动返回全部候选而不调 ICardSelector。
+            if (!first.IsOptional
+                && !first.IsGenerated
+                && pickedNonNone > 0
+                && first.RawEligibleCount > 0
+                && first.RawEligibleCount <= pickedNonNone)
+            {
+                for (int k = i; k < j; k++)
+                    flags[k] = true;
+            }
+
+            i = j;
+        }
+        return flags;
+    }
+
     private static void ResolveRandomChoices(
         in CombatHotState state,
         HotColdSidecar? cold,
@@ -695,11 +844,14 @@ internal static class CombatDiffFuzzer
         Random rng,
         out CombatHotState nextHot,
         out HotColdSidecar? nextCold,
-        out RecordedFuzzChoice[] recordedChoices)
+        out RecordedFuzzChoice[] recordedChoices,
+        out bool[] autoSkippableChoices)
     {
         List<HotChoiceSelection> selections = [];
         List<RecordedFuzzChoice> specs = [];
+        List<ChoiceWindowMeta> windowMetas = [];
         HashSet<(HotChoiceKind Kind, ushort Uid)> pickedInAction = [];
+        byte[] classMultBuf = new byte[choiceOptBuf.Length];
 
         while (true)
         {
@@ -719,6 +871,7 @@ internal static class CombatDiffFuzzer
                 nextHot = probe;
                 nextCold = probeCold;
                 recordedChoices = specs.ToArray();
+                autoSkippableChoices = BuildAutoSkippableFlags(specs, windowMetas);
                 return;
             }
 
@@ -728,25 +881,31 @@ internal static class CombatDiffFuzzer
                 action = HotAction.EndTurn();
                 selections.Clear();
                 specs.Clear();
+                windowMetas.Clear();
                 pickedInAction.Clear();
                 continue;
             }
 
-            int optCount = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, rules, scratch, choiceOptBuf);
+            int optCount = HotCombatEngine.EnumerateChoiceOptionsWithClasses(
+                in probe, probeCold, rules, scratch, choiceOptBuf, classMultBuf);
             if (optCount == 0)
             {
                 if (scratch.PendingChoiceMin == 0)
                 {
                     selections.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
                     specs.Add(new RecordedFuzzChoice(HotChoiceKind.None, string.Empty, 0, string.Empty, -1, 0));
+                    windowMetas.Add(new ChoiceWindowMeta(scratch.PendingChoiceGroupSeq, IsOptional: true, IsGenerated: true, RawEligibleCount: 0));
                     continue;
                 }
                 action = HotAction.EndTurn();
                 selections.Clear();
                 specs.Clear();
+                windowMetas.Clear();
                 pickedInAction.Clear();
                 continue;
             }
+
+            ChoiceWindowMeta windowMeta = CaptureChoiceWindowMeta(scratch, choiceOptBuf, classMultBuf, optCount);
 
             // 过滤已在本动作内选过的同 UID 牌（多选弹窗防止重复选同一张牌）
             List<int> validIndices = new(optCount);
@@ -787,6 +946,7 @@ internal static class CombatDiffFuzzer
                 pickedInAction.Add((chosenOpt.Kind, chosenOpt.CardUidOrIndex));
 
             specs.Add(CaptureChoiceSpec(in probe, probeCold, rules, scratch, chosenOpt));
+            windowMetas.Add(windowMeta);
         }
     }
 
@@ -800,10 +960,13 @@ internal static class CombatDiffFuzzer
         HotChoiceSelection[] choiceOptBuf,
         out CombatHotState nextHot,
         out HotColdSidecar? nextCold,
-        out RecordedFuzzChoice[] usedChoices)
+        out RecordedFuzzChoice[] usedChoices,
+        out bool[] autoSkippableChoices)
     {
         List<HotChoiceSelection> selections = [];
         List<RecordedFuzzChoice> usedSpecs = new(recordedChoices.Length);
+        List<ChoiceWindowMeta> windowMetas = new(recordedChoices.Length);
+        byte[] classMultBuf = new byte[choiceOptBuf.Length];
         int recCursor = 0;
 
         while (true)
@@ -821,6 +984,7 @@ internal static class CombatDiffFuzzer
                 nextHot = probe;
                 nextCold = probeCold;
                 usedChoices = usedSpecs.ToArray();
+                autoSkippableChoices = BuildAutoSkippableFlags(usedSpecs, windowMetas);
                 return;
             }
 
@@ -828,11 +992,14 @@ internal static class CombatDiffFuzzer
                 throw new InvalidOperationException($"回放选牌不足：HotCombatEngine 请求第 {recCursor + 1} 个选择，但录像只有 {recordedChoices.Length} 个。");
 
             RecordedFuzzChoice target = recordedChoices[recCursor++];
-            int optCount = HotCombatEngine.EnumerateChoiceOptions(in probe, probeCold, rules, scratch, choiceOptBuf);
+            int optCount = HotCombatEngine.EnumerateChoiceOptionsWithClasses(
+                in probe, probeCold, rules, scratch, choiceOptBuf, classMultBuf);
+            ChoiceWindowMeta windowMeta = CaptureChoiceWindowMeta(scratch, choiceOptBuf, classMultBuf, optCount);
             HotChoiceSelection matched = MatchRecordedChoiceOption(
                 in probe, probeCold, rules, scratch, choiceOptBuf.AsSpan(0, optCount), target, out RecordedFuzzChoice resolvedSpec);
             selections.Add(matched);
             usedSpecs.Add(resolvedSpec);
+            windowMetas.Add(windowMeta);
         }
     }
 

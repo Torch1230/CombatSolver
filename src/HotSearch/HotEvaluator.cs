@@ -55,6 +55,14 @@ internal readonly struct HotFastSummary
     public readonly byte EmptyPotionSlots;
     public readonly bool ForfeitsGold;
     public readonly HotCombatOutcome Outcome;
+    public readonly short RelicHpCredit;
+    public readonly short RelicHealingHpCredit;
+    public readonly ushort RelicSatisfiedMask;
+    public readonly ushort RelicDistance;
+    public readonly ushort RelicSatisfiedPriority;
+    public readonly byte FeedCount;
+    public readonly bool AllGrowthTargetsSatisfied;
+    public readonly bool AllRelicTargetsSatisfied;
 
     public HotFastSummary(
         int playerHp,
@@ -77,7 +85,15 @@ internal readonly struct HotFastSummary
         byte alchemizeCount,
         byte emptyPotionSlots,
         bool forfeitsGold,
-        HotCombatOutcome outcome)
+        HotCombatOutcome outcome,
+        short relicHpCredit = 0,
+        short relicHealingHpCredit = 0,
+        ushort relicSatisfiedMask = 0,
+        ushort relicDistance = 0,
+        ushort relicSatisfiedPriority = 0,
+        byte feedCount = 0,
+        bool allGrowthTargetsSatisfied = true,
+        bool allRelicTargetsSatisfied = true)
     {
         PlayerHp = playerHp;
         PlayerMaxHp = playerMaxHp;
@@ -100,11 +116,23 @@ internal readonly struct HotFastSummary
         EmptyPotionSlots = emptyPotionSlots;
         ForfeitsGold = forfeitsGold;
         Outcome = outcome;
+        RelicHpCredit = relicHpCredit;
+        RelicHealingHpCredit = relicHealingHpCredit;
+        RelicSatisfiedMask = relicSatisfiedMask;
+        RelicDistance = relicDistance;
+        RelicSatisfiedPriority = relicSatisfiedPriority;
+        FeedCount = feedCount;
+        AllGrowthTargetsSatisfied = allGrowthTargetsSatisfied;
+        AllRelicTargetsSatisfied = allRelicTargetsSatisfied;
     }
 
     public bool IsVictory => Outcome == HotCombatOutcome.Victory && PlayerHp > 0;
     public bool IsDefeat => Outcome == HotCombatOutcome.Defeat || PlayerHp <= 0;
     public bool IsEventDefeat => Outcome == HotCombatOutcome.EventDefeat && PlayerHp > 0;
+    public int StrategyGoalHpCredit => GrowthHpCredit + RelicHpCredit;
+    public int StrategicHpCredit => GrowthHpCredit + RelicHpCredit + RelicHealingHpCredit;
+    public int StrategyGoalCount => GrowthRewardCount + RelicSatisfiedPriority;
+    public bool AllStrategyTargetsSatisfied => AllGrowthTargetsSatisfied && AllRelicTargetsSatisfied;
 }
 
 /// <summary>
@@ -241,6 +269,8 @@ internal readonly struct HotEvalLookup
     public readonly ushort ParryDefId;
     public readonly ushort NoDrawDefId;
     public readonly ushort SovereignBladeDefId;
+    public readonly ushort TheHuntCardDefId;
+    public readonly ushort TheHuntPowerDefId;
     public readonly byte PaelsEyeStateSlot;
     public readonly byte PaelsLegionStateSlot;
     public readonly byte ArtOfWarStateSlot;
@@ -300,6 +330,8 @@ internal readonly struct HotEvalLookup
         ParryDefId = rules.GetPowerDefId(HotPowerId.ParryPower);
         NoDrawDefId = rules.GetPowerDefId(HotPowerId.NoDrawPower);
         SovereignBladeDefId = rules.GetCardDefId(HotCustomCardId.SovereignBlade);
+        TheHuntCardDefId = rules.GetCardDefId(HotCustomCardId.TheHunt);
+        TheHuntPowerDefId = rules.GetPowerDefId(HotPowerId.TheHuntPower);
         PaelsEyeStateSlot = rules.HasRelic(HotRelicId.PaelsEye) ? rules.GetRelicStateSlot(HotRelicId.PaelsEye) : (byte)0xFF;
         PaelsLegionStateSlot = rules.HasRelic(HotRelicId.PaelsLegion) ? rules.GetRelicStateSlot(HotRelicId.PaelsLegion) : (byte)0xFF;
         ArtOfWarStateSlot = rules.HasRelic(HotRelicId.ArtOfWar) ? rules.GetRelicStateSlot(HotRelicId.ArtOfWar) : (byte)0xFF;
@@ -694,6 +726,27 @@ internal static class HotEvaluator
             outcome = HotCombatOutcome.Victory;
         }
 
+        short relicHpCredit = 0;
+        short relicHealingHpCredit = 0;
+        ushort relicSatisfiedMask = 0;
+        ushort relicDistance = 0;
+        ushort relicSatisfiedPriority = 0;
+        bool allRelicSatisfied = true;
+        if (policy.HasRelicTargets)
+        {
+            bool isVictory = outcome == HotCombatOutcome.Victory && s.Player.CurrentHp > 0;
+            RelicCounterEvaluation re = policy.EvaluateRelicCounters(in s, won: isVictory);
+            relicHpCredit = (short)Math.Clamp(re.HpCredit, short.MinValue, short.MaxValue);
+            relicHealingHpCredit = (short)Math.Clamp(re.HealingHpCredit, short.MinValue, short.MaxValue);
+            relicSatisfiedMask = (ushort)re.SatisfiedMask;
+            relicDistance = (ushort)Math.Clamp(re.Distance, 0, ushort.MaxValue);
+            relicSatisfiedPriority = (ushort)Math.Clamp(re.SatisfiedPriority, 0, ushort.MaxValue);
+            allRelicSatisfied = policy.AreAllRelicTargetsSatisfied(relicSatisfiedMask);
+        }
+
+        bool allGrowthSatisfied = !policy.HasPureGrowthTargets
+            || policy.AreBoundedGrowthTargetsSatisfied(in s);
+
         return new HotFastSummary(
             playerHp: s.Player.CurrentHp,
             playerMaxHp: s.Player.MaxHp,
@@ -715,7 +768,15 @@ internal static class HotEvaluator
             alchemizeCount: (byte)Math.Clamp((int)s.Growth[4], 0, byte.MaxValue),
             emptyPotionSlots: (byte)emptyPotionSlots,
             forfeitsGold: forfeitsGold,
-            outcome: outcome);
+            outcome: outcome,
+            relicHpCredit: relicHpCredit,
+            relicHealingHpCredit: relicHealingHpCredit,
+            relicSatisfiedMask: relicSatisfiedMask,
+            relicDistance: relicDistance,
+            relicSatisfiedPriority: relicSatisfiedPriority,
+            feedCount: (byte)Math.Clamp((int)s.Growth[2], 0, byte.MaxValue),
+            allGrowthTargetsSatisfied: allGrowthSatisfied,
+            allRelicTargetsSatisfied: allRelicSatisfied);
     }
 
     /// <summary>
@@ -750,7 +811,8 @@ internal static class HotEvaluator
             deathSaveHpRestored: summary.DeathSaveHpRestored,
             growthHpCredit: 0,
             bossHpRelief: policy.StrategicBossHpRelief,
-            ignoreLongTermRewards: policy.IgnoreLongTermRewards);
+            ignoreLongTermRewards: policy.IgnoreLongTermRewards,
+            feedMaxHpExcluded: summary.FeedCount * policy.FeedMaxHpPerKill);
 
         long projectedBattleHpLost = (long)policy.BattleHpLostSoFar + summary.HpLost;
 
@@ -875,7 +937,10 @@ internal static class HotEvaluator
                 deathSaveHpRestored: summary.DeathSaveHpRestored,
                 growthHpCredit: summary.GrowthHpCredit,
                 bossHpRelief: policy.StrategicBossHpRelief,
-                ignoreLongTermRewards: policy.IgnoreLongTermRewards);
+                ignoreLongTermRewards: policy.IgnoreLongTermRewards,
+                relicHpCredit: summary.RelicHpCredit,
+                relicHealingHpCredit: summary.RelicHealingHpCredit,
+                feedMaxHpExcluded: summary.FeedCount * policy.FeedMaxHpPerKill);
 
             long vCenti = (long)netHpDeltaCenti - netPotionCostCenti;
 
@@ -884,8 +949,20 @@ internal static class HotEvaluator
                 + vCenti * HpWeightPerCenti
                 + (long)netHpDeltaCenti * 2L
                 - (long)summary.Turn * 5_000L
-                - (long)actionCount * 10L
-                + (long)summary.GrowthRewardCount * 5_000L;
+                - (long)actionCount * 10L;
+
+            if (!policy.IgnoreLongTermRewards && summary.GrowthRewardCount > 0)
+            {
+                victoryScore += (long)summary.GrowthRewardCount
+                    * (policy.HasPureGrowthTargets ? 25_000L : 5_000L);
+            }
+
+            if (policy.HasRelicTargets)
+            {
+                victoryScore += ComputeRelicGuidanceScore(
+                    summary.RelicSatisfiedPriority,
+                    summary.RelicDistance);
+            }
 
             if (policy.TheftPolicy == SolverTheftPolicy.PreserveResources)
             {
@@ -988,6 +1065,7 @@ internal static class HotEvaluator
         int enemyDebuffStacks = 0;
         int totalPoisonAndDoom = 0;
         int minSandpitTurns = int.MaxValue;
+        int rewardedTheHunts = 0;
 
         Span<int> enemyStr = stackalloc int[HotLimits.MaxEnemies];
         Span<int> enemyTempStrRecovery = stackalloc int[HotLimits.MaxEnemies];
@@ -1030,6 +1108,7 @@ internal static class HotEvaluator
                 else if (defId == lookup.SummonNextTurnDefId) { nextTurnSummon += p.Amount; isOneTurnCarryover = true; }
                 else if (defId == lookup.FurnaceDefId) furnacePower += p.Amount;
                 else if ((defId == lookup.SeekingEdgeDefId || defId == lookup.ParryDefId) && p.Amount > 0) hasBladeSynergy = true;
+                else if (policy.HasPureGrowthTargets && defId == lookup.TheHuntPowerDefId && p.Amount > 0) rewardedTheHunts += p.Amount;
 
                 // Domain-agnostic persistent player buff investment (ZERO card/power-ID hardcoding):
                 // permanent Buff powers outweigh transient debuffs/exhaust; counts distinct presence + unclamped stacks.
@@ -1317,7 +1396,10 @@ internal static class HotEvaluator
             deathSaveHpRestored: summary.DeathSaveHpRestored,
             growthHpCredit: summary.GrowthHpCredit,
             bossHpRelief: BossHpRelief.None,
-            ignoreLongTermRewards: policy.IgnoreLongTermRewards);
+            ignoreLongTermRewards: policy.IgnoreLongTermRewards,
+            relicHpCredit: summary.RelicHpCredit,
+            relicHealingHpCredit: summary.RelicHealingHpCredit,
+            feedMaxHpExcluded: summary.FeedCount * policy.FeedMaxHpPerKill);
 
         long runningScore = (long)ongoingNetHpDeltaCenti * ongoingHpWeight
             - (long)netPotionCostCenti * hpWeightPerCenti
@@ -1657,12 +1739,15 @@ internal static class HotEvaluator
 
         int goodThinnedCards = 0;
         int wastedEngineExhausts = 0;
+        int exhaustedTheHunts = 0;
         int exhaustEnd = s.ExhaustStart + s.ExhaustCount;
         for (int idx = s.ExhaustStart; idx < exhaustEnd; idx++)
         {
             ref readonly HotCard exCard = ref s.Cards[idx];
             if (exCard.CardDefId == 0 || exCard.CardDefId >= rules.Cards.Length)
                 continue;
+            if (policy.HasPureGrowthTargets && exCard.CardDefId == lookup.TheHuntCardDefId)
+                exhaustedTheHunts++;
             HotCardDef exDef = rules.Cards[exCard.CardDefId];
             if (exDef.Domain == HotCardDomain.Token)
                 continue;
@@ -1716,9 +1801,33 @@ internal static class HotEvaluator
             : Math.Max(totalSetup, -96);
         runningScore += (long)effectiveSetup * setupScale;
 
-        // Long-term resources, anger copies, theft (GrowthHpCredit already included inside ongoingNetHpDeltaCenti!)
-        runningScore += (long)summary.GrowthRewardCount * 5_000L;
-        runningScore += (long)Math.Min(s.LongTermResourceValue, 20) * 3_500L;
+        // Long-term resources, relic guidance, anger copies, theft (GrowthHpCredit & Relic credits already in ongoingNetHpDeltaCenti!)
+        if (!policy.IgnoreLongTermRewards)
+        {
+            if (policy.HasPureGrowthTargets)
+            {
+                if (summary.GrowthRewardCount > 0)
+                    runningScore += (long)summary.GrowthRewardCount * 25_000L;
+                int missedTheHuntRewards = Math.Max(0, exhaustedTheHunts - rewardedTheHunts);
+                if (missedTheHuntRewards > 0)
+                    runningScore -= (long)missedTheHuntRewards * 30_000L;
+            }
+            else if (summary.GrowthRewardCount > 0)
+            {
+                runningScore += (long)summary.GrowthRewardCount * 5_000L;
+            }
+
+            if (s.LongTermResourceValue > 0)
+                runningScore += (long)Math.Min(s.LongTermResourceValue, 20) * 3_500L;
+        }
+
+        if (policy.HasRelicTargets)
+        {
+            runningScore += ComputeRelicGuidanceScore(
+                summary.RelicSatisfiedPriority,
+                summary.RelicDistance);
+        }
+
         runningScore -= (long)Math.Max(0, s.AngerCopiesGenerated - 2) * 2_000L;
         runningScore -= (long)actionCount * 5L;
 
@@ -2310,18 +2419,39 @@ internal static class HotEvaluator
         return 0;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static long ComputeRelicGuidanceScore(ushort satisfiedPriority, ushort distance)
+    {
+        // Decode 4-bit nibble-packed priority counts (P1=1<<0, P2=1<<4, P3=1<<8) so free-alignment
+        // guidance stays monotonic in P3 > P2 > P1 and -distance while remaining strictly below 1 HP (39_000L).
+        int p1 = satisfiedPriority & 0xF;
+        int p2 = (satisfiedPriority >> 4) & 0xF;
+        int p3 = (satisfiedPriority >> 8) & 0xF;
+        long prioScore = (long)p3 * 20_000L + (long)p2 * 9_500L + (long)p1 * 3_000L;
+        if (prioScore > 24_000L)
+            prioScore = Math.Min(35_000L, 24_000L + ((prioScore - 24_000L) >> 4));
+        return prioScore - (long)Math.Min((int)distance, 30) * 400L;
+    }
+
     private static void ComputeGrowthSummary(
         in CombatHotState s,
         in HotSearchPolicy policy,
         out int credit,
         out int count)
     {
+        if (policy.IgnoreLongTermRewards)
+        {
+            credit = 0;
+            count = 0;
+            return;
+        }
+
         int totalCount = 0;
         for (int i = 0; i < 11; i++)
             totalCount += s.Growth[i];
         count = totalCount;
 
-        if (totalCount == 0 || policy.IgnoreLongTermRewards || !policy.EffectiveGrowthBudgets.IsEnabled)
+        if (totalCount == 0 || !policy.EffectiveGrowthBudgets.IsEnabled)
         {
             credit = 0;
             return;

@@ -572,6 +572,7 @@ internal static class HotSearchCoordinator
 
             bool stage1EarlyExit = stage1MeetsStopTarget
                 || (stage1CleanSurvival
+                    && bestPassKey.AllStrategyTargetsSatisfied
                     && HotPotionPolicy.SatisfiesHardConstraints(in bestPassKey, in hotPolicy)
                     && bestPassKey.ProjectedBattleHpLost <= 0
                     && stage1PaidPotions == 0
@@ -648,6 +649,7 @@ internal static class HotSearchCoordinator
                     && totalExpanded < stage3NodeCeiling
                     && (!bestPass.HasVictory
                         || !stage2CleanSurvival
+                        || (hotPolicy.HasAnyStrategyTargets && !bestPassKey.AllStrategyTargetsSatisfied)
                         || stage2TriggerHpLoss >= 18
                         || stage2TriggerHpLoss * 4 >= rootPlayerHp
                         || (isEliteOrBoss && (stage2TriggerHpLoss >= 8 || stage2PaidPotions >= 1)));
@@ -881,6 +883,12 @@ internal static class HotSearchCoordinator
             evalMode: evalMode,
             out HotEvalFeatures rootEval);
 
+        HotNodeFlags rootFlags = HotNodeFlags.IsRoot;
+        if (rootSummary.AllGrowthTargetsSatisfied)
+            rootFlags |= HotNodeFlags.AllGrowthTargetsSatisfied;
+        if (rootSummary.AllRelicTargetsSatisfied)
+            rootFlags |= HotNodeFlags.AllRelicTargetsSatisfied;
+
         HotSearchNode rootNode = new()
         {
             Hash = rootHash,
@@ -904,12 +912,18 @@ internal static class HotSearchCoordinator
             OptionalityScore = rootEval.OptionalityScore,
             OutstandingStolen = (short)Math.Clamp(rootSummary.OutstandingStolen, 0, short.MaxValue),
             GrowthHpCredit = (short)Math.Clamp(rootSummary.GrowthHpCredit, short.MinValue, short.MaxValue),
+            RelicHpCredit = rootSummary.RelicHpCredit,
+            RelicHealingHpCredit = rootSummary.RelicHealingHpCredit,
+            RelicSatisfiedMask = rootSummary.RelicSatisfiedMask,
+            RelicDistance = rootSummary.RelicDistance,
+            RelicSatisfiedPriority = rootSummary.RelicSatisfiedPriority,
+            FeedCount = rootSummary.FeedCount,
             PotionStrategicCost = 0,
             DeathSaveHpRestored = (short)Math.Clamp(rootSummary.DeathSaveHpRestored, 0, short.MaxValue),
             PotionMask = 0,
             ActionCount = 0,
             GrowthRewardCount = (ushort)Math.Clamp(rootSummary.GrowthRewardCount, 0, ushort.MaxValue),
-            Flags = HotNodeFlags.IsRoot,
+            Flags = rootFlags,
             Action = default,
             ChoiceCount = 0,
             PotionCount = 0,
@@ -992,6 +1006,9 @@ internal static class HotSearchCoordinator
         int bestSeenMaxDarkEvoke = rootEval.MaxDarkEvoke;
         int bestSeenPoisonAndDoom = rootEval.TotalPoisonAndDoom;
         int bestSeenBoardInvestment = rootEval.BoardInvestment;
+        int bestSeenStrategyGoalHpCredit = hotPolicy.HasAnyStrategyTargets ? rootSummary.StrategyGoalHpCredit : 0;
+        int bestSeenStrategyGoalCount = hotPolicy.HasAnyStrategyTargets ? rootSummary.StrategyGoalCount : 0;
+        ushort seenRelicSatisfiedMask = hotPolicy.HasRelicTargets ? rootSummary.RelicSatisfiedMask : (ushort)0;
         int turnsWithoutProgress = 0;
         int turnsSinceEnemyHpDecreased = 0;
         int maxTurnsForPass = hotPolicy.IsBossEncounter
@@ -1101,6 +1118,7 @@ internal static class HotSearchCoordinator
                                 nodeArena,
                                 shortlistCap,
                                 shortlistBuf.AsSpan(0, shortlistCap),
+                                in hotPolicy,
                                 isTurnBoundary: false,
                                 preferPotionBuckets: false,
                                 useRolloutScores: false,
@@ -1159,6 +1177,7 @@ internal static class HotSearchCoordinator
                             nodeArena,
                             beamWidth,
                             pruneOutBuf.AsSpan(0, beamWidth),
+                            in hotPolicy,
                             isTurnBoundary: false,
                             preferPotionBuckets: false,
                             useRolloutScores: useSetupRollout,
@@ -1297,7 +1316,9 @@ internal static class HotSearchCoordinator
                         break;
                     }
 
-                    int effectiveMidTurnWidth = (turnLayer <= 2 && !hasVictory)
+                    bool keepEarlyMidTurnWidth = turnLayer <= 2
+                        && (!hasVictory || (hotPolicy.HasAnyStrategyTargets && !bestVictoryKey.AllStrategyTargetsSatisfied));
+                    int effectiveMidTurnWidth = keepEarlyMidTurnWidth
                         ? earlyMidTurnWidth
                         : beamWidth;
 
@@ -1312,6 +1333,7 @@ internal static class HotSearchCoordinator
                         nodeArena,
                         effectiveMidTurnWidth,
                         pruneOutBuf.AsSpan(0, effectiveMidTurnWidth),
+                        in hotPolicy,
                         isTurnBoundary: false,
                         preferPotionBuckets: preferPotionBuckets,
                         useRolloutScores: false,
@@ -1355,7 +1377,8 @@ internal static class HotSearchCoordinator
                 // Per-potion-bucket StandPat probing (prevents unpenalized 0-potion nodes from starving potion buckets!).
                 // Also run a compact emergency Turn-0 StandPat probe if TimeLimit cut Turn 0 short before any
                 // completed-turn surviving route was found, so time-bounded turns still evaluate EndTurn cleanly.
-                int effectiveTurnBoundaryWidth = (turnLayer <= 2 && !hasVictory)
+                int effectiveTurnBoundaryWidth = (turnLayer <= 2
+                    && (!hasVictory || (hotPolicy.HasAnyStrategyTargets && !bestVictoryKey.AllStrategyTargetsSatisfied)))
                     ? earlyTurnBoundaryWidth
                     : beamWidth;
                 bool emergencyTurn0StandPat = !hasVictory
@@ -1448,7 +1471,8 @@ internal static class HotSearchCoordinator
                     break;
                 }
 
-                effectiveTurnBoundaryWidth = (turnLayer <= 2 && !hasVictory)
+                effectiveTurnBoundaryWidth = (turnLayer <= 2
+                    && (!hasVictory || (hotPolicy.HasAnyStrategyTargets && !bestVictoryKey.AllStrategyTargetsSatisfied)))
                     ? earlyTurnBoundaryWidth
                     : beamWidth;
 
@@ -1486,6 +1510,7 @@ internal static class HotSearchCoordinator
                             nodeArena,
                             shortlistCap,
                             shortlistBuf.AsSpan(0, shortlistCap),
+                            in hotPolicy,
                             isTurnBoundary: true,
                             preferPotionBuckets: preferPotionBuckets,
                             useRolloutScores: false,
@@ -1544,7 +1569,8 @@ internal static class HotSearchCoordinator
                     ranTurnBoundaryRollout = true;
                 }
 
-                effectiveTurnBoundaryWidth = (turnLayer <= 2 && !hasVictory)
+                effectiveTurnBoundaryWidth = (turnLayer <= 2
+                    && (!hasVictory || (hotPolicy.HasAnyStrategyTargets && !bestVictoryKey.AllStrategyTargetsSatisfied)))
                     ? earlyTurnBoundaryWidth
                     : beamWidth;
                 if (pruneOutBuf.Length < effectiveTurnBoundaryWidth)
@@ -1558,6 +1584,7 @@ internal static class HotSearchCoordinator
                     nodeArena,
                     effectiveTurnBoundaryWidth,
                     pruneOutBuf.AsSpan(0, effectiveTurnBoundaryWidth),
+                    in hotPolicy,
                     isTurnBoundary: true,
                     preferPotionBuckets: preferPotionBuckets,
                     useRolloutScores: ranTurnBoundaryRollout,
@@ -1583,6 +1610,26 @@ internal static class HotSearchCoordinator
                     if (n.MaxDarkEvoke > bestSeenMaxDarkEvoke) { bestSeenMaxDarkEvoke = n.MaxDarkEvoke; layerProgressed = true; }
                     if (n.TotalPoisonAndDoom > bestSeenPoisonAndDoom) { bestSeenPoisonAndDoom = n.TotalPoisonAndDoom; layerProgressed = true; }
                     if (n.BoardInvestment > bestSeenBoardInvestment) { bestSeenBoardInvestment = n.BoardInvestment; layerProgressed = true; }
+                    if (hotPolicy.HasAnyStrategyTargets)
+                    {
+                        int goalCredit = n.StrategyGoalHpCredit;
+                        if (goalCredit > bestSeenStrategyGoalHpCredit)
+                        {
+                            bestSeenStrategyGoalHpCredit = goalCredit;
+                            layerProgressed = true;
+                        }
+                        int goalCount = n.StrategyGoalCount;
+                        if (goalCount > bestSeenStrategyGoalCount)
+                        {
+                            bestSeenStrategyGoalCount = goalCount;
+                            layerProgressed = true;
+                        }
+                        if (hotPolicy.HasRelicTargets && (n.RelicSatisfiedMask & ~seenRelicSatisfiedMask) != 0)
+                        {
+                            seenRelicSatisfiedMask |= n.RelicSatisfiedMask;
+                            layerProgressed = true;
+                        }
+                    }
                 }
 
                 turnsWithoutProgress = layerProgressed ? 0 : turnsWithoutProgress + 1;
@@ -1871,7 +1918,7 @@ internal static class HotSearchCoordinator
                 bestVictoryKey = key;
 
                 if (!hotPolicy.HasAnyHealOrUnknownGeneration
-                    && !hotPolicy.HasGrowthTargets
+                    && !hotPolicy.HasAnyStrategyTargets
                     && !hotPolicy.HasForcedDirectives
                     && hotPolicy.TheftPolicy != SolverTheftPolicy.PreserveResources
                     && key.DeathSaveUseCount == 0
@@ -2258,8 +2305,11 @@ internal static class HotSearchCoordinator
         if (!hasVictory || bestVictoryKey.CombatEndedTurn == int.MaxValue)
             return false;
 
+        bool unsatisfiedStrategyTargets = hotPolicy.HasAnyStrategyTargets
+            && !bestVictoryKey.AllStrategyTargetsSatisfied;
+
         bool canHealOrGrow = hotPolicy.HasAnyHealOrUnknownGeneration
-            || hotPolicy.HasGrowthTargets
+            || unsatisfiedStrategyTargets
             || (allowPaidOptionalPotions
                 && (hotPolicy.HasPaidHealPotion || hotPolicy.HasPaidFruitJuice || hotPolicy.HasPaidEntropicBrew))
             || bestVictoryKey.DeathSaveUseCount > 0
@@ -2270,7 +2320,8 @@ internal static class HotSearchCoordinator
         // 0 raw battle HP lost, 0 optional paid potion cost) and no heal/growth/recovery remains.
         // When raw battle HP was lost even if absorbed by BurningBlood / RunEnding (StrategicHpDeficit == 0),
         // allow T*+3 on Elite/Boss (T*+2 on normal monsters) so cleaner lower-raw-HP wins are explored;
-        // when persistent damage, paid potions, or heal/growth remain, keep the full +4 turn horizon.
+        // when strategy targets remain unsatisfied, allow a tightly bounded post-victory stall window;
+        // once AllStrategyTargetsSatisfied becomes true, stop widening immediately.
         bool tookPersistentDamage = bestVictoryKey.HasCentiPrecision
             ? bestVictoryKey.NetPersistentHpDeltaCenti < 0
             : bestVictoryKey.StrategicHpDeficit > 0;
@@ -2279,7 +2330,13 @@ internal static class HotSearchCoordinator
             || bestVictoryKey.OptionalPaidPotionCount > 0;
 
         int maxPostVictoryTurn;
-        if (canHealOrGrow || tookPersistentDamage || spentOptionalPaidPotion)
+        if (unsatisfiedStrategyTargets)
+        {
+            int strategyMargin = hotPolicy.HasRelicTargets ? 5 : 4;
+            int strategyFloor = hotPolicy.HasRelicTargets ? 10 : 9;
+            maxPostVictoryTurn = Math.Max(bestVictoryKey.CombatEndedTurn + strategyMargin, strategyFloor);
+        }
+        else if (canHealOrGrow || tookPersistentDamage || spentOptionalPaidPotion)
         {
             maxPostVictoryTurn = Math.Max(bestVictoryKey.CombatEndedTurn + 4, 8);
         }

@@ -20,6 +20,8 @@ internal enum HotNodeFlags : ushort
     HasRolloutScore = 1 << 8,
     RolloutPromoted = 1 << 9,
     HasChoiceLookahead = 1 << 10,
+    AllGrowthTargetsSatisfied = 1 << 11,
+    AllRelicTargetsSatisfied = 1 << 12,
 }
 
 /// <summary>
@@ -52,9 +54,14 @@ internal struct HotSearchNode
     public short GrowthHpCredit;        // 2 B
     public short PotionStrategicCost;   // 2 B (exact sum of paid optional root potion HP costs; 0 for Forced/Token/Generated)
     public short DeathSaveHpRestored;   // 2 B
+    public short RelicHpCredit;         // 2 B
+    public short RelicHealingHpCredit;  // 2 B
     public ushort PotionMask;           // 2 B (root potion slots consumed; NEVER set for combat-generated potions)
     public ushort ActionCount;          // 2 B
     public ushort GrowthRewardCount;    // 2 B
+    public ushort RelicSatisfiedMask;   // 2 B
+    public ushort RelicDistance;        // 2 B
+    public ushort RelicSatisfiedPriority; // 2 B (4-bit nibble-packed priority counts from RelicCounterPolicy; max 2560)
     public HotNodeFlags Flags;          // 2 B
     public HotAction Action;            // 3 B (Kind, SlotOrHandIdx, TargetEnemySlot)
     public byte ChoiceCount;            // 1 B (0..HotLimits.MaxChoicesPerAction)
@@ -71,6 +78,7 @@ internal struct HotSearchNode
     public byte RevivingEnemyCount;     // 1 B (enemies in HotDeathPhase.Reviving e.g. Decimillipede Reattach)
     public byte PlayableHandCount;      // 1 B (playable cards in hand for mid-turn combo diversity)
     public byte DeathSaveUseCount;      // 1 B
+    public byte FeedCount;              // 1 B (s.Growth[2] clamped for Feed MaxHp de-duplication)
     public HotCombatOutcome Outcome;    // 1 B
 
     public readonly bool IsVictory => Outcome == HotCombatOutcome.Victory && PlayerHp > 0;
@@ -79,6 +87,12 @@ internal struct HotSearchNode
     public readonly bool IsTerminal => (Flags & HotNodeFlags.IsTerminal) != 0 || Outcome != HotCombatOutcome.Ongoing;
     public readonly bool HasRolloutScore => (Flags & HotNodeFlags.HasRolloutScore) != 0;
     public readonly bool HasChoiceLookahead => (Flags & HotNodeFlags.HasChoiceLookahead) != 0;
+    public readonly bool AllGrowthTargetsSatisfied => (Flags & HotNodeFlags.AllGrowthTargetsSatisfied) != 0;
+    public readonly bool AllRelicTargetsSatisfied => (Flags & HotNodeFlags.AllRelicTargetsSatisfied) != 0;
+    public readonly int StrategyGoalHpCredit => GrowthHpCredit + RelicHpCredit;
+    public readonly int StrategicHpCredit => GrowthHpCredit + RelicHpCredit + RelicHealingHpCredit;
+    public readonly int StrategyGoalCount => GrowthRewardCount + RelicSatisfiedPriority;
+    public readonly bool AllStrategyTargetsSatisfied => AllGrowthTargetsSatisfied && AllRelicTargetsSatisfied;
 
     /// <summary>
     /// Overflow-safe exact integer evaluation of <c>0.35 * Score + 0.65 * RolloutScore</c>

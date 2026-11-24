@@ -188,11 +188,15 @@ internal static partial class HotCombatEngine
         if (IsOverOrEnding(in s) || scratch.NeedsChoice || orbTypeId == 0)
             return false;
 
-        // Vanilla OrbCmd.Channel grants 1 slot to non-Defect characters if capacity is 0.
-        if (s.OrbCapacity == 0)
+        // Vanilla OrbCmd.Channel (OrbCmd.cs:74-77) grants 1 slot only when both BaseOrbSlotCount == 0
+        // and current capacity == 0; Defect (BaseOrbSlotCount == 3) reduced to 0 slots drops channeled orbs.
+        if (s.OrbCapacity == 0 && rules.BaseOrbSlotCount == 0)
             s.OrbCapacity = 1;
 
-        if (s.OrbCapacity > 0 && s.OrbCount >= s.OrbCapacity)
+        if (s.OrbCapacity == 0)
+            return false;
+
+        if (s.OrbCount >= s.OrbCapacity)
         {
             EvokeOrb(ref s, ref cold, rules, scratch, orbIdx: 0, repeat: 1, dequeue: true);
             if (scratch.NeedsChoice || IsOverOrEnding(in s))
@@ -290,8 +294,9 @@ internal static partial class HotCombatEngine
             // Matches OrbModel._validOrbs order: Lightning, Frost, Dark, Plasma, Glass.
             int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatOrbGeneration], 5);
             HotOrbId orbId = (HotOrbId)(pick + 1);
-            if (!ChannelOrb(ref s, ref cold, rules, scratch, orbId))
-                break;
+            ChannelOrb(ref s, ref cold, rules, scratch, orbId);
+            if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                return;
         }
     }
 

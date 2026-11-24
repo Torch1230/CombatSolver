@@ -60,9 +60,14 @@ internal static partial class HotCombatEngine
         try
         {
             if (s.PlayerPhase == (byte)PlayerTurnPhase.AutoPrePlay)
-                RunAutoPrePlayPhase(ref s, ref cold, rules, scratch);
+            {
+                SnapshotAndClearHistoryCourse(ref s, out bool hasPrevHc, out HotCard prevHcCard, out ushort prevHcUid);
+                RunAutoPrePlayPhase(ref s, ref cold, rules, scratch, hasPrevHc, in prevHcCard, prevHcUid);
+            }
             else
+            {
                 RunPlayerTurnSetupBody(ref s, ref cold, rules, scratch, takingExtraTurn: false);
+            }
 
             return true;
         }
@@ -359,19 +364,7 @@ internal static partial class HotCombatEngine
         // SlumberingEssence + Hand Flush and before EndOfTurnCleanup clears SingleTurnRetain).
         HotRelics.OnAfterFlush(ref s, ref cold, rules);
 
-        // CardModel.EndOfTurnCleanup across all combat cards (CardModel.cs:1764-1781).
-        // CardModel.IsSlyThisTurn returns true if Keywords.Contains(Sly) || HasSingleTurnSly (CardModel.cs:700-706);
-        // preserve IsSlyThisTurn on intrinsic Sly cards when clearing HasSingleTurnSly.
-        int totalCards = s.TotalCardCount;
-        for (int i = 0; i < totalCards; i++)
-        {
-            ref HotCard c = ref s.Cards[i];
-            c.Flags &= ~(HotCardFlags.ExhaustOnNextPlay | HotCardFlags.SingleTurnRetain | HotCardFlags.FetchPlayedThisTurn);
-            if ((c.LocalKeywordsMask & HotCardKeywordMask.Sly) == 0)
-                c.Flags &= ~HotCardFlags.IsSlyThisTurn;
-            c.ExtraReplayThisTurn = 0;
-        }
-        HotCostModifiers.ExpireTurnEnd(ref s, ref cold);
+        RunPlayerCardsEndOfTurnCleanup(ref s, ref cold);
 
         // Player Phase Two (AfterSideTurnEnd regular powers & relics)
         if ((s.ActiveHookMask & (ulong)HotHookMask.AfterTurnEnd) != 0 || rules.Dominion != HotDominionId.None)
@@ -388,6 +381,12 @@ internal static partial class HotCombatEngine
         }
 
         RetireSideTurnEndTemporaryStats(ref s, ref cold, rules, scratch, HotCombatSide.Player);
+
+        // Second pass: Hook.AfterSideTurnEndLate (Hook.cs:1338-1345) runs AFTER ALL regular
+        // AfterSideTurnEnd powers & relics (e.g. ParryingShield checks Block before InsatiableDominion / Disintegration).
+        DispatchAfterSideTurnEndLate(ref s, ref cold, rules, scratch, HotCombatSide.Player);
+        if (scratch.NeedsChoice)
+            return false;
 
         s.PlayerPhase = (byte)PlayerTurnPhase.None;
         return !CheckWinCondition(ref s, rules);
@@ -508,6 +507,10 @@ internal static partial class HotCombatEngine
                 return false;
         }
 
+        // STS2 0.113.1 CombatManager.EndEnemyTurnInternal (lines 1809-1814):
+        // runs player.PlayerCombatState.EndOfTurnCleanup() between Enemy BeforeSideTurnEnd and AfterSideTurnEnd.
+        RunPlayerCardsEndOfTurnCleanup(ref s, ref cold);
+
         // Enemy AfterTurnEnd powers (Ritual, Nemesis, Tender, Asleep, etc.)
         if ((s.ActiveHookMask & (ulong)HotHookMask.AfterTurnEnd) != 0 || rules.Dominion != HotDominionId.None)
         {
@@ -522,6 +525,11 @@ internal static partial class HotCombatEngine
         }
 
         RetireSideTurnEndTemporaryStats(ref s, ref cold, rules, scratch, HotCombatSide.Enemy);
+
+        // Second pass: Hook.AfterSideTurnEndLate (Hook.cs:1338-1345) for Enemy side (e.g. DisintegrationPower).
+        DispatchAfterSideTurnEndLate(ref s, ref cold, rules, scratch, HotCombatSide.Enemy);
+        if (scratch.NeedsChoice)
+            return false;
 
         // TickDurations for ALL creatures (Player and Enemies) at end of Enemy Turn.
         TickAllDurationPowers(ref s, rules);
@@ -538,6 +546,139 @@ internal static partial class HotCombatEngine
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Mirrors vanilla STS2 0.113.1 <c>PlayerCombatState.EndOfTurnCleanup()</c> -&gt;
+    /// <c>CardModel.EndOfTurnCleanup()</c> (CardModel.cs:1764-1781, CombatManager.cs:1810-1813,1928)
+    /// across all combat cards: clears single-turn card flags, resets <c>ExtraReplayThisTurn</c>,
+    /// and expires <c>EndOfTurn</c> energy and temporary star cost modifiers.
+    /// </summary>
+    private static void RunPlayerCardsEndOfTurnCleanup(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold)
+    {
+        // CardModel.IsSlyThisTurn returns true if Keywords.Contains(Sly) || HasSingleTurnSly (CardModel.cs:700-706);
+        // preserve IsSlyThisTurn on intrinsic Sly cards when clearing HasSingleTurnSly.
+        int totalCards = s.TotalCardCount;
+        for (int i = 0; i < totalCards; i++)
+        {
+            ref HotCard c = ref s.Cards[i];
+            c.Flags &= ~(HotCardFlags.ExhaustOnNextPlay | HotCardFlags.SingleTurnRetain | HotCardFlags.FetchPlayedThisTurn);
+            if ((c.LocalKeywordsMask & HotCardKeywordMask.Sly) == 0)
+                c.Flags &= ~HotCardFlags.IsSlyThisTurn;
+            c.ExtraReplayThisTurn = 0;
+        }
+        HotCostModifiers.ExpireTurnEnd(ref s, ref cold);
+    }
+
+    /// <summary>
+    /// Exact STS2 0.113.1 <c>Hook.AfterSideTurnEndLate</c> second pass (Hook.cs:1338-1345),
+    /// invoked AFTER all regular <c>AfterSideTurnEnd</c> powers &amp; relics (e.g. <c>ParryingShield</c>).
+    /// Sole vanilla overrides in 0.113.1: <c>InsatiableDominionPower</c> (InsatiableDominionPower.cs:48-55)
+    /// and <c>DisintegrationPower</c> (DisintegrationPower.cs:19-26).
+    /// </summary>
+    private static void DispatchAfterSideTurnEndLate(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        HotCombatSide side)
+    {
+        if (s.PowerCount == 0
+            || (s.ActiveHookMask & (ulong)HotHookMask.AfterTurnEnd) == 0
+            || !IsInProgress(in s)
+            || IsCombatEnding(in s, rules))
+        {
+            return;
+        }
+
+        Span<byte> snapOwners = stackalloc byte[HotLimits.MaxPowers];
+        Span<ushort> snapDefIds = stackalloc ushort[HotLimits.MaxPowers];
+        Span<byte> snapOcc = stackalloc byte[HotLimits.MaxPowers];
+        int snapCount = 0;
+
+        int powerCount = s.PowerCount;
+        for (int i = 0; i < powerCount; i++)
+        {
+            ref readonly HotPower p = ref s.Powers[i];
+            if (p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
+                continue;
+
+            HotPowerId pid = rules.Powers[p.PowerDefId].PowerId;
+            if (pid is not (HotPowerId.InsatiableDominionPower or HotPowerId.DisintegrationPower))
+                continue;
+
+            // Match vanilla participants:
+            // Player turn end (CombatManager.cs:1889): playersEndingTurn -> ownerSlot == 0.
+            // Enemy turn end (CombatManager.cs:1808): CreaturesOnCurrentSide -> ownerSlot >= 3.
+            bool ownerParticipates = side == HotCombatSide.Player
+                ? p.OwnerSlot == 0
+                : p.OwnerSlot >= 3;
+            if (!ownerParticipates)
+                continue;
+
+            byte occ = 0;
+            for (int k = 0; k < i; k++)
+            {
+                if (s.Powers[k].OwnerSlot == p.OwnerSlot && s.Powers[k].PowerDefId == p.PowerDefId)
+                    occ++;
+            }
+
+            snapOwners[snapCount] = p.OwnerSlot;
+            snapDefIds[snapCount] = p.PowerDefId;
+            snapOcc[snapCount] = occ;
+            snapCount++;
+        }
+
+        for (int n = 0; n < snapCount; n++)
+        {
+            byte ownerSlot = snapOwners[n];
+            ushort defId = snapDefIds[n];
+            byte occ = snapOcc[n];
+            int liveIdx = FindPowerOccurrenceIndex(in s, ownerSlot, defId, occ);
+            if (liveIdx < 0 || s.Powers[liveIdx].Amount <= 0)
+                continue;
+
+            int beforeOccCount = CountPowerOccurrences(in s, ownerSlot, defId);
+            HotPowerId pid = rules.Powers[defId].PowerId;
+            int amount = s.Powers[liveIdx].Amount;
+
+            switch (pid)
+            {
+                case HotPowerId.InsatiableDominionPower:
+                {
+                    // InsatiableDominionPower.cs:22,48-55: DisplayAmount = 2 + TurnNumber;
+                    // deals blockable Unpowered damage with null dealer (0xFF).
+                    int dmg = 2 + s.PlayerTurnNumber;
+                    s.Powers[liveIdx].Aux0 = dmg;
+                    if (dmg > 0)
+                        DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 0xFF, targetSlot: ownerSlot, baseDamage: dmg, isPoweredAttack: false, isUnblockable: false);
+                    break;
+                }
+
+                case HotPowerId.DisintegrationPower:
+                {
+                    // DisintegrationPower.cs:19-26: deals blockable Unpowered self-damage (dealer = Owner).
+                    DealDamage(ref s, ref cold, rules, scratch, dealerSlot: ownerSlot, targetSlot: ownerSlot, baseDamage: amount, isPoweredAttack: false, isUnblockable: false);
+                    break;
+                }
+            }
+
+            int afterOccCount = CountPowerOccurrences(in s, ownerSlot, defId);
+            if (afterOccCount < beforeOccCount)
+            {
+                int removed = beforeOccCount - afterOccCount;
+                for (int m = n + 1; m < snapCount; m++)
+                {
+                    if (snapOwners[m] == ownerSlot && snapDefIds[m] == defId && snapOcc[m] > occ)
+                        snapOcc[m] = (byte)Math.Max(0, snapOcc[m] - removed);
+                }
+            }
+
+            if (scratch.NeedsChoice)
+                return;
+        }
     }
 
     private static void RunNextPlayerTurnStart(
@@ -582,6 +723,32 @@ internal static partial class HotCombatEngine
         RunPlayerTurnSetupBody(ref s, ref cold, rules, scratch, takingExtraTurn);
     }
 
+    private static void SnapshotAndClearHistoryCourse(
+        ref CombatHotState s,
+        out bool hasPrevHc,
+        out HotCard prevHcCard,
+        out ushort prevHcUid)
+    {
+        hasPrevHc = s.PlayerTurnNumber > 1 && (s.CombatFlags & HotCombatFlags.HasHistoryCourseCard) != 0;
+        prevHcCard = hasPrevHc ? s.HistoryCourseCard : default;
+        prevHcUid = hasPrevHc ? s.HistoryCourseUid : (ushort)0;
+        s.CombatFlags &= ~HotCombatFlags.HasHistoryCourseCard;
+        s.HistoryCourseUid = 0;
+        s.HistoryCourseCard = default;
+    }
+
+    private static void RestoreHistoryCourseUidOnChoicePause(
+        ref CombatHotState s,
+        bool hasPrevHc,
+        ushort prevHcUid)
+    {
+        // Keep HotCombatEngine.Choices.IsCardUidReferenced aware of the pending Turn T-1
+        // HistoryCourse card if a pre-HistoryCourse choice pauses and enumerates options.
+        // Choice resolution always restarts from the parent state, so this paused state is discarded.
+        if (hasPrevHc && prevHcUid != 0 && s.HistoryCourseUid == 0)
+            s.HistoryCourseUid = prevHcUid;
+    }
+
     /// <summary>
     /// Shared vanilla STS2 0.113.1 <c>SetupPlayerTurn</c> + <c>AfterSideTurnStart</c> +
     /// <c>OrbQueue.AfterTurnStart</c> + <c>RunAutoPrePlayPhase</c> sequence.
@@ -595,6 +762,11 @@ internal static partial class HotCombatEngine
         bool takingExtraTurn)
     {
         s.PlayerPhase = (byte)PlayerTurnPhase.Start;
+
+        // Snapshot & clear previous turn's HistoryCourse slot BEFORE any Turn T card plays
+        // (HellraiserPower during draw, ToolsOfTheTrade/GamblingChip Sly discards, Bombardment, MayhemPower)
+        // can populate s.HistoryCourse* for Turn T+1 (HistoryCourse.cs:21).
+        SnapshotAndClearHistoryCourse(ref s, out bool hasPrevHc, out HotCard prevHcCard, out ushort prevHcUid);
 
         // Reset Player Energy (unless IceCream) + ModifyMaxEnergy + EnergyNextTurnPower
         int baseMaxEnergy = rules.BaseMaxEnergy > 0
@@ -611,22 +783,18 @@ internal static partial class HotCombatEngine
             baseMaxEnergy = Math.Max(0, maxEArgs.MaxEnergy);
         }
 
-        int energyNextTurn = 0;
-        ushort entDefId = rules.GetPowerDefId(HotPowerId.EnergyNextTurnPower);
-        if (entDefId != 0)
-        {
-            energyNextTurn = GetPowerAmount(in s, 0, entDefId);
-            if (energyNextTurn > 0)
-                SetPowerAmount(ref s, rules, 0, entDefId, 0);
-        }
-
         if (!rules.HasRelic(HotRelicId.IceCream))
             s.Energy = 0;
-        s.Energy += Math.Max(0, baseMaxEnergy) + energyNextTurn;
+        s.Energy += Math.Max(0, baseMaxEnergy);
 
-        // AfterEnergyReset powers (Genesis, LightningRod, Radiance, Spinner, StarNextTurn)
+        // AfterEnergyReset (Player Powers -> Player Relics) + AfterEnergyResetLate (BoundPhylactery)
         TriggerAfterEnergyResetPowers(ref s, ref cold, rules, scratch);
-        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+        if (scratch.NeedsChoice)
+        {
+            RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+            return;
+        }
+        if (CheckWinCondition(ref s, rules))
             return;
 
         // BeforeHandDraw (KnowledgeDemonDominion, InfiniteBlades, Nightmare, ForegoneConclusion, CreativeAI, HelloWorld, CallOfTheVoid, SpectrumShift, SentryMode, Toolbox)
@@ -638,7 +806,12 @@ internal static partial class HotCombatEngine
                 Side = HotCombatSide.Player,
             };
             DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.BeforeHandDraw, ref bhdArgs);
-            if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+            if (scratch.NeedsChoice)
+            {
+                RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+                return;
+            }
+            if (CheckWinCondition(ref s, rules))
                 return;
         }
 
@@ -742,7 +915,12 @@ internal static partial class HotCombatEngine
         }
 
         DrawCards(ref s, ref cold, rules, scratch, drawCount, fromHandDraw: true);
-        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+        if (scratch.NeedsChoice)
+        {
+            RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+            return;
+        }
+        if (CheckWinCondition(ref s, rules))
             return;
 
         // STS2 0.113.1 CombatManager.SetupPlayerTurn (line 948) fires Hook.AfterPlayerTurnStart
@@ -753,7 +931,12 @@ internal static partial class HotCombatEngine
         // BEFORE CombatManager.cs:805 fires Hook.AfterSideTurnStart (Plating decrement, Poison tick,
         // BiasedCognition Focus loss, Coolant, DemonForm, NoxiousFumes, WraithForm, Rampart, etc.).
         DispatchPlayerTurnStartHooks(ref s, ref cold, rules, scratch, takingExtraTurn);
-        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+        if (scratch.NeedsChoice)
+        {
+            RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+            return;
+        }
+        if (CheckWinCondition(ref s, rules))
             return;
 
         // Player side turn start: PlatingPower decrements by 1 when PlayerTurnNumber != 1.
@@ -763,7 +946,12 @@ internal static partial class HotCombatEngine
 
         // Player Poison tick (if poisoned)
         TriggerPoison(ref s, ref cold, rules, scratch, targetSlot: 0);
-        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+        if (scratch.NeedsChoice)
+        {
+            RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+            return;
+        }
+        if (CheckWinCondition(ref s, rules))
             return;
 
         // Remaining AfterSideTurnStart listeners (BiasedCognition, Coolant, DemonForm, NoxiousFumes, WraithForm, Rampart, remaining relics, Dominion)
@@ -776,7 +964,12 @@ internal static partial class HotCombatEngine
                 BoolFlag = takingExtraTurn,
             };
             DispatchAfterSideTurnStartRemaining(ref s, ref cold, rules, scratch, ref afterStartArgs);
-            if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+            if (scratch.NeedsChoice)
+            {
+                RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+                return;
+            }
+            if (CheckWinCondition(ref s, rules))
                 return;
         }
 
@@ -784,18 +977,26 @@ internal static partial class HotCombatEngine
         if (s.OrbCount > 0)
         {
             TriggerOrbsAfterTurnStart(ref s, ref cold, rules, scratch);
-            if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+            if (scratch.NeedsChoice)
+            {
+                RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+                return;
+            }
+            if (CheckWinCondition(ref s, rules))
                 return;
         }
 
-        RunAutoPrePlayPhase(ref s, ref cold, rules, scratch);
+        RunAutoPrePlayPhase(ref s, ref cold, rules, scratch, hasPrevHc, in prevHcCard, prevHcUid);
     }
 
     private static void RunAutoPrePlayPhase(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
         HotRules rules,
-        HotExecScratch scratch)
+        HotExecScratch scratch,
+        bool hasPrevHc,
+        in HotCard prevHcCard,
+        ushort prevHcUid)
     {
         s.PlayerPhase = (byte)PlayerTurnPhase.AutoPrePlay;
 
@@ -803,16 +1004,65 @@ internal static partial class HotCombatEngine
         if (s.HandCount == 0 && rules.HasRelic(HotRelicId.UnceasingTop) && !IsOverOrEnding(in s))
         {
             DrawCards(ref s, ref cold, rules, scratch, 1, fromHandDraw: false);
-            if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+            if (scratch.NeedsChoice)
+            {
+                RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+                return;
+            }
+            if (CheckWinCondition(ref s, rules))
                 return;
         }
 
         // AfterAutoPrePlayPhaseEnteredEarly: auto-play exhausted Bombardment cards BEFORE Imbued/HistoryCourse/Mayhem.
         HotRegentNecro.TriggerExhaustedBombardments(ref s, ref cold, rules, scratch);
-        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+        if (scratch.NeedsChoice)
+        {
+            RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+            return;
+        }
+        if (CheckWinCondition(ref s, rules))
             return;
 
-        // AfterAutoPrePlayPhaseEntered: Imbued enchantment (Turn 1 auto-play)
+        // AfterAutoPrePlayPhaseEntered (CombatState.IterateHookListeners order:
+        // Player Powers -> Player Relics -> Card Enchantments):
+        // 1. MayhemPower auto-plays top card(s) of DrawPile.
+        ushort mayhemDefId = rules.GetPowerDefId(HotPowerId.MayhemPower);
+        if (mayhemDefId != 0)
+        {
+            int mayhemAmt = GetPowerAmount(in s, 0, mayhemDefId);
+            if (mayhemAmt > 0)
+            {
+                AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, mayhemAmt, forceExhaust: false);
+                if (scratch.NeedsChoice)
+                {
+                    RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
+                    return;
+                }
+                if (CheckWinCondition(ref s, rules))
+                    return;
+            }
+        }
+
+        // 2. HistoryCourse relic (Turn > 1 auto-plays dupe of last non-dupe Attack from previous turn).
+        // Uses the Turn T-1 snapshot captured before any Turn T plays so Mayhem/Bombardment/Sly/Hellraiser
+        // cannot overwrite Turn T-1's card and their own Turn T non-dupe attacks survive in s.HistoryCourse* for Turn T+1.
+        if (hasPrevHc && s.PlayerTurnNumber > 1 && rules.HasRelic(HotRelicId.HistoryCourse) && !IsOverOrEnding(in s))
+        {
+            HotCard template = prevHcCard;
+            int liveIdx = prevHcUid != 0 ? FindCardIndexByUidAnyPile(in s, prevHcUid) : -1;
+            if (liveIdx >= 0)
+                template = s.Cards[liveIdx];
+
+            HotCard dupe = template;
+            dupe.CardUid = s.NextCardUid++;
+            dupe.Flags |= HotCardFlags.IsDupe;
+            dupe.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
+            AutoPlayTransientCard(ref s, ref cold, rules, scratch, in dupe, targetEnemySlot: -1, forceExhaust: false);
+            if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+                return;
+        }
+
+        // 3. Imbued enchantment (Turn 1 auto-play).
         if (s.PlayerTurnNumber <= 1)
         {
             byte imbuedEnchId = rules.GetEnchantmentDefId(HotEnchantmentId.Imbued);
@@ -832,44 +1082,6 @@ internal static partial class HotCombatEngine
                     if (idx >= 0)
                         AutoPlayCard(ref s, ref cold, rules, scratch, idx, targetEnemySlot: -1, forceExhaust: false);
                 }
-                if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
-                    return;
-            }
-        }
-
-        // AfterAutoPrePlayPhaseEntered: HistoryCourse relic (Turn > 1 auto-plays dupe of last non-dupe Attack from previous turn)
-        if (s.PlayerTurnNumber > 1 && (s.CombatFlags & HotCombatFlags.HasHistoryCourseCard) != 0)
-        {
-            HotCard template = s.HistoryCourseCard;
-            ushort hcUid = s.HistoryCourseUid;
-            s.CombatFlags &= ~HotCombatFlags.HasHistoryCourseCard;
-            s.HistoryCourseUid = 0;
-            s.HistoryCourseCard = default;
-
-            if (rules.HasRelic(HotRelicId.HistoryCourse) && !IsOverOrEnding(in s))
-            {
-                int liveIdx = hcUid != 0 ? FindCardIndexByUidAnyPile(in s, hcUid) : -1;
-                if (liveIdx >= 0)
-                    template = s.Cards[liveIdx];
-
-                HotCard dupe = template;
-                dupe.CardUid = s.NextCardUid++;
-                dupe.Flags |= HotCardFlags.IsDupe;
-                dupe.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay);
-                AutoPlayTransientCard(ref s, ref cold, rules, scratch, in dupe, targetEnemySlot: -1, forceExhaust: false);
-                if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
-                    return;
-            }
-        }
-
-        // AfterAutoPrePlayPhaseEntered: MayhemPower auto-plays top card(s) of DrawPile.
-        ushort mayhemDefId = rules.GetPowerDefId(HotPowerId.MayhemPower);
-        if (mayhemDefId != 0)
-        {
-            int mayhemAmt = GetPowerAmount(in s, 0, mayhemDefId);
-            if (mayhemAmt > 0)
-            {
-                AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, mayhemAmt, forceExhaust: false);
                 if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
                     return;
             }
@@ -1051,9 +1263,9 @@ internal static partial class HotCombatEngine
         HotRules rules,
         HotExecScratch scratch)
     {
-        // Snapshot matching player power DefIds (all 5 are StackType.Counter) so ChannelOrb evoking an orb
+        // Snapshot matching player power DefIds (all 6 are StackType.Counter) so ChannelOrb evoking an orb
         // and killing an enemy (shifting s.Powers[]) cannot invalidate loop indices or decrement the wrong power
-        // (Hook.cs:554-560, LightningRodPower.cs:31-38, PowerCmd.cs:221).
+        // (Hook.cs:554-566, EnergyNextTurnPower.cs:18-25, LightningRodPower.cs:31-38, PowerCmd.cs:221).
         Span<ushort> snapDefIds = stackalloc ushort[HotLimits.MaxPowers];
         int snapCount = 0;
         int initialPowerCount = s.PowerCount;
@@ -1064,7 +1276,8 @@ internal static partial class HotCombatEngine
                 continue;
 
             HotPowerId pid = rules.Powers[p.PowerDefId].PowerId;
-            if (pid is HotPowerId.GenesisPower
+            if (pid is HotPowerId.EnergyNextTurnPower
+                or HotPowerId.GenesisPower
                 or HotPowerId.LightningRodPower
                 or HotPowerId.RadiancePower
                 or HotPowerId.SpinnerPower
@@ -1088,6 +1301,18 @@ internal static partial class HotCombatEngine
             int amt = s.Powers[idx].Amount;
             switch (pid)
             {
+                case HotPowerId.EnergyNextTurnPower:
+                {
+                    GainEnergy(ref s, rules, amt);
+                    int entIdx = FindPowerIndex(in s, ownerSlot: 0, defId);
+                    if (entIdx >= 0)
+                    {
+                        RemovePowerAt(ref s, entIdx);
+                        s.ActiveHookMask = RecomputeActiveHookMask(in s, rules);
+                    }
+                    break;
+                }
+
                 case HotPowerId.GenesisPower:
                     GainStars(ref s, ref cold, rules, scratch, amt);
                     break;
@@ -1132,6 +1357,17 @@ internal static partial class HotCombatEngine
                 }
             }
         }
+
+        if (scratch.NeedsChoice || IsOverOrEnding(in s))
+            return;
+
+        // AfterEnergyReset Player Relics (ArtOfWar, FakeVenerableTeaSet, VenerableTeaSet)
+        HotRelics.HandleAfterEnergyResetRelics(ref s, ref cold, rules, scratch);
+        if (scratch.NeedsChoice || IsOverOrEnding(in s))
+            return;
+
+        // AfterEnergyResetLate Player Relics (BoundPhylactery)
+        HotRelics.HandleAfterEnergyResetLateRelics(ref s, ref cold, rules, scratch);
     }
 
     private static bool ConsumeExtraTurnFlag(ref CombatHotState s, HotRules rules)
@@ -1219,6 +1455,7 @@ internal static partial class HotCombatEngine
         s.Counters[(int)HotCounterSlot.StatusCardsDrawnThisTurn] = 0;
         s.Counters[(int)HotCounterSlot.ZeroCostAttackStartsThisTurn] = 0;
         s.Counters[(int)HotCounterSlot.CardPlayStartsThisTurn] = 0;
+        s.Counters[(int)HotCounterSlot.FirstInSeriesCardPlayStartsThisTurn] = 0;
         s.Counters[(int)HotCounterSlot.AttackSkillStartsThisTurn] = 0;
         s.Counters[(int)HotCounterSlot.AttackPlayStartsThisTurn] = 0;
         s.Counters[(int)HotCounterSlot.SkillPlayStartsThisTurn] = 0;

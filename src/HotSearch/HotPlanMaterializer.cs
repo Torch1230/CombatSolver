@@ -359,18 +359,27 @@ internal static class HotPlanMaterializer
             ? hotPolicy.PostCombatRelicHeal.HealFor(finalSummary.PlayerHp, finalSummary.PlayerMaxHp)
             : 0;
 
-        GrowthValues realizedGrowth = new(
-            HandOfGreed: state.Growth[0],
-            TheHunt: state.Growth[1],
-            Feed: state.Growth[2],
-            Royalties: state.Growth[3],
-            Alchemize: state.Growth[4],
-            GeneticAlgorithm: state.Growth[5],
-            TheScythe: state.Growth[6],
-            Goopy: state.Growth[7],
-            ForbiddenGrimoire: state.Growth[8],
-            MadScience: state.Growth[9],
-            ShowOff: state.Growth[10]);
+        GrowthValues realizedGrowth = policy.IgnoreLongTermRewards
+            ? default
+            : new(
+                HandOfGreed: state.Growth[0],
+                TheHunt: state.Growth[1],
+                Feed: state.Growth[2],
+                Royalties: state.Growth[3],
+                Alchemize: state.Growth[4],
+                GeneticAlgorithm: state.Growth[5],
+                TheScythe: state.Growth[6],
+                Goopy: state.Growth[7],
+                ForbiddenGrimoire: state.Growth[8],
+                MadScience: state.Growth[9],
+                ShowOff: state.Growth[10]);
+
+        int realizedLongTermResourceValue = policy.IgnoreLongTermRewards
+            ? 0
+            : state.LongTermResourceValue;
+        RelicCounterEvaluation realizedRelicCounters = hotPolicy.HasRelicTargets
+            ? hotPolicy.EvaluateRelicCounters(in state, won: finalWon)
+            : default;
 
         SolverSnapshot snapshot = new(
             HasRisk: false,
@@ -384,7 +393,7 @@ internal static class HotPlanMaterializer
             CumulativePlayerHpLost: finalSummary.HpLost,
             RecoveredPlayerHp: finalSummary.HpRecovered,
             DeathSaveRelicHpRestored: state.DeathSaveRelicHpRestored,
-            LongTermResourceValue: state.LongTermResourceValue,
+            LongTermResourceValue: realizedLongTermResourceValue,
             AngerCopiesGenerated: state.AngerCopiesGenerated,
             ProjectedPlayerHp: finalSummary.PlayerHp,
             PlayerBlock: finalSummary.PlayerBlock,
@@ -404,6 +413,7 @@ internal static class HotPlanMaterializer
             ProjectedDeathSaveUseCount = finalSummary.DeathSaveUseCount,
             GrowthHpCredit = finalSummary.GrowthHpCredit,
             GrowthRewards = realizedGrowth,
+            RelicCounters = realizedRelicCounters,
             ForfeitsEncounterGold = finalSummary.ForfeitsGold,
             UnrecoveredGold = state.OutstandingStolenGold > 0 ? state.OutstandingStolenGold : null,
             UnrecoveredCards = state.OutstandingStolenCards > 0 ? state.OutstandingStolenCards : null,

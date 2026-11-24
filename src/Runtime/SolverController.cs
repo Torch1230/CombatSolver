@@ -51,6 +51,12 @@ internal static partial class SolverController
     private static bool _stopFullAutoOnCombatEnd;
     private static bool _stopFullAutoOnDeathTurn = true;
     private static bool _stopFullAutoOnWorseRecalculation = true;
+    internal const int FullAutoConsecutiveDriftReplanLimit = 3;
+    private static int? _fullAutoDriftTurn;
+    private static LiveCombatStamp? _fullAutoDriftStamp;
+    private static int _fullAutoConsecutiveDriftReplans;
+    private static SolverResult? _lastFullAutoDeploymentResult;
+    private static LiveCombatStamp? _lastFullAutoDeploymentStamp;
     private static readonly HashSet<string> DeployedCardIdsForTesting = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> DeployedPotionIdsForTesting = new(StringComparer.OrdinalIgnoreCase);
     private static readonly List<Task> PendingSearchReferenceReleases = [];
@@ -143,6 +149,7 @@ internal static partial class SolverController
         if (frozen)
         {
             _combat.FullAutoEnabled = false;
+            ResetFullAutoDriftReplanState();
             CancelDeferredSearch();
             ShowRetainedOrManualReady(host);
         }
@@ -185,6 +192,7 @@ internal static partial class SolverController
     internal static Exception? LastSearchFailureForTesting { get; private set; }
     internal static bool LastFullAutoStoppedForWorseRecalculationForTesting { get; private set; }
     internal static bool LastFullAutoStoppedAtLiveRiskForTesting { get; private set; }
+    internal static bool LastFullAutoPausedForConsecutiveDriftForTesting { get; private set; }
     internal static int? LastReusedTurnForTesting { get; private set; }
     internal static int? LastReusedProjectedBattleHpLostForTesting { get; private set; }
     internal static int UnexpectedReplanCountForTesting
@@ -530,6 +538,7 @@ internal static partial class SolverController
 
         LiveCombatStamp stamp = LiveCombatStamp.Capture(state);
         CancelSearch();
+        ResetFullAutoDriftReplanState();
         RecordReviewedWorldlines(result);
         _combat.State = state;
         _combat.LatestResult = result;
@@ -876,6 +885,7 @@ internal static partial class SolverController
         CancelDeferredSearch();
         if (reason == SearchReason.Manual)
         {
+            ResetFullAutoDriftReplanState();
             if (_combat.AutomaticSearchPaused)
                 Entry.Logger.Info("[CombatSolver/Test] AUTOMATIC_SEARCH_RESUMED reason=manual_recalculate");
             _combat.AutomaticSearchPaused = false;
@@ -908,6 +918,7 @@ internal static partial class SolverController
         else if (_combat.AutomaticSearchPaused)
         {
             _combat.FullAutoEnabled = false;
+            ResetFullAutoDriftReplanState();
             Entry.Logger.Info($"[CombatSolver/Test] SEARCH_REJECT reason=user_stopped request={reason}");
             SolverOverlay.ShowSearchStopped(host);
             return;
@@ -967,6 +978,18 @@ internal static partial class SolverController
                 && previousStamp != stamp)
             {
                 replanCause = ReplanCause.ManualDivergence;
+            }
+            setupStage = "full_auto_drift_guard";
+            LastFullAutoPausedForConsecutiveDriftForTesting = false;
+            if (TryPauseFullAutoOnConsecutiveDriftReplan(
+                    host,
+                    state,
+                    reason,
+                    searchTurn!.Value,
+                    stamp,
+                    ref deployWhenReady))
+            {
+                return;
             }
             setupStage = "continuation";
             ContinuationStamp? continuationStamp = reason == SearchReason.AutoTurnStart && _combat.ContinuationSource != null
@@ -1126,7 +1149,11 @@ internal static partial class SolverController
                 $"act_transition_boss_hp_strategy={searchPolicy.ActTransitionBossHpStrategy} " +
                 $"final_boss_hp_strategy={searchPolicy.FinalBossHpStrategy} " +
                 $"max_combat_solve_seconds={searchPolicy.MaxCombatSolveSeconds:0.###} " +
-                $"max_dop={searchPolicy.MaxDegreeOfParallelism}");
+                $"max_dop={searchPolicy.MaxDegreeOfParallelism} " +
+                $"relic_targets={FormatRelicTargetsSummary(searchPolicy.RelicTargets)} " +
+                $"growth_targets={FormatGrowthTargetsSummary(searchPolicy.GrowthOpportunityTargets, searchPolicy.GrowthBudgets)} " +
+                $"ignore_long_term_rewards={searchPolicy.IgnoreLongTermRewards.ToString().ToLowerInvariant()} " +
+                $"brightest_flame_limit={searchPolicy.BrightestFlameMaxHpLossLimit?.ToString() ?? "-"}");
             Entry.Logger.Info(SolverDiagnostics.DescribeStart(
                 state,
                 settings.Profile));
@@ -1223,6 +1250,7 @@ internal static partial class SolverController
             }
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.SearchSetupFailure, ex);
             CancelSearch();
+            ResetFullAutoDriftReplanState();
             _combat.State = null;
             _combat.LatestResult = null;
             _combat.LatestStamp = null;
@@ -1262,6 +1290,43 @@ internal static partial class SolverController
     private static string EscapeRichText(string value)
         => value.Replace('[', '［').Replace(']', '］');
 
+    private static string FormatRelicTargetsSummary(IReadOnlyList<RelicCounterTarget> targets)
+    {
+        if (targets.Count == 0)
+            return "-";
+        return string.Join(",", targets.Select(target =>
+            target.Minimum == target.Maximum
+                ? $"{target.Id}:{target.Minimum}/{target.HpAllowance}hp/p{target.Priority}"
+                : $"{target.Id}:{target.Minimum}-{target.Maximum}/{target.HpAllowance}hp/p{target.Priority}"));
+    }
+
+    private static string FormatGrowthTargetsSummary(GrowthOpportunityTargets targets, GrowthValues budgets)
+    {
+        if (!targets.HasTargets)
+            return "-";
+        List<string> parts = [];
+        foreach (GrowthSource source in Enum.GetValues<GrowthSource>())
+        {
+            int required = targets.RequiredRewards.Get(source);
+            if (required > 0)
+                parts.Add($"{source}:{required}/{budgets.Get(source)}hp");
+        }
+        foreach (KeyValuePair<string, int> entry in targets.RequiredRewards.Extras.Entries)
+        {
+            if (entry.Value > 0)
+                parts.Add($"{entry.Key}:{entry.Value}/{budgets.Extras.Get(entry.Key)}hp");
+        }
+        foreach (GrowthOpportunityUnboundedSource unbounded in targets.UnboundedSources)
+        {
+            int budget = Enum.TryParse<GrowthSource>(unbounded.SourceId, out GrowthSource builtIn)
+                ? budgets.Get(builtIn)
+                : budgets.Extras.Get(unbounded.SourceId);
+            string reason = unbounded.Reason.Replace(' ', '_');
+            parts.Add($"{unbounded.SourceId}:unbounded({reason})/{budget}hp");
+        }
+        return parts.Count == 0 ? "-" : string.Join(",", parts);
+    }
+
     public static void RequestDeploy(NGame host, CombatState state)
     {
         AssertMainThread();
@@ -1279,6 +1344,7 @@ internal static partial class SolverController
         }
         _combat.AutomaticSearchPaused = false;
         _combat.AutomaticSearchPausedTurn = null;
+        ResetFullAutoDriftReplanState();
         if (PlayerTurnSetupCoordinator.TryContinuePlannedChoice(
                 host,
                 state,
@@ -1335,6 +1401,8 @@ internal static partial class SolverController
     {
         AssertMainThread();
         SolverDispatcher.Ensure(host);
+        ResetFullAutoDriftReplanState();
+        LastFullAutoPausedForConsecutiveDriftForTesting = false;
         if (!enabled)
         {
             _combat.FullAutoEnabled = false;
@@ -1412,6 +1480,8 @@ internal static partial class SolverController
         if (_combat.ShowcaseMode)
             return !_combat.AutomaticSearchPaused;
         int turn = LocalContext.GetMe(state)?.PlayerCombatState?.TurnNumber ?? -1;
+        if (_fullAutoDriftTurn is { } driftTurn && driftTurn != turn)
+            ResetFullAutoDriftReplanState();
         if (_combat.AutomaticSearchPaused
             && _combat.AutomaticSearchPausedTurn is { } stoppedTurn
             && stoppedTurn != turn)
@@ -1488,6 +1558,7 @@ internal static partial class SolverController
                 SearchCompletionNotifier.Notify(SearchCompletionNotificationKind.Canceled);
             CancelDeployment();
             _combat.FullAutoEnabled = false;
+            ResetFullAutoDriftReplanState();
             _combat.State = null;
             _combat.LatestResult = null;
             _combat.LatestStamp = null;
@@ -1522,6 +1593,7 @@ internal static partial class SolverController
         bool controllerSearchCanceled = _search != null || _deferredSearchCts != null;
         int? generation = _search?.Generation;
         _combat.FullAutoEnabled = false;
+        ResetFullAutoDriftReplanState();
         _combat.AutomaticSearchPaused = true;
         _combat.AutomaticSearchPausedTurn = LocalContext.GetMe(
             CombatManager.Instance.DebugOnlyGetState())?.PlayerCombatState?.TurnNumber;
@@ -1559,6 +1631,7 @@ internal static partial class SolverController
         _combat.AutomaticSearchPaused = false;
         _combat.AutomaticSearchPausedTurn = null;
         _combat.FullAutoEnabled = false;
+        ResetFullAutoDriftReplanState();
         if (_search is not { } search)
         {
             PlayerTurnSetupCoordinator.ApplyCurrentTurn();
@@ -1582,6 +1655,7 @@ internal static partial class SolverController
         AssertMainThread();
         _combat.AutomaticSearchPaused = false;
         _combat.AutomaticSearchPausedTurn = null;
+        ResetFullAutoDriftReplanState();
         if (_search is not { } search)
         {
             if (TryAdoptStoppedRoute())
@@ -1719,6 +1793,8 @@ internal static partial class SolverController
         SolverSettings.Update(current with { GrowthBudgets = budgets });
         _combat.ContinuationSource = null;
         _combat.PendingCompleteProjectionBaseline = null;
+        _combat.LatestResult = null;
+        _combat.LatestStamp = null;
         SolverOverlay.RefreshControls();
         if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
             RequestSearch(host, state, SearchReason.Manual);
@@ -1734,6 +1810,8 @@ internal static partial class SolverController
         SolverSettings.Update(current with { RelicStrategyEnabled = enabled, RelicCounterRules = copied });
         _combat.ContinuationSource = null;
         _combat.PendingCompleteProjectionBaseline = null;
+        _combat.LatestResult = null;
+        _combat.LatestStamp = null;
         SolverOverlay.RefreshControls();
         if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
             RequestSearch(host, state, SearchReason.Manual);
@@ -1750,6 +1828,8 @@ internal static partial class SolverController
         SolverSettings.Update(current with { IgnoreLongTermRewards = ignore });
         _combat.ContinuationSource = null;
         _combat.PendingCompleteProjectionBaseline = null;
+        _combat.LatestResult = null;
+        _combat.LatestStamp = null;
         SolverOverlay.RefreshControls();
         if (!_combat.AutomaticSearchPaused && AutomaticCalculationEnabled)
             RequestSearch(host, state, SearchReason.Manual);
@@ -2047,8 +2127,10 @@ internal static partial class SolverController
         CancelDeployment();
         Task deploymentReferenceRelease = DrainDeploymentReferenceReleases();
         _combat = new SolverCombatSession();
+        ResetFullAutoDriftReplanState();
         LastFullAutoStoppedForWorseRecalculationForTesting = false;
         LastFullAutoStoppedAtLiveRiskForTesting = false;
+        LastFullAutoPausedForConsecutiveDriftForTesting = false;
         LastSearchFailureForTesting = null;
         BattleDamageTracker.Reset();
         SolverOverlay.Hide();
@@ -2464,6 +2546,7 @@ internal static partial class SolverController
             if (ex is PotionPolicyUnsatisfiedException)
             {
                 _combat.FullAutoEnabled = false;
+                ResetFullAutoDriftReplanState();
                 SolverOverlay.RefreshControls();
             }
             SolverOverlay.Show(
@@ -2482,6 +2565,7 @@ internal static partial class SolverController
             || LiveCombatStamp.Capture(searchedState) != searchedStamp)
         {
             RecordSearchResultStale(search);
+            ResetFullAutoDriftReplanState();
             _combat.PendingCompleteProjectionBaseline = null;
             _combat.LatestResult = null;
             _combat.LatestStamp = null;
@@ -2498,7 +2582,8 @@ internal static partial class SolverController
         {
             _combat.SearchesStarted--;
             _combat.RoutesRestored++;
-            _combat.ReplanCounts[search.ReplanCause]--;
+            if (search.ReplanCause is not (ReplanCause.DeploymentDrift or ReplanCause.PlanExhausted))
+                _combat.ReplanCounts[search.ReplanCause]--;
             Entry.Logger.Info($"[CombatSolver/Test] ROUTE_CACHE_HIT turn={result.StartTurnNumber} validation=exact_root");
         }
         bool stopped = search.Interaction.StopRequested;
@@ -2622,6 +2707,89 @@ internal static partial class SolverController
             StatusTone = SolverOverlayTone.Success,
         };
 
+    private static void ResetFullAutoDriftReplanState()
+    {
+        _fullAutoDriftTurn = null;
+        _fullAutoDriftStamp = null;
+        _fullAutoConsecutiveDriftReplans = 0;
+        _lastFullAutoDeploymentResult = null;
+        _lastFullAutoDeploymentStamp = null;
+    }
+
+    private static bool TryPauseFullAutoOnConsecutiveDriftReplan(
+        NGame host,
+        CombatState state,
+        SearchReason reason,
+        int turn,
+        LiveCombatStamp stamp,
+        ref bool deployWhenReady)
+    {
+        if (reason is not (SearchReason.DeploymentDrift or SearchReason.PlanExhausted)
+            || !_combat.FullAutoEnabled)
+        {
+            ResetFullAutoDriftReplanState();
+            return false;
+        }
+
+        if (_fullAutoDriftTurn == turn && _fullAutoDriftStamp == stamp)
+        {
+            _fullAutoConsecutiveDriftReplans++;
+        }
+        else
+        {
+            _fullAutoDriftTurn = turn;
+            _fullAutoDriftStamp = stamp;
+            _fullAutoConsecutiveDriftReplans = 1;
+        }
+
+        if (_fullAutoConsecutiveDriftReplans < FullAutoConsecutiveDriftReplanLimit)
+            return false;
+
+        int consecutiveCount = _fullAutoConsecutiveDriftReplans;
+        SolverResult? restoredResult = _lastFullAutoDeploymentStamp == stamp
+            ? _lastFullAutoDeploymentResult
+            : null;
+        ResetFullAutoDriftReplanState();
+        _combat.FullAutoEnabled = false;
+        LastFullAutoPausedForConsecutiveDriftForTesting = true;
+        Entry.Logger.Warn(
+            $"[CombatSolver/Test] FULL_AUTO_PAUSED reason=consecutive_drift_replans " +
+            $"count={consecutiveCount} turn={turn} trigger={reason}");
+
+        if (restoredResult != null)
+        {
+            ReplanCause triggerCause = reason == SearchReason.PlanExhausted
+                ? ReplanCause.PlanExhausted
+                : ReplanCause.DeploymentDrift;
+            _combat.ReplanCounts[triggerCause] = _combat.ReplanCounts.GetValueOrDefault(triggerCause) + 1;
+            _combat.State = state;
+            _combat.LatestResult = restoredResult;
+            _combat.LatestStamp = stamp;
+            _combat.ContinuationSource = null;
+            SolverOverlaySnapshot snapshot = SolverOverlaySnapshot.CaptureWithReviewedWorldlines(
+                restoredResult,
+                UnexpectedReplanCount > 0,
+                _combat.ReviewedWorldlinesTotal);
+            SolverOverlay.ShowResult(host, MarkFullAutoPausedForConsecutiveDrift(snapshot));
+            return true;
+        }
+
+        deployWhenReady = false;
+        SolverOverlay.RefreshControls();
+        return false;
+    }
+
+    private static SolverOverlaySnapshot MarkFullAutoPausedForConsecutiveDrift(
+        SolverOverlaySnapshot snapshot)
+        => snapshot with
+        {
+            StatusText = SolverText.Get("已暂停执行"),
+            StatusTone = SolverOverlayTone.Danger,
+            SummaryText =
+                $"[color={SolverUiTokens.Palette.DangerHex}]{SolverText.Get("求解器执行后的预测状态与实机不一致。")}[/color]" +
+                (AllowsPlayerUploadGuidance ? $"\n{SolverUiTokens.BugReportUploadInstructionRichText}" : string.Empty),
+        };
+
     internal static int SearchesStartedForShowcase => _combat.SearchesStarted;
 
     internal static void AcceptShowcaseRoute(NGame host, CombatState state, SolverResult result)
@@ -2629,6 +2797,7 @@ internal static partial class SolverController
         AssertMainThread();
         CancelSearch();
         CancelDeployment();
+        ResetFullAutoDriftReplanState();
         _combat.State = state;
         _combat.ShowcaseMode = true;
         _combat.LatestResult = result;
@@ -2649,6 +2818,7 @@ internal static partial class SolverController
     private static void StopShowcaseRoute(NGame host, string message)
     {
         _combat.FullAutoEnabled = false;
+        ResetFullAutoDriftReplanState();
         _combat.AutomaticSearchPaused = true;
         _combat.LatestResult = null;
         _combat.LatestStamp = null;
@@ -2667,6 +2837,7 @@ internal static partial class SolverController
                 CombatBugReportIssueKind.FullAutoStoppedAfterWorseRecalculation,
                 $"第 {result.StartTurnNumber} 回合，预计战损 {result.PreviousProjectedBattleHpLost} → {result.ProjectedBattleHpLost}");
             _combat.FullAutoEnabled = false;
+            ResetFullAutoDriftReplanState();
             LastFullAutoStoppedForWorseRecalculationForTesting = true;
             SolverOverlay.RefreshControls();
             SolverOverlay.ShowFullAutoStoppedAfterWorseRecalculation(
@@ -2681,6 +2852,7 @@ internal static partial class SolverController
         if (_stopFullAutoOnCombatEnd && result.CombatEndedTurn == result.StartTurnNumber)
         {
             _combat.FullAutoEnabled = false;
+            ResetFullAutoDriftReplanState();
             SolverOverlay.RefreshControls();
             SolverOverlay.ShowFullAutoStoppedAtCombatEnd(result.StartTurnNumber);
             Entry.Logger.Info($"[CombatSolver/Test] FULL_AUTO_STOP reason=combat_end_turn turn={result.StartTurnNumber}");
@@ -2692,6 +2864,7 @@ internal static partial class SolverController
                 CombatBugReportIssueKind.FullAutoStoppedAtDeathTurn,
                 $"第 {result.StartTurnNumber} 回合");
             _combat.FullAutoEnabled = false;
+            ResetFullAutoDriftReplanState();
             SolverOverlay.RefreshControls();
             SolverOverlay.ShowFullAutoStoppedAtDeathTurn(result.StartTurnNumber);
             Entry.Logger.Info($"[CombatSolver/Test] FULL_AUTO_STOP reason=death_turn turn={result.StartTurnNumber}");
@@ -2705,6 +2878,11 @@ internal static partial class SolverController
     private static void StartDeployment(NGame host, CombatState state, SolverResult result)
     {
         _combat.UploadPolicy.Observe(state);
+        if (_combat.FullAutoEnabled && ReferenceEquals(_combat.LatestResult, result))
+        {
+            _lastFullAutoDeploymentResult = result;
+            _lastFullAutoDeploymentStamp = _combat.LatestStamp;
+        }
         bool hasCurrentTurnPlan = result.BestNode.Actions.Any(action =>
             action.Turn == result.StartTurnNumber
             && (action.IsExecutable || action.Kind == PlanActionKind.EndTurn));
@@ -2932,6 +3110,7 @@ internal static partial class SolverController
                             $"Native deployment action failed: turn={turn} action_index={actionIndex} " +
                             $"action={action.CardId ?? action.PotionId} target={action.TargetCombatId}.",
                             actionFailure);
+                    ResetFullAutoDriftReplanState();
                     RunStatistics.Activity(state, execution: true, auto: _combat.FullAutoEnabled);
                 }
                 catch (NativeChoicePlanMismatchException)
@@ -3014,6 +3193,7 @@ internal static partial class SolverController
                                 : CombatBugReportIssueKind.FullAutoStoppedAtLiveRiskWorsening,
                             $"第 {turn} 回合，路线预计 {plannedHpLoss} HP，实机复核 {liveRisk.HpLost} HP");
                         _combat.FullAutoEnabled = false;
+                        ResetFullAutoDriftReplanState();
                         LastFullAutoStoppedAtLiveRiskForTesting = true;
                         _combat.ContinuationSource = null;
                         SolverOverlay.RefreshControls();
@@ -3080,6 +3260,7 @@ internal static partial class SolverController
                 }
                 Entry.Logger.Info(deploymentEndMessage);
                 _combat.LastSolverDeployedTurn = turn;
+                ResetFullAutoDriftReplanState();
             }
             else
             {
@@ -3094,10 +3275,12 @@ internal static partial class SolverController
                 }
                 Entry.Logger.Info(deploymentEndMessage);
                 _combat.LastSolverDeployedTurn = turn;
+                ResetFullAutoDriftReplanState();
             }
         }
         catch (OperationCanceledException)
         {
+            ResetFullAutoDriftReplanState();
             Entry.Logger.Info($"[CombatSolver/Test] DEPLOY_CANCELED turn={turn}");
         }
         catch (InvalidOperationException ex) when (IsMissingDeploymentCard(ex))
@@ -3139,6 +3322,7 @@ internal static partial class SolverController
             _combat.UploadPolicy.Observe(state);
             _combat.ContinuationSource = null;
             _combat.FullAutoEnabled = false;
+            ResetFullAutoDriftReplanState();
             _combat.AutomaticSearchPaused = true;
             _combat.AutomaticSearchPausedTurn = turn;
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.DeploymentFailure, ex);
@@ -3176,6 +3360,7 @@ internal static partial class SolverController
         _combat.UploadPolicy.Observe(deployment.State!);
         _combat.ContinuationSource = null;
         _combat.FullAutoEnabled = false;
+        ResetFullAutoDriftReplanState();
         _combat.AutomaticSearchPaused = true;
         _combat.AutomaticSearchPausedTurn = turn;
         _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.DeploymentFailure, failure);

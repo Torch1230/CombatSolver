@@ -77,8 +77,9 @@ internal static class HotCostModifiers
     }
 
     /// <summary>
-    /// Adds a local energy cost modifier with safe equivalence merging in the 4 inline slots;
-    /// spills to HotColdSidecar.CostOverflow when >4 non-mergeable modifiers accumulate.
+    /// Adds a local energy cost modifier verbatim in the 4 inline slots;
+    /// spills to HotColdSidecar.CostOverflow when &gt;4 modifiers accumulate,
+    /// preserving exact Vanilla cost-state and UpgradeBy clamping semantics.
     /// <paramref name="expiration"/> uses <see cref="LocalCostModifierExpiration"/> flag values
     /// (0=EndOfCombat, 2=EndOfTurn, 4=WhenPlayed, 6=EndOfTurn|WhenPlayed).
     /// </summary>
@@ -95,7 +96,7 @@ internal static class HotCostModifiers
         if (isAbsolute && amount == 0 && card.BaseEnergyCost < 0)
             return;
 
-        AddEnergyModifierCore(ref card, ref cold, amount, isAbsolute, expiration, isReduceOnly, allowMerge: true);
+        AddEnergyModifierCore(ref card, ref cold, amount, isAbsolute, expiration, isReduceOnly, allowMerge: false);
     }
 
     /// <summary>
@@ -160,6 +161,29 @@ internal static class HotCostModifiers
         EnsureOverflowCardUid(ref card, cold);
         card.Flags |= HotCardFlags.HasCostOverflow;
         UpsertOverflow(ref cold, card.CardUid, promotedEnergy, promotedStars);
+    }
+
+    /// <summary>
+    /// Clones a card's cost-overflow entry (energy modifiers and temporary star costs) from
+    /// <paramref name="sourceCardUid"/> to <paramref name="destCardUid"/> without array aliasing.
+    /// Safe no-op when <paramref name="cold"/> is null or <paramref name="sourceCardUid"/> has no entry.
+    /// </summary>
+    internal static void CloneOverflow(ref HotColdSidecar? cold, ushort sourceCardUid, ushort destCardUid)
+    {
+        if (sourceCardUid == 0 || destCardUid == 0 || sourceCardUid == destCardUid)
+            return;
+
+        HotCardCostOverflow? src = FindOverflow(cold, sourceCardUid);
+        if (src == null)
+            return;
+
+        HotEnergyCostMod[] energyCopy = src.EnergyMods.Length > 0
+            ? (HotEnergyCostMod[])src.EnergyMods.Clone()
+            : [];
+        HotTempStarCost[] starCopy = src.TempStarCosts.Length > 0
+            ? (HotTempStarCost[])src.TempStarCosts.Clone()
+            : [];
+        UpsertOverflow(ref cold, destCardUid, energyCopy, starCopy);
     }
 
     /// <summary>

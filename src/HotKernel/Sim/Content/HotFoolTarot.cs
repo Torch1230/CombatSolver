@@ -23,6 +23,16 @@ internal static class HotFoolTarot
     private const byte MelodyChoBit = 1 << 1;
     private const byte MelodyKiBit = 1 << 2;
 
+    // StretchPower.Aux1 transient bit layout while latched to an active CardPlay
+    // (always reset to 0 in AfterCardPlayed so between-action state/hash stays exact):
+    //   bits 0..15  : latched playing card's CardUid (ushort)
+    //   bits 16..30 : nested active card-play depth below the latched play (0..32767)
+    //   bit 31      : gaveBonusBlock flag
+    private const int StretchCardUidMask = 0x0000_FFFF;
+    private const int StretchDepthShift = 16;
+    private const int StretchDepthMask = 0x7FFF;
+    private const int StretchGaveBlockBit = unchecked((int)0x8000_0000);
+
     // Transient per-thread arrow attack flag (true while executing a ValueProp.FromArrow attack).
     [ThreadStatic]
     private static bool t_isArrowAttackActive;
@@ -215,15 +225,80 @@ internal static class HotFoolTarot
                     if (arrowIdx >= 0 && HotCombatEngine.IsValidEnemyTarget(in s, targetEnemySlot))
                     {
                         int dmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
-                        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, card.CardUid);
-                        ExecuteArrowDamageHits(ref s, ref cold, rules, scratch, cardDefId, targetEnemySlot, dmg, 1, playIdx);
+                        ushort cardUid = card.CardUid;
+                        int playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+
+                        HotCombatEngine.t_lastAttackUnblockedDamage = 0;
+                        HotCombatEngine.t_lastAttackTotalPlusOverkill = 0;
+                        HotCombatEngine.BeginAttackContext(ref s, ref cold, rules, scratch, dealerSlot: 0, playIdx, cardDefId, powered: true);
+                        scratch.AttackActive = true;
+
+                        int totalUnblocked = 0;
+                        int totalPlusOverkill = 0;
+                        bool primaryHitRan = false;
+                        int spreadDmg = 0;
+
+                        if (!HotCombatEngine.IsOverOrEnding(in s)
+                            && (s.Player.Flags & HotCreatureFlags.Alive) != 0
+                            && (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                            && !scratch.NeedsChoice)
+                        {
+                            playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+                            if (playIdx < 0)
+                                playIdx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, cardUid);
+
+                            bool prevActive = t_isArrowAttackActive;
+                            int prevCardDef = t_activeArrowCardDefId;
+                            t_isArrowAttackActive = true;
+                            t_activeArrowCardDefId = cardDefId;
+                            try
+                            {
+                                totalUnblocked += HotCombatEngine.DealDamageInternal(
+                                    ref s,
+                                    ref cold,
+                                    rules,
+                                    scratch,
+                                    dealerSlot: 0,
+                                    targetSlot: (byte)(3 + targetEnemySlot),
+                                    baseDamage: dmg,
+                                    isPoweredAttack: true,
+                                    isUnblockable: false,
+                                    cardIdx: playIdx,
+                                    cardDefId: cardDefId);
+                                spreadDmg = HotCombatEngine.LastHitTotalPlusOverkill;
+                                totalPlusOverkill += spreadDmg;
+                                primaryHitRan = true;
+                            }
+                            finally
+                            {
+                                t_isArrowAttackActive = prevActive;
+                                t_activeArrowCardDefId = prevCardDef;
+                            }
+                        }
+
                         if (scratch.NeedsChoice)
+                        {
+                            scratch.AttackActive = false;
                             return PauseForChoice(in s, out result);
+                        }
 
-                        int spreadDmg = HotCombatEngine.t_lastAttackTotalPlusOverkill;
+                        // STS2 0.113.1 RainShot.cs:65-66: remove AimPower & QuietusPower right after primary arrow hit.
+                        if (primaryHitRan)
+                        {
+                            ushort aimDefId = rules.GetPowerDefId(HotPowerId.AimPower);
+                            if (aimDefId != 0 && HotCombatEngine.GetPowerAmount(in s, 0, aimDefId) > 0)
+                                HotCombatEngine.SetPowerAmount(ref s, rules, 0, aimDefId, 0);
+                            ushort quietusDefId = rules.GetPowerDefId(HotPowerId.QuietusPower);
+                            if (quietusDefId != 0 && HotCombatEngine.GetPowerAmount(in s, 0, quietusDefId) > 0)
+                                HotCombatEngine.SetPowerAmount(ref s, rules, 0, quietusDefId, 0);
+                        }
 
-                        // Spread damage (unpowered/capped copy) to all other living enemies.
-                        if (spreadDmg > 0)
+                        // STS2 0.113.1 RainShot.cs:68-78: splash hit with ValueProp.Move (IsPoweredAttack == true)
+                        // and ModifyDamageHookType.Cap inside the same AttackContext.
+                        if (primaryHitRan
+                            && !scratch.NeedsChoice
+                            && !HotCombatEngine.IsOverOrEnding(in s)
+                            && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
                         {
                             Span<byte> others = stackalloc byte[HotLimits.MaxEnemies];
                             int otherCount = 0;
@@ -233,16 +308,57 @@ internal static class HotFoolTarot
                                 if (slot != targetEnemySlot && (s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0)
                                     others[otherCount++] = slot;
                             }
-                            for (int i = 0; i < otherCount && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); i++)
+                            for (int i = 0; i < otherCount && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s) && (s.Player.Flags & HotCreatureFlags.Alive) != 0; i++)
                             {
                                 byte otherSlot = others[i];
-                                if ((s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) != 0)
-                                    HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0, (byte)(3 + otherSlot), spreadDmg, isPoweredAttack: false);
+                                if ((s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                                    continue;
+                                playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+                                if (playIdx < 0)
+                                    playIdx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, cardUid);
+                                totalUnblocked += HotCombatEngine.DealDamageInternal(
+                                    ref s,
+                                    ref cold,
+                                    rules,
+                                    scratch,
+                                    dealerSlot: 0,
+                                    targetSlot: (byte)(3 + otherSlot),
+                                    baseDamage: spreadDmg,
+                                    isPoweredAttack: true,
+                                    isUnblockable: false,
+                                    cardIdx: playIdx,
+                                    cardDefId: cardDefId,
+                                    deferKill: true,
+                                    capOnlyModifiers: true);
+                                totalPlusOverkill += HotCombatEngine.LastHitTotalPlusOverkill;
+                            }
+                            for (int i = 0; i < otherCount && !scratch.NeedsChoice; i++)
+                            {
+                                byte otherSlot = others[i];
+                                if ((s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                                    && s.Enemies[otherSlot].Vital.CurrentHp <= 0)
+                                {
+                                    HotCombatEngine.KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + otherSlot), force: false);
+                                }
                             }
                         }
 
+                        scratch.AttackActive = false;
+                        // STS2 0.113.1 RainShot.cs:50-58: ImpaleTarget completes inside AttackContext before DisposeAsync (AfterAttack).
                         if (!scratch.NeedsChoice)
                             ImpaleArrow(ref s, ref cold, rules, scratch, targetEnemySlot, arrowIdx, cardDefId);
+
+                        HotCombatEngine.t_lastAttackUnblockedDamage = totalUnblocked;
+                        HotCombatEngine.t_lastAttackTotalPlusOverkill = totalPlusOverkill;
+                        if (!scratch.NeedsChoice)
+                        {
+                            playIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, cardUid);
+                            if (playIdx < 0)
+                                playIdx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, cardUid);
+                            HotCombatEngine.EndAttackContext(ref s, ref cold, rules, scratch, dealerSlot: 0, playIdx, cardDefId, powered: true);
+                            HotCombatEngine.t_lastAttackUnblockedDamage = totalUnblocked;
+                            HotCombatEngine.t_lastAttackTotalPlusOverkill = totalPlusOverkill;
+                        }
                     }
                 }
                 return Complete(in s, scratch, out result);
@@ -572,12 +688,12 @@ internal static class HotFoolTarot
 
             case HotCustomCardId.Growth:
             {
-                ushort sadnessId = rules.GetCardDefId(HotCustomCardId.Sadness);
                 Span<ushort> sadUids = stackalloc ushort[HotLimits.MaxCards];
                 int sadCount = 0;
                 for (int i = 0; i < s.HandCount; i++)
                 {
-                    if (s.Cards[i].CardDefId == sadnessId)
+                    ushort id = s.Cards[i].CardDefId;
+                    if (id < rules.Cards.Length && rules.Cards[id].CardId == HotCustomCardId.Sadness)
                         sadUids[sadCount++] = s.Cards[i].CardUid;
                 }
                 for (int i = 0; i < sadCount && !scratch.NeedsChoice; i++)
@@ -771,15 +887,15 @@ internal static class HotFoolTarot
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
-                ushort sadnessId = rules.GetCardDefId(HotCustomCardId.Sadness);
                 ushort joyId = rules.GetCardDefId(HotCustomCardId.Joy);
-                if (sadnessId != 0 && joyId != 0)
+                if (joyId != 0)
                 {
                     Span<ushort> sadUids = stackalloc ushort[HotLimits.MaxCards];
                     int sadCount = 0;
                     for (int i = 0; i < s.HandCount; i++)
                     {
-                        if (s.Cards[i].CardDefId == sadnessId)
+                        ushort id = s.Cards[i].CardDefId;
+                        if (id < rules.Cards.Length && rules.Cards[id].CardId == HotCustomCardId.Sadness)
                             sadUids[sadCount++] = s.Cards[i].CardUid;
                     }
                     if (sadCount > 0)
@@ -1064,25 +1180,7 @@ internal static class HotFoolTarot
                         HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx);
                 }
                 if (!scratch.NeedsChoice && handCount > 0)
-                {
-                    if (card.UpgradeLevel > 0)
-                    {
-                        for (int k = 0; k < handCount && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); k++)
-                        {
-                            if (s.DrawCount == 0 && s.DiscardCount > 0)
-                                HotPiles.ShuffleDiscardIntoDraw(ref s, rules, scratch, cold);
-                            if (s.DrawCount == 0)
-                                break;
-                            int topIdx = s.DrawStart;
-                            HotCombatEngine.UpgradeCard(ref s, rules, topIdx);
-                            HotCombatEngine.AutoPlayCard(ref s, ref cold, rules, scratch, topIdx);
-                        }
-                    }
-                    else
-                    {
-                        HotCombatEngine.AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, handCount);
-                    }
-                }
+                    HotCombatEngine.AutoPlayFromDrawPile(ref s, ref cold, rules, scratch, handCount, forceExhaust: false, upgradeBeforePlay: card.UpgradeLevel > 0);
                 return Complete(in s, scratch, out result);
             }
 
@@ -1265,19 +1363,19 @@ internal static class HotFoolTarot
 
             case HotCustomCardId.WheelOfFortune:
             {
-                int drawCount = HotRegentNecro.GetVarInt(in card, def, "Cards", 5);
-                Span<ushort> handUids = stackalloc ushort[HotLimits.MaxCards];
+                int drawCount = HotRegentNecro.GetVarInt(in card, def, "Cards", 7);
                 int hCount = s.HandCount;
-                for (int i = 0; i < hCount; i++)
-                    handUids[i] = s.Cards[i].CardUid;
-                for (int i = 0; i < hCount && !scratch.NeedsChoice; i++)
+                if (hCount > 0)
                 {
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, handUids[i]);
-                    if (idx >= 0)
-                        HotCombatEngine.DiscardCard(ref s, ref cold, rules, scratch, idx);
+                    Span<ushort> handUids = stackalloc ushort[HotLimits.MaxCards];
+                    for (int i = 0; i < hCount; i++)
+                        handUids[i] = s.Cards[i].CardUid;
+                    HotCombatEngine.DiscardCardsAndDraw(ref s, ref cold, rules, scratch, handUids[..hCount], drawCount);
                 }
-                if (!scratch.NeedsChoice && drawCount > 0)
+                else if (drawCount > 0)
+                {
                     HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, drawCount, fromHandDraw: false);
+                }
                 return Complete(in s, scratch, out result);
             }
 
@@ -1386,7 +1484,8 @@ internal static class HotFoolTarot
                     if (counter <= 0)
                     {
                         power.Aux0 = 3;
-                        DislodgeFirstArrowFromPower(ref s, ref cold, rules, scratch, powerIdx, sourceCardDefId: args.CardDefId);
+                        byte sourceUpgradeLevel = ResolveHookCardUpgradeLevel(in s, in args);
+                        DislodgeFirstArrowFromPower(ref s, ref cold, rules, scratch, powerIdx, sourceCardDefId: args.CardDefId, sourceUpgradeLevel: sourceUpgradeLevel);
                     }
                     else
                     {
@@ -1397,7 +1496,8 @@ internal static class HotFoolTarot
 
                 if (hook == HotHookMask.AfterDeath && args.TargetSlot == ownerSlot)
                 {
-                    DislodgeAllArrowsFromEnemy(ref s, ref cold, rules, scratch, ownerSlot - 3, sourceCardDefId: 0);
+                    byte sourceUpgradeLevel = args.CardDefId != 0 ? ResolveHookCardUpgradeLevel(in s, in args) : (byte)0;
+                    DislodgeAllArrowsFromEnemy(ref s, ref cold, rules, scratch, ownerSlot - 3, sourceCardDefId: args.CardDefId, sourceUpgradeLevel: sourceUpgradeLevel);
                     return true;
                 }
                 return true;
@@ -1408,17 +1508,21 @@ internal static class HotFoolTarot
                 if (ownerSlot != 0 || amount <= 0)
                     return true;
 
+                // STS2 0.113.1 EncorePower.cs:51-85 + CardModel.cs:2064-2150:
+                // Aux0 = numberOfCardsPlayedSinceApplied, Aux1 = cardsBeingPlayed.Count
+                // (increments on every BeforeCardPlayed, decrements + increments Aux0 on every
+                // AfterCardPlayed iteration 0..playCount-1; returns to 0 between actions).
                 switch (hook)
                 {
                     case HotHookMask.BeforeCardPlayed:
                         if (args.ActorSlot == 0)
-                            power.Flags |= HotPowerFlags.BoolAux;
+                            power.Aux1++;
                         return true;
 
                     case HotHookMask.AfterCardPlayed:
-                        if (args.ActorSlot == 0 && args.PlayIndex + 1 >= args.PlayCount && (power.Flags & HotPowerFlags.BoolAux) != 0)
+                        if (args.ActorSlot == 0 && power.Aux1 > 0)
                         {
-                            power.Flags &= ~HotPowerFlags.BoolAux;
+                            power.Aux1--;
                             power.Aux0++;
                         }
                         return true;
@@ -1469,7 +1573,7 @@ internal static class HotFoolTarot
 
                 if (hook == HotHookMask.AfterDeath && args.TargetSlot >= 3)
                 {
-                    if (HotCombatEngine.GetPowerAmountById(in s, rules, args.TargetSlot, HotPowerId.MinionPower) <= 0)
+                    if (HotCombatEngine.ShouldEnemyDeathTriggerFatal(in s, rules, args.TargetSlot - 3))
                     {
                         GrowShowOffFromPower(ref s, rules, powerIdx);
                         HotCombatEngine.RemovePowerAt(ref s, powerIdx);
@@ -1526,10 +1630,26 @@ internal static class HotFoolTarot
                 if (ownerSlot != 0 || amount <= 0)
                     return true;
 
+                // STS2 0.113.1 StretchPower.cs:15-111: latches the first GainsBlock CardPlay
+                // (Aux0 = amountWhenCardStarted, Aux1 = latched CardUid | (nestedDepth << 16) | gaveBonusBlock),
+                // isolates nested AutoPlay frames in ModifyBlockAdditive and AfterCardPlayed, and
+                // removes amountWhenCardStarted only when the exact latched CardPlay finishes.
                 switch (hook)
                 {
                     case HotHookMask.BeforeCardPlayed:
                     {
+                        if (args.ActorSlot != 0)
+                            return true;
+
+                        if ((power.Flags & HotPowerFlags.BoolAux) != 0)
+                        {
+                            int depth = (int)(((uint)power.Aux1 >> StretchDepthShift) & StretchDepthMask);
+                            if (depth < StretchDepthMask)
+                                depth++;
+                            power.Aux1 = (power.Aux1 & ~(StretchDepthMask << StretchDepthShift)) | (depth << StretchDepthShift);
+                            return true;
+                        }
+
                         if (args.CardUid != 0)
                             HotCombatEngine.RefreshHookCardIdx(in s, ref args);
                         bool cardGainsBlock = args.CardDefId < rules.Cards.Length && rules.Cards[args.CardDefId].GainsBlock;
@@ -1542,35 +1662,60 @@ internal static class HotFoolTarot
                                 cardGainsBlock = true;
                             }
                         }
-                        if (args.ActorSlot == 0
-                            && cardGainsBlock
-                            && (power.Flags & HotPowerFlags.BoolAux) == 0)
+                        if (cardGainsBlock)
                         {
                             power.Flags |= HotPowerFlags.BoolAux;
                             power.Aux0 = amount;
-                            power.Aux1 = 0;
+                            power.Aux1 = args.CardUid;
                         }
                         return true;
                     }
 
                     case HotHookMask.ModifyBlockAdditive:
-                        if (args.TargetSlot == 0 && args.IsCardBlock && (power.Flags & HotPowerFlags.BoolAux) != 0)
+                        if (args.TargetSlot == 0
+                            && args.IsCardBlock
+                            && (power.Flags & HotPowerFlags.BoolAux) != 0)
                         {
-                            args.DecimalValue += amount;
-                            power.Aux1 = 1;
+                            int depth = (int)(((uint)power.Aux1 >> StretchDepthShift) & StretchDepthMask);
+                            if (depth == 0)
+                            {
+                                ushort latchedUid = (ushort)(power.Aux1 & StretchCardUidMask);
+                                bool uidMatches = latchedUid == 0
+                                    || (uint)args.CardIdx >= (uint)s.TotalCardCount
+                                    || s.Cards[args.CardIdx].CardUid == latchedUid;
+                                if (uidMatches)
+                                {
+                                    args.DecimalValue += amount;
+                                    power.Aux1 |= StretchGaveBlockBit;
+                                }
+                            }
                         }
                         return true;
 
                     case HotHookMask.AfterCardPlayed:
                         if (args.ActorSlot == 0 && (power.Flags & HotPowerFlags.BoolAux) != 0)
                         {
-                            int starting = power.Aux0;
-                            bool gaveBlock = power.Aux1 != 0;
-                            power.Flags &= ~HotPowerFlags.BoolAux;
-                            power.Aux0 = 0;
-                            power.Aux1 = 0;
-                            if (gaveBlock)
-                                HotCombatEngine.SetPowerAmount(ref s, rules, 0, power.PowerDefId, Math.Max(0, amount - starting));
+                            int depth = (int)(((uint)power.Aux1 >> StretchDepthShift) & StretchDepthMask);
+                            if (depth > 0)
+                            {
+                                depth--;
+                                power.Aux1 = (power.Aux1 & ~(StretchDepthMask << StretchDepthShift)) | (depth << StretchDepthShift);
+                            }
+                            else
+                            {
+                                ushort latchedUid = (ushort)(power.Aux1 & StretchCardUidMask);
+                                if (latchedUid == 0 || args.CardUid == latchedUid)
+                                {
+                                    int starting = power.Aux0;
+                                    bool gaveBlock = (power.Aux1 & StretchGaveBlockBit) != 0;
+                                    ushort defId = power.PowerDefId;
+                                    power.Flags &= ~HotPowerFlags.BoolAux;
+                                    power.Aux0 = 0;
+                                    power.Aux1 = 0;
+                                    if (gaveBlock)
+                                        HotCombatEngine.SetPowerAmount(ref s, rules, 0, defId, Math.Max(0, amount - starting));
+                                }
+                            }
                         }
                         return true;
 
@@ -1654,15 +1799,15 @@ internal static class HotFoolTarot
             {
                 if (hook == HotHookMask.AfterSideTurnStart && ownerSlot == 0 && args.Side == HotCombatSide.Player && amount > 0)
                 {
-                    ushort sadnessId = rules.GetCardDefId(HotCustomCardId.Sadness);
                     ushort joyId = rules.GetCardDefId(HotCustomCardId.Joy);
-                    if (sadnessId != 0 && joyId != 0)
+                    if (joyId != 0)
                     {
                         Span<ushort> sadUids = stackalloc ushort[HotLimits.MaxCards];
                         int sadCount = 0;
                         for (int i = 0; i < s.HandCount; i++)
                         {
-                            if (s.Cards[i].CardDefId == sadnessId)
+                            ushort id = s.Cards[i].CardDefId;
+                            if (id < rules.Cards.Length && rules.Cards[id].CardId == HotCustomCardId.Sadness)
                                 sadUids[sadCount++] = s.Cards[i].CardUid;
                         }
                         if (sadCount > 0)
@@ -1671,15 +1816,16 @@ internal static class HotFoolTarot
                                 HotCombatEngine.StableSortUidsForShuffle(in s, rules, cold, sadUids[..sadCount]);
                             HotRng.UnstableShuffle(sadUids[..sadCount], ref s.Rng[(int)HotRngStream.CombatCardSelection]);
                             int toTransform = Math.Min(amount, sadCount);
-                            for (int i = 0; i < toTransform && !scratch.NeedsChoice; i++)
+                            Span<int> sadIndices = stackalloc int[HotLimits.MaxCards];
+                            int idxCount = 0;
+                            for (int i = 0; i < toTransform; i++)
                             {
                                 int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sadUids[i]);
                                 if (idx >= 0)
-                                {
-                                    HotPiles.RemoveCard(ref s, idx);
-                                    HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, joyId, HotPileKind.Hand, idx);
-                                }
+                                    sadIndices[idxCount++] = idx;
                             }
+                            if (idxCount > 0)
+                                HotCombatEngine.TransformCardsBatch(ref s, ref cold, rules, scratch, sadIndices[..idxCount], joyId, upgraded: false);
                         }
                     }
                 }
@@ -1835,9 +1981,13 @@ internal static class HotFoolTarot
 
             case HotPowerId.DislikeYouPower:
             {
-                if (hook == HotHookMask.ModifyDamageMultiplicative && args.ActorSlot == ownerSlot && args.IsPoweredAttack && amount > 0)
+                if (hook == HotHookMask.ModifyDamageMultiplicative
+                    && args.TargetSlot == ownerSlot
+                    && args.IsPoweredAttack
+                    && t_isArrowAttackActive
+                    && amount > 0)
                 {
-                    args.DecimalMultiplier *= Math.Max(0m, 1m - (decimal)amount / 100m);
+                    args.DecimalMultiplier *= 1m + (decimal)amount / 100m;
                     return true;
                 }
                 if (hook == HotHookMask.AfterTurnEnd && args.Side == HotCombatSide.Player && amount > 0)
@@ -1850,8 +2000,15 @@ internal static class HotFoolTarot
 
             case HotPowerId.CompostPower:
             {
-                if (hook == HotHookMask.AfterDeath && ownerSlot == 0 && args.TargetSlot >= 3 && amount > 0)
-                    HotCombatEngine.DrawCards(ref s, ref cold, rules, scratch, amount, fromHandDraw: false);
+                // STS2 0.113.1 CompostPower.cs:24-38: enemy AfterDeath -> alive player gains Energy.
+                if (hook == HotHookMask.AfterDeath
+                    && ownerSlot == 0
+                    && args.TargetSlot >= 3
+                    && amount > 0
+                    && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
+                {
+                    HotCombatEngine.GainEnergy(ref s, rules, amount);
+                }
                 return true;
             }
 
@@ -1886,9 +2043,11 @@ internal static class HotFoolTarot
                             ref readonly HotCard hc = ref s.Cards[i];
                             if ((hc.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
                                 continue;
+                            // STS2 0.113.1 SimpletonPower.cs:28 & CardEnergyCost.cs:155-162:
+                            // EnergyCost.GetResolved() == Math.Max(0, GetWithModifiers(CostModifiers.All)) (Local + Global).
                             int cCost = (hc.Flags & HotCardFlags.CostsX) != 0
                                 ? 999_999_999
-                                : HotCombatEngine.GetEffectiveEnergyCost(in s, in hc, cold, rules, isInPlayablePile: true);
+                                : Math.Max(0, HotCombatEngine.GetEffectiveEnergyCost(in s, in hc, cold, rules, isInPlayablePile: true));
                             if (cCost < minCost)
                             {
                                 minCost = cCost;
@@ -1927,18 +2086,11 @@ internal static class HotFoolTarot
                     return true;
 
                 // InsatiableDominionPower.cs:22,32-55: DisplayAmount = 2 + TurnNumber;
-                // deals blockable Unpowered damage at player AfterSideTurnEndLate.
+                // deals blockable Unpowered damage at player AfterSideTurnEndLate
+                // (dispatched in HotCombatEngine.Turn.cs after all regular AfterTurnEnd powers & relics).
                 if (hook == HotHookMask.AfterSideTurnStart && args.Side == HotCombatSide.Player)
                 {
                     power.Aux0 = 2 + s.PlayerTurnNumber;
-                    return true;
-                }
-                if (hook == HotHookMask.AfterTurnEnd && args.Side == HotCombatSide.Player)
-                {
-                    int dmg = 2 + s.PlayerTurnNumber;
-                    power.Aux0 = dmg;
-                    if (dmg > 0)
-                        HotCombatEngine.DealDamage(ref s, ref cold, rules, scratch, 0xFF, 0, dmg, isPoweredAttack: false, isUnblockable: false);
                     return true;
                 }
                 return true;
@@ -2007,11 +2159,13 @@ internal static class HotFoolTarot
                     {
                         HotCombatEngine.SetPendingGeneratedChoiceOptions(options[..count]);
                         if (HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, 0, 1, 1, out HotChoiceSelection sel)
-                            && sel.CardDefId != 0)
+                            && sel.CardDefId != 0
+                            && sel.CardDefId < rules.Cards.Length)
                         {
-                            if (sel.CardDefId == slothId)
+                            HotCustomCardId chosenCardId = rules.Cards[sel.CardDefId].CardId;
+                            if (chosenCardId == HotCustomCardId.Sloth)
                                 HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.SlothPower, 3, isCardSource: true);
-                            else if (sel.CardDefId == amnesiaId)
+                            else if (chosenCardId == HotCustomCardId.Amnesia)
                                 HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.AmnesiaPower, 1, isCardSource: true);
                         }
                     }
@@ -2122,15 +2276,13 @@ internal static class HotFoolTarot
     {
         if ((uint)melodyIdx >= 3 || s.Fool.MelodyStarted[melodyIdx] == 0)
             return false;
-        if (s.Fool.FirstPlayCardUid[melodyIdx] != 0)
-        {
-            ushort playedUid = args.CardUid != 0
-                ? args.CardUid
-                : ((uint)args.CardIdx < (uint)s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0);
-            if (playedUid != 0)
-                return s.Fool.FirstPlayCardUid[melodyIdx] == playedUid && args.PlayIndex == 0;
-        }
-        return s.Fool.MelodyStarted[melodyIdx] == 1 && args.PlayIndex == 0;
+        ushort firstUid = s.Fool.FirstPlayCardUid[melodyIdx];
+        if (firstUid == 0)
+            return false;
+        ushort playedUid = args.CardUid != 0
+            ? args.CardUid
+            : ((uint)args.CardIdx < (uint)s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0);
+        return playedUid != 0 && firstUid == playedUid && args.PlayIndex == 0;
     }
 
     internal static bool ShootArrow(
@@ -2278,24 +2430,25 @@ internal static class HotFoolTarot
             s.Fool.Arrows[arrowIdx] = PackArrow(ArrowStatus.Away, destroyAfterImpaled: false, impaledEnemySlot: -1);
 
         // AfterArrowShot listeners:
-        // 1. WhistlingArrows in Discard moves to Hand.
+        // 1. WhistlingArrows in Discard moves to Hand (snapshot UIDs before mutating piles).
         if (arrowIdx >= 0)
         {
-            ushort whistlingId = rules.GetCardDefId(HotCustomCardId.WhistlingArrows);
-            if (whistlingId != 0)
+            int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
+            Span<ushort> whistleUids = stackalloc ushort[HotLimits.MaxCards];
+            int whistleCount = 0;
+            int dStart = s.DiscardStart;
+            int dEnd = dStart + s.DiscardCount;
+            for (int i = dStart; i < dEnd; i++)
             {
-                int maxHand = s.MaxHandSize > 0 ? s.MaxHandSize : 10;
-                int dStart = s.DiscardStart;
-                int dEnd = dStart + s.DiscardCount;
-                for (int i = dStart; i < dEnd && s.HandCount < maxHand; i++)
-                {
-                    if (s.Cards[i].CardDefId == whistlingId)
-                    {
-                        HotPiles.MoveCard(ref s, i, HotPileKind.Hand, s.HandCount);
-                        dStart = s.DiscardStart;
-                        dEnd = dStart + s.DiscardCount;
-                    }
-                }
+                ushort id = s.Cards[i].CardDefId;
+                if (id < rules.Cards.Length && rules.Cards[id].CardId == HotCustomCardId.WhistlingArrows)
+                    whistleUids[whistleCount++] = s.Cards[i].CardUid;
+            }
+            for (int i = 0; i < whistleCount && s.HandCount < maxHand; i++)
+            {
+                int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Discard, whistleUids[i]);
+                if (idx >= 0)
+                    HotPiles.MoveCard(ref s, idx, HotPileKind.Hand, s.HandCount);
             }
 
             // 2. QuietusPower sets DestroyAfterImpaled = true on shot arrow if from a card.
@@ -2330,17 +2483,10 @@ internal static class HotFoolTarot
 
         try
         {
-            // Snapshot AimPower & QuietusPower before arrow attack; ExecuteDealerSingleTargetAttack invokes
-            // BeforeAttack/AfterAttack, enchantment damage modifiers (via cardIdx),
+            // ExecuteDealerSingleTargetAttack invokes BeforeAttack/AfterAttack (which latch and
+            // consume AimPower & QuietusPower), enchantment damage modifiers (via cardIdx),
             // ModifyDamageAdditive (AimPower, incl. HeavyShot 2x via t_activeArrowCardDefId),
-            // and ModifyDamageMultiplicative (QuietusPower, HoningPower, SerratedArrowsPower).
-            ushort aimDefId = rules.GetPowerDefId(HotPowerId.AimPower);
-            int aimIdx = aimDefId != 0 ? HotCombatEngine.FindPowerIndex(in s, 0, aimDefId) : -1;
-            int aimAmount = aimIdx >= 0 ? s.Powers[aimIdx].Amount : 0;
-
-            ushort quietusDefId = rules.GetPowerDefId(HotPowerId.QuietusPower);
-            int quietusAmt = quietusDefId != 0 ? HotCombatEngine.GetPowerAmount(in s, 0, quietusDefId) : 0;
-
+            // and ModifyDamageMultiplicative (QuietusPower, HoningPower, DislikeYouPower, SerratedArrowsPower).
             HotCombatEngine.ExecuteDealerSingleTargetAttack(
                 ref s,
                 ref cold,
@@ -2353,15 +2499,6 @@ internal static class HotFoolTarot
                 baseDamage: baseDamage,
                 hits: hits,
                 powered: true);
-
-            // Consume AimPower & QuietusPower after arrow attack completes.
-            if (aimAmount > 0 && aimDefId != 0)
-            {
-                int curAim = HotCombatEngine.GetPowerAmount(in s, 0, aimDefId);
-                HotCombatEngine.SetPowerAmount(ref s, rules, 0, aimDefId, Math.Max(0, curAim - aimAmount));
-            }
-            if (quietusAmt > 0 && quietusDefId != 0)
-                HotCombatEngine.SetPowerAmount(ref s, rules, 0, quietusDefId, 0);
         }
         finally
         {
@@ -2441,13 +2578,30 @@ internal static class HotFoolTarot
         }
     }
 
+    private static byte ResolveHookCardUpgradeLevel(in CombatHotState s, in HotHookArgs args)
+    {
+        if ((uint)args.CardIdx < (uint)s.TotalCardCount
+            && (args.CardUid == 0 || s.Cards[args.CardIdx].CardUid == args.CardUid))
+        {
+            return s.Cards[args.CardIdx].UpgradeLevel;
+        }
+        if (args.CardUid != 0)
+        {
+            int idx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, args.CardUid);
+            if (idx >= 0)
+                return s.Cards[idx].UpgradeLevel;
+        }
+        return 0;
+    }
+
     private static void DislodgeAllArrowsFromEnemy(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
         HotRules rules,
         HotExecScratch scratch,
         int enemySlot,
-        ushort sourceCardDefId)
+        ushort sourceCardDefId,
+        byte sourceUpgradeLevel = 0)
     {
         if ((uint)enemySlot >= (uint)s.EnemyCount)
             return;
@@ -2462,7 +2616,7 @@ internal static class HotFoolTarot
                 int liveIdx = FindImpaledPowerByPlayer(in s, targetSlot, impaledDefId);
                 if (liveIdx < 0)
                     break;
-                DislodgeFirstArrowFromPower(ref s, ref cold, rules, scratch, liveIdx, sourceCardDefId);
+                DislodgeFirstArrowFromPower(ref s, ref cold, rules, scratch, liveIdx, sourceCardDefId, sourceUpgradeLevel);
                 if (scratch.NeedsChoice)
                     return;
             }
@@ -2481,7 +2635,7 @@ internal static class HotFoolTarot
                 }
                 else
                 {
-                    FireAfterArrowDislodged(ref s, ref cold, rules, scratch, sourceCardDefId);
+                    FireAfterArrowDislodged(ref s, ref cold, rules, scratch, sourceCardDefId, sourceUpgradeLevel);
                     s.Fool.Arrows[a] = PackArrow(ArrowStatus.Retrieved, destroyAfterImpaled: false, impaledEnemySlot: -1);
                 }
             }
@@ -2494,7 +2648,8 @@ internal static class HotFoolTarot
         HotRules rules,
         HotExecScratch scratch,
         int powerIdx,
-        ushort sourceCardDefId)
+        ushort sourceCardDefId,
+        byte sourceUpgradeLevel = 0)
     {
         if ((uint)powerIdx >= (uint)s.PowerCount)
             return;
@@ -2517,7 +2672,7 @@ internal static class HotFoolTarot
             return;
         }
 
-        FireAfterArrowDislodged(ref s, ref cold, rules, scratch, sourceCardDefId);
+        FireAfterArrowDislodged(ref s, ref cold, rules, scratch, sourceCardDefId, sourceUpgradeLevel);
         if (scratch.NeedsChoice)
             return;
 
@@ -2529,13 +2684,14 @@ internal static class HotFoolTarot
         ref HotColdSidecar? cold,
         HotRules rules,
         HotExecScratch scratch,
-        ushort sourceCardDefId)
+        ushort sourceCardDefId,
+        byte sourceUpgradeLevel = 0)
     {
         // 1. EpicRetrieval source card grants energy when it dislodges an arrow.
         if (sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
             && rules.Cards[sourceCardDefId].CardId == HotCustomCardId.EpicRetrieval)
         {
-            int energy = Math.Max(1, (int)rules.Cards[sourceCardDefId].BaseMagic);
+            int energy = Math.Max(1, rules.Cards[sourceCardDefId].GetMagic(sourceUpgradeLevel));
             HotCombatEngine.GainEnergy(ref s, rules, energy);
         }
 
@@ -2725,7 +2881,7 @@ internal static class HotFoolTarot
     {
         HotCardDef def = rules.Cards[cardDefId];
         byte upg = upgraded && def.MaxUpgradeLevel > 0 ? (byte)1 : (byte)0;
-        return new HotCard
+        HotCard card = new()
         {
             CardDefId = cardDefId,
             CardUid = s.NextCardUid++,
@@ -2739,6 +2895,10 @@ internal static class HotFoolTarot
             KeywordsRemovedOutsideMask = HotCardKeywordMask.None,
             Flags = HotCombatEngine.GetInitialCardFlags(def),
         };
+        if (upg > 0)
+            HotCombatEngine.ApplyUpgradeKeywords(ref card, def.CardId);
+        HotCombatEngine.InitFreshCardPrivate(ref card, def);
+        return card;
     }
 
     private static void MoveCardToHandOrDiscard(ref CombatHotState s, int cardIdx)
@@ -2830,7 +2990,7 @@ internal static class HotFoolTarot
             return;
 
         HotCardDef sadDef = rules.Cards[sadnessDefId];
-        s.Cards[livePlayIdx] = new HotCard
+        HotCard sadCard = new()
         {
             CardDefId = sadnessDefId,
             CardUid = cardUid,
@@ -2840,10 +3000,13 @@ internal static class HotFoolTarot
             LocalKeywordsMask = (HotCardKeywordMask)sadDef.BaseKeywords,
             Flags = HotCombatEngine.GetInitialCardFlags(sadDef),
         };
+        HotCombatEngine.InitFreshCardPrivate(ref sadCard, sadDef);
+        s.Cards[livePlayIdx] = sadCard;
         s.HistoryCardsGenerated++;
         s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore]++;
         if (sadDef.HookMask != HotHookMask.None)
             s.ActiveHookMask |= (ulong)sadDef.HookMask;
+        HotCombatEngine.ClearStaleHexedOnCardEnteredCombat(ref s, rules, livePlayIdx);
         if ((s.ActiveHookMask & (ulong)HotHookMask.AfterCardEnteredCombat) != 0)
         {
             HotHookArgs enterArgs = new()
@@ -2871,5 +3034,7 @@ internal static class HotFoolTarot
             };
             HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterCardGenerated, ref genArgs);
         }
+
+        HotCombatEngine.TriggerCardLevelAfterCardGenerated(ref s, ref cold, rules, sadnessDefId, createdByPlayer: true);
     }
 }

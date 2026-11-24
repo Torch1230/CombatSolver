@@ -34,8 +34,10 @@ internal enum HotCounterSlot : byte
     SadnessGeneratedBefore       = 20,
     BaseMaxEnergy                = 21,
     BaseHandDraw                 = 22,
-    CardBlockGainsThisTurn       = 23,
-    ShivPlaysFinishedThisTurn    = 24,
+    CardBlockGainsThisTurn              = 23,
+    ShivPlaysFinishedThisTurn           = 24,
+    FirstInSeriesCardPlayStartsThisTurn = 25,
+    HistoryCardsExhausted               = 26,
 }
 
 internal enum HotCardOpKind : byte
