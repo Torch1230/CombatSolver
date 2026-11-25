@@ -424,7 +424,7 @@ impl SearchEngine {
         policy: &SearchPolicy,
         content: &(dyn ContentDispatcher + Sync),
         cancel: &AtomicBool,
-        progress_cb: Option<&dyn Fn(&SearchProgress)>,
+        progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     ) -> Result<InCombatSolveResponse, KernelError> {
         CombatSearchCoordinator::solve(root, policy, content, cancel, progress_cb)
     }

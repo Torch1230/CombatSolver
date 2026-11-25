@@ -286,7 +286,7 @@ pub fn card_equiv_key(
             ext_hash: 0,
         };
     };
-    let energy_cost = resolve_energy_cost(state, content, handle).unwrap_or(card.base_energy_cost);
+    let energy_cost = resolve_energy_cost(state, content, handle).unwrap_or(card.base_energy_cost as i32);
     let star_cost = resolve_star_cost(state, content, handle).unwrap_or(0);
     card_equiv_key_with_costs(state, handle, energy_cost, star_cost)
 }
@@ -1077,17 +1077,17 @@ mod tests {
             handle: CardHandle(handle),
             id,
             upgrade_level: 0,
-            canonical_base_energy_cost: base_cost,
-            base_energy_cost: base_cost,
+            canonical_base_energy_cost: base_cost as i16,
+            base_energy_cost: base_cost as i16,
             captured_energy_x_value: 0,
             base_replay_count: 0,
-            floor_added_to_deck: None,
-            deck_card_handle: None,
-            clone_of_handle: None,
-            temp_star_cost_override_this_turn: None,
-            temp_cost_override_this_turn: None,
-            temp_cost_override_this_turn_or_until_played: None,
-            temp_cost_override_this_combat: None,
+            floor_added_to_deck: sts2_kernel::OptI16::NONE,
+            deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
             local_keywords: CardKeywords::empty(),
             keywords_added_from_outside: CardKeywords::empty(),
             keywords_removed_from_outside: CardKeywords::empty(),

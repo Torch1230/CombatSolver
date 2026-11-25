@@ -5,8 +5,15 @@ use crate::tt::TranspositionLabel;
 use hashbrown::HashMap;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use sts2_kernel::state::{BattleState, CardTempFlags, FieldValue, GrowthCounters};
-use sts2_kernel::{CombatEngine, ContentDispatcher};
+use smallvec::SmallVec;
+use std::borrow::Cow;
+use sts2_kernel::state::{
+    BattleState, CardTempFlags, CreatureInst, ENEMY_POWER_FLAG_GOLD_THEFT,
+    ENEMY_POWER_FLAG_REVIVING, FieldValue, GrowthCounters, HOOK_DIRTY_CREATURES,
+};
+use sts2_kernel::{CombatEngine, ContentDispatcher, CreatureHandle};
+#[cfg(debug_assertions)]
+use sts2_types::Dec;
 use sts2_types::{
     CardId, CardKeywords, CardStaticFlags, CardType, GameMode, MonsterId, OrbId, PileType,
     PlayerRngType, PotionId, PowerId, PowerStackType, PowerStaticFlags, PowerType, RelicId,
@@ -499,7 +506,7 @@ impl GrowthOpportunityTargets {
             available
                 .iter()
                 .filter(|c| pred(c))
-                .map(|c| 1 + c.base_replay_count.max(0))
+                .map(|c| 1 + (c.base_replay_count as i32).max(0))
                 .sum()
         };
 
@@ -2342,7 +2349,33 @@ pub(crate) fn is_creature_reviving(
     state: &BattleState,
     ec: &sts2_kernel::state::CreatureInst,
 ) -> bool {
-    if !state.is_in_progress || state.won || !ec.is_dead() {
+    if !state.is_in_progress || state.won || !ec.is_dead() || state.power_extensions.is_empty() {
+        return false;
+    }
+    if (state.hook_cache.dirty_mask & HOOK_DIRTY_CREATURES) == 0
+        && state.hook_cache.cached_tables.is_some()
+        && (state.hook_cache.enemy_power_flags & ENEMY_POWER_FLAG_REVIVING) == 0
+    {
+        #[cfg(debug_assertions)]
+        debug_assert!(
+            !ec.powers.iter().any(|p| {
+                let key = match p.id {
+                    PowerId::ReattachPower if p.amount > 0 => "ReattachPower._isReviving",
+                    PowerId::AdaptablePower => "AdaptablePower._isReviving",
+                    _ => return false,
+                };
+                p.ext_index.is_some_and(|ext_idx| {
+                    matches!(
+                        state
+                            .power_extensions
+                            .get(ext_idx as usize)
+                            .and_then(|pe| pe.private_fields.get(key)),
+                        Some(FieldValue::Bool(true))
+                    )
+                })
+            }),
+            "enemy_power_flags missed reviving enemy power!"
+        );
         return false;
     }
     for p in &ec.powers {
@@ -2384,34 +2417,51 @@ pub fn evaluate_fast(
     let mut reviving_enemy_count = 0i32;
     let mut alive_enemy_mask = 0u64;
     let mut outstanding_stolen = 0i32;
+    let check_gold_theft = !((state.hook_cache.dirty_mask & HOOK_DIRTY_CREATURES) == 0
+        && state.hook_cache.cached_tables.is_some()
+        && (state.hook_cache.enemy_power_flags & ENEMY_POWER_FLAG_GOLD_THEFT) == 0);
 
     for (idx, &eh) in state.enemy_handles.iter().enumerate() {
         if let Some(ec) = state.creature(eh) {
+            #[cfg(debug_assertions)]
+            debug_assert!(state.contains_creature(eh));
             let hp = ec.current_hp.max(0);
             raw_enemy_hp += hp;
-            if ec.is_alive() && state.contains_creature(eh) {
+            if ec.is_alive() {
                 enemy_hp += hp;
                 enemy_block += ec.block.max(0);
                 alive_enemy_count += 1;
                 if idx < 64 {
                     alive_enemy_mask |= 1u64 << idx;
                 }
-                for p in &ec.powers {
-                    if p.id == PowerId::ThieveryPower {
-                        if let Some(ext_idx) = p.ext_index {
-                            if let Some(FieldValue::Int(gold)) = state
-                                .power_extensions
-                                .get(ext_idx as usize)
-                                .and_then(|pe| pe.private_fields.get("ThieveryPower._goldStolen"))
-                            {
-                                outstanding_stolen += (*gold).max(0);
+                if check_gold_theft && !ec.powers.is_empty() {
+                    for p in &ec.powers {
+                        if p.id == PowerId::ThieveryPower {
+                            if let Some(ext_idx) = p.ext_index {
+                                if let Some(FieldValue::Int(gold)) = state
+                                    .power_extensions
+                                    .get(ext_idx as usize)
+                                    .and_then(|pe| pe.private_fields.get("ThieveryPower._goldStolen"))
+                                {
+                                    outstanding_stolen += (*gold).max(0);
+                                }
                             }
+                        } else if p.id == PowerId::SwipePower && p.amount > 0 {
+                            outstanding_stolen += p.amount;
                         }
-                    } else if p.id == PowerId::SwipePower && p.amount > 0 {
-                        outstanding_stolen += p.amount;
                     }
+                } else {
+                    #[cfg(debug_assertions)]
+                    debug_assert!(
+                        !ec.powers.iter().any(|p| {
+                            (p.id == PowerId::ThieveryPower && p.ext_index.is_some())
+                                || (p.id == PowerId::SwipePower && p.amount > 0)
+                        }),
+                        "enemy_power_flags missed ThieveryPower/SwipePower on {:?}",
+                        eh
+                    );
                 }
-            } else if state.contains_creature(eh) && is_creature_reviving(state, ec) {
+            } else if is_creature_reviving(state, ec) {
                 reviving_enemy_count += 1;
             }
         }
@@ -2437,15 +2487,126 @@ pub fn evaluate_fast(
         stand_pat_hp.unwrap_or(player_hp)
     };
 
-    let mut live_deck_size = 0i32;
+    let live_deck_size =
+        (state.player.hand.len() + state.player.draw.len() + state.player.discard.len()) as i32;
     let mut live_deck_clutter = 0i32;
-    for pile in [&state.player.hand[..], &state.player.draw[..], &state.player.discard[..]] {
-        for &ch in pile {
-            live_deck_size += 1;
-            if let Some(card) = state.card(ch) {
-                if let Ok(meta) = state.fast_card_meta(content, card.id) {
-                    if matches!(meta.card_type, CardType::Status | CardType::Curse) {
-                        live_deck_clutter += 1;
+    if live_deck_size > 0 {
+        if let Some(tables) = state.hook_cache.cached_tables {
+            let sc_bits = tables.card_is_status_or_curse_bits;
+            let sctx = &state.static_ctx;
+            const _: () = assert!(
+                PileType::Draw as u8 == 1
+                    && PileType::Hand as u8 == 2
+                    && PileType::Discard as u8 == 3
+            );
+            if sctx.has_root_clutter_indices && state.cards.len() >= sctx.root_initial_cards_len {
+                let root_indices = if !state.deck_dirty.0 {
+                    &sctx.root_combat_clutter_indices[..]
+                } else {
+                    &sctx.root_all_clutter_indices[..]
+                };
+                for &ci in root_indices {
+                    let card = unsafe { state.cards.get_unchecked(ci as usize) };
+                    live_deck_clutter += i32::from(
+                        !card.removed_from_state && (card.pile as u8).wrapping_sub(1) < 3,
+                    );
+                }
+                if CardId::COUNT <= sc_bits.len() * 64 {
+                    for card in &state.cards[sctx.root_initial_cards_len..] {
+                        let active = i32::from(
+                            !card.removed_from_state && (card.pile as u8).wrapping_sub(1) < 3,
+                        );
+                        let idx = card.id as usize;
+                        let is_sc = ((unsafe { *sc_bits.get_unchecked(idx >> 6) } >> (idx & 63))
+                            & 1) as i32;
+                        live_deck_clutter += active & is_sc;
+                    }
+                } else {
+                    for card in &state.cards[sctx.root_initial_cards_len..] {
+                        if !card.removed_from_state && (card.pile as u8).wrapping_sub(1) < 3 {
+                            let idx = card.id as usize;
+                            let w = idx >> 6;
+                            if w < sc_bits.len() && ((sc_bits[w] >> (idx & 63)) & 1) != 0 {
+                                live_deck_clutter += 1;
+                            }
+                        }
+                    }
+                }
+            } else {
+                let card_start = if !state.deck_dirty.0 {
+                    sctx.root_deck_prefix_len.min(state.cards.len())
+                } else {
+                    0
+                };
+                if card_start == 0 && (live_deck_size as usize) * 2 < state.cards.len() {
+                    for pile in [
+                        &state.player.hand[..],
+                        &state.player.draw[..],
+                        &state.player.discard[..],
+                    ] {
+                        for &ch in pile {
+                            if let Some(card) = state.card(ch) {
+                                let idx = card.id as usize;
+                                let w = idx >> 6;
+                                if w < sc_bits.len() && ((sc_bits[w] >> (idx & 63)) & 1) != 0 {
+                                    live_deck_clutter += 1;
+                                }
+                            }
+                        }
+                    }
+                } else if CardId::COUNT <= sc_bits.len() * 64 {
+                    for card in &state.cards[card_start..] {
+                        let active = i32::from(
+                            !card.removed_from_state && (card.pile as u8).wrapping_sub(1) < 3,
+                        );
+                        let idx = card.id as usize;
+                        let is_sc = ((unsafe { *sc_bits.get_unchecked(idx >> 6) } >> (idx & 63))
+                            & 1) as i32;
+                        live_deck_clutter += active & is_sc;
+                    }
+                } else {
+                    for card in &state.cards[card_start..] {
+                        if !card.removed_from_state && (card.pile as u8).wrapping_sub(1) < 3 {
+                            let idx = card.id as usize;
+                            let w = idx >> 6;
+                            if w < sc_bits.len() && ((sc_bits[w] >> (idx & 63)) & 1) != 0 {
+                                live_deck_clutter += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            #[cfg(debug_assertions)]
+            {
+                let mut expected = 0i32;
+                for pile in [
+                    &state.player.hand[..],
+                    &state.player.draw[..],
+                    &state.player.discard[..],
+                ] {
+                    for &ch in pile {
+                        if let Some(card) = state.card(ch) {
+                            if tables.card_is_status_or_curse(card.id) {
+                                expected += 1;
+                            }
+                        }
+                    }
+                }
+                debug_assert_eq!(live_deck_clutter, expected);
+            }
+        } else {
+            for pile in [
+                &state.player.hand[..],
+                &state.player.draw[..],
+                &state.player.discard[..],
+            ] {
+                for &ch in pile {
+                    if let Some(card) = state.card(ch) {
+                        if let Ok(meta) = content.card_meta(card.id) {
+                            if matches!(meta.card_type, CardType::Status | CardType::Curse) {
+                                live_deck_clutter += 1;
+                            }
+                        }
                     }
                 }
             }
@@ -2456,18 +2617,24 @@ pub fn evaluate_fast(
         + (cumulative_hp_lost - root.initial_cumulative_hp_lost))
         .max(0);
 
-    let mut raw_growth = state.semantic_history.growth_rewards;
-    let delta_ms = (raw_growth.mad_science - root.initial_growth_rewards.mad_science)
-        .clamp(0, root.mad_science_upgrade_capacity);
-    raw_growth.mad_science = root.initial_growth_rewards.mad_science + delta_ms;
-    let raw_growth_reward_count = raw_growth.total();
-
-    let (growth_rewards, growth_hp_credit, growth_reward_count) = if root.ignore_long_term_rewards {
-        (GrowthCounters::default(), 0, 0)
-    } else {
-        let credit = root.effective_growth_budgets.credit(&raw_growth);
-        (raw_growth, credit, raw_growth_reward_count)
-    };
+    let (raw_growth_reward_count, growth_rewards, growth_hp_credit, growth_reward_count) =
+        if state.semantic_history.growth_rewards.is_zero()
+            && root.initial_growth_rewards.is_zero()
+        {
+            (0, GrowthCounters::default(), 0, 0)
+        } else {
+            let mut raw_growth = state.semantic_history.growth_rewards;
+            let delta_ms = (raw_growth.mad_science - root.initial_growth_rewards.mad_science)
+                .clamp(0, root.mad_science_upgrade_capacity);
+            raw_growth.mad_science = root.initial_growth_rewards.mad_science + delta_ms;
+            let raw_cnt = raw_growth.total();
+            if root.ignore_long_term_rewards {
+                (raw_cnt, GrowthCounters::default(), 0, 0)
+            } else {
+                let credit = root.effective_growth_budgets.credit(&raw_growth);
+                (raw_cnt, raw_growth, credit, raw_cnt)
+            }
+        };
 
     let relic_eval = RelicCounterPolicy::evaluate(
         state,
@@ -2872,12 +3039,171 @@ fn card_base_heuristic_value(card_id: CardId, upgrade_level: i32, meta_type: Car
     }
 }
 
-pub fn evaluate_full(
+struct IntentHitsEntry {
+    monster_id: MonsterId,
+    move_id: Cow<'static, str>,
+    hits_i32: SmallVec<[(i32, i32); 2]>,
+    #[cfg(debug_assertions)]
+    hits: SmallVec<[(Dec, i32); 2]>,
+}
+
+pub(crate) struct IntentHitsCache {
+    game_mode: Option<GameMode>,
+    ascension: u8,
+    fast_idx: [u8; 32],
+    entries: Vec<IntentHitsEntry>,
+}
+
+impl Default for IntentHitsCache {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl IntentHitsCache {
+    #[inline]
+    pub(crate) fn new() -> Self {
+        Self {
+            game_mode: None,
+            ascension: 0,
+            fast_idx: [u8::MAX; 32],
+            entries: Vec::with_capacity(16),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn clear(&mut self) {
+        self.game_mode = None;
+        self.fast_idx.fill(u8::MAX);
+        self.entries.clear();
+    }
+
+    #[inline(always)]
+    fn hint_slot(mid: MonsterId, mb: &[u8]) -> usize {
+        let len = mb.len();
+        let b0 = mb.first().copied().unwrap_or(0) as usize;
+        let b_last = mb.last().copied().unwrap_or(0) as usize;
+        ((mid as usize).wrapping_mul(31) ^ (len << 3) ^ b0 ^ b_last.wrapping_mul(7)) & 31
+    }
+
+    #[inline]
+    pub(crate) fn lookup_i32<'a>(
+        &'a mut self,
+        state: &BattleState,
+        content: &dyn ContentDispatcher,
+        eh: CreatureHandle,
+        ec: &CreatureInst,
+        dynamic_hits_i32: &'a mut SmallVec<[(i32, i32); 2]>,
+    ) -> &'a [(i32, i32)] {
+        let Some(m) = &ec.monster else {
+            return &[];
+        };
+        let mid = m.monster_id;
+        if matches!(
+            mid,
+            MonsterId::WaterfallGiant | MonsterId::TestSubject | MonsterId::TheForgotten
+        ) {
+            dynamic_hits_i32.clear();
+            for (d, c) in content.monster_attack_intent_hits(state, eh).unwrap_or_default() {
+                dynamic_hits_i32.push((d.to_i32_trunc().unwrap_or(0), c));
+            }
+            return dynamic_hits_i32.as_slice();
+        }
+        let gm = state.static_ctx.game_mode;
+        let asc = state.static_ctx.ascension;
+        if self.game_mode != Some(gm) || self.ascension != asc {
+            self.game_mode = Some(gm);
+            self.ascension = asc;
+            self.fast_idx.fill(u8::MAX);
+            self.entries.clear();
+        }
+        let move_cow = m.next_move_id.as_ref().unwrap_or(&m.current_state_id);
+        let mb = move_cow.as_bytes();
+        let hint_slot = Self::hint_slot(mid, mb);
+        let hint_pos = self.fast_idx[hint_slot] as usize;
+        let pos_opt = if hint_pos < self.entries.len() {
+            let e = &self.entries[hint_pos];
+            let eb = e.move_id.as_bytes();
+            if e.monster_id == mid
+                && eb.len() == mb.len()
+                && (eb.as_ptr() == mb.as_ptr() || eb == mb)
+            {
+                Some(hint_pos)
+            } else {
+                self.entries.iter().position(|e| {
+                    let eb = e.move_id.as_bytes();
+                    e.monster_id == mid
+                        && eb.len() == mb.len()
+                        && (eb.as_ptr() == mb.as_ptr() || eb == mb)
+                })
+            }
+        } else {
+            self.entries.iter().position(|e| {
+                let eb = e.move_id.as_bytes();
+                e.monster_id == mid
+                    && eb.len() == mb.len()
+                    && (eb.as_ptr() == mb.as_ptr() || eb == mb)
+            })
+        };
+        if let Some(pos) = pos_opt {
+            self.fast_idx[hint_slot] = pos as u8;
+            let entry = &self.entries[pos];
+            #[cfg(debug_assertions)]
+            {
+                let fresh = content
+                    .monster_attack_intent_hits(state, eh)
+                    .unwrap_or_default();
+                debug_assert_eq!(
+                    entry.hits,
+                    fresh,
+                    "IntentHitsCache mismatch for {mid:?} move={}",
+                    move_cow.as_ref()
+                );
+            }
+            return entry.hits_i32.as_slice();
+        }
+        let hits = content
+            .monster_attack_intent_hits(state, eh)
+            .unwrap_or_default();
+        let mut hits_i32: SmallVec<[(i32, i32); 2]> = SmallVec::with_capacity(hits.len());
+        for &(d, c) in &hits {
+            hits_i32.push((d.to_i32_trunc().unwrap_or(0), c));
+        }
+        if self.entries.len() < 64 {
+            let pos = self.entries.len();
+            self.entries.push(IntentHitsEntry {
+                monster_id: mid,
+                move_id: move_cow.clone(),
+                hits_i32,
+                #[cfg(debug_assertions)]
+                hits,
+            });
+            self.fast_idx[hint_slot] = pos as u8;
+            return self.entries.last().unwrap().hits_i32.as_slice();
+        }
+        *dynamic_hits_i32 = hits_i32;
+        dynamic_hits_i32.as_slice()
+    }
+}
+
+pub fn evaluate_full_details(
     state: &BattleState,
     content: &dyn ContentDispatcher,
     fast: &FastEvalSummary,
     root: &RootEvalBaseline,
 ) -> FullEvalDetails {
+    evaluate_full_details_cached(state, content, fast, root, None)
+}
+
+pub(crate) fn evaluate_full_details_cached(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+    fast: &FastEvalSummary,
+    root: &RootEvalBaseline,
+    mut intent_cache: Option<&mut IntentHitsCache>,
+) -> FullEvalDetails {
+    let eval_tables = state.hook_cache.cached_tables;
     let mut persistent_buff_value = 0i32;
     let mut expected_regen_heal = 0i32;
     let regen_cap = (fast.player_max_hp - fast.player_hp).max(0) + 12;
@@ -2958,7 +3284,10 @@ pub fn evaluate_full(
                 }
                 _ => {}
             }
-            let meta = state.fast_power_meta(content, p.id).ok();
+            let meta = match eval_tables.and_then(|t| t.power_metas.get(p.id as usize)) {
+                Some(pm) => Some(pm),
+                None => content.power_meta(p.id).ok(),
+            };
             if !is_one_turn_carryover
                 && p.amount > 0
                 && meta.is_some_and(|m| m.power_type == PowerType::Buff)
@@ -3059,12 +3388,23 @@ pub fn evaluate_full(
     let mut retained_blade_bonus_base = 0i64;
     for &ch in &state.player.hand {
         if let Some(card) = state.card(ch) {
-            if let Ok(meta) = state.fast_card_meta(content, card.id) {
+            let meta_res = match eval_tables.and_then(|t| t.card_metas.get(card.id as usize)) {
+                Some(m) => Ok(m),
+                None => content.card_meta(card.id),
+            };
+            if let Ok(meta) = meta_res {
                 if matches!(meta.card_type, CardType::Status | CardType::Curse) {
                     hand_clutter += 1;
                     continue;
                 }
-                let is_retained = card.has_local_keyword(CardKeywords::RETAIN)
+                let kw = if card.keywords_added_from_outside.is_empty()
+                    && card.keywords_removed_from_outside.is_empty()
+                {
+                    card.local_keywords
+                } else {
+                    card.effective_keywords_base()
+                };
+                let is_retained = kw.contains(CardKeywords::RETAIN)
                     || card.temp_flags.contains(CardTempFlags::TEMPORARY_RETAIN_TURN);
                 if is_retained {
                     retained_cards += 1;
@@ -3103,23 +3443,26 @@ pub fn evaluate_full(
                 if is_retained {
                     future_resource_value += val * 2;
                 }
-                if !card.has_local_keyword(CardKeywords::UNPLAYABLE)
-                    && card.canonical_base_energy_cost >= -1
-                {
+                if !kw.contains(CardKeywords::UNPLAYABLE) && card.canonical_base_energy_cost >= -1 {
                     let is_x_e = meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST);
                     let cost = if is_x_e {
                         state.player.energy.max(0)
                     } else if card.canonical_base_energy_cost < 0 {
                         i32::MAX
+                    } else if card.ext_index.is_none() {
+                        (card.base_energy_cost as i32).max(0)
                     } else {
-                        sts2_kernel::ordering::resolve_local_energy_cost(state, ch, is_x_e)
+                        sts2_kernel::ordering::resolve_local_energy_cost_card(state, card, false)
                     };
                     let star_cost = if meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
                         state.player.stars.max(0)
+                    } else if card.temp_star_cost_override_this_turn.is_none()
+                        && card.temp_flags.is_empty()
+                    {
+                        meta.canonical_star_cost.max(0)
                     } else {
-                        sts2_kernel::ordering::resolve_local_star_cost(
-                            state,
-                            ch,
+                        sts2_kernel::ordering::resolve_local_star_cost_card(
+                            card,
                             meta.canonical_star_cost,
                         )
                         .max(0)
@@ -3142,12 +3485,14 @@ pub fn evaluate_full(
     let mut doom_lethal_count = 0i32;
     let mut effective_doom_value = 0i32;
     let mut incoming_damage = 0i32;
+    let mut dynamic_hits: SmallVec<[(i32, i32); 2]> = SmallVec::new();
 
     for &eh in &state.enemy_handles {
         if let Some(ec) = state.creature(eh) {
-            let in_roster = state.contains_creature(eh);
-            let alive = ec.is_alive() && in_roster;
-            if ec.is_dead() && in_roster {
+            #[cfg(debug_assertions)]
+            debug_assert!(state.contains_creature(eh));
+            let alive = ec.is_alive();
+            if ec.is_dead() {
                 if is_creature_reviving(state, ec) {
                     let rev_hp = ec
                         .powers
@@ -3175,7 +3520,11 @@ pub fn evaluate_full(
                         continue;
                     }
                     if p.amount > 0 {
-                        if let Ok(pm) = state.fast_power_meta(content, p.id) {
+                        let pm_res = match eval_tables.and_then(|t| t.power_metas.get(p.id as usize)) {
+                            Some(pm) => Ok(pm),
+                            None => content.power_meta(p.id),
+                        };
+                        if let Ok(pm) = pm_res {
                             if matches!(pm.power_type, sts2_types::PowerType::Debuff) {
                                 let is_dot =
                                     matches!(p.id, PowerId::PoisonPower | PowerId::DoomPower);
@@ -3267,29 +3616,48 @@ pub fn evaluate_full(
                 }
                 let poison_lethal = cur_hp > 0 && poison_dmg >= cur_hp && !has_reattach && !has_damage_cap;
                 if !poison_lethal {
-                    if let Ok(hits) = content.monster_attack_intent_hits(state, eh) {
-                        for (base_dmg, count) in hits {
-                            let mut per_hit =
-                                (base_dmg.to_i32_trunc().unwrap_or(0) + enemy_str).max(0);
-                            if enemy_weak > 0 {
-                                per_hit = if root.has_paper_krane {
-                                    (per_hit * 60) / 100
-                                } else {
-                                    (per_hit * 75) / 100
-                                };
+                    let hits: &[(i32, i32)] = match intent_cache.as_deref_mut() {
+                        Some(cache) => cache.lookup_i32(state, content, eh, ec, &mut dynamic_hits),
+                        None => {
+                            dynamic_hits.clear();
+                            for (d, c) in content
+                                .monster_attack_intent_hits(state, eh)
+                                .unwrap_or_default()
+                            {
+                                dynamic_hits.push((d.to_i32_trunc().unwrap_or(0), c));
                             }
-                            if player_vuln > 0 {
-                                per_hit = if root.has_odd_mushroom {
-                                    (per_hit * 125) / 100
-                                } else {
-                                    (per_hit * 150) / 100
-                                };
-                            }
-                            if player_intangible > 0 && per_hit > 1 {
-                                per_hit = 1;
-                            }
-                            incoming_damage += per_hit.max(0) * count.max(0);
+                            dynamic_hits.as_slice()
                         }
+                    };
+                    for &(base_dmg, count) in hits {
+                        let mut per_hit = (base_dmg + enemy_str).max(0);
+                        if enemy_weak > 0 {
+                            per_hit = if root.has_paper_krane {
+                                (per_hit * 60) / 100
+                            } else {
+                                let res = (per_hit * 3) >> 2;
+                                #[cfg(debug_assertions)]
+                                debug_assert_eq!(res, (per_hit * 75) / 100);
+                                res
+                            };
+                        }
+                        if player_vuln > 0 {
+                            per_hit = if root.has_odd_mushroom {
+                                let res = (per_hit * 5) >> 2;
+                                #[cfg(debug_assertions)]
+                                debug_assert_eq!(res, (per_hit * 125) / 100);
+                                res
+                            } else {
+                                let res = (per_hit * 3) >> 1;
+                                #[cfg(debug_assertions)]
+                                debug_assert_eq!(res, (per_hit * 150) / 100);
+                                res
+                            };
+                        }
+                        if player_intangible > 0 && per_hit > 1 {
+                            per_hit = 1;
+                        }
+                        incoming_damage += per_hit.max(0) * count.max(0);
                     }
                 }
             }
@@ -3299,21 +3667,26 @@ pub fn evaluate_full(
         focus_target_remaining_hp = 0;
     }
 
-    let (osty_hp, osty_max_hp) = state
-        .osty_handle()
-        .and_then(|h| state.creature(h))
-        .filter(|c| c.is_alive())
-        .map_or((0, 0), |c| (c.current_hp.max(0), c.max_hp.max(0)));
-    if osty_hp > 0 {
-        persistent_buff_value += soft_cap_positive(osty_hp / 4, 12, 48);
-    }
-    let wuppy_hp: i32 = state
-        .pet_handles
-        .iter()
-        .filter_map(|&h| state.creature(h))
-        .filter(|c| c.is_alive() && c.monster_id == Some(MonsterId::Wuppy))
-        .map(|c| c.current_hp.max(0))
-        .sum();
+    let (osty_hp, osty_max_hp, wuppy_hp) = if state.pet_handles.is_empty() {
+        (0, 0, 0)
+    } else {
+        let (o_hp, o_max) = state
+            .osty_handle()
+            .and_then(|h| state.creature(h))
+            .filter(|c| c.is_alive())
+            .map_or((0, 0), |c| (c.current_hp.max(0), c.max_hp.max(0)));
+        if o_hp > 0 {
+            persistent_buff_value += soft_cap_positive(o_hp / 4, 12, 48);
+        }
+        let w_hp: i32 = state
+            .pet_handles
+            .iter()
+            .filter_map(|&h| state.creature(h))
+            .filter(|c| c.is_alive() && c.monster_id == Some(MonsterId::Wuppy))
+            .map(|c| c.current_hp.max(0))
+            .sum();
+        (o_hp, o_max, w_hp)
+    };
     let ready_arrows = if state.player.arrows.is_empty() {
         0
     } else {
@@ -3350,7 +3723,7 @@ pub fn evaluate_full(
         + thin_deck_delta
         + melody_cards_finished;
 
-    let mut details = FullEvalDetails {
+    FullEvalDetails {
         persistent_buff_value,
         setup_score,
         expected_regen_heal,
@@ -3407,8 +3780,16 @@ pub fn evaluate_full(
         rollout_score: None,
         choice_lookahead_score: None,
         has_choice_lookahead: false,
-    };
+    }
+}
 
+pub fn evaluate_full(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+    fast: &FastEvalSummary,
+    root: &RootEvalBaseline,
+) -> FullEvalDetails {
+    let mut details = evaluate_full_details(state, content, fast, root);
     details.beam_rank_score = compute_beam_rank_score(
         fast,
         &details,

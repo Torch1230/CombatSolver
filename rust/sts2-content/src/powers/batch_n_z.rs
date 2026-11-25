@@ -1347,7 +1347,7 @@ fn get_ext<'a>(state: &'a BattleState, p: &PowerInst) -> Option<&'a PowerExtensi
         .and_then(|idx| state.power_extensions.get(idx as usize))
 }
 
-fn get_bool_field(state: &BattleState, p: &PowerInst, key: &str, default: bool) -> bool {
+pub(crate) fn get_bool_field(state: &BattleState, p: &PowerInst, key: &str, default: bool) -> bool {
     match get_ext(state, p).and_then(|e| e.private_fields.get(key)) {
         Some(FieldValue::Bool(b)) => *b,
         _ => default,
@@ -1368,7 +1368,7 @@ fn set_bool_field(
     }
 }
 
-fn get_int_field(state: &BattleState, p: &PowerInst, key: &str, default: i32) -> i32 {
+pub(crate) fn get_int_field(state: &BattleState, p: &PowerInst, key: &str, default: i32) -> i32 {
     match get_ext(state, p).and_then(|e| e.private_fields.get(key)) {
         Some(FieldValue::Int(v)) => *v,
         _ => default,
@@ -1595,10 +1595,10 @@ fn clone_detached_card_for_nightmare(state: &mut BattleState, source: CardHandle
     );
     state.cards.push(CardInst {
         handle,
-        clone_of_handle: Some(source),
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_star_cost_override_this_turn: None,
+        clone_of_handle: sts2_kernel::OptCardHandle::some(source),
+        temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+        temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
         temp_flags,
         affliction: None,
         ext_index,
@@ -1624,7 +1624,7 @@ fn clone_card_for_combat(state: &mut BattleState, source: CardHandle) -> Result<
     });
     state.cards.push(CardInst {
         handle,
-        clone_of_handle: Some(source),
+        clone_of_handle: sts2_kernel::OptCardHandle::some(source),
         ext_index,
         pile: PileType::None,
         removed_from_state: false,
@@ -2035,7 +2035,9 @@ pub fn on_after_removed(
                 let entries: Vec<(i32, i32)> = vec.clone();
                 for (ch, granted) in entries {
                     if let Some(c) = state.card_mut(CardHandle(ch as u32)) {
-                        c.base_replay_count -= granted;
+                        c.base_replay_count = (c.base_replay_count as i32 - granted)
+                            .clamp(i16::MIN as i32, i16::MAX as i32)
+                            as i16;
                     }
                 }
             }
@@ -2087,7 +2089,9 @@ pub fn on_after_card_entry_aborted(
                 false,
             ) {
                 if let Some(c) = state.card_mut(card) {
-                    c.base_replay_count -= granted;
+                    c.base_replay_count = (c.base_replay_count as i32 - granted)
+                        .clamp(i16::MIN as i32, i16::MAX as i32)
+                        as i16;
                 }
             }
         }
@@ -2777,7 +2781,7 @@ fn resolved_energy_cost_for_comparison(
             .flags
             .contains(sts2_types::CardStaticFlags::IS_X_ENERGY_COST)
     {
-        return Ok(c.captured_energy_x_value);
+        return Ok(c.captured_energy_x_value as i32);
     }
     if c.canonical_base_energy_cost < 0 {
         return Ok(0);
@@ -3194,6 +3198,7 @@ pub fn dispatch_hook(
             HookSlot::ShouldAllowHitting => {
                 if let HookArgs::Creature(target) = args {
                     if *target == creature
+                        && p.ext_index.is_some()
                         && get_bool_field(state, &p, "ReattachPower._isReviving", false)
                     {
                         return Ok(HookResult {
@@ -5489,7 +5494,7 @@ fn dispatch_hook_cold(
                                         Cow::Borrowed("ShowOff._currentAim"),
                                         FieldValue::Int(5 + inc),
                                     );
-                                    state.card(cur).and_then(|c| c.deck_card_handle)
+                                    state.card(cur).and_then(|c| c.deck_card_handle.get())
                                 } else {
                                     None
                                 };
@@ -6480,7 +6485,9 @@ fn dispatch_hook_cold(
                             for ch in all_combat_card_handles(state) {
                                 if state.card(ch).is_some_and(|c| c.id == CardId::SovereignBlade) {
                                     if let Some(c) = state.card_mut(ch) {
-                                        c.base_replay_count += delta;
+                                        c.base_replay_count = (c.base_replay_count as i32 + delta)
+                                            .clamp(i16::MIN as i32, i16::MAX as i32)
+                                            as i16;
                                     }
                                     card_int_map_add(
                                         state,
@@ -6504,7 +6511,9 @@ fn dispatch_hook_cold(
                         && p.amount != 0
                     {
                         if let Some(c) = state.card_mut(*card) {
-                            c.base_replay_count += p.amount;
+                            c.base_replay_count = (c.base_replay_count as i32 + p.amount)
+                                .clamp(i16::MIN as i32, i16::MAX as i32)
+                                as i16;
                         }
                         card_int_map_add(
                             state,
@@ -6531,12 +6540,16 @@ fn dispatch_hook_cold(
                                 false,
                             ) {
                                 if let Some(c) = state.card_mut(*card) {
-                                    c.base_replay_count -= granted;
+                                    c.base_replay_count = (c.base_replay_count as i32 - granted)
+                                        .clamp(i16::MIN as i32, i16::MAX as i32)
+                                        as i16;
                                 }
                             }
                         } else if p.amount != 0 {
                             if let Some(c) = state.card_mut(*card) {
-                                c.base_replay_count += p.amount;
+                                c.base_replay_count = (c.base_replay_count as i32 + p.amount)
+                                    .clamp(i16::MIN as i32, i16::MAX as i32)
+                                    as i16;
                             }
                             card_int_map_add(
                                 state,
@@ -6887,7 +6900,7 @@ fn dispatch_hook_cold(
                                 *actor_idx == 0
                                     && tk.round_number == state.round_number
                                     && tk.side == state.current_side
-                                    && tk.player_turn_numbers.first().copied().flatten()
+                                    && tk.player_turn_numbers.first().flatten()
                                         == Some(state.player.turn_number)
                                     && card_play.is_none_or(|cp| *ord != cp.play_ordinal)
                             })

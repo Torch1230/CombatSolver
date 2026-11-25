@@ -36,6 +36,52 @@ pub struct HookMaskTableView {
     pub card_metas: &'static [CardMeta],
     pub power_metas: &'static [PowerMeta],
     pub card_rollout_profiles: &'static [CardRolloutProfile],
+    pub card_has_hook_bits: &'static [u64],
+    pub power_has_hook_bits: &'static [u64],
+    pub relic_has_hook_bits: &'static [u64],
+    pub monster_has_hook_bits: &'static [u64],
+    pub card_has_custom_playability_bits: &'static [u64],
+    pub card_is_status_or_curse_bits: &'static [u64],
+    pub card_generic_choice_quality: &'static [(i16, u8)],
+    pub afflictions_self_card_entered_only: bool,
+}
+
+#[inline(always)]
+const fn bitset_test(bits: &[u64], idx: usize) -> bool {
+    let word = idx >> 6;
+    word < bits.len() && ((bits[word] >> (idx & 63)) & 1) != 0
+}
+
+impl HookMaskTableView {
+    #[inline(always)]
+    pub const fn card_has_hook(&self, id: CardId) -> bool {
+        bitset_test(self.card_has_hook_bits, id as usize)
+    }
+
+    #[inline(always)]
+    pub const fn power_has_hook(&self, id: PowerId) -> bool {
+        bitset_test(self.power_has_hook_bits, id as usize)
+    }
+
+    #[inline(always)]
+    pub const fn relic_has_hook(&self, id: RelicId) -> bool {
+        bitset_test(self.relic_has_hook_bits, id as usize)
+    }
+
+    #[inline(always)]
+    pub const fn monster_has_hook(&self, id: MonsterId) -> bool {
+        bitset_test(self.monster_has_hook_bits, id as usize)
+    }
+
+    #[inline(always)]
+    pub const fn card_has_custom_playability(&self, id: CardId) -> bool {
+        bitset_test(self.card_has_custom_playability_bits, id as usize)
+    }
+
+    #[inline(always)]
+    pub const fn card_is_status_or_curse(&self, id: CardId) -> bool {
+        bitset_test(self.card_is_status_or_curse_bits, id as usize)
+    }
 }
 
 pub mod rollout_op_flags {
@@ -49,17 +95,52 @@ pub mod rollout_op_flags {
     pub const HAS_BLOCK: u8 = 1 << 7;
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub mod rollout_meta_flags {
+    pub const IS_X_ENERGY_COST: u8 = 1 << 0;
+    pub const IS_X_STAR_COST: u8 = 1 << 1;
+    pub const MAY_HEAL: u8 = 1 << 2;
+    pub const GAINS_BLOCK: u8 = 1 << 3;
+    pub const HAS_CUSTOM_PLAYABILITY: u8 = 1 << 4;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(C)]
 pub struct CardRolloutProfile {
     pub base_damage: i16,
     pub upg_damage: i16,
-    pub hits: u8,
-    pub upg_hits: u8,
     pub base_block: i16,
     pub upg_block: i16,
+    pub hits: u8,
+    pub upg_hits: u8,
     pub setup_weight: u8,
     pub op_flags: u8,
+    pub card_type: CardType,
+    pub target_type: TargetType,
+    pub canonical_star_cost: i8,
+    pub meta_flags: u8,
 }
+
+impl Default for CardRolloutProfile {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            base_damage: 0,
+            upg_damage: 0,
+            base_block: 0,
+            upg_block: 0,
+            hits: 0,
+            upg_hits: 0,
+            setup_weight: 0,
+            op_flags: 0,
+            card_type: CardType::None,
+            target_type: TargetType::None,
+            canonical_star_cost: 0,
+            meta_flags: 0,
+        }
+    }
+}
+
+const _: () = assert!(std::mem::size_of::<CardRolloutProfile>() == 16);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HookListener {
@@ -80,6 +161,97 @@ pub enum HookListener {
     Affliction(CardHandle),
     RunModel(RunModelId),
     Dominion(DominionId),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CachedHookListener {
+    Relic(u16),
+    Potion(u16),
+    Power {
+        creature: CreatureHandle,
+        power_handle: u32,
+        creature_idx: u16,
+        power_idx: u16,
+    },
+    Monster(CreatureHandle),
+    Orb(u16),
+    Card(CardHandle),
+    Enchantment(CardHandle),
+    Affliction(CardHandle),
+    RunModel(RunModelId),
+    Dominion(DominionId),
+}
+
+const _: () = assert!(std::mem::size_of::<CachedHookListener>() == 16);
+
+impl CachedHookListener {
+    #[inline(always)]
+    pub const fn to_hook_listener(self) -> HookListener {
+        match self {
+            Self::Relic(idx) => HookListener::Relic(idx as usize),
+            Self::Potion(idx) => HookListener::Potion(idx as usize),
+            Self::Power {
+                creature,
+                power_handle,
+                ..
+            } => HookListener::Power {
+                creature,
+                power_handle,
+            },
+            Self::Monster(h) => HookListener::Monster(h),
+            Self::Orb(idx) => HookListener::Orb(idx as usize),
+            Self::Card(h) => HookListener::Card(h),
+            Self::Enchantment(h) => HookListener::Enchantment(h),
+            Self::Affliction(h) => HookListener::Affliction(h),
+            Self::RunModel(id) => HookListener::RunModel(id),
+            Self::Dominion(id) => HookListener::Dominion(id),
+        }
+    }
+
+    #[inline(always)]
+    pub const fn from_hook_listener(listener: HookListener) -> Option<Self> {
+        match listener {
+            HookListener::Relic(idx) => Some(Self::Relic(if idx <= u16::MAX as usize {
+                idx as u16
+            } else {
+                u16::MAX
+            })),
+            HookListener::Potion(idx) => Some(Self::Potion(if idx <= u16::MAX as usize {
+                idx as u16
+            } else {
+                u16::MAX
+            })),
+            HookListener::Power {
+                creature,
+                power_handle,
+            } => Some(Self::Power {
+                creature,
+                power_handle,
+                creature_idx: u16::MAX,
+                power_idx: u16::MAX,
+            }),
+            HookListener::DetachedPower { .. } => None,
+            HookListener::Monster(h) => Some(Self::Monster(h)),
+            HookListener::Orb(idx) => Some(Self::Orb(if idx <= u16::MAX as usize {
+                idx as u16
+            } else {
+                u16::MAX
+            })),
+            HookListener::Card(h) => Some(Self::Card(h)),
+            HookListener::Enchantment(h) => Some(Self::Enchantment(h)),
+            HookListener::Affliction(h) => Some(Self::Affliction(h)),
+            HookListener::RunModel(id) => Some(Self::RunModel(id)),
+            HookListener::Dominion(id) => Some(Self::Dominion(id)),
+        }
+    }
+
+    #[inline(always)]
+    pub const fn card_handle(self) -> Option<CardHandle> {
+        match self {
+            Self::Card(h) | Self::Enchantment(h) | Self::Affliction(h) => Some(h),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -641,4 +813,92 @@ pub trait ContentDispatcher {
         slot: HookSlot,
         args: &HookArgs<'_>,
     ) -> Result<HookResult, KernelError>;
+
+    #[inline]
+    fn check_should_allow_hitting_cached(
+        &self,
+        _state: &mut BattleState,
+        _target: CreatureHandle,
+        _bits: u64,
+        _base: usize,
+    ) -> Result<Option<bool>, KernelError> {
+        Ok(None)
+    }
+
+    #[inline]
+    fn check_should_creature_be_removed_after_death_cached(
+        &self,
+        _state: &mut BattleState,
+        _target: CreatureHandle,
+        _bits: u64,
+        _base: usize,
+    ) -> Result<Option<bool>, KernelError> {
+        Ok(None)
+    }
+
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    fn apply_modify_damage_slots_cached(
+        &self,
+        _state: &mut BattleState,
+        _target: Option<CreatureHandle>,
+        _dealer: Option<CreatureHandle>,
+        _damage: Dec,
+        _props: ValueProp,
+        _card_source: Option<CardHandle>,
+        _card_play: Option<CardPlayContext>,
+        _hook_type: crate::hooks::ModifyDamageHookType,
+    ) -> Result<Option<Dec>, KernelError> {
+        Ok(None)
+    }
+
+    #[inline]
+    fn dispatch_void_flat_bits_cached(
+        &self,
+        _state: &mut BattleState,
+        _bits: u64,
+        _slot: HookSlot,
+        _args: &HookArgs<'_>,
+    ) -> Result<bool, KernelError> {
+        Ok(false)
+    }
+
+    #[inline]
+    fn dispatch_void_flat_multiword_cached(
+        &self,
+        _state: &mut BattleState,
+        _slot: HookSlot,
+        _args: &HookArgs<'_>,
+    ) -> Result<bool, KernelError> {
+        Ok(false)
+    }
+
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    fn apply_modify_hp_lost_slots_cached(
+        &self,
+        _state: &mut BattleState,
+        _target: CreatureHandle,
+        _amount: Dec,
+        _props: ValueProp,
+        _dealer: Option<CreatureHandle>,
+        _card_source: Option<CardHandle>,
+        _phase: crate::hooks::HpLossPhase,
+    ) -> Result<Option<(Dec, SmallVec<[HookListener; 4]>)>, KernelError> {
+        Ok(None)
+    }
+
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    fn apply_modify_block_slots_cached(
+        &self,
+        _state: &mut BattleState,
+        _target: CreatureHandle,
+        _block: Dec,
+        _props: ValueProp,
+        _card_source: Option<CardHandle>,
+        _card_play: Option<CardPlayContext>,
+    ) -> Result<Option<(Dec, SmallVec<[HookListener; 4]>)>, KernelError> {
+        Ok(None)
+    }
 }

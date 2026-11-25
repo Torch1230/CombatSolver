@@ -9,7 +9,7 @@ use crate::state::{
     BattleState, CardHandle, CreatureHandle, DamageHistoryEntry, DamageResult, InlineI32Vec4,
 };
 use smallvec::SmallVec;
-use sts2_types::{CombatSide, Dec, Rng, ValueProp};
+use sts2_types::{CombatSide, Dec, HookSlot, Rng, ValueProp};
 
 #[derive(Clone, Copy, Debug)]
 pub enum AttackTargetSpec {
@@ -290,6 +290,31 @@ pub fn damage_targets(
     )
 }
 
+pub fn damage_targets_void(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    targets: &[CreatureHandle],
+    amount: Dec,
+    props: ValueProp,
+    dealer: Option<CreatureHandle>,
+    card_source: Option<CardHandle>,
+    card_play: Option<CardPlayContext>,
+) -> Result<(), KernelError> {
+    let mut pending: SmallVec<[(DamageResult, bool); 8]> = SmallVec::with_capacity(targets.len());
+    damage_targets_with_hook_mode_into(
+        state,
+        content,
+        targets,
+        amount,
+        props,
+        dealer,
+        card_source,
+        card_play,
+        ModifyDamageHookType::ALL,
+        &mut pending,
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn damage_targets_with_hook_mode(
     state: &mut BattleState,
@@ -457,26 +482,62 @@ fn damage_single(
         card_play,
         hook_type,
     )?;
-    hooks::before_damage_received(state, content, target, modified_amount, props, dealer, card_source)?;
+    let clean0 = state.hook_cache.masks_are_valid();
+    if !clean0
+        || state
+            .hook_cache
+            .masks
+            .run_combat_combined
+            .contains(HookSlot::BeforeDamageReceived)
+    {
+        hooks::before_damage_received(
+            state,
+            content,
+            target,
+            modified_amount,
+            props,
+            dealer,
+            card_source,
+        )?;
+    }
 
-    let block_owner = state
-        .creature(target)
-        .and_then(|c| c.pet_owner_player_index.map(|_| state.player.creature_handle))
-        .unwrap_or(target);
+    let block_owner = if state.pet_handles.is_empty() {
+        #[cfg(debug_assertions)]
+        if let Some(c) = state.creature(target) {
+            debug_assert!(c.pet_owner_player_index.is_none());
+        }
+        target
+    } else {
+        state
+            .creature(target)
+            .and_then(|c| c.pet_owner_player_index.map(|_| state.player.creature_handle))
+            .unwrap_or(target)
+    };
 
     let start_len = results.len();
-    let pre_block_target = hooks::modify_pre_block_damage_target(
-        state,
-        content,
-        target,
-        amount,
-        props,
-        dealer,
-    )?;
+    let clean_pre = state.hook_cache.masks_are_valid();
+    let pre_block_target = if !clean_pre
+        || state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::ModifyPreBlockDamageTarget)
+    {
+        hooks::modify_pre_block_damage_target(
+            state,
+            content,
+            target,
+            amount,
+            props,
+            dealer,
+        )?
+    } else {
+        None
+    };
     let mut damage_remaining = modified_amount;
 
     if let Some(pbt) = pre_block_target {
-        let (hp_loss, _) = hooks::modify_hp_lost(
+        let hp_loss = hooks::modify_hp_lost_no_notify(
             state,
             content,
             target,
@@ -494,39 +555,70 @@ fn damage_single(
     }
 
     let blocked_damage = damage_block_internal(state, block_owner, damage_remaining, props)?;
-    damage_remaining = damage_remaining.checked_sub(blocked_damage)?.max(Dec::ZERO);
+    damage_remaining = if blocked_damage.is_zero() {
+        damage_remaining.max(Dec::ZERO)
+    } else {
+        damage_remaining.checked_sub(blocked_damage)?.max(Dec::ZERO)
+    };
 
-    let (unblocked_before_osty, before_osty_mods) = hooks::modify_hp_lost(
-        state,
-        content,
-        target,
-        damage_remaining,
-        props,
-        dealer,
-        card_source,
-        HpLossPhase::BeforeOsty,
-    )?;
-    hooks::after_modifying_hp_lost(state, content, &before_osty_mods, HpLossPhase::BeforeOsty)?;
+    let clean_before = state.hook_cache.masks_are_valid();
+    let run_comb_before = state.hook_cache.masks.run_combat_combined;
+    let unblocked_before_osty = if !clean_before
+        || run_comb_before.contains(HookSlot::ModifyHpLostBeforeOsty)
+        || run_comb_before.contains(HookSlot::ModifyHpLostBeforeOstyLate)
+    {
+        hooks::modify_hp_lost_and_notify(
+            state,
+            content,
+            target,
+            damage_remaining,
+            props,
+            dealer,
+            card_source,
+            HpLossPhase::BeforeOsty,
+        )?
+    } else {
+        damage_remaining
+    };
 
-    let receiver = hooks::modify_unblocked_damage_target(
-        state,
-        content,
-        target,
-        unblocked_before_osty,
-        props,
-        dealer,
-    )?;
-    let (unblocked_after_osty, after_osty_mods) = hooks::modify_hp_lost(
-        state,
-        content,
-        receiver,
-        unblocked_before_osty,
-        props,
-        dealer,
-        card_source,
-        HpLossPhase::AfterOsty,
-    )?;
-    hooks::after_modifying_hp_lost(state, content, &after_osty_mods, HpLossPhase::AfterOsty)?;
+    let clean_after = state.hook_cache.masks_are_valid();
+    let receiver = if !clean_after
+        || state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::ModifyUnblockedDamageTarget)
+    {
+        hooks::modify_unblocked_damage_target(
+            state,
+            content,
+            target,
+            unblocked_before_osty,
+            props,
+            dealer,
+        )?
+    } else {
+        target
+    };
+    let clean_osty = state.hook_cache.masks_are_valid();
+    let run_comb_osty = state.hook_cache.masks.run_combat_combined;
+    let unblocked_after_osty = if !clean_osty
+        || run_comb_osty.contains(HookSlot::ModifyHpLostAfterOsty)
+        || run_comb_osty.contains(HookSlot::ModifyHpLostAfterOstyLate)
+    {
+        hooks::modify_hp_lost_and_notify(
+            state,
+            content,
+            receiver,
+            unblocked_before_osty,
+            props,
+            dealer,
+            card_source,
+            HpLossPhase::AfterOsty,
+        )?
+    } else {
+        unblocked_before_osty
+    };
 
     let mut received = lose_hp_internal(state, receiver, unblocked_after_osty, props)?;
     received.intended_hp_loss = damage_remaining.to_i32_trunc()?;
@@ -546,7 +638,7 @@ fn damage_single(
         results.push((received, false));
     } else {
         results.push((received, false));
-        let (overflow, overflow_mods) = hooks::modify_hp_lost(
+        let overflow = hooks::modify_hp_lost_and_notify(
             state,
             content,
             target,
@@ -556,7 +648,6 @@ fn damage_single(
             card_source,
             HpLossPhase::AfterOsty,
         )?;
-        hooks::after_modifying_hp_lost(state, content, &overflow_mods, HpLossPhase::AfterOsty)?;
         let mut original = if overflow > Dec::ZERO {
             lose_hp_internal(state, target, overflow, props)?
         } else {

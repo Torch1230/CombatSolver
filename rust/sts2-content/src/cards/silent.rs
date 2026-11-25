@@ -173,18 +173,14 @@ fn discard_and_draw(
     if cards.is_empty() || hooks::is_over_or_ending(state) {
         return Ok(());
     }
-    let departed_hand = cards
-        .iter()
-        .any(|&h| state.card(h).is_some_and(|c| c.pile == PileType::Hand));
+    let mut departed_hand = false;
     let mut sly_cards = SmallVec::<[CardHandle; 8]>::new();
     for &h in cards {
-        if state.card(h).is_some_and(|c| c.pile == PileType::Hand)
-            && (card_pile::card_has_keyword(state, content, h, CardKeywords::SLY)?
-                || state
-                    .card(h)
-                    .is_some_and(|c| c.temp_flags.contains(CardTempFlags::TEMPORARY_SLY_TURN)))
-        {
-            sly_cards.push(h);
+        if state.card(h).is_some_and(|c| c.pile == PileType::Hand) {
+            departed_hand = true;
+            if card_pile::card_has_keyword(state, content, h, CardKeywords::SLY)? {
+                sly_cards.push(h);
+            }
         }
     }
     for &h in cards {
@@ -212,7 +208,7 @@ fn add_local_energy_modifier(
         return;
     }
     if let Some(ext) = state.card_ext_mut(card) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind,
             amount,
             is_reduce_only: false,
@@ -231,10 +227,10 @@ fn set_to_free_this_turn(
     let meta = content.card_meta(card.id)?;
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_cost_override_this_turn_or_until_played = Some(0);
+            c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
         }
         if let Some(ext) = state.card_ext_mut(handle) {
-            ext.local_energy_modifiers.push(LocalEnergyModifier {
+            ext.push_local_energy_modifier(LocalEnergyModifier {
                 kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                 amount: 0,
                 is_reduce_only: false,
@@ -243,7 +239,7 @@ fn set_to_free_this_turn(
     }
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_star_cost_override_this_turn = Some(0);
+            c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
         }
     }
     Ok(())

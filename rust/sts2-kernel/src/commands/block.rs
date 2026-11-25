@@ -21,7 +21,7 @@ pub fn gain_block(
     }
 
     hooks::before_block_gained(state, content, creature, amount, props, card_source, card_play)?;
-    let (modified_amount, modifiers) = hooks::modify_block(
+    let modified_amount = hooks::modify_block_and_notify(
         state,
         content,
         creature,
@@ -29,16 +29,6 @@ pub fn gain_block(
         props,
         card_source,
         card_play,
-    )?;
-    hooks::after_modifying_block_amount(
-        state,
-        content,
-        creature,
-        modified_amount,
-        props,
-        card_source,
-        card_play,
-        &modifiers,
     )?;
 
     if modified_amount > Dec::ZERO {

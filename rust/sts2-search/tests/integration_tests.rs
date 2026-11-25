@@ -54,17 +54,17 @@ fn build_combat(
             handle: h,
             id: cid,
             upgrade_level: 0,
-            canonical_base_energy_cost: meta.canonical_energy_cost,
-            base_energy_cost: meta.canonical_energy_cost,
+            canonical_base_energy_cost: meta.canonical_energy_cost as i16,
+            base_energy_cost: meta.canonical_energy_cost as i16,
             captured_energy_x_value: 0,
             base_replay_count: 0,
-            floor_added_to_deck: Some(1),
-            deck_card_handle: Some(h),
-            clone_of_handle: None,
-            temp_star_cost_override_this_turn: None,
-            temp_cost_override_this_turn: None,
-            temp_cost_override_this_turn_or_until_played: None,
-            temp_cost_override_this_combat: None,
+            floor_added_to_deck: sts2_kernel::OptI16::some(1),
+            deck_card_handle: sts2_kernel::OptCardHandle::some(h),
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
             local_keywords: meta.base_keywords,
             keywords_added_from_outside: CardKeywords::empty(),
             keywords_removed_from_outside: CardKeywords::empty(),
@@ -125,7 +125,7 @@ fn build_combat(
             block: 0,
             cumulative_hp_lost: 0,
             is_detached: false,
-            monster: Some(MonsterInst {
+            monster: Some(Box::new(MonsterInst {
                 monster_id: enemy_id,
                 rng: Rng::from_seed(run_rngs.seed + 1 + idx as u64),
                 is_performing_move: false,
@@ -138,7 +138,7 @@ fn build_combat(
                 transient_move_follow_up_state_id: None,
                 setup_fields: Default::default(),
                 private_fields: Default::default(),
-            }),
+            })),
             has_minion_power: false,
             powers: Vec::new(),
         });
@@ -248,6 +248,7 @@ fn build_combat(
         vakuu_auto_select_depth: 0,
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
+        relic_dirty_mask: Default::default(),
     };
 
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -1763,11 +1764,11 @@ fn pack_unpack_roundtrip_preserves_compact_cards_and_counters() {
         c0.base_energy_cost = 0;
         c0.captured_energy_x_value = 2;
         c0.base_replay_count = 1;
-        c0.floor_added_to_deck = Some(4);
-        c0.temp_star_cost_override_this_turn = Some(1);
-        c0.temp_cost_override_this_turn = Some(0);
-        c0.temp_cost_override_this_turn_or_until_played = Some(2);
-        c0.temp_cost_override_this_combat = Some(1);
+        c0.floor_added_to_deck = sts2_kernel::OptI16::some(4);
+        c0.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(1);
+        c0.temp_cost_override_this_turn = sts2_kernel::OptI16::some(0);
+        c0.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(2);
+        c0.temp_cost_override_this_combat = sts2_kernel::OptI16::some(1);
         c0.keywords_added_from_outside = sts2_types::CardKeywords::RETAIN;
         c0.keywords_removed_from_outside = sts2_types::CardKeywords::EXHAUST;
         c0.temp_flags = CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::TEMPORARY_RETAIN_TURN;
@@ -2540,13 +2541,13 @@ fn eval_features_sandpit_wuppy_sovereign_blade_and_fool() {
         base_energy_cost: 2,
         captured_energy_x_value: 0,
         base_replay_count: 0,
-        floor_added_to_deck: Some(1),
-        deck_card_handle: None,
-        clone_of_handle: None,
-        temp_star_cost_override_this_turn: None,
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_cost_override_this_combat: None,
+        floor_added_to_deck: sts2_kernel::OptI16::some(1),
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+        temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
         local_keywords: CardKeywords::RETAIN,
         keywords_added_from_outside: CardKeywords::empty(),
         keywords_removed_from_outside: CardKeywords::empty(),

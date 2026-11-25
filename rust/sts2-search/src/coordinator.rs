@@ -1,6 +1,7 @@
 use crate::arena::{
     ChoiceArena, CompactAction, CompactActionKind, LocalStateSlab, MainStateArena, NodeArena,
-    NodeId, PackedHandle, SearchNode, NODE_FLAG_HAS_EXTRA_END_TURN, NODE_FLAG_IS_TERMINAL,
+    NodeId, PackedHandle, SearchNode, NODE_FLAG_HAS_CHOICE_LOOKAHEAD, NODE_FLAG_HAS_EXTRA_END_TURN,
+    NODE_FLAG_HAS_FULL_EVAL, NODE_FLAG_HAS_ROLLOUT_SCORE, NODE_FLAG_IS_TERMINAL,
 };
 use crate::boss_tempo::{
     retain_boss_tempo_prefixes, BossTempoPendingItem, BossTempoPrefix, BossTempoSearchOptions,
@@ -13,10 +14,10 @@ use crate::early_turn::{
 };
 use crate::eval::{
     allows_brightest_flame, compute_beam_rank_score_with_centi, evaluate_fast, evaluate_full,
-    select_final_plan, ActEndingBossPolicy, EvalMode, FastEvalSummary, FullEvalDetails,
-    PotionUsePolicy, PotionValuationRegistry, PowerCardValuationRegistry, RareNodeEval,
-    RelicCounterEvaluation, RootEvalBaseline, SolverPotionPolicy, SolverTheftPolicy,
-    StoredFastEval, StoredNodeEval,
+    evaluate_full_details_cached, select_final_plan, ActEndingBossPolicy, EvalMode,
+    FastEvalSummary, FullEvalDetails, IntentHitsCache, PotionUsePolicy, PotionValuationRegistry,
+    PowerCardValuationRegistry, PowerRoutePriority, RareNodeEval, RelicCounterEvaluation,
+    RootEvalBaseline, SolverPotionPolicy, SolverTheftPolicy, StoredFastEval, StoredNodeEval,
 };
 use crate::hash::StateHash;
 use crate::novelty::{
@@ -37,24 +38,25 @@ use crate::portfolio::{
 };
 use crate::pruning::{
     BeamRetentionPolicy, ClosureCertificate, FrozenIncumbentBound, PrimaryIncumbentBucket,
-    PrimaryIncumbentTable, PrimarySearchIncumbent, PruneScratch,
+    PrimaryIncumbentTable, PrimarySearchIncumbent, PruneKey, PruneScratch, PruneSource,
 };
 use crate::rollout::{
-    encode_choice_probe_rank_score, evaluate_choice_probe_packed, evaluate_choice_probe_state,
+    encode_choice_probe_rank_score, evaluate_choice_probe_in_place,
+    evaluate_choice_probe_in_place_with_restore, evaluate_choice_probe_packed,
     evaluate_turn_boundary_rollouts_into, ChoiceProbeCache, ChoiceProbeResult,
-    ChoiceProbeWorkspace, RolloutResult, TurnRolloutCache,
+    ChoiceProbeWorkspace, ProbeCacheAccess, RolloutResult, TurnRolloutCache,
 };
 use crate::tt::{ShardedParetoTT, TranspositionLabel, TT_SHARD_COUNT};
 use crate::{InCombatSolveResponse, PlannedAction, SearchPolicy, SearchProgress, SearchStatistics};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use sts2_kernel::state::{
     ActiveHookCache, BattleState, CardHandle, CreatureHandle, FieldMap, GrowthCounters,
-    RootStaticContext, SemanticHistory, HOOK_DIRTY_ALL,
+    RelicDirtyMask, RootStaticContext, SemanticHistory, HOOK_DIRTY_ALL,
 };
 use sts2_kernel::{CombatEngine, ContentDispatcher, KernelError, StepOutcome};
 use sts2_types::{PileType, PlayerTurnPhase, PotionId, RoomType, TargetType};
@@ -207,6 +209,7 @@ struct WorkerScratch {
     pre_end_turn_state: BattleState,
     choice_paused_states: Vec<BattleState>,
     choice_probe_ws: ChoiceProbeWorkspace,
+    eval_intent_cache: IntentHitsCache,
     choice_resolved: Vec<ResolvedChoiceCandidate>,
     choice_enum_bufs: [Vec<SmallVec<[usize; 8]>>; 4],
     choice_enum_scratch: ChoiceEnumScratch,
@@ -223,11 +226,14 @@ struct WorkerScratch {
     action_buf: Vec<ActionTask>,
     slab: LocalStateSlab,
     candidates: Vec<WorkerCandidate>,
+    cand_shards: Vec<u16>,
+    cand_fast_meta: Vec<WorkerCandFastMeta>,
     transitions: u64,
     choice_replay_attempts: u64,
     incumbent_pruned: u64,
     tt_probe_pruned: u64,
     por_pruned: u64,
+    wave_dirty: bool,
 }
 
 impl WorkerScratch {
@@ -239,6 +245,7 @@ impl WorkerScratch {
             pre_end_turn_state: empty_scratch_state(static_ctx.clone()),
             choice_paused_states,
             choice_probe_ws: ChoiceProbeWorkspace::new(static_ctx.clone()),
+            eval_intent_cache: IntentHitsCache::new(),
             choice_resolved: Vec::with_capacity(CHOICE_RESOLVED_CAPACITY),
             choice_enum_bufs: [
                 Vec::with_capacity(64),
@@ -261,11 +268,14 @@ impl WorkerScratch {
             action_buf: Vec::with_capacity(16),
             slab: LocalStateSlab::default(),
             candidates: Vec::with_capacity(64),
+            cand_shards: Vec::with_capacity(64),
+            cand_fast_meta: Vec::with_capacity(64),
             transitions: 0,
             choice_replay_attempts: 0,
             incumbent_pruned: 0,
             tt_probe_pruned: 0,
             por_pruned: 0,
+            wave_dirty: false,
         }
     }
 
@@ -275,12 +285,15 @@ impl WorkerScratch {
         self.choice_slab.clear();
         self.choice_staging_choices.clear();
         self.candidates.clear();
+        self.cand_shards.clear();
+        self.cand_fast_meta.clear();
         self.choice_resolved.clear();
         self.transitions = 0;
         self.choice_replay_attempts = 0;
         self.incumbent_pruned = 0;
         self.tt_probe_pruned = 0;
         self.por_pruned = 0;
+        self.wave_dirty = false;
     }
 
     #[inline]
@@ -323,6 +336,50 @@ fn unpack_parent_slice(raw: u64) -> (usize, usize, usize) {
     (w_idx, start, len)
 }
 
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct WorkerCandFastMeta {
+    flags: u8, // bit 0 = is_terminal, bit 1 = turn_completed
+    potion_count: u8,
+    explicit_potion_count: u8,
+    _pad: [u8; 5],
+    beam_score: f64,
+}
+
+const _: () = assert!(std::mem::size_of::<WorkerCandFastMeta>() == 16);
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct AcceptedMidTurn {
+    w_idx: u16,
+    potion_count: u8,
+    explicit_potion_count: u8,
+    c_idx: u32,
+    beam_score: f64,
+}
+
+const _: () = assert!(std::mem::size_of::<AcceptedMidTurn>() == 16);
+
+#[derive(Clone, Copy)]
+enum ParentStateSource<'a> {
+    Main(&'a MainStateArena),
+    WorkerSlabs(&'a [LocalStateSlab]),
+}
+
+impl<'a> ParentStateSource<'a> {
+    #[inline(always)]
+    fn get(self, h: PackedHandle) -> &'a [u8] {
+        match self {
+            Self::Main(arena) => arena.get(h),
+            Self::WorkerSlabs(slabs) => {
+                let w_idx = (h.slab >> 16) as usize;
+                let s_idx = h.slab & 0xFFFF;
+                slabs[w_idx].get(s_idx, h.offset, h.len)
+            }
+        }
+    }
+}
+
 struct PassResources {
     scratches: Vec<WorkerScratch>,
     parent_states: Vec<BattleState>,
@@ -331,7 +388,7 @@ struct PassResources {
     prune_scratch: PruneScratch,
     flat_tasks: Vec<(usize, ActionTask)>,
     step_arena: MainStateArena,
-    next_step_arena: MainStateArena,
+    prev_worker_slabs: Vec<LocalStateSlab>,
     turn_staging_arena: MainStateArena,
     tt: ShardedParetoTT,
     choice_probe_cache: ChoiceProbeCache,
@@ -339,11 +396,158 @@ struct PassResources {
     stand_pat_seen: hashbrown::HashSet<StateHash, ahash::RandomState>,
     sort_list: Vec<(usize, usize, (u32, u32, u32))>,
     parent_slices: Vec<AtomicU64>,
+    active_parent_slices: Vec<(u32, u16, u32, u32)>,
+    tt_group_accepted: Box<[Vec<u32>; 16]>,
+    tt_accepted_epoch: Vec<u8>,
+    tt_cur_epoch: u8,
     tt_shard_buckets: Vec<Vec<(usize, StateHash, TranspositionLabel)>>,
-    tt_shard_accepted: Vec<Vec<usize>>,
-    tt_accepted_flags: Vec<bool>,
+    tt_accepted_flags: Vec<AtomicU8>,
     tt_flat_refs: Vec<(usize, usize)>,
+    accepted_mid_turn: Vec<AcceptedMidTurn>,
+    mid_turn_ords: Vec<NodeId>,
+    surviving_ords: Vec<NodeId>,
+    surviving_commit_order: Vec<usize>,
     rollout_results: Vec<Option<RolloutResult>>,
+}
+
+struct WorkerCandidateSource<'a> {
+    scratches: &'a [WorkerScratch],
+    accepted: &'a [AcceptedMidTurn],
+}
+
+impl PruneSource for WorkerCandidateSource<'_> {
+    #[inline(always)]
+    fn build_prune_entry(
+        &self,
+        id: NodeId,
+        root: &RootEvalBaseline,
+        use_rollout_scores: bool,
+    ) -> (PruneKey, i64, i64, i64, i64, f64, StateHash) {
+        let acc = &self.accepted[id.0 as usize];
+        let cand = &self.scratches[acc.w_idx as usize].candidates[acc.c_idx as usize];
+        let f = &cand.fast_eval;
+        let potion_cost = cand
+            .potion_strategic_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+        let explicit_potion_count = acc.explicit_potion_count;
+        let (
+            has_full_eval,
+            beam_rank_score,
+            has_rollout_score,
+            has_choice_lookahead,
+            stored_aux_score,
+            effective_defense,
+            board_investment,
+            setup_score,
+            optionality_cards,
+        ) = if let Some(ref full) = cand.full_eval {
+            let has_ro = full.rollout_score.is_some();
+            let aux = if let Some(rs) = full.rollout_score {
+                rs
+            } else {
+                full.choice_lookahead_score.unwrap_or(0.0)
+            };
+            (
+                true,
+                full.beam_rank_score,
+                has_ro,
+                full.has_choice_lookahead,
+                aux,
+                full.effective_defense.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.board_investment.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.setup_score.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.optionality_cards.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            )
+        } else {
+            (false, cand.base_score, false, false, 0.0, 0, 0, 0, 0)
+        };
+        let (k, s, t, su, o, a) = PruneKey::from_raw_fields(
+            id,
+            root,
+            use_rollout_scores,
+            f.enemy_hp,
+            f.player_hp,
+            f.player_max_hp,
+            f.player_block,
+            f.projected_player_hp,
+            f.cumulative_hp_lost,
+            f.recovered_hp,
+            f.strategic_hp_credit,
+            f.alive_enemy_count,
+            f.reviving_enemy_count,
+            f.death_save_use_count,
+            f.strategy_goal_count,
+            f.energy,
+            f.stars,
+            cand.forced_used_mask,
+            cand.used_potion_slot_mask,
+            potion_cost,
+            explicit_potion_count,
+            has_full_eval,
+            beam_rank_score,
+            has_rollout_score,
+            has_choice_lookahead,
+            stored_aux_score,
+            effective_defense,
+            board_investment,
+            setup_score,
+            optionality_cards,
+        );
+        (k, s, t, su, o, a, cand.state_hash)
+    }
+
+    #[inline(always)]
+    fn potion_count(&self, id: NodeId) -> u8 {
+        self.accepted[id.0 as usize].potion_count
+    }
+
+    #[inline(always)]
+    fn explicit_potion_count(&self, id: NodeId) -> u8 {
+        self.accepted[id.0 as usize].explicit_potion_count
+    }
+
+    #[inline(always)]
+    fn beam_score(&self, id: NodeId, use_rollout_scores: bool) -> f64 {
+        let acc = &self.accepted[id.0 as usize];
+        if !use_rollout_scores {
+            return acc.beam_score;
+        }
+        let cand = &self.scratches[acc.w_idx as usize].candidates[acc.c_idx as usize];
+        if let Some(ref full) = cand.full_eval {
+            if full.rollout_score.is_some() {
+                full.effective_turn_boundary_score()
+            } else {
+                full.beam_rank_score
+            }
+        } else {
+            cand.base_score
+        }
+    }
+
+    #[inline(always)]
+    fn tie_break_fields(&self, id: NodeId) -> (i16, i32, bool, f64, StateHash) {
+        let acc = &self.accepted[id.0 as usize];
+        let cand = &self.scratches[acc.w_idx as usize].candidates[acc.c_idx as usize];
+        let (hcla, cla) = if let Some(ref full) = cand.full_eval {
+            let v = if full.has_choice_lookahead {
+                full.rollout_score
+                    .or(full.choice_lookahead_score)
+                    .unwrap_or(0.0)
+            } else {
+                f64::NEG_INFINITY
+            };
+            (full.has_choice_lookahead, v)
+        } else {
+            (false, f64::NEG_INFINITY)
+        };
+        (
+            cand.fast_eval.cumulative_hp_lost,
+            cand.fast_eval.enemy_hp,
+            hcla,
+            cla,
+            cand.state_hash,
+        )
+    }
 }
 
 static SEARCH_THREAD_POOLS: [OnceLock<rayon::ThreadPool>; 17] = [const { OnceLock::new() }; 17];
@@ -373,6 +577,7 @@ fn reset_scratch_battle_state(s: &mut BattleState, static_ctx: &Arc<RootStaticCo
     s.static_ctx = Arc::clone(static_ctx);
     s.hook_cache.clear();
     s.deck_dirty.0 = true;
+    s.relic_dirty_mask = RelicDirtyMask(u64::MAX);
 }
 
 struct PooledPassResources(Option<PassResources>);
@@ -419,6 +624,9 @@ impl PassResources {
             Some(mut r) => {
                 while r.scratches.len() < worker_count {
                     r.scratches.push(WorkerScratch::new(static_ctx.clone()));
+                }
+                while r.prev_worker_slabs.len() < r.scratches.len() {
+                    r.prev_worker_slabs.push(LocalStateSlab::default());
                 }
                 while r.parent_states.len() < worker_count {
                     r.parent_states.push(empty_scratch_state(static_ctx.clone()));
@@ -478,7 +686,7 @@ impl PassResources {
             prune_scratch: PruneScratch::default(),
             flat_tasks: Vec::with_capacity(128),
             step_arena: MainStateArena::default(),
-            next_step_arena: MainStateArena::default(),
+            prev_worker_slabs: (0..worker_count).map(|_| LocalStateSlab::default()).collect(),
             turn_staging_arena: MainStateArena::default(),
             tt: ShardedParetoTT::new(transposition_entry_limit.max(65_536)),
             choice_probe_cache: ChoiceProbeCache::new(),
@@ -491,42 +699,58 @@ impl PassResources {
             )),
             sort_list: Vec::with_capacity(2048),
             parent_slices: (0..128).map(|_| AtomicU64::new(0)).collect(),
+            active_parent_slices: Vec::with_capacity(128),
+            tt_group_accepted: Box::new(std::array::from_fn(|_| Vec::with_capacity(64))),
+            tt_accepted_epoch: vec![0u8; 512],
+            tt_cur_epoch: 0,
             tt_shard_buckets: (0..TT_SHARD_COUNT).map(|_| Vec::with_capacity(8)).collect(),
-            tt_shard_accepted: (0..TT_SHARD_COUNT).map(|_| Vec::with_capacity(8)).collect(),
-            tt_accepted_flags: Vec::with_capacity(512),
+            tt_accepted_flags: (0..512).map(|_| AtomicU8::new(0)).collect(),
             tt_flat_refs: Vec::with_capacity(512),
+            accepted_mid_turn: Vec::with_capacity(512),
+            mid_turn_ords: Vec::with_capacity(512),
+            surviving_ords: Vec::with_capacity(256),
+            surviving_commit_order: Vec::with_capacity(256),
             rollout_results: Vec::with_capacity(128),
         }
     }
 
     fn reset_for_pass(&mut self) {
+        for s in &mut self.scratches {
+            s.eval_intent_cache.clear();
+            s.choice_probe_ws.intent_cache.clear();
+        }
+        for rw in &mut self.rollout_workspaces {
+            rw.intent_cache.clear();
+        }
         self.node_arena.clear();
         self.flat_tasks.clear();
         self.step_arena.clear();
-        self.next_step_arena.clear();
+        for slab in &mut self.prev_worker_slabs {
+            slab.clear();
+        }
         self.turn_staging_arena.clear();
         self.tt.reset_generation();
         self.tt.branches_pruned = 0;
         self.stand_pat_seen.clear();
         self.sort_list.clear();
+        self.active_parent_slices.clear();
         for b in &mut self.tt_shard_buckets {
             b.clear();
         }
-        for a in &mut self.tt_shard_accepted {
-            a.clear();
-        }
-        self.tt_accepted_flags.clear();
         self.tt_flat_refs.clear();
+        self.accepted_mid_turn.clear();
+        self.mid_turn_ords.clear();
+        self.surviving_ords.clear();
+        self.surviving_commit_order.clear();
         self.rollout_results.clear();
     }
 }
 
-#[inline]
-fn clone_cow_str_into(src: &Cow<'static, str>, dst: &mut Cow<'static, str>) {
+#[cold]
+#[inline(never)]
+fn clone_cow_str_owned_cold(src: &Cow<'static, str>, dst: &mut Cow<'static, str>) {
     match src {
-        Cow::Borrowed(b) => {
-            *dst = Cow::Borrowed(b);
-        }
+        Cow::Borrowed(sb) => *dst = Cow::Borrowed(sb),
         Cow::Owned(ss) => match dst {
             Cow::Owned(ds) => {
                 if ds != ss {
@@ -538,37 +762,147 @@ fn clone_cow_str_into(src: &Cow<'static, str>, dst: &mut Cow<'static, str>) {
     }
 }
 
-#[inline]
+#[inline(always)]
+fn clone_cow_str_into(src: &Cow<'static, str>, dst: &mut Cow<'static, str>) {
+    if let (Cow::Borrowed(sb), Cow::Borrowed(db)) = (src, &mut *dst) {
+        if db.as_ptr() != sb.as_ptr() || db.len() != sb.len() {
+            *db = sb;
+        }
+        return;
+    }
+    clone_cow_str_owned_cold(src, dst);
+}
+
+#[inline(always)]
+fn copy_smallvec_copy<A: smallvec::Array>(src: &SmallVec<A>, dst: &mut SmallVec<A>)
+where
+    A::Item: Copy,
+{
+    let sl = src.len();
+    if sl == 0 {
+        if !dst.is_empty() {
+            dst.clear();
+        }
+        return;
+    }
+    if dst.len() == sl {
+        dst.as_mut_slice().copy_from_slice(src.as_slice());
+        return;
+    }
+    dst.clear();
+    dst.extend_from_slice(src.as_slice());
+}
+
+#[inline(always)]
+fn copy_vec_copy<T: Copy>(src: &[T], dst: &mut Vec<T>) {
+    let sl = src.len();
+    if sl == 0 {
+        if !dst.is_empty() {
+            dst.clear();
+        }
+        return;
+    }
+    if dst.capacity() >= sl {
+        // SAFETY: `dst.capacity() >= sl` and `T: Copy` has no Drop glue; elements in `0..sl` are initialized.
+        unsafe {
+            std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), sl);
+            dst.set_len(sl);
+        }
+        return;
+    }
+    dst.clear();
+    dst.extend_from_slice(src);
+}
+
+#[cold]
+#[inline(never)]
+fn clone_opt_cow_owned_cold(src: &Option<Cow<'static, str>>, dst: &mut Option<Cow<'static, str>>) {
+    *dst = src.clone();
+}
+
+#[cold]
+#[inline(never)]
+fn clear_opt_cow_owned_cold(dst: &mut Option<Cow<'static, str>>) {
+    *dst = None;
+}
+
+#[inline(always)]
 fn clone_opt_cow_str_into(
     src: &Option<Cow<'static, str>>,
     dst: &mut Option<Cow<'static, str>>,
 ) {
+    if let (None, None) = (&*dst, src) {
+        return;
+    }
+    if let (Some(Cow::Borrowed(db)), Some(Cow::Borrowed(sb))) = (&mut *dst, src) {
+        if db.as_ptr() != sb.as_ptr() || db.len() != sb.len() {
+            *db = sb;
+        }
+        return;
+    }
     match (dst, src) {
         (Some(dc), Some(sc)) => clone_cow_str_into(sc, dc),
-        (dst_slot, Some(sc)) => *dst_slot = Some(sc.clone()),
-        (dst_slot, None) => {
-            if dst_slot.is_some() {
-                *dst_slot = None;
-            }
-        }
+        (dst_slot, Some(Cow::Borrowed(sb))) => match dst_slot {
+            // SAFETY: `None` has no destructor drop glue.
+            None => unsafe {
+                std::ptr::write(dst_slot, Some(Cow::Borrowed(sb)));
+            },
+            Some(_) => unreachable!(),
+        },
+        (dst_slot, Some(_)) => clone_opt_cow_owned_cold(src, dst_slot),
+        (dst_slot, None) => match dst_slot {
+            None => {}
+            // SAFETY: `Some(Cow::Borrowed(_))` has no destructor drop glue.
+            Some(Cow::Borrowed(_)) => unsafe {
+                std::ptr::write(dst_slot, None);
+            },
+            Some(Cow::Owned(_)) => clear_opt_cow_owned_cold(dst_slot),
+        },
     }
 }
 
-#[inline]
+#[inline(always)]
 fn clone_small_cow_strings_into(
     src: &[Cow<'static, str>],
     dst: &mut Vec<Cow<'static, str>>,
 ) {
-    let keep = dst.len().min(src.len());
-    for i in 0..keep {
-        clone_cow_str_into(&src[i], &mut dst[i]);
-    }
-    if src.len() > keep {
-        dst.reserve(src.len() - keep);
-        for s in &src[keep..] {
-            dst.push(s.clone());
+    let sl = src.len();
+    if sl == 0 {
+        if !dst.is_empty() {
+            dst.clear();
         }
-    } else if dst.len() > keep {
+        return;
+    }
+    let dl = dst.len();
+    if dl == sl {
+        for (dc, sc) in dst.iter_mut().zip(src.iter()) {
+            if let (Cow::Borrowed(db), Cow::Borrowed(sb)) = (&*dc, sc) {
+                if db.as_ptr() == sb.as_ptr() && db.len() == sb.len() {
+                    continue;
+                }
+            }
+            clone_cow_str_into(sc, dc);
+        }
+        return;
+    }
+    let keep = dl.min(sl);
+    for (dc, sc) in dst[..keep].iter_mut().zip(src[..keep].iter()) {
+        if let (Cow::Borrowed(db), Cow::Borrowed(sb)) = (&*dc, sc) {
+            if db.as_ptr() == sb.as_ptr() && db.len() == sb.len() {
+                continue;
+            }
+        }
+        clone_cow_str_into(sc, dc);
+    }
+    if sl > keep {
+        dst.reserve(sl - keep);
+        for s in &src[keep..] {
+            match s {
+                Cow::Borrowed(sb) => dst.push(Cow::Borrowed(sb)),
+                Cow::Owned(_) => dst.push(s.clone()),
+            }
+        }
+    } else if dl > keep {
         dst.truncate(keep);
     }
 }
@@ -580,41 +914,11 @@ fn clone_field_map_into(src: &FieldMap, dst: &mut FieldMap) {
 
 #[inline]
 fn clone_semantic_history_into(src: &SemanticHistory, dst: &mut SemanticHistory) {
-    if src.exhausts.is_empty() {
-        if !dst.exhausts.is_empty() {
-            dst.exhausts.clear();
-        }
-    } else {
-        dst.exhausts.clone_from(&src.exhausts);
-    }
-    if src.card_block_gains.is_empty() {
-        if !dst.card_block_gains.is_empty() {
-            dst.card_block_gains.clear();
-        }
-    } else {
-        dst.card_block_gains.clone_from(&src.card_block_gains);
-    }
-    if src.orb_channels.is_empty() {
-        if !dst.orb_channels.is_empty() {
-            dst.orb_channels.clear();
-        }
-    } else {
-        dst.orb_channels.clone_from(&src.orb_channels);
-    }
-    if src.energy_spent.is_empty() {
-        if !dst.energy_spent.is_empty() {
-            dst.energy_spent.clear();
-        }
-    } else {
-        dst.energy_spent.clone_from(&src.energy_spent);
-    }
-    if src.card_drawn.is_empty() {
-        if !dst.card_drawn.is_empty() {
-            dst.card_drawn.clear();
-        }
-    } else {
-        dst.card_drawn.clone_from(&src.card_drawn);
-    }
+    copy_vec_copy(&src.exhausts, &mut dst.exhausts);
+    copy_vec_copy(&src.card_block_gains, &mut dst.card_block_gains);
+    copy_vec_copy(&src.orb_channels, &mut dst.orb_channels);
+    copy_vec_copy(&src.energy_spent, &mut dst.energy_spent);
+    copy_vec_copy(&src.card_drawn, &mut dst.card_drawn);
 
     if src.actor_events.is_empty() {
         if !dst.actor_events.is_empty() {
@@ -623,12 +927,8 @@ fn clone_semantic_history_into(src: &SemanticHistory, dst: &mut SemanticHistory)
     } else {
         let keep = dst.actor_events.len().min(src.actor_events.len());
         for i in 0..keep {
-            if dst.actor_events[i].0 != src.actor_events[i].0 {
-                dst.actor_events[i].0 = src.actor_events[i].0.clone();
-            }
-            if dst.actor_events[i].1 != src.actor_events[i].1 {
-                dst.actor_events[i].1 = src.actor_events[i].1;
-            }
+            clone_cow_str_into(&src.actor_events[i].0, &mut dst.actor_events[i].0);
+            dst.actor_events[i].1 = src.actor_events[i].1;
             dst.actor_events[i].2 = src.actor_events[i].2;
         }
         if src.actor_events.len() > keep {
@@ -650,34 +950,71 @@ fn clone_semantic_history_into(src: &SemanticHistory, dst: &mut SemanticHistory)
 
 #[inline]
 fn clone_hook_cache_into(src: &ActiveHookCache, dst: &mut ActiveHookCache) {
+    let prev_dst_dirty = dst.dirty_mask;
     dst.dirty_mask = src.dirty_mask;
     if src.dirty_mask == HOOK_DIRTY_ALL {
+        return;
+    }
+    if prev_dst_dirty == 0 && src.dirty_mask == 0 && src.revision != 0 && dst.revision == src.revision {
+        #[cfg(debug_assertions)]
+        debug_assert!(dst.exact_eq(src), "ActiveHookCache revision hit diverged");
         return;
     }
     dst.masks = src.masks;
     dst.in_combat_mask = src.in_combat_mask;
     dst.in_combat_overflow = src.in_combat_overflow;
     dst.combat_has_player = src.combat_has_player;
+    dst.living_check_player_idx = src.living_check_player_idx;
+    dst.primary_enemy_indices = src.primary_enemy_indices;
+    dst.primary_enemy_count = src.primary_enemy_count;
+    dst.enemy_power_flags = src.enemy_power_flags;
+    dst.flat_slot_words = src.flat_slot_words;
+    dst.revision = src.revision;
     dst.cached_tables = src.cached_tables;
     dst.listener_dominion = src.listener_dominion;
-    dst.listener_pre_player.clone_from(&src.listener_pre_player);
-    dst.listener_post_player.clone_from(&src.listener_post_player);
-    dst.listener_relics.clone_from(&src.listener_relics);
-    dst.listener_potions.clone_from(&src.listener_potions);
-    dst.listener_orbs.clone_from(&src.listener_orbs);
-    dst.listener_hand.clone_from(&src.listener_hand);
-    dst.listener_draw.clone_from(&src.listener_draw);
-    dst.listener_discard.clone_from(&src.listener_discard);
-    dst.listener_exhaust.clone_from(&src.listener_exhaust);
-    dst.listener_play.clone_from(&src.listener_play);
+    copy_vec_copy(&src.listener_pre_player, &mut dst.listener_pre_player);
+    copy_vec_copy(&src.listener_post_player, &mut dst.listener_post_player);
+    copy_vec_copy(&src.listener_relics, &mut dst.listener_relics);
+    copy_vec_copy(&src.listener_potions, &mut dst.listener_potions);
+    copy_vec_copy(&src.listener_orbs, &mut dst.listener_orbs);
+    copy_vec_copy(&src.listener_hand, &mut dst.listener_hand);
+    copy_vec_copy(&src.listener_draw, &mut dst.listener_draw);
+    copy_vec_copy(&src.listener_discard, &mut dst.listener_discard);
+    copy_vec_copy(&src.listener_exhaust, &mut dst.listener_exhaust);
+    copy_vec_copy(&src.listener_play, &mut dst.listener_play);
     if dst.listener_deck != src.listener_deck {
-        dst.listener_deck.clone_from(&src.listener_deck);
+        copy_vec_copy(&src.listener_deck, &mut dst.listener_deck);
     }
-    dst.listener_run_models.clone_from(&src.listener_run_models);
-    dst.flat_masks_w0.clone_from(&src.flat_masks_w0);
-    dst.flat_masks_w1.clone_from(&src.flat_masks_w1);
-    dst.flat_masks_w2.clone_from(&src.flat_masks_w2);
-    dst.flat_listeners.clone_from(&src.flat_listeners);
+    copy_vec_copy(&src.listener_run_models, &mut dst.listener_run_models);
+    if src.flat_slot_words != 0 {
+        let dst_masks = dst
+            .slot_listener_masks
+            .get_or_insert_with(|| Box::new([0u64; sts2_kernel::state::HOOK_SLOT_TABLE_LEN]));
+        if let Some(src_masks) = src.slot_listener_masks.as_deref() {
+            dst_masks.copy_from_slice(src_masks);
+        }
+        if src.flat_slot_words >= 2 {
+            let dst_ext = dst.slot_listener_masks_ext.get_or_insert_with(|| {
+                Box::new([[0u64; sts2_kernel::state::HOOK_SLOT_TABLE_LEN]; 3])
+            });
+            if let Some(src_ext) = src.slot_listener_masks_ext.as_deref() {
+                let active_planes = (src.flat_slot_words as usize - 1).min(3);
+                for p in 0..active_planes {
+                    dst_ext[p].copy_from_slice(&src_ext[p]);
+                }
+            }
+        }
+        if !dst.flat_masks_w0.is_empty() {
+            dst.flat_masks_w0.clear();
+            dst.flat_masks_w1.clear();
+            dst.flat_masks_w2.clear();
+        }
+    } else {
+        copy_vec_copy(&src.flat_masks_w0, &mut dst.flat_masks_w0);
+        copy_vec_copy(&src.flat_masks_w1, &mut dst.flat_masks_w1);
+        copy_vec_copy(&src.flat_masks_w2, &mut dst.flat_masks_w2);
+    }
+    copy_vec_copy(&src.flat_listeners, &mut dst.flat_listeners);
 }
 
 #[inline]
@@ -710,8 +1047,8 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
     dst.next_attack_id = src.next_attack_id;
     dst.run_rngs.seed = src.run_rngs.seed;
     dst.run_rngs.streams = src.run_rngs.streams;
-    if dst.run_rngs.string_seed != src.run_rngs.string_seed {
-        dst.run_rngs.string_seed.clone_from(&src.run_rngs.string_seed);
+    if !Arc::ptr_eq(&dst.run_rngs.string_seed, &src.run_rngs.string_seed) {
+        dst.run_rngs.string_seed = Arc::clone(&src.run_rngs.string_seed);
     }
     dst.player_rngs = src.player_rngs;
 
@@ -733,73 +1070,93 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
     dp.phase = sp.phase;
     dp.turn_number = sp.turn_number;
     dp.counters = sp.counters;
-    dp.hand.clone_from(&sp.hand);
-    dp.draw.clone_from(&sp.draw);
-    dp.discard.clone_from(&sp.discard);
-    if sp.exhaust.is_empty() {
-        if !dp.exhaust.is_empty() {
-            dp.exhaust.clear();
-        }
-    } else {
-        dp.exhaust.clone_from(&sp.exhaust);
-    }
-    if sp.play.is_empty() {
-        if !dp.play.is_empty() {
-            dp.play.clear();
-        }
-    } else {
-        dp.play.clone_from(&sp.play);
-    }
+    copy_vec_copy(&sp.hand, &mut dp.hand);
+    copy_vec_copy(&sp.draw, &mut dp.draw);
+    copy_vec_copy(&sp.discard, &mut dp.discard);
+    copy_vec_copy(&sp.exhaust, &mut dp.exhaust);
+    copy_vec_copy(&sp.play, &mut dp.play);
     if skip_immutable_deck && dp.deck.len() == sp.deck.len() {
         #[cfg(debug_assertions)]
         debug_assert_eq!(dp.deck.as_slice(), sp.deck.as_slice());
     } else {
-        dp.deck.clone_from(&sp.deck);
+        copy_vec_copy(&sp.deck, &mut dp.deck);
     }
-    dp.potion_slots.clone_from(&sp.potion_slots);
+    copy_smallvec_copy(&sp.potion_slots, &mut dp.potion_slots);
     dp.combat_generated_potion_mask = sp.combat_generated_potion_mask;
     dp.orb_capacity = sp.orb_capacity;
-    if sp.orbs.is_empty() {
-        if !dp.orbs.is_empty() {
-            dp.orbs.clear();
-        }
-    } else {
-        dp.orbs.clone_from(&sp.orbs);
-    }
-    if sp.arrows.is_empty() {
-        if !dp.arrows.is_empty() {
-            dp.arrows.clear();
-        }
-    } else {
-        dp.arrows.clone_from(&sp.arrows);
-    }
+    copy_vec_copy(&sp.orbs, &mut dp.orbs);
+    copy_vec_copy(&sp.arrows, &mut dp.arrows);
     dp.card_or_potion_effect_depth = sp.card_or_potion_effect_depth;
-    let relic_keep = dp.relics.len().min(sp.relics.len());
-    for (dr, sr) in dp.relics[..relic_keep].iter_mut().zip(sp.relics[..relic_keep].iter()) {
-        dr.id = sr.id;
-        dr.is_wax = sr.is_wax;
-        dr.is_melted = sr.is_melted;
-        dr.stack_count = sr.stack_count;
-        dr.floor_added_to_deck = sr.floor_added_to_deck;
-        clone_field_map_into(&sr.private_fields, &mut dr.private_fields);
-    }
-    if sp.relics.len() > relic_keep {
-        dp.relics.reserve(sp.relics.len() - relic_keep);
-        for sr in &sp.relics[relic_keep..] {
-            dp.relics.push(sr.clone());
+    if same_root
+        && src.static_ctx.has_root_relics
+        && dp.relics.len() == sp.relics.len()
+        && sp.relics.len() <= 64
+    {
+        let valid_mask = if sp.relics.len() == 64 {
+            u64::MAX
+        } else {
+            (1u64 << sp.relics.len()) - 1
+        };
+        let mut dirty = (src.relic_dirty_mask.0 | dst.relic_dirty_mask.0) & valid_mask;
+        while dirty != 0 {
+            let i = dirty.trailing_zeros() as usize;
+            dirty &= dirty - 1;
+            let sr = &sp.relics[i];
+            let dr = &mut dp.relics[i];
+            dr.id = sr.id;
+            dr.is_wax = sr.is_wax;
+            dr.is_melted = sr.is_melted;
+            dr.stack_count = sr.stack_count;
+            dr.floor_added_to_deck = sr.floor_added_to_deck;
+            if !sr.private_fields.is_empty() || !dr.private_fields.is_empty() {
+                clone_field_map_into(&sr.private_fields, &mut dr.private_fields);
+            }
         }
-    } else if dp.relics.len() > relic_keep {
-        dp.relics.truncate(sp.relics.len());
+        #[cfg(debug_assertions)]
+        debug_assert_eq!(dp.relics, sp.relics);
+    } else {
+        let relic_keep = dp.relics.len().min(sp.relics.len());
+        for (dr, sr) in dp.relics[..relic_keep].iter_mut().zip(sp.relics[..relic_keep].iter()) {
+            dr.id = sr.id;
+            dr.is_wax = sr.is_wax;
+            dr.is_melted = sr.is_melted;
+            dr.stack_count = sr.stack_count;
+            dr.floor_added_to_deck = sr.floor_added_to_deck;
+            if !sr.private_fields.is_empty() || !dr.private_fields.is_empty() {
+                clone_field_map_into(&sr.private_fields, &mut dr.private_fields);
+            }
+        }
+        if sp.relics.len() > relic_keep {
+            dp.relics.reserve(sp.relics.len() - relic_keep);
+            for sr in &sp.relics[relic_keep..] {
+                dp.relics.push(sr.clone());
+            }
+        } else if dp.relics.len() > relic_keep {
+            dp.relics.truncate(sp.relics.len());
+        }
     }
 
     if skip_immutable_deck {
         #[cfg(debug_assertions)]
         debug_assert_eq!(&dst.cards[..prefix_len], &src.cards[..prefix_len]);
-        dst.cards.truncate(prefix_len);
-        dst.cards.extend_from_slice(&src.cards[prefix_len..]);
+        let tail_src = &src.cards[prefix_len..];
+        let total_cards = src.cards.len();
+        if dst.cards.capacity() >= total_cards {
+            // SAFETY: `dst.cards[..prefix_len]` is preserved and `capacity >= total_cards`.
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    tail_src.as_ptr(),
+                    dst.cards.as_mut_ptr().add(prefix_len),
+                    tail_src.len(),
+                );
+                dst.cards.set_len(total_cards);
+            }
+        } else {
+            dst.cards.truncate(prefix_len);
+            dst.cards.extend_from_slice(tail_src);
+        }
     } else {
-        dst.cards.clear();
-        dst.cards.extend_from_slice(&src.cards);
+        copy_vec_copy(&src.cards, &mut dst.cards);
     }
 
     if src.card_extensions.is_empty() {
@@ -810,17 +1167,23 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
             .iter_mut()
             .zip(src.card_extensions[..ext_keep].iter())
         {
-            de.local_energy_modifiers.clone_from(&se.local_energy_modifiers);
-            match (&mut de.enchantment, &se.enchantment) {
-                (Some(de_e), Some(se_e)) => {
-                    de_e.id = se_e.id;
-                    de_e.amount = se_e.amount;
-                    de_e.status = se_e.status;
-                    clone_field_map_into(&se_e.private_fields, &mut de_e.private_fields);
+            copy_smallvec_copy(&se.local_energy_modifiers, &mut de.local_energy_modifiers);
+            if se.enchantment.is_some() || de.enchantment.is_some() {
+                match (&mut de.enchantment, &se.enchantment) {
+                    (Some(de_e), Some(se_e)) => {
+                        de_e.id = se_e.id;
+                        de_e.amount = se_e.amount;
+                        de_e.status = se_e.status;
+                        if !se_e.private_fields.is_empty() || !de_e.private_fields.is_empty() {
+                            clone_field_map_into(&se_e.private_fields, &mut de_e.private_fields);
+                        }
+                    }
+                    _ => de.enchantment.clone_from(&se.enchantment),
                 }
-                _ => de.enchantment.clone_from(&se.enchantment),
             }
-            clone_field_map_into(&se.private_fields, &mut de.private_fields);
+            if !se.private_fields.is_empty() || !de.private_fields.is_empty() {
+                clone_field_map_into(&se.private_fields, &mut de.private_fields);
+            }
         }
         if src.card_extensions.len() > ext_keep {
             dst.card_extensions
@@ -838,6 +1201,7 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
         .iter_mut()
         .zip(src.creatures[..cr_keep].iter())
     {
+        let prev_c_handle = dc.handle;
         dc.handle = sc.handle;
         dc.combat_id = sc.combat_id;
         dc.side = sc.side;
@@ -851,9 +1215,10 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
         dc.cumulative_hp_lost = sc.cumulative_hp_lost;
         dc.is_detached = sc.is_detached;
         dc.has_minion_power = sc.has_minion_power;
-        dc.powers.clone_from(&sc.powers);
+        copy_vec_copy(&sc.powers, &mut dc.powers);
         match (&mut dc.monster, &sc.monster) {
             (Some(dm), Some(sm)) => {
+                let prev_mid = dm.monster_id;
                 dm.monster_id = sm.monster_id;
                 dm.rng = sm.rng;
                 dm.is_performing_move = sm.is_performing_move;
@@ -867,8 +1232,21 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
                     &sm.transient_move_follow_up_state_id,
                     &mut dm.transient_move_follow_up_state_id,
                 );
-                clone_field_map_into(&sm.setup_fields, &mut dm.setup_fields);
-                clone_field_map_into(&sm.private_fields, &mut dm.private_fields);
+                if !sm.setup_fields.is_empty() || !dm.setup_fields.is_empty() {
+                    let skip_setup = same_root
+                        && prev_c_handle == sc.handle
+                        && prev_mid == sm.monster_id
+                        && dm.setup_fields.len() == sm.setup_fields.len();
+                    if skip_setup {
+                        #[cfg(debug_assertions)]
+                        debug_assert_eq!(dm.setup_fields, sm.setup_fields);
+                    } else {
+                        clone_field_map_into(&sm.setup_fields, &mut dm.setup_fields);
+                    }
+                }
+                if !sm.private_fields.is_empty() || !dm.private_fields.is_empty() {
+                    clone_field_map_into(&sm.private_fields, &mut dm.private_fields);
+                }
             }
             _ => dc.monster.clone_from(&sc.monster),
         }
@@ -892,9 +1270,13 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
         {
             dp.attack_command_id = sp.attack_command_id;
             dp.amount_when_attack_started = sp.amount_when_attack_started;
-            dp.impaled_arrows.clone_from(&sp.impaled_arrows);
+            if !sp.impaled_arrows.is_empty() || !dp.impaled_arrows.is_empty() {
+                copy_smallvec_copy(&sp.impaled_arrows, &mut dp.impaled_arrows);
+            }
             dp.hit_counter = sp.hit_counter;
-            clone_field_map_into(&sp.private_fields, &mut dp.private_fields);
+            if !sp.private_fields.is_empty() || !dp.private_fields.is_empty() {
+                clone_field_map_into(&sp.private_fields, &mut dp.private_fields);
+            }
         }
         if src.power_extensions.len() > pe_keep {
             dst.power_extensions
@@ -907,44 +1289,13 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
         }
     }
 
-    dst.ally_handles.clone_from(&src.ally_handles);
-    dst.enemy_handles.clone_from(&src.enemy_handles);
-    if src.escaped_handles.is_empty() {
-        if !dst.escaped_handles.is_empty() {
-            dst.escaped_handles.clear();
-        }
-    } else {
-        dst.escaped_handles.clone_from(&src.escaped_handles);
-    }
-    if src.removed_handles.is_empty() {
-        if !dst.removed_handles.is_empty() {
-            dst.removed_handles.clear();
-        }
-    } else {
-        dst.removed_handles.clone_from(&src.removed_handles);
-    }
-    if src.spawned_enemy_handles.is_empty() {
-        if !dst.spawned_enemy_handles.is_empty() {
-            dst.spawned_enemy_handles.clear();
-        }
-    } else {
-        dst.spawned_enemy_handles
-            .clone_from(&src.spawned_enemy_handles);
-    }
-    if src.pet_handles.is_empty() {
-        if !dst.pet_handles.is_empty() {
-            dst.pet_handles.clear();
-        }
-    } else {
-        dst.pet_handles.clone_from(&src.pet_handles);
-    }
-    if src.damage_history.is_empty() {
-        if !dst.damage_history.is_empty() {
-            dst.damage_history.clear();
-        }
-    } else {
-        dst.damage_history.clone_from(&src.damage_history);
-    }
+    copy_vec_copy(&src.ally_handles, &mut dst.ally_handles);
+    copy_vec_copy(&src.enemy_handles, &mut dst.enemy_handles);
+    copy_smallvec_copy(&src.escaped_handles, &mut dst.escaped_handles);
+    copy_smallvec_copy(&src.removed_handles, &mut dst.removed_handles);
+    copy_smallvec_copy(&src.spawned_enemy_handles, &mut dst.spawned_enemy_handles);
+    copy_smallvec_copy(&src.pet_handles, &mut dst.pet_handles);
+    copy_vec_copy(&src.damage_history, &mut dst.damage_history);
     clone_semantic_history_into(&src.semantic_history, &mut dst.semantic_history);
     if src.pending.is_none() {
         if dst.pending.is_some() {
@@ -956,6 +1307,7 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
     dst.vakuu_auto_select_depth = src.vakuu_auto_select_depth;
     clone_hook_cache_into(&src.hook_cache, &mut dst.hook_cache);
     dst.deck_dirty = src.deck_dirty;
+    dst.relic_dirty_mask = src.relic_dirty_mask;
 }
 
 struct BeamRunOutput {
@@ -1275,6 +1627,7 @@ fn prepare_staged_candidate(
     check_local_choice_tt: bool,
     inherit_lookahead: bool,
     use_choice_slab: bool,
+    defer_pack: bool,
     content: &dyn ContentDispatcher,
     root_baseline: &RootEvalBaseline,
     policy: &SearchPolicy,
@@ -1286,11 +1639,13 @@ fn prepare_staged_candidate(
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
 ) -> Option<StagedCandidateFields> {
-    if !allows_brightest_flame(
-        policy.brightest_flame_max_hp_loss_limit,
-        root_baseline.initial_brightest_flame_max_hp_spent,
-        root_baseline.brightest_flame_spent(&scratch.state),
-    ) {
+    if policy.brightest_flame_max_hp_loss_limit.is_some()
+        && !allows_brightest_flame(
+            policy.brightest_flame_max_hp_loss_limit,
+            root_baseline.initial_brightest_flame_max_hp_spent,
+            root_baseline.brightest_flame_spent(&scratch.state),
+        )
+    {
         return None;
     }
     let mut final_extra_end = has_extra_end_turn;
@@ -1317,11 +1672,13 @@ fn prepare_staged_candidate(
             clone_battle_state_into(&scratch.state, &mut scratch.pre_end_turn_state);
             match CombatEngine::end_player_turn(&mut scratch.state, content) {
                 Ok(StepOutcome::Completed) | Ok(StepOutcome::CombatEnded { .. }) => {
-                    if !allows_brightest_flame(
-                        policy.brightest_flame_max_hp_loss_limit,
-                        root_baseline.initial_brightest_flame_max_hp_spent,
-                        root_baseline.brightest_flame_spent(&scratch.state),
-                    ) {
+                    if policy.brightest_flame_max_hp_loss_limit.is_some()
+                        && !allows_brightest_flame(
+                            policy.brightest_flame_max_hp_loss_limit,
+                            root_baseline.initial_brightest_flame_max_hp_spent,
+                            root_baseline.brightest_flame_spent(&scratch.state),
+                        )
+                    {
                         return None;
                     }
                     final_extra_end = true;
@@ -1449,12 +1806,20 @@ fn prepare_staged_candidate(
     }
 
     let state_hash = hash_canonical_key(&scratch.state);
-
     if check_local_choice_tt && !scratch.try_insert_local_choice_tt(state_hash) {
         return None;
     }
+    if !is_terminal {
+        tt.prefetch(state_hash);
+    }
     let full_eval = if !is_terminal {
-        let mut full = evaluate_full(&scratch.state, content, &fast_eval, root_baseline);
+        let mut full = evaluate_full_details_cached(
+            &scratch.state,
+            content,
+            &fast_eval,
+            root_baseline,
+            Some(&mut scratch.eval_intent_cache),
+        );
         full.beam_rank_score = compute_beam_rank_score_with_centi(
             &fast_eval,
             &full,
@@ -1489,12 +1854,12 @@ fn prepare_staged_candidate(
         tt_score,
     );
 
-    if !check_local_choice_tt && !is_terminal && tt.probe_dominated(state_hash, &label) {
+    if !is_terminal && tt.probe_dominated(state_hash, &label) {
         scratch.tt_probe_pruned += 1;
         return None;
     }
 
-    let (state_slab_idx, state_off, state_len) = if is_terminal {
+    let (state_slab_idx, state_off, state_len) = if is_terminal || defer_pack {
         (0, 0, 0)
     } else {
         pack_state(&scratch.state, &mut scratch.pack_buf);
@@ -1594,6 +1959,7 @@ fn finalize_candidate(
         false,
         choices.is_empty(),
         false,
+        false,
         content,
         root_baseline,
         policy,
@@ -1613,6 +1979,21 @@ fn finalize_candidate(
     let rare_eval = rare_eval_opt(&s.fast_eval);
     let stored_fast = StoredFastEval::from(&s.fast_eval);
     let stored_full = s.full_eval.map(|f| f.to_stored());
+    let fast_beam_score = stored_full
+        .as_ref()
+        .map_or(base_score, |f| f.beam_rank_score);
+    scratch.cand_shards.push(if s.is_terminal {
+        u16::MAX
+    } else {
+        s.state_hash.shard_index() as u16
+    });
+    scratch.cand_fast_meta.push(WorkerCandFastMeta {
+        flags: u8::from(s.is_terminal) | (u8::from(s.turn_completed) << 1),
+        potion_count: s.potion_count.min(u8::MAX as u16) as u8,
+        explicit_potion_count: s.explicit_potion_count.min(u8::MAX as u16) as u8,
+        _pad: [0; 5],
+        beam_score: fast_beam_score,
+    });
     scratch.candidates.push(WorkerCandidate {
         sort_key: (task.parent_rank, task.action_ord, choice_ord),
         parent_id: task.parent_id,
@@ -1647,6 +2028,32 @@ fn finalize_candidate(
     });
 }
 
+fn replay_deferred_choice_state_from_arena(
+    paused_base: &BattleState,
+    dst: &mut BattleState,
+    choice_arena: &ChoiceArena,
+    choices_offset: u32,
+    choices_len: u8,
+    has_extra_end_turn: bool,
+    content: &dyn ContentDispatcher,
+) -> bool {
+    clone_battle_state_into(paused_base, dst);
+    let mut sel_buf: SmallVec<[usize; 16]> = SmallVec::new();
+    for step_idx in 0..(choices_len as usize) {
+        choice_arena.copy_step_indices(choices_offset, step_idx, &mut sel_buf);
+        if CombatEngine::resume_choice(dst, content, &sel_buf).is_err() {
+            return false;
+        }
+    }
+    if has_extra_end_turn {
+        match CombatEngine::end_player_turn(dst, content) {
+            Ok(StepOutcome::Completed) | Ok(StepOutcome::CombatEnded { .. }) => {}
+            _ => return false,
+        }
+    }
+    true
+}
+
 #[allow(clippy::too_many_arguments)]
 fn stage_resolved_choice(
     scratch: &mut WorkerScratch,
@@ -1656,6 +2063,9 @@ fn stage_resolved_choice(
     choices: &[SmallVec<[usize; 8]>],
     is_delayed_or_end_turn: bool,
     max_branches: usize,
+    defer_pack: bool,
+    likely_runs_mini_rollout: bool,
+    static_ctx: &Arc<RootStaticContext>,
     content: &dyn ContentDispatcher,
     root_baseline: &RootEvalBaseline,
     policy: &SearchPolicy,
@@ -1663,18 +2073,19 @@ fn stage_resolved_choice(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
-    probe_cache: &ChoiceProbeCache,
+    probe_cache: &mut ProbeCacheAccess<'_>,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
 ) {
-    let Some(mut s) = prepare_staged_candidate(
+    let Some(s) = prepare_staged_candidate(
         scratch,
         task,
         false,
         true,
         false,
         true,
+        defer_pack,
         content,
         root_baseline,
         policy,
@@ -1689,9 +2100,11 @@ fn stage_resolved_choice(
         return;
     };
 
+    let (choices_offset, choices_len) = scratch.choice_staging_choices.push_choices(choices);
     let already_resolved = scratch.choice_resolved.len();
     let should_probe_in_mem = !s.is_terminal
-        && ((is_delayed_or_end_turn && already_resolved >= 1)
+        && (likely_runs_mini_rollout
+            || (is_delayed_or_end_turn && already_resolved >= 1)
             || (!is_delayed_or_end_turn && already_resolved >= max_branches));
     let (
         lookahead_score,
@@ -1700,27 +2113,59 @@ fn stage_resolved_choice(
         has_lookahead,
         lookahead_victory,
     ) = if should_probe_in_mem {
-        if let Some(probe) = evaluate_choice_probe_state(
-            &mut scratch.choice_probe_ws,
-            &scratch.state,
-            s.state_hash,
-            probe_cache,
-            content,
-            root_baseline,
-            profile,
-            eval_mode,
-            1,
-            s.optional_paid_potion_cost,
-            s.optional_paid_potion_count as usize,
-            s.action_count,
-        ) {
+        let probe_opt = if s.state_len > 0 {
+            let packed_fallback =
+                scratch
+                    .choice_slab
+                    .get(s.state_slab_idx, s.state_off, s.state_len);
+            evaluate_choice_probe_in_place(
+                &mut scratch.choice_probe_ws,
+                &mut scratch.state,
+                packed_fallback,
+                s.state_hash,
+                probe_cache,
+                static_ctx,
+                content,
+                root_baseline,
+                profile,
+                eval_mode,
+                1,
+                s.optional_paid_potion_cost,
+                s.optional_paid_potion_count as usize,
+                s.action_count,
+            )
+        } else {
+            let paused_base = &scratch.choice_paused_states[0];
+            let arena_ref = &scratch.choice_staging_choices;
+            let has_extra_end = s.has_extra_end_turn;
+            evaluate_choice_probe_in_place_with_restore(
+                &mut scratch.choice_probe_ws,
+                &mut scratch.state,
+                |st| {
+                    replay_deferred_choice_state_from_arena(
+                        paused_base,
+                        st,
+                        arena_ref,
+                        choices_offset,
+                        choices_len,
+                        has_extra_end,
+                        content,
+                    )
+                },
+                s.state_hash,
+                probe_cache,
+                content,
+                root_baseline,
+                profile,
+                eval_mode,
+                1,
+                s.optional_paid_potion_cost,
+                s.optional_paid_potion_count as usize,
+                s.action_count,
+            )
+        };
+        if let Some(probe) = probe_opt {
             let encoded = encode_choice_probe_rank_score(&probe);
-            if !s.turn_completed {
-                if let Some(fe) = s.full_eval.as_mut() {
-                    fe.has_choice_lookahead = true;
-                    fe.choice_lookahead_score = Some(encoded);
-                }
-            }
             (
                 encoded,
                 probe.hp_lost,
@@ -1774,7 +2219,6 @@ fn stage_resolved_choice(
     let rare_eval = rare_eval_opt(&s.fast_eval);
     let stored_fast = StoredFastEval::from(&s.fast_eval);
     let stored_full = s.full_eval.map(|f| f.to_stored());
-    let (choices_offset, choices_len) = scratch.choice_staging_choices.push_choices(choices);
     scratch.choice_resolved.push(ResolvedChoiceCandidate {
         choices_offset,
         choices_len,
@@ -1821,7 +2265,7 @@ fn probe_choice_selection_1t(
     root_baseline: &RootEvalBaseline,
     profile: &SolverSearchProfile,
     eval_mode: EvalMode,
-    probe_cache: &ChoiceProbeCache,
+    probe_cache: &mut ProbeCacheAccess<'_>,
     task: &ActionTask,
     sel: &[usize],
 ) -> f64 {
@@ -1874,9 +2318,41 @@ fn probe_choice_selection_1t(
         ),
     };
     let state_hash = hash_canonical_key(&scratch.state);
-    let Some(probe) = evaluate_choice_probe_state(
+    let paused_base = &scratch.choice_paused_states[0];
+    let Some(probe) = evaluate_choice_probe_in_place_with_restore(
         &mut scratch.choice_probe_ws,
-        &scratch.state,
+        &mut scratch.state,
+        |s| {
+            clone_battle_state_into(paused_base, s);
+            let Ok(mut re_out) = CombatEngine::resume_choice(s, content, sel) else {
+                return false;
+            };
+            let mut re_guard = 0usize;
+            while let StepOutcome::NeedsChoice(sub_req) = re_out {
+                re_guard += 1;
+                if re_guard >= 4 || sub_req.candidates.is_empty() {
+                    if sub_req.min_count == 0 {
+                        if let Ok(next) = CombatEngine::resume_choice(s, content, &[]) {
+                            re_out = next;
+                            continue;
+                        }
+                    }
+                    return false;
+                }
+                let fallback_sel: SmallVec<[usize; 8]> = if sub_req.min_count == 0 {
+                    SmallVec::new()
+                } else {
+                    let take = sub_req.min_count.min(sub_req.candidates.len());
+                    let start = sub_req.candidates.len() - take;
+                    (start..sub_req.candidates.len()).collect()
+                };
+                let Ok(next) = CombatEngine::resume_choice(s, content, &fallback_sel) else {
+                    return false;
+                };
+                re_out = next;
+            }
+            true
+        },
         state_hash,
         probe_cache,
         content,
@@ -1901,6 +2377,7 @@ fn screen_high_branching_multi_pick(
     action: CompactAction,
     por_key: u64,
     is_delayed_or_end_turn: bool,
+    is_turn_setup: bool,
     max_branches: usize,
     static_ctx: &Arc<RootStaticContext>,
     content: &dyn ContentDispatcher,
@@ -1910,7 +2387,7 @@ fn screen_high_branching_multi_pick(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
-    probe_cache: &ChoiceProbeCache,
+    probe_cache: &mut ProbeCacheAccess<'_>,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -1920,9 +2397,12 @@ fn screen_high_branching_multi_pick(
     let mut groups: SmallVec<[(usize, SmallVec<[usize; 4]>); 24]> = SmallVec::new();
     if policy.accelerations.enable_multiset_choice_dedup {
         let mut keys: SmallVec<[HandCardEquivKey; 24]> = SmallVec::with_capacity(n);
-        clone_battle_state_into(&scratch.choice_paused_states[0], &mut scratch.state);
         for i in 0..n {
-            let k = card_equiv_key(&mut scratch.state, content, req.candidates[i]);
+            let k = card_equiv_key(
+                &mut scratch.choice_paused_states[0],
+                content,
+                req.candidates[i],
+            );
             if let Some(pos) = keys.iter().position(|&ek| ek == k) {
                 groups[pos].1.push(i);
             } else {
@@ -1997,6 +2477,9 @@ fn screen_high_branching_multi_pick(
                         choices_so_far.as_slice(),
                         is_delayed_or_end_turn,
                         max_branches,
+                        !is_turn_setup,
+                        true,
+                        static_ctx,
                         content,
                         root_baseline,
                         policy,
@@ -2028,6 +2511,7 @@ fn screen_high_branching_multi_pick(
                             action,
                             por_key,
                             is_delayed_or_end_turn,
+                            is_turn_setup,
                             max_branches,
                             static_ctx,
                             content,
@@ -2061,11 +2545,10 @@ fn screen_high_branching_multi_pick(
         let mut sub_req = req.clone();
         sub_req.candidates = kept_orig.iter().map(|&idx| req.candidates[idx]).collect();
         sub_req.max_count = sub_req.max_count.min(kept_orig.len());
-        clone_battle_state_into(&scratch.choice_paused_states[0], &mut scratch.state);
         let mut sub_choices = std::mem::take(&mut scratch.choice_enum_bufs[0]);
         let mut enum_scratch = std::mem::take(&mut scratch.choice_enum_scratch);
         enumerate_canonical_choices_with_scratch(
-            &mut scratch.state,
+            &mut scratch.choice_paused_states[0],
             content,
             &sub_req,
             CHOICE_RESOLVED_CAPACITY,
@@ -2235,11 +2718,10 @@ fn screen_high_branching_multi_pick(
     let mut sub_req = req.clone();
     sub_req.candidates = kept_orig.iter().map(|&idx| req.candidates[idx]).collect();
     sub_req.max_count = sub_req.max_count.min(kept_orig.len());
-    clone_battle_state_into(&scratch.choice_paused_states[0], &mut scratch.state);
     let mut sub_choices = std::mem::take(&mut scratch.choice_enum_bufs[0]);
     let mut enum_scratch = std::mem::take(&mut scratch.choice_enum_scratch);
     enumerate_canonical_choices_with_scratch(
-        &mut scratch.state,
+        &mut scratch.choice_paused_states[0],
         content,
         &sub_req,
         CHOICE_RESOLVED_CAPACITY,
@@ -2267,6 +2749,7 @@ fn resolve_choices_recursive(
     action: CompactAction,
     por_key: u64,
     is_delayed_or_end_turn: bool,
+    is_turn_setup: bool,
     max_branches: usize,
     static_ctx: &Arc<RootStaticContext>,
     content: &dyn ContentDispatcher,
@@ -2276,7 +2759,7 @@ fn resolve_choices_recursive(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
-    probe_cache: &ChoiceProbeCache,
+    probe_cache: &mut ProbeCacheAccess<'_>,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -2308,6 +2791,7 @@ fn resolve_choices_recursive(
             action,
             por_key,
             is_delayed_or_end_turn,
+            is_turn_setup,
             max_branches,
             static_ctx,
             content,
@@ -2328,35 +2812,54 @@ fn resolve_choices_recursive(
     };
 
     if !screened {
-        clone_battle_state_into(&scratch.choice_paused_states[depth], &mut scratch.state);
-        if scratch.choice_paused_states[depth].pending.is_none() {
+        let Some(req) = scratch.choice_paused_states[depth]
+            .pending
+            .as_ref()
+            .map(|p| p.request.clone())
+        else {
             return;
-        }
+        };
         let mut buf = std::mem::take(&mut scratch.choice_enum_bufs[depth]);
         let mut enum_scratch = std::mem::take(&mut scratch.choice_enum_scratch);
-        {
-            let paused = &scratch.choice_paused_states[depth];
-            let req = &paused.pending.as_ref().expect("pending checked").request;
-            enumerate_canonical_choices_with_scratch(
-                &mut scratch.state,
-                content,
-                req,
-                CHOICE_RESOLVED_CAPACITY,
-                policy.accelerations.enable_multiset_choice_dedup,
-                &mut enum_scratch,
-                &mut buf,
-            );
-        }
+        enumerate_canonical_choices_with_scratch(
+            &mut scratch.choice_paused_states[depth],
+            content,
+            &req,
+            CHOICE_RESOLVED_CAPACITY,
+            policy.accelerations.enable_multiset_choice_dedup,
+            &mut enum_scratch,
+            &mut buf,
+        );
         scratch.choice_enum_scratch = enum_scratch;
         scratch.choice_enum_bufs[depth] = buf;
     }
 
     let choice_options = std::mem::take(&mut scratch.choice_enum_bufs[depth]);
-    for sel in &choice_options {
+    let num_options = choice_options.len();
+    for (opt_idx, sel) in choice_options.iter().enumerate() {
         if scratch.choice_resolved.len() >= CHOICE_RESOLVED_CAPACITY {
             break;
         }
-        clone_battle_state_into(&scratch.choice_paused_states[depth], &mut scratch.state);
+        let est_total_options = scratch.choice_resolved.len() + (num_options - opt_idx);
+        let likely_runs_mini_rollout = if is_delayed_or_end_turn {
+            est_total_options >= 2
+        } else {
+            est_total_options > max_branches
+        };
+        let defer_pack = if is_turn_setup {
+            false
+        } else if est_total_options >= max_branches * 2 {
+            true
+        } else if est_total_options > max_branches {
+            scratch.choice_resolved.len() >= max_branches
+        } else {
+            false
+        };
+        if depth > 0 && opt_idx + 1 == num_options {
+            std::mem::swap(&mut scratch.choice_paused_states[depth], &mut scratch.state);
+        } else {
+            clone_battle_state_into(&scratch.choice_paused_states[depth], &mut scratch.state);
+        }
         scratch.choice_replay_attempts += 1;
         scratch.transitions += 1;
         let Ok(outcome) = CombatEngine::resume_choice(&mut scratch.state, content, sel) else {
@@ -2373,6 +2876,9 @@ fn resolve_choices_recursive(
                     choices_so_far.as_slice(),
                     is_delayed_or_end_turn,
                     max_branches,
+                    defer_pack,
+                    likely_runs_mini_rollout,
+                    static_ctx,
                     content,
                     root_baseline,
                     policy,
@@ -2406,6 +2912,7 @@ fn resolve_choices_recursive(
                         action,
                         por_key,
                         is_delayed_or_end_turn,
+                        is_turn_setup,
                         max_branches,
                         static_ctx,
                         content,
@@ -2428,6 +2935,7 @@ fn resolve_choices_recursive(
     scratch.choice_enum_bufs[depth] = choice_options;
 }
 
+#[cfg(any(debug_assertions, test))]
 #[inline]
 fn compare_resolved_choice(
     a: &ResolvedChoiceCandidate,
@@ -2501,6 +3009,99 @@ fn compare_resolved_choice(
         .then_with(|| a.state_hash.cmp(&b.state_hash))
 }
 
+#[derive(Clone, Copy)]
+struct ChoiceSortKey {
+    state_hash: StateHash,
+    lookahead_score: f64,
+    beam_score: f64,
+    lookahead_hp_lost: i32,
+    cum_hp_lost: i16,
+    lookahead_board: i32,
+    board: i32,
+    opt: i32,
+    flags: u8, // bit 0 = lookahead_victory, bit 1 = has_lookahead
+}
+
+impl ChoiceSortKey {
+    #[inline(always)]
+    fn from_candidate(c: &ResolvedChoiceCandidate) -> Self {
+        let (beam_score, board, opt_cards) = match c.full_eval.as_ref() {
+            Some(f) => (f.beam_rank_score, f.board_investment, f.optionality_cards),
+            None => (c.base_score, 0, 0),
+        };
+        let opt = (c.fast_eval.energy as i32).max(0) + (c.fast_eval.stars as i32).max(0) + opt_cards;
+        Self {
+            state_hash: c.state_hash,
+            lookahead_score: c.lookahead_score,
+            beam_score,
+            lookahead_hp_lost: c.lookahead_hp_lost,
+            cum_hp_lost: c.fast_eval.cumulative_hp_lost,
+            lookahead_board: c.lookahead_board_investment,
+            board,
+            opt,
+            flags: u8::from(c.lookahead_victory) | (u8::from(c.has_lookahead) << 1),
+        }
+    }
+}
+
+#[inline(always)]
+fn compare_choice_sort_key(
+    a: &ChoiceSortKey,
+    b: &ChoiceSortKey,
+    criterion: usize,
+) -> std::cmp::Ordering {
+    match criterion {
+        1 => {
+            let cmp = b.beam_score.total_cmp(&a.beam_score);
+            if !cmp.is_eq() {
+                return cmp;
+            }
+        }
+        2 => {
+            let cmp = a.lookahead_hp_lost.cmp(&b.lookahead_hp_lost);
+            if !cmp.is_eq() {
+                return cmp;
+            }
+            let cmp = a.cum_hp_lost.cmp(&b.cum_hp_lost);
+            if !cmp.is_eq() {
+                return cmp;
+            }
+        }
+        3 => {
+            let cmp = b.lookahead_board.cmp(&a.lookahead_board);
+            if !cmp.is_eq() {
+                return cmp;
+            }
+            let cmp = b.board.cmp(&a.board);
+            if !cmp.is_eq() {
+                return cmp;
+            }
+            let cmp = b.opt.cmp(&a.opt);
+            if !cmp.is_eq() {
+                return cmp;
+            }
+        }
+        _ => {}
+    }
+
+    let b_vic = (b.flags & 1) != 0;
+    let a_vic = (a.flags & 1) != 0;
+    let b_has = (b.flags & 2) != 0;
+    let a_has = (a.flags & 2) != 0;
+    b_vic
+        .cmp(&a_vic)
+        .then_with(|| b_has.cmp(&a_has))
+        .then_with(|| {
+            if a_has && b_has {
+                b.lookahead_score.total_cmp(&a.lookahead_score)
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        })
+        .then_with(|| b.beam_score.total_cmp(&a.beam_score))
+        .then_with(|| a.state_hash.cmp(&b.state_hash))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn commit_resolved_choices(
     scratch: &mut WorkerScratch,
@@ -2513,7 +3114,7 @@ fn commit_resolved_choices(
     root_baseline: &RootEvalBaseline,
     profile: &SolverSearchProfile,
     eval_mode: EvalMode,
-    probe_cache: &ChoiceProbeCache,
+    probe_cache: &mut ProbeCacheAccess<'_>,
 ) {
     let resolved_count = scratch.choice_resolved.len();
     if resolved_count == 0 {
@@ -2541,9 +3142,29 @@ fn commit_resolved_choices(
     if run_mini_rollout {
         for i in 0..resolved_count {
             if scratch.choice_resolved[i].has_lookahead {
+                let c = &mut scratch.choice_resolved[i];
+                if !c.turn_completed {
+                    let encoded = c.lookahead_score;
+                    if let Some(fe) = c.full_eval.as_mut() {
+                        fe.has_choice_lookahead = true;
+                        fe.choice_lookahead_score = Some(encoded);
+                    }
+                }
                 continue;
             }
-            let (is_term, slab_idx, off, len, state_hash, opt_cost, opt_count, action_count) = {
+            let (
+                is_term,
+                slab_idx,
+                off,
+                len,
+                state_hash,
+                opt_cost,
+                opt_count,
+                action_count,
+                ch_off,
+                ch_len,
+                has_extra_end,
+            ) = {
                 let c = &scratch.choice_resolved[i];
                 (
                     c.is_terminal,
@@ -2554,6 +3175,9 @@ fn commit_resolved_choices(
                     c.optional_paid_potion_cost,
                     c.optional_paid_potion_count,
                     c.action_count,
+                    c.choices_offset,
+                    c.choices_len,
+                    c.has_extra_end_turn,
                 )
             };
             let probe = if is_term {
@@ -2565,7 +3189,7 @@ fn commit_resolved_choices(
                     is_victory: c.fast_eval.won(),
                     is_defeat: c.fast_eval.player_dead() || c.fast_eval.projected_player_hp <= 0,
                 }
-            } else {
+            } else if len > 0 {
                 let state_bytes = scratch.choice_slab.get(slab_idx, off, len);
                 let Some(probe) = evaluate_choice_probe_packed(
                     &mut scratch.choice_probe_ws,
@@ -2573,6 +3197,48 @@ fn commit_resolved_choices(
                     state_hash,
                     probe_cache,
                     static_ctx,
+                    content,
+                    root_baseline,
+                    profile,
+                    eval_mode,
+                    1,
+                    opt_cost,
+                    opt_count as usize,
+                    action_count,
+                ) else {
+                    continue;
+                };
+                probe
+            } else {
+                if !replay_deferred_choice_state_from_arena(
+                    &scratch.choice_paused_states[0],
+                    &mut scratch.state,
+                    &scratch.choice_staging_choices,
+                    ch_off,
+                    ch_len,
+                    has_extra_end,
+                    content,
+                ) {
+                    continue;
+                }
+                let paused_base = &scratch.choice_paused_states[0];
+                let arena_ref = &scratch.choice_staging_choices;
+                let Some(probe) = evaluate_choice_probe_in_place_with_restore(
+                    &mut scratch.choice_probe_ws,
+                    &mut scratch.state,
+                    |st| {
+                        replay_deferred_choice_state_from_arena(
+                            paused_base,
+                            st,
+                            arena_ref,
+                            ch_off,
+                            ch_len,
+                            has_extra_end,
+                            content,
+                        )
+                    },
+                    state_hash,
+                    probe_cache,
                     content,
                     root_baseline,
                     profile,
@@ -2600,7 +3266,29 @@ fn commit_resolved_choices(
                 }
             }
         }
+    } else {
+        for c in &mut scratch.choice_resolved[..resolved_count] {
+            if c.has_lookahead {
+                c.has_lookahead = false;
+                c.lookahead_score = 0.0;
+                c.lookahead_hp_lost = c.fast_eval.cumulative_hp_lost as i32;
+                c.lookahead_board_investment =
+                    c.full_eval.as_ref().map_or(0, |f| f.board_investment);
+                c.lookahead_victory = c.fast_eval.won();
+            }
+        }
     }
+
+    let mut keys: [std::mem::MaybeUninit<ChoiceSortKey>; CHOICE_RESOLVED_CAPACITY] =
+        [const { std::mem::MaybeUninit::uninit() }; CHOICE_RESOLVED_CAPACITY];
+    debug_assert!(resolved_count <= CHOICE_RESOLVED_CAPACITY);
+    for (i, c) in scratch.choice_resolved[..resolved_count].iter().enumerate() {
+        keys[i].write(ChoiceSortKey::from_candidate(c));
+    }
+    // SAFETY: `keys[..resolved_count]` was just initialized above.
+    let keys = unsafe {
+        std::slice::from_raw_parts(keys.as_ptr().cast::<ChoiceSortKey>(), resolved_count)
+    };
 
     let mut selected_indices = [0usize; CHOICE_RESOLVED_CAPACITY];
     let mut selected_len = 0usize;
@@ -2610,7 +3298,17 @@ fn commit_resolved_choices(
             selected_len += 1;
         }
         selected_indices[..selected_len].sort_unstable_by(|&ia, &ib| {
-            compare_resolved_choice(&scratch.choice_resolved[ia], &scratch.choice_resolved[ib], 0)
+            let ord = compare_choice_sort_key(&keys[ia], &keys[ib], 0);
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                ord,
+                compare_resolved_choice(
+                    &scratch.choice_resolved[ia],
+                    &scratch.choice_resolved[ib],
+                    0
+                )
+            );
+            ord
         });
     } else {
         let cap = max_branches.min(resolved_count);
@@ -2637,12 +3335,17 @@ fn commit_resolved_choices(
                         continue;
                     }
                     if best_i.is_none_or(|bi| {
-                        compare_resolved_choice(
-                            &scratch.choice_resolved[i],
-                            &scratch.choice_resolved[bi],
-                            criterion,
-                        )
-                        .is_lt()
+                        let ord = compare_choice_sort_key(&keys[i], &keys[bi], criterion);
+                        #[cfg(debug_assertions)]
+                        debug_assert_eq!(
+                            ord,
+                            compare_resolved_choice(
+                                &scratch.choice_resolved[i],
+                                &scratch.choice_resolved[bi],
+                                criterion
+                            )
+                        );
+                        ord.is_lt()
                     }) {
                         best_i = Some(i);
                     }
@@ -2654,26 +3357,74 @@ fn commit_resolved_choices(
             }
         }
         selected_indices[..selected_len].sort_unstable_by(|&ia, &ib| {
-            compare_resolved_choice(&scratch.choice_resolved[ia], &scratch.choice_resolved[ib], 0)
+            let ord = compare_choice_sort_key(&keys[ia], &keys[ib], 0);
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                ord,
+                compare_resolved_choice(
+                    &scratch.choice_resolved[ia],
+                    &scratch.choice_resolved[ib],
+                    0
+                )
+            );
+            ord
         });
     }
 
     for (choice_ord, &idx) in selected_indices[..selected_len].iter().enumerate() {
         let cand = scratch.choice_resolved[idx];
-        let (state_slab_idx, state_off, state_len) = if cand.state_len == 0 {
+        let (state_slab_idx, state_off, state_len) = if cand.is_terminal {
             (0, 0, 0)
-        } else {
+        } else if cand.state_len > 0 {
             let bytes =
                 scratch
                     .choice_slab
                     .get(cand.state_slab_idx, cand.state_off, cand.state_len);
             scratch.slab.alloc_slice(bytes)
+        } else {
+            let ok = replay_deferred_choice_state_from_arena(
+                &scratch.choice_paused_states[0],
+                &mut scratch.state,
+                &scratch.choice_staging_choices,
+                cand.choices_offset,
+                cand.choices_len,
+                cand.has_extra_end_turn,
+                content,
+            );
+            debug_assert!(ok, "deferred choice replay failed in commit_resolved_choices");
+            if !ok {
+                continue;
+            }
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                hash_canonical_key(&scratch.state),
+                cand.state_hash,
+                "deferred choice replay state_hash diverged"
+            );
+            pack_state(&scratch.state, &mut scratch.pack_buf);
+            scratch.slab.alloc_slice(&scratch.pack_buf)
         };
         let (choices_offset, choices_len) = scratch.staged_choices.extend_from_arena_slice(
             &scratch.choice_staging_choices,
             cand.choices_offset,
             cand.choices_len,
         );
+        scratch.cand_shards.push(if cand.is_terminal {
+            u16::MAX
+        } else {
+            cand.state_hash.shard_index() as u16
+        });
+        let fast_beam_score = cand
+            .full_eval
+            .as_ref()
+            .map_or(cand.base_score, |f| f.beam_rank_score);
+        scratch.cand_fast_meta.push(WorkerCandFastMeta {
+            flags: u8::from(cand.is_terminal) | (u8::from(cand.turn_completed) << 1),
+            potion_count: cand.potion_count.min(u8::MAX as u16) as u8,
+            explicit_potion_count: cand.explicit_potion_count.min(u8::MAX as u16) as u8,
+            _pad: [0; 5],
+            beam_score: fast_beam_score,
+        });
         scratch.candidates.push(WorkerCandidate {
             sort_key: (task.parent_rank, task.action_ord, choice_ord as u32),
             parent_id: task.parent_id,
@@ -2723,7 +3474,7 @@ fn execute_action_from_parent(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
-    probe_cache: &ChoiceProbeCache,
+    probe_cache: &mut ProbeCacheAccess<'_>,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -2787,6 +3538,7 @@ fn execute_action_from_parent(
             action,
             por_key,
             is_delayed_or_end_turn,
+            true,
             max_branches,
             static_ctx,
             content,
@@ -2895,6 +3647,7 @@ fn execute_action_from_parent(
                 action,
                 por_key,
                 is_delayed_or_end_turn,
+                false,
                 max_branches,
                 static_ctx,
                 content,
@@ -2933,7 +3686,7 @@ fn expand_wave_tasks(
     pool: Option<&rayon::ThreadPool>,
     static_ctx: &Arc<RootStaticContext>,
     arena: &NodeArena,
-    main_arena: &MainStateArena,
+    parent_source: ParentStateSource<'_>,
     content: &(dyn ContentDispatcher + Sync),
     root_baseline: &RootEvalBaseline,
     policy: &SearchPolicy,
@@ -2941,7 +3694,7 @@ fn expand_wave_tasks(
     cert: &ClosureCertificate,
     frozen_incumbent: &FrozenIncumbentBound,
     tt: &ShardedParetoTT,
-    probe_cache: &ChoiceProbeCache,
+    probe_cache: &mut ChoiceProbeCache,
     sensitivity: &CombatOrderSensitivity,
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
@@ -2951,10 +3704,12 @@ fn expand_wave_tasks(
     flat_tasks: &mut Vec<(usize, ActionTask)>,
     parent_slices: &mut Vec<AtomicU64>,
 ) -> bool {
-    for s in scratches.iter_mut() {
-        s.reset_for_wave();
-    }
     if parent_slice.is_empty() {
+        for s in scratches.iter_mut() {
+            if s.wave_dirty {
+                s.reset_for_wave();
+            }
+        }
         return true;
     }
     if parent_slices.len() < parent_slice.len() {
@@ -2962,8 +3717,18 @@ fn expand_wave_tasks(
     }
 
     if dop <= 1 || pool.is_none() {
+        if scratches[0].wave_dirty {
+            scratches[0].reset_for_wave();
+        }
+        scratches[0].wave_dirty = true;
+        for s in &mut scratches[1..] {
+            if s.wave_dirty {
+                s.reset_for_wave();
+            }
+        }
         let scratch = &mut scratches[0];
         let parent_state = &mut parent_states[0];
+        let mut probe_access = ProbeCacheAccess::SingleThread(probe_cache);
         for (parent_rank, &pid) in parent_slice.iter().enumerate() {
             if cancel.load(Ordering::Relaxed) {
                 parent_slices[parent_rank].store(0, Ordering::Relaxed);
@@ -2972,7 +3737,7 @@ fn expand_wave_tasks(
             let pnode = arena.get(pid);
             let p_has_la = pnode.has_choice_lookahead();
             let p_la_score = pnode.choice_lookahead_score();
-            let pbytes = main_arena.get(pnode.state_handle);
+            let pbytes = parent_source.get(pnode.state_handle);
             if unpack_state(pbytes, static_ctx, parent_state).is_err() {
                 parent_slices[parent_rank].store(0, Ordering::Relaxed);
                 continue;
@@ -3012,7 +3777,7 @@ fn expand_wave_tasks(
                     cert,
                     frozen_incumbent,
                     tt,
-                    probe_cache,
+                    &mut probe_access,
                     sensitivity,
                     allow_paid_optional_potions,
                     eval_mode,
@@ -3034,13 +3799,17 @@ fn expand_wave_tasks(
 
     let pool = pool.unwrap();
     if parent_slice.len() < dop && parent_slice.len() <= parent_states.len() {
+        if scratches[0].wave_dirty {
+            scratches[0].reset_for_wave();
+        }
+        scratches[0].wave_dirty = true;
         flat_tasks.clear();
         let mut unpacked_count = 0usize;
         for (parent_rank, &pid) in parent_slice.iter().enumerate() {
             let pnode = arena.get(pid);
             let p_has_la = pnode.has_choice_lookahead();
             let p_la_score = pnode.choice_lookahead_score();
-            let pbytes = main_arena.get(pnode.state_handle);
+            let pbytes = parent_source.get(pnode.state_handle);
             let pstate = &mut parent_states[unpacked_count];
             if unpack_state(pbytes, static_ctx, pstate).is_err() {
                 continue;
@@ -3072,9 +3841,20 @@ fn expand_wave_tasks(
         }
 
         if flat_tasks.is_empty() {
+            for s in &mut scratches[1..] {
+                if s.wave_dirty {
+                    s.reset_for_wave();
+                }
+            }
             return false;
         }
         if flat_tasks.len() <= 1 || (parent_slice.len() <= 2 && flat_tasks.len() <= 4) {
+            for s in &mut scratches[1..] {
+                if s.wave_dirty {
+                    s.reset_for_wave();
+                }
+            }
+            let mut probe_access = ProbeCacheAccess::SingleThread(probe_cache);
             for &(p_idx, ref task) in flat_tasks.iter() {
                 if cancel.load(Ordering::Relaxed) {
                     break;
@@ -3091,7 +3871,7 @@ fn expand_wave_tasks(
                     cert,
                     frozen_incumbent,
                     tt,
-                    probe_cache,
+                    &mut probe_access,
                     sensitivity,
                     allow_paid_optional_potions,
                     eval_mode,
@@ -3101,106 +3881,39 @@ fn expand_wave_tasks(
         }
 
         let active = dop.min(flat_tasks.len()).min(scratches.len());
+        for s in &mut scratches[active..] {
+            if s.wave_dirty {
+                s.reset_for_wave();
+            }
+        }
         let next_idx = AtomicUsize::new(0);
         let tasks_ref: &[(usize, ActionTask)] = flat_tasks.as_slice();
         let parents_ref = &parent_states[..unpacked_count];
+        let probe_cache_ref: &ChoiceProbeCache = &*probe_cache;
+        let (first_scratch, rest_scratches) = scratches[..active]
+            .split_first_mut()
+            .expect("active >= 1");
         pool.scope(|scope| {
-            for scratch in scratches[..active].iter_mut() {
+            for scratch in rest_scratches.iter_mut() {
                 let next_ref = &next_idx;
-                scope.spawn(move |_| loop {
-                    if cancel.load(Ordering::Relaxed) {
-                        break;
+                scope.spawn(move |_| {
+                    if scratch.wave_dirty {
+                        scratch.reset_for_wave();
                     }
-                    let idx = next_ref.fetch_add(1, Ordering::Relaxed);
-                    if idx >= tasks_ref.len() {
-                        break;
-                    }
-                    let (p_idx, ref task) = tasks_ref[idx];
-                    execute_action_from_parent(
-                        scratch,
-                        &parents_ref[p_idx],
-                        task,
-                        static_ctx,
-                        content,
-                        root_baseline,
-                        policy,
-                        profile,
-                        cert,
-                        frozen_incumbent,
-                        tt,
-                        probe_cache,
-                        sensitivity,
-                        allow_paid_optional_potions,
-                        eval_mode,
-                    );
-                });
-            }
-        });
-        return false;
-    }
-
-    for slot in &parent_slices[..parent_slice.len()] {
-        slot.store(0, Ordering::Relaxed);
-    }
-    let active = dop.min(parent_slice.len()).min(scratches.len()).min(parent_states.len());
-    let batch_size = (parent_slice.len() / (active * 4)).clamp(1, 6);
-    let next_parent = AtomicUsize::new(0);
-    let slices_ref = &parent_slices[..parent_slice.len()];
-    pool.scope(|scope| {
-        for (w_idx, (scratch, parent_state)) in scratches
-            .iter_mut()
-            .zip(parent_states.iter_mut())
-            .take(active)
-            .enumerate()
-        {
-            let next_ref = &next_parent;
-            scope.spawn(move |_| loop {
-                if cancel.load(Ordering::Relaxed) {
-                    break;
-                }
-                let batch_start = next_ref.fetch_add(batch_size, Ordering::Relaxed);
-                if batch_start >= parent_slice.len() {
-                    break;
-                }
-                let batch_end = (batch_start + batch_size).min(parent_slice.len());
-                for parent_rank in batch_start..batch_end {
-                    if cancel.load(Ordering::Relaxed) {
-                        break;
-                    }
-                    let pid = parent_slice[parent_rank];
-                    let pnode = arena.get(pid);
-                    let p_has_la = pnode.has_choice_lookahead();
-                    let p_la_score = pnode.choice_lookahead_score();
-                    let pbytes = main_arena.get(pnode.state_handle);
-                    if unpack_state(pbytes, static_ctx, parent_state).is_err() {
-                        continue;
-                    }
-                    let mut local_tasks = std::mem::take(&mut scratch.action_buf);
-                    local_tasks.clear();
-                    enumerate_parent_tasks(
-                        parent_rank as u32,
-                        pid,
-                        pnode,
-                        p_has_la,
-                        p_la_score,
-                        parent_state,
-                        content,
-                        policy,
-                        profile,
-                        sensitivity,
-                        root_baseline,
-                        allow_paid_optional_potions,
-                        &mut local_tasks,
-                        &mut scratch.por_pruned,
-                    );
-                    let c_start = scratch.candidates.len();
-                    for task in &local_tasks {
+                    scratch.wave_dirty = true;
+                    let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
+                    loop {
                         if cancel.load(Ordering::Relaxed) {
                             break;
                         }
+                        let idx = next_ref.fetch_add(1, Ordering::Relaxed);
+                        if idx >= tasks_ref.len() {
+                            break;
+                        }
+                        let (p_idx, ref task) = tasks_ref[idx];
                         execute_action_from_parent(
                             scratch,
-                            parent_state,
+                            &parents_ref[p_idx],
                             task,
                             static_ctx,
                             content,
@@ -3210,20 +3923,235 @@ fn expand_wave_tasks(
                             cert,
                             frozen_incumbent,
                             tt,
-                            probe_cache,
+                            &mut probe_access,
                             sensitivity,
                             allow_paid_optional_potions,
                             eval_mode,
                         );
                     }
-                    let c_len = scratch.candidates.len() - c_start;
-                    if c_len > 0 {
-                        slices_ref[parent_rank]
-                            .store(pack_parent_slice(w_idx, c_start, c_len), Ordering::Relaxed);
+                });
+            }
+            let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
+            loop {
+                if cancel.load(Ordering::Relaxed) {
+                    break;
+                }
+                let idx = next_idx.fetch_add(1, Ordering::Relaxed);
+                if idx >= tasks_ref.len() {
+                    break;
+                }
+                let (p_idx, ref task) = tasks_ref[idx];
+                execute_action_from_parent(
+                    first_scratch,
+                    &parents_ref[p_idx],
+                    task,
+                    static_ctx,
+                    content,
+                    root_baseline,
+                    policy,
+                    profile,
+                    cert,
+                    frozen_incumbent,
+                    tt,
+                    &mut probe_access,
+                    sensitivity,
+                    allow_paid_optional_potions,
+                    eval_mode,
+                );
+            }
+        });
+        return false;
+    }
+
+    for slot in &parent_slices[..parent_slice.len()] {
+        slot.store(0, Ordering::Relaxed);
+    }
+    let total = parent_slice.len();
+    let active = dop.min(total).min(scratches.len()).min(parent_states.len());
+    for s in &mut scratches[active..] {
+        if s.wave_dirty {
+            s.reset_for_wave();
+        }
+    }
+    let next_parent = AtomicUsize::new(0);
+    let slices_ref = &parent_slices[..total];
+    let probe_cache_ref: &ChoiceProbeCache = &*probe_cache;
+    let (first_scratch, rest_scratches) = scratches[..active]
+        .split_first_mut()
+        .expect("active >= 1");
+    let (first_parent, rest_parents) = parent_states[..active]
+        .split_first_mut()
+        .expect("active >= 1");
+    pool.scope(|scope| {
+        for (i, (scratch, parent_state)) in rest_scratches
+            .iter_mut()
+            .zip(rest_parents.iter_mut())
+            .enumerate()
+        {
+            let w_idx = i + 1;
+            let next_ref = &next_parent;
+            scope.spawn(move |_| {
+                if scratch.wave_dirty {
+                    scratch.reset_for_wave();
+                }
+                scratch.wave_dirty = true;
+                let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
+                loop {
+                    if cancel.load(Ordering::Relaxed) {
+                        break;
                     }
-                    scratch.action_buf = local_tasks;
+                    let cur = next_ref.load(Ordering::Relaxed);
+                    if cur >= total {
+                        break;
+                    }
+                    let chunk = ((total - cur) / (active * 4)).clamp(1, 4);
+                    let batch_start = next_ref.fetch_add(chunk, Ordering::Relaxed);
+                    if batch_start >= total {
+                        break;
+                    }
+                    let batch_end = (batch_start + chunk).min(total);
+                    for parent_rank in batch_start..batch_end {
+                        if cancel.load(Ordering::Relaxed) {
+                            break;
+                        }
+                        let pid = parent_slice[parent_rank];
+                        let pnode = arena.get(pid);
+                        let p_has_la = pnode.has_choice_lookahead();
+                        let p_la_score = pnode.choice_lookahead_score();
+                        let pbytes = parent_source.get(pnode.state_handle);
+                        if unpack_state(pbytes, static_ctx, parent_state).is_err() {
+                            continue;
+                        }
+                        let mut local_tasks = std::mem::take(&mut scratch.action_buf);
+                        local_tasks.clear();
+                        enumerate_parent_tasks(
+                            parent_rank as u32,
+                            pid,
+                            pnode,
+                            p_has_la,
+                            p_la_score,
+                            parent_state,
+                            content,
+                            policy,
+                            profile,
+                            sensitivity,
+                            root_baseline,
+                            allow_paid_optional_potions,
+                            &mut local_tasks,
+                            &mut scratch.por_pruned,
+                        );
+                        let c_start = scratch.candidates.len();
+                        for task in &local_tasks {
+                            if cancel.load(Ordering::Relaxed) {
+                                break;
+                            }
+                            execute_action_from_parent(
+                                scratch,
+                                parent_state,
+                                task,
+                                static_ctx,
+                                content,
+                                root_baseline,
+                                policy,
+                                profile,
+                                cert,
+                                frozen_incumbent,
+                                tt,
+                                &mut probe_access,
+                                sensitivity,
+                                allow_paid_optional_potions,
+                                eval_mode,
+                            );
+                        }
+                        let c_len = scratch.candidates.len() - c_start;
+                        if c_len > 0 {
+                            slices_ref[parent_rank]
+                                .store(pack_parent_slice(w_idx, c_start, c_len), Ordering::Relaxed);
+                        }
+                        scratch.action_buf = local_tasks;
+                    }
                 }
             });
+        }
+        if first_scratch.wave_dirty {
+            first_scratch.reset_for_wave();
+        }
+        first_scratch.wave_dirty = true;
+        let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
+        loop {
+            if cancel.load(Ordering::Relaxed) {
+                break;
+            }
+            let cur = next_parent.load(Ordering::Relaxed);
+            if cur >= total {
+                break;
+            }
+            let chunk = ((total - cur) / (active * 4)).clamp(1, 4);
+            let batch_start = next_parent.fetch_add(chunk, Ordering::Relaxed);
+            if batch_start >= total {
+                break;
+            }
+            let batch_end = (batch_start + chunk).min(total);
+            for parent_rank in batch_start..batch_end {
+                if cancel.load(Ordering::Relaxed) {
+                    break;
+                }
+                let pid = parent_slice[parent_rank];
+                let pnode = arena.get(pid);
+                let p_has_la = pnode.has_choice_lookahead();
+                let p_la_score = pnode.choice_lookahead_score();
+                let pbytes = parent_source.get(pnode.state_handle);
+                if unpack_state(pbytes, static_ctx, first_parent).is_err() {
+                    continue;
+                }
+                let mut local_tasks = std::mem::take(&mut first_scratch.action_buf);
+                local_tasks.clear();
+                enumerate_parent_tasks(
+                    parent_rank as u32,
+                    pid,
+                    pnode,
+                    p_has_la,
+                    p_la_score,
+                    first_parent,
+                    content,
+                    policy,
+                    profile,
+                    sensitivity,
+                    root_baseline,
+                    allow_paid_optional_potions,
+                    &mut local_tasks,
+                    &mut first_scratch.por_pruned,
+                );
+                let c_start = first_scratch.candidates.len();
+                for task in &local_tasks {
+                    if cancel.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    execute_action_from_parent(
+                        first_scratch,
+                        first_parent,
+                        task,
+                        static_ctx,
+                        content,
+                        root_baseline,
+                        policy,
+                        profile,
+                        cert,
+                        frozen_incumbent,
+                        tt,
+                        &mut probe_access,
+                        sensitivity,
+                        allow_paid_optional_potions,
+                        eval_mode,
+                    );
+                }
+                let c_len = first_scratch.candidates.len() - c_start;
+                if c_len > 0 {
+                    slices_ref[parent_rank]
+                        .store(pack_parent_slice(0, c_start, c_len), Ordering::Relaxed);
+                }
+                first_scratch.action_buf = local_tasks;
+            }
         }
     });
     true
@@ -3566,7 +4494,7 @@ fn run_beam_pass(
     incumbent: &mut FrozenIncumbentBound,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
-    progress_cb: Option<&dyn Fn(&SearchProgress)>,
+    progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     options: PassSearchOptions,
     fixed_prefix: Option<&[PlannedAction]>,
 ) -> Result<BeamRunOutput, KernelError> {
@@ -3608,7 +4536,64 @@ fn run_beam_pass_with_resources(
     incumbent: &mut FrozenIncumbentBound,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
-    progress_cb: Option<&dyn Fn(&SearchProgress)>,
+    progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
+    options: PassSearchOptions,
+    fixed_prefix: Option<&[PlannedAction]>,
+    resources: &mut PassResources,
+) -> Result<BeamRunOutput, KernelError> {
+    let dop = policy
+        .max_degree_of_parallelism
+        .clamp(1, crate::eval::weights::MAXIMUM_SEARCH_MAX_DEGREE_OF_PARALLELISM);
+    if dop > 1 {
+        if let Some(p) = pool {
+            return p.install(|| {
+                run_beam_pass_with_resources_inner(
+                    root,
+                    content,
+                    policy,
+                    profile,
+                    cert,
+                    incumbent_table,
+                    incumbent,
+                    pool,
+                    cancel,
+                    progress_cb,
+                    options,
+                    fixed_prefix,
+                    resources,
+                )
+            });
+        }
+    }
+    run_beam_pass_with_resources_inner(
+        root,
+        content,
+        policy,
+        profile,
+        cert,
+        incumbent_table,
+        incumbent,
+        pool,
+        cancel,
+        progress_cb,
+        options,
+        fixed_prefix,
+        resources,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_beam_pass_with_resources_inner(
+    root: &BattleState,
+    content: &(dyn ContentDispatcher + Sync),
+    policy: &SearchPolicy,
+    profile: &SolverSearchProfile,
+    cert: &ClosureCertificate,
+    incumbent_table: &PrimaryIncumbentTable,
+    incumbent: &mut FrozenIncumbentBound,
+    pool: Option<&rayon::ThreadPool>,
+    cancel: &AtomicBool,
+    progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     options: PassSearchOptions,
     fixed_prefix: Option<&[PlannedAction]>,
     resources: &mut PassResources,
@@ -3631,7 +4616,7 @@ fn run_beam_pass_with_resources(
         prune_scratch,
         flat_tasks,
         step_arena,
-        next_step_arena,
+        prev_worker_slabs,
         turn_staging_arena,
         tt,
         choice_probe_cache,
@@ -3639,13 +4624,24 @@ fn run_beam_pass_with_resources(
         stand_pat_seen,
         sort_list,
         parent_slices,
+        active_parent_slices,
+        tt_group_accepted,
+        tt_accepted_epoch,
+        tt_cur_epoch,
         tt_shard_buckets,
-        tt_shard_accepted,
         tt_accepted_flags,
         tt_flat_refs,
+        accepted_mid_turn,
+        mid_turn_ords,
+        surviving_ords,
+        surviving_commit_order,
         rollout_results,
     } = resources;
     debug_assert!(scratches.len() >= worker_count && parent_states.len() >= worker_count);
+    let use_l1_probe = dop > 1 && active_pool.is_some();
+    for s in scratches.iter_mut() {
+        s.choice_probe_ws.l1.use_l1 = use_l1_probe;
+    }
 
     let (
         start_state,
@@ -3801,21 +4797,79 @@ fn run_beam_pass_with_resources(
             node_flags |= NODE_FLAG_IS_TERMINAL;
         }
         let rare_eval_idx = arena.push_opt_rare_eval(cand.rare_eval);
-        let mut node = SearchNode {
-            parent_raw: cand.parent_id.0,
-            action: cand.action,
-            por_key: cand.por_key,
-            choices_offset,
-            choices_len,
-            state_handle,
+        let (
+            beam_rank_score,
+            rollout_score,
+            effective_defense,
+            board_investment,
+            persistent_buff_value,
+            max_dark_evoke,
+            total_poison_and_doom,
+            setup_score,
+            reachable_hand_value,
+            optionality_cards,
+            best_power_priority,
+        ) = if let Some(ref full) = cand.full_eval {
+            node_flags |= NODE_FLAG_HAS_FULL_EVAL;
+            let rs = if let Some(rs) = full.rollout_score {
+                node_flags |= NODE_FLAG_HAS_ROLLOUT_SCORE;
+                rs
+            } else {
+                full.choice_lookahead_score.unwrap_or(0.0)
+            };
+            if full.has_choice_lookahead {
+                node_flags |= NODE_FLAG_HAS_CHOICE_LOOKAHEAD;
+            }
+            (
+                full.beam_rank_score,
+                rs,
+                full.effective_defense.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.board_investment.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.persistent_buff_value
+                    .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.max_dark_evoke.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.total_poison_and_doom
+                    .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.setup_score.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.reachable_hand_value
+                    .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.optionality_cards.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+                full.best_power_priority,
+            )
+        } else {
+            (
+                cand.base_score,
+                0.0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                PowerRoutePriority::Low,
+            )
+        };
+        let node = SearchNode {
             state_hash: cand.state_hash,
-            beam_rank_score: cand.base_score,
+            forced_used_mask: cand.forced_used_mask,
+            beam_rank_score,
+            rollout_score,
+            por_key: cand.por_key,
+            fast_eval: cand.fast_eval,
+            state_handle,
+            action: cand.action,
+            parent_raw: cand.parent_id.0,
+            choices_offset,
+            rare_eval_idx,
+            effective_defense,
+            board_investment,
+            persistent_buff_value,
+            max_dark_evoke,
+            total_poison_and_doom,
             turn: cand.turn.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
             action_count: cand.action_count,
-            potion_count: cand.potion_count.min(u8::MAX as u16) as u8,
-            explicit_potion_count: cand.explicit_potion_count.min(u8::MAX as u16) as u8,
-            optional_paid_potion_count: cand.optional_paid_potion_count.min(u8::MAX as u16) as u8,
-            automatic_potion_count: cand.automatic_potion_count.min(u8::MAX as u16) as u8,
             used_potion_slot_mask: cand.used_potion_slot_mask,
             potion_strategic_cost: cand.potion_strategic_cost.clamp(i16::MIN as i32, i16::MAX as i32)
                 as i16,
@@ -3823,17 +4877,20 @@ fn run_beam_pass_with_resources(
                 .optional_paid_potion_cost
                 .clamp(i16::MIN as i32, i16::MAX as i32)
                 as i16,
+            setup_score,
+            reachable_hand_value,
+            optionality_cards,
+            choices_len,
+            potion_count: cand.potion_count.min(u8::MAX as u16) as u8,
+            explicit_potion_count: cand.explicit_potion_count.min(u8::MAX as u16) as u8,
+            optional_paid_potion_count: cand.optional_paid_potion_count.min(u8::MAX as u16) as u8,
+            automatic_potion_count: cand.automatic_potion_count.min(u8::MAX as u16) as u8,
             ambergris_count: cand.ambergris_count.min(u8::MAX as u16) as u8,
-            forced_used_mask: cand.forced_used_mask,
             forced_ambergris_count: cand.forced_ambergris_count.min(u8::MAX as u16) as u8,
+            boundary_rank: 0,
+            best_power_priority,
             node_flags,
-            fast_eval: cand.fast_eval,
-            rare_eval_idx,
-            ..Default::default()
         };
-        if let Some(ref full) = cand.full_eval {
-            node.set_full_eval(full);
-        }
         arena.push_node(node)
     }
 
@@ -3858,6 +4915,7 @@ fn run_beam_pass_with_resources(
         completed: &mut Vec<NodeId>,
         next_step_candidates: &mut Vec<NodeId>,
         next_turn_candidates: &mut Vec<NodeId>,
+        defer_mid_turn: Option<&mut Vec<AcceptedMidTurn>>,
         packed_state_bytes_total: &mut u64,
         has_victory: &mut bool,
         best_won_hp_lost: &mut Option<i32>,
@@ -3866,6 +4924,22 @@ fn run_beam_pass_with_resources(
         best_victory_clean_zero_cost: &mut bool,
         hp_target_reached: &mut bool,
     ) {
+        if !cand.is_terminal && !cand.turn_completed {
+            if let Some(buf) = defer_mid_turn {
+                let beam_score = cand
+                    .full_eval
+                    .as_ref()
+                    .map_or(cand.base_score, |f| f.beam_rank_score);
+                buf.push(AcceptedMidTurn {
+                    w_idx: w_idx as u16,
+                    potion_count: cand.potion_count.min(u8::MAX as u16) as u8,
+                    explicit_potion_count: cand.explicit_potion_count.min(u8::MAX as u16) as u8,
+                    c_idx: c_idx as u32,
+                    beam_score,
+                });
+                return;
+            }
+        }
         let state_handle = if cand.is_terminal {
             PackedHandle::default()
         } else if cand.turn_completed {
@@ -3949,6 +5023,7 @@ fn run_beam_pass_with_resources(
          completed: &mut Vec<NodeId>,
          next_step_candidates: &mut Vec<NodeId>,
          next_turn_candidates: &mut Vec<NodeId>,
+         mut defer_mid_turn: Option<&mut Vec<AcceptedMidTurn>>,
          transition_count: &mut u64,
          choice_replay_attempts: &mut u64,
          incumbent_pruned: &mut u64,
@@ -3966,6 +5041,8 @@ fn run_beam_pass_with_resources(
          sort_list: &mut Vec<(usize, usize, (u32, u32, u32))>| {
             let mut total_cands = 0usize;
             for wo in scratches.iter() {
+                debug_assert_eq!(wo.candidates.len(), wo.cand_shards.len());
+                debug_assert_eq!(wo.candidates.len(), wo.cand_fast_meta.len());
                 total_cands += wo.candidates.len();
                 *transition_count += wo.transitions;
                 *choice_replay_attempts += wo.choice_replay_attempts;
@@ -3973,28 +5050,73 @@ fn run_beam_pass_with_resources(
                 tt.branches_pruned += wo.tt_probe_pruned;
                 *por_pruned += wo.por_pruned;
             }
-            next_step_candidates.reserve(total_cands);
+            if let Some(buf) = defer_mid_turn.as_deref_mut() {
+                buf.reserve(total_cands);
+            } else {
+                next_step_candidates.reserve(total_cands);
+            }
 
             if let Some(pool) = active_pool.filter(|_| total_cands >= 1024) {
-                tt_flat_refs.clear();
-                tt_flat_refs.reserve(total_cands);
-                for b in tt_shard_buckets.iter_mut() {
-                    b.clear();
-                }
                 if parent_slices_valid {
-                    #[cfg(debug_assertions)]
-                    let mut prev_sort_key: Option<(u32, u32, u32)> = None;
+                    active_parent_slices.clear();
+                    let mut base_sort = 0u32;
                     for slice_atom in &parent_slices[..parent_count] {
                         let raw = slice_atom.load(Ordering::Relaxed);
                         if raw == 0 {
                             continue;
                         }
                         let (w_idx, start, len) = unpack_parent_slice(raw);
+                        active_parent_slices.push((
+                            base_sort,
+                            w_idx as u16,
+                            start as u32,
+                            len as u32,
+                        ));
+                        base_sort += len as u32;
+                    }
+                    let scratches_ref: &[WorkerScratch] = &*scratches;
+                    pool.install(|| {
+                        tt.insert_grouped_parallel_from_slices(
+                            active_parent_slices,
+                            tt_group_accepted,
+                            |w| scratches_ref[w].cand_shards.as_slice(),
+                            |w, c| {
+                                let cand = &scratches_ref[w].candidates[c];
+                                (cand.state_hash, cand.label)
+                            },
+                        );
+                    });
+                    *tt_cur_epoch = tt_cur_epoch.wrapping_add(1);
+                    if *tt_cur_epoch == 0 {
+                        tt_accepted_epoch.fill(0);
+                        *tt_cur_epoch = 1;
+                    }
+                    let epoch = *tt_cur_epoch;
+                    if tt_accepted_epoch.len() < total_cands {
+                        tt_accepted_epoch.resize(total_cands, 0);
+                    }
+                    for acc in tt_group_accepted.iter() {
+                        for &idx in acc {
+                            tt_accepted_epoch[idx as usize] = epoch;
+                        }
+                    }
+                    #[cfg(debug_assertions)]
+                    let mut prev_sort_key: Option<(u32, u32, u32)> = None;
+                    for &(base_sort, w_idx_u16, start_u32, len_u32) in active_parent_slices.iter() {
+                        let w_idx = w_idx_u16 as usize;
                         let wo = &scratches[w_idx];
-                        for c_idx in start..start + len {
-                            let cand = &wo.candidates[c_idx];
+                        let start = start_u32 as usize;
+                        let len = len_u32 as usize;
+                        for i in 0..len {
+                            let c_idx = start + i;
+                            let sort_idx = base_sort as usize + i;
+                            let fmeta = wo.cand_fast_meta[c_idx];
+                            let is_terminal = (fmeta.flags & 1) != 0;
                             #[cfg(debug_assertions)]
                             {
+                                let cand = &wo.candidates[c_idx];
+                                debug_assert_eq!(is_terminal, cand.is_terminal);
+                                debug_assert_eq!((fmeta.flags & 2) != 0, cand.turn_completed);
                                 debug_assert!(
                                     prev_sort_key.is_none_or(|p| p <= cand.sort_key),
                                     "parent_slices commit out of sort_key order: {:?} > {:?}",
@@ -4003,18 +5125,57 @@ fn run_beam_pass_with_resources(
                                 );
                                 prev_sort_key = Some(cand.sort_key);
                             }
-                            let sort_idx = tt_flat_refs.len();
-                            tt_flat_refs.push((w_idx, c_idx));
-                            if !cand.is_terminal {
-                                tt_shard_buckets[cand.state_hash.shard_index()].push((
-                                    sort_idx,
-                                    cand.state_hash,
-                                    cand.label,
-                                ));
+                            if is_terminal || tt_accepted_epoch[sort_idx] == epoch {
+                                if fmeta.flags == 0 {
+                                    if let Some(buf) = defer_mid_turn.as_deref_mut() {
+                                        buf.push(AcceptedMidTurn {
+                                            w_idx: w_idx as u16,
+                                            potion_count: fmeta.potion_count,
+                                            explicit_potion_count: fmeta.explicit_potion_count,
+                                            c_idx: c_idx as u32,
+                                            beam_score: fmeta.beam_score,
+                                        });
+                                        continue;
+                                    }
+                                }
+                                let cand = &wo.candidates[c_idx];
+                                commit_one_accepted(
+                                    w_idx,
+                                    c_idx,
+                                    cand,
+                                    &wo.slab,
+                                    &wo.staged_choices,
+                                    &root_baseline,
+                                    policy,
+                                    cert,
+                                    incumbent_table,
+                                    incumbent,
+                                    options.allow_paid_optional_potions,
+                                    check_theft,
+                                    &options,
+                                    arena,
+                                    turn_arena,
+                                    completed,
+                                    next_step_candidates,
+                                    next_turn_candidates,
+                                    defer_mid_turn.as_deref_mut(),
+                                    packed_state_bytes_total,
+                                    has_victory,
+                                    best_won_hp_lost,
+                                    best_victory_turn,
+                                    best_victory_key,
+                                    best_victory_clean_zero_cost,
+                                    hp_target_reached,
+                                );
                             }
                         }
                     }
                 } else {
+                    tt_flat_refs.clear();
+                    tt_flat_refs.reserve(total_cands);
+                    for b in tt_shard_buckets.iter_mut() {
+                        b.clear();
+                    }
                     sort_list.clear();
                     for (w_idx, wo) in scratches.iter().enumerate() {
                         for (c_idx, cand) in wo.candidates.iter().enumerate() {
@@ -4034,72 +5195,17 @@ fn run_beam_pass_with_resources(
                             ));
                         }
                     }
-                }
-                tt_accepted_flags.resize(tt_flat_refs.len(), false);
-                pool.install(|| {
-                    tt.insert_sharded_batch_flags(
-                        tt_shard_buckets,
-                        tt_shard_accepted,
-                        true,
-                        tt_accepted_flags,
-                    );
-                });
-                for (sort_idx, &(w_idx, c_idx)) in tt_flat_refs.iter().enumerate() {
-                    let wo = &scratches[w_idx];
-                    let cand = &wo.candidates[c_idx];
-                    if cand.is_terminal || tt_accepted_flags[sort_idx] {
-                        commit_one_accepted(
-                            w_idx,
-                            c_idx,
-                            cand,
-                            &wo.slab,
-                            &wo.staged_choices,
-                            &root_baseline,
-                            policy,
-                            cert,
-                            incumbent_table,
-                            incumbent,
-                            options.allow_paid_optional_potions,
-                            check_theft,
-                            &options,
-                            arena,
-                            turn_arena,
-                            completed,
-                            next_step_candidates,
-                            next_turn_candidates,
-                            packed_state_bytes_total,
-                            has_victory,
-                            best_won_hp_lost,
-                            best_victory_turn,
-                            best_victory_key,
-                            best_victory_clean_zero_cost,
-                            hp_target_reached,
-                        );
+                    if tt_accepted_flags.len() < tt_flat_refs.len() {
+                        tt_accepted_flags.resize_with(tt_flat_refs.len(), || AtomicU8::new(0));
                     }
-                }
-            } else if parent_slices_valid {
-                #[cfg(debug_assertions)]
-                let mut prev_sort_key: Option<(u32, u32, u32)> = None;
-                for slice_atom in &parent_slices[..parent_count] {
-                    let raw = slice_atom.load(Ordering::Relaxed);
-                    if raw == 0 {
-                        continue;
-                    }
-                    let (w_idx, start, len) = unpack_parent_slice(raw);
-                    let wo = &scratches[w_idx];
-                    for c_idx in start..start + len {
+                    let flags_slice = &tt_accepted_flags[..tt_flat_refs.len()];
+                    pool.install(|| {
+                        tt.insert_sharded_batch_atomic_flags(tt_shard_buckets, true, flags_slice);
+                    });
+                    for (sort_idx, &(w_idx, c_idx)) in tt_flat_refs.iter().enumerate() {
+                        let wo = &scratches[w_idx];
                         let cand = &wo.candidates[c_idx];
-                        #[cfg(debug_assertions)]
-                        {
-                            debug_assert!(
-                                prev_sort_key.is_none_or(|p| p <= cand.sort_key),
-                                "parent_slices commit out of sort_key order: {:?} > {:?}",
-                                prev_sort_key,
-                                cand.sort_key
-                            );
-                            prev_sort_key = Some(cand.sort_key);
-                        }
-                        if cand.is_terminal || tt.try_insert_single(cand.state_hash, cand.label) {
+                        if cand.is_terminal || flags_slice[sort_idx].load(Ordering::Relaxed) != 0 {
                             commit_one_accepted(
                                 w_idx,
                                 c_idx,
@@ -4119,6 +5225,81 @@ fn run_beam_pass_with_resources(
                                 completed,
                                 next_step_candidates,
                                 next_turn_candidates,
+                                defer_mid_turn.as_deref_mut(),
+                                packed_state_bytes_total,
+                                has_victory,
+                                best_won_hp_lost,
+                                best_victory_turn,
+                                best_victory_key,
+                                best_victory_clean_zero_cost,
+                                hp_target_reached,
+                            );
+                        }
+                    }
+                }
+            } else if parent_slices_valid {
+                #[cfg(debug_assertions)]
+                let mut prev_sort_key: Option<(u32, u32, u32)> = None;
+                for slice_atom in &parent_slices[..parent_count] {
+                    let raw = slice_atom.load(Ordering::Relaxed);
+                    if raw == 0 {
+                        continue;
+                    }
+                    let (w_idx, start, len) = unpack_parent_slice(raw);
+                    let wo = &scratches[w_idx];
+                    let end = start + len;
+                    for c_idx in start..end {
+                        if c_idx + 4 < end && wo.cand_shards[c_idx + 4] != u16::MAX {
+                            tt.prefetch(wo.candidates[c_idx + 4].state_hash);
+                        }
+                        let fmeta = wo.cand_fast_meta[c_idx];
+                        let is_terminal = (fmeta.flags & 1) != 0;
+                        let cand = &wo.candidates[c_idx];
+                        #[cfg(debug_assertions)]
+                        {
+                            debug_assert_eq!(is_terminal, cand.is_terminal);
+                            debug_assert_eq!((fmeta.flags & 2) != 0, cand.turn_completed);
+                            debug_assert!(
+                                prev_sort_key.is_none_or(|p| p <= cand.sort_key),
+                                "parent_slices commit out of sort_key order: {:?} > {:?}",
+                                prev_sort_key,
+                                cand.sort_key
+                            );
+                            prev_sort_key = Some(cand.sort_key);
+                        }
+                        if is_terminal || tt.try_insert_single(cand.state_hash, cand.label) {
+                            if fmeta.flags == 0 {
+                                if let Some(buf) = defer_mid_turn.as_deref_mut() {
+                                    buf.push(AcceptedMidTurn {
+                                        w_idx: w_idx as u16,
+                                        potion_count: fmeta.potion_count,
+                                        explicit_potion_count: fmeta.explicit_potion_count,
+                                        c_idx: c_idx as u32,
+                                        beam_score: fmeta.beam_score,
+                                    });
+                                    continue;
+                                }
+                            }
+                            commit_one_accepted(
+                                w_idx,
+                                c_idx,
+                                cand,
+                                &wo.slab,
+                                &wo.staged_choices,
+                                &root_baseline,
+                                policy,
+                                cert,
+                                incumbent_table,
+                                incumbent,
+                                options.allow_paid_optional_potions,
+                                check_theft,
+                                &options,
+                                arena,
+                                turn_arena,
+                                completed,
+                                next_step_candidates,
+                                next_turn_candidates,
+                                defer_mid_turn.as_deref_mut(),
                                 packed_state_bytes_total,
                                 has_victory,
                                 best_won_hp_lost,
@@ -4161,6 +5342,7 @@ fn run_beam_pass_with_resources(
                             completed,
                             next_step_candidates,
                             next_turn_candidates,
+                            defer_mid_turn.as_deref_mut(),
                             packed_state_bytes_total,
                             has_victory,
                             best_won_hp_lost,
@@ -4178,8 +5360,11 @@ fn run_beam_pass_with_resources(
     // (e.g., GamblingChip / ToolsOfTheTrade / HistoryCourse / Dread / Entropy / Toolbox).
     if !arena.get(root_id).is_terminal() && start_state.pending.is_some() {
         for s in scratches.iter_mut() {
-            s.reset_for_wave();
+            if s.wave_dirty {
+                s.reset_for_wave();
+            }
         }
+        scratches[0].wave_dirty = true;
         let filled_at_start = start_state
             .player
             .potion_slots
@@ -4213,23 +5398,26 @@ fn run_beam_pass_with_resources(
         if parent_slices.is_empty() {
             parent_slices.push(AtomicU64::new(0));
         }
-        execute_action_from_parent(
-            &mut scratches[0],
-            &start_state,
-            &setup_task,
-            &root.static_ctx,
-            content,
-            &root_baseline,
-            policy,
-            profile,
-            cert,
-            &frozen_setup_inc,
-            tt,
-            choice_probe_cache,
-            &sensitivity,
-            options.allow_paid_optional_potions,
-            options.eval_mode,
-        );
+        {
+            let mut probe_access = ProbeCacheAccess::SingleThread(choice_probe_cache);
+            execute_action_from_parent(
+                &mut scratches[0],
+                &start_state,
+                &setup_task,
+                &root.static_ctx,
+                content,
+                &root_baseline,
+                policy,
+                profile,
+                cert,
+                &frozen_setup_inc,
+                tt,
+                &mut probe_access,
+                &sensitivity,
+                options.allow_paid_optional_potions,
+                options.eval_mode,
+            );
+        }
         let setup_len = scratches[0].candidates.len();
         parent_slices[0].store(
             if setup_len > 0 {
@@ -4250,6 +5438,7 @@ fn run_beam_pass_with_resources(
             &mut completed,
             &mut next_step_candidates,
             &mut turn_setup_ended_turn,
+            None,
             &mut transition_count,
             &mut choice_replay_attempts,
             &mut incumbent_pruned,
@@ -4271,17 +5460,15 @@ fn run_beam_pass_with_resources(
         if setup_hp_target {
             termination = "HpTarget";
         } else if !next_step_candidates.is_empty() {
-            next_step_arena.clear();
+            step_arena.clear();
             for &nid in &next_step_candidates {
                 let tmp_h = arena.get(nid).state_handle;
                 let wo = &scratches[tmp_h.slab as usize];
                 let cand = &wo.candidates[tmp_h.offset as usize];
                 let bytes = wo.slab.get(cand.state_slab_idx, cand.state_off, cand.state_len);
                 packed_state_bytes_total += bytes.len() as u64;
-                arena.get_mut(nid).state_handle = next_step_arena.commit_slice(bytes);
+                arena.get_mut(nid).state_handle = step_arena.commit_slice(bytes);
             }
-            std::mem::swap(step_arena, next_step_arena);
-            next_step_arena.clear();
 
             let mut use_setup_rollout = false;
             let has_time_for_setup_rollout = profile.soft_time_budget_ms == 0
@@ -4536,6 +5723,7 @@ fn run_beam_pass_with_resources(
         let mut last_turn_hit_per_turn_cap = false;
         let mut aborted_limit = false;
         let mut hp_target_reached = false;
+        let mut frontier_in_worker_slabs = false;
 
         for _action_depth in 0..=MAX_ACTIONS_PER_TURN {
             if active_frontier.is_empty() {
@@ -4575,13 +5763,18 @@ fn run_beam_pass_with_resources(
             expanded_this_turn += wave_count;
 
             let frozen_incumbent = *incumbent;
+            let parent_source = if frontier_in_worker_slabs {
+                ParentStateSource::WorkerSlabs(prev_worker_slabs.as_slice())
+            } else {
+                ParentStateSource::Main(step_arena)
+            };
             let parent_slices_valid = expand_wave_tasks(
                 parent_slice,
                 dop,
                 active_pool,
                 &root.static_ctx,
                 arena,
-                step_arena,
+                parent_source,
                 content,
                 &root_baseline,
                 policy,
@@ -4601,6 +5794,7 @@ fn run_beam_pass_with_resources(
             );
 
             next_step_candidates.clear();
+            accepted_mid_turn.clear();
             commit_wave_candidates(
                 scratches,
                 tt,
@@ -4610,6 +5804,7 @@ fn run_beam_pass_with_resources(
                 &mut completed,
                 &mut next_step_candidates,
                 &mut next_turn_candidates,
+                Some(accepted_mid_turn),
                 &mut transition_count,
                 &mut choice_replay_attempts,
                 &mut incumbent_pruned,
@@ -4632,32 +5827,89 @@ fn run_beam_pass_with_resources(
                 break;
             }
 
-            BeamRetentionPolicy::prune_wave_with_potion_bias_into(
-                arena,
-                &next_step_candidates,
-                beam_width,
-                profile.potion_free_beam_width,
-                profile.potion_beam_width,
-                &root_baseline,
-                profile.second_rank_band,
-                profile.aggressive_power_commitment,
-                options.prefer_potion_buckets,
-                active_pool,
-                &mut active_frontier,
-                prune_scratch,
-            );
-
-            next_step_arena.clear();
-            for &nid in &active_frontier {
-                let tmp_h = arena.get(nid).state_handle;
-                let wo = &scratches[tmp_h.slab as usize];
-                let cand = &wo.candidates[tmp_h.offset as usize];
-                let bytes = wo.slab.get(cand.state_slab_idx, cand.state_off, cand.state_len);
-                packed_state_bytes_total += bytes.len() as u64;
-                arena.get_mut(nid).state_handle = next_step_arena.commit_slice(bytes);
+            if accepted_mid_turn.is_empty() {
+                active_frontier.clear();
+                if frontier_in_worker_slabs {
+                    for slab in prev_worker_slabs.iter_mut() {
+                        slab.clear();
+                    }
+                    frontier_in_worker_slabs = false;
+                }
+            } else {
+                mid_turn_ords.clear();
+                mid_turn_ords.extend((0..accepted_mid_turn.len() as u32).map(NodeId));
+                let cand_source = WorkerCandidateSource {
+                    scratches,
+                    accepted: accepted_mid_turn,
+                };
+                BeamRetentionPolicy::prune_with_source_into(
+                    &cand_source,
+                    mid_turn_ords,
+                    beam_width,
+                    profile.potion_free_beam_width,
+                    profile.potion_beam_width,
+                    &root_baseline,
+                    profile.second_rank_band,
+                    profile.aggressive_power_commitment,
+                    options.prefer_potion_buckets,
+                    false,
+                    false,
+                    active_pool,
+                    surviving_ords,
+                    prune_scratch,
+                );
+                active_frontier.resize(surviving_ords.len(), NodeId(0));
+                surviving_commit_order.clear();
+                surviving_commit_order.extend(0..surviving_ords.len());
+                surviving_commit_order.sort_unstable_by_key(|&k| surviving_ords[k].0);
+                let surv_len = surviving_commit_order.len();
+                for pos in 0..surv_len {
+                    #[cfg(target_arch = "x86_64")]
+                    if surv_len >= 16 && pos + 2 < surv_len {
+                        let k2 = surviving_commit_order[pos + 2];
+                        let acc2 = accepted_mid_turn[surviving_ords[k2].0 as usize];
+                        let wo2 = &scratches[acc2.w_idx as usize];
+                        let cand2 = &wo2.candidates[acc2.c_idx as usize];
+                        unsafe {
+                            std::arch::x86_64::_mm_prefetch(
+                                (cand2 as *const WorkerCandidate).cast::<i8>(),
+                                std::arch::x86_64::_MM_HINT_T0,
+                            );
+                        }
+                    }
+                    let k = surviving_commit_order[pos];
+                    let ord = surviving_ords[k].0 as usize;
+                    let acc = accepted_mid_turn[ord];
+                    let (w_idx, c_idx) = (acc.w_idx as usize, acc.c_idx as usize);
+                    let wo = &scratches[w_idx];
+                    let cand = &wo.candidates[c_idx];
+                    debug_assert!(w_idx < 65536 && cand.state_slab_idx < 65536);
+                    packed_state_bytes_total += u64::from(cand.state_len);
+                    let state_handle = PackedHandle {
+                        slab: ((w_idx as u32) << 16) | (cand.state_slab_idx & 0xFFFF),
+                        offset: cand.state_off,
+                        len: cand.state_len,
+                    };
+                    let (choices_offset, choices_len) = arena.choices.extend_from_arena_slice(
+                        &wo.staged_choices,
+                        cand.choices_offset,
+                        cand.choices_len,
+                    );
+                    let nid = push_worker_candidate_node(
+                        arena,
+                        cand,
+                        state_handle,
+                        choices_offset,
+                        choices_len,
+                    );
+                    active_frontier[k] = nid;
+                }
+                for (s, prev) in scratches.iter_mut().zip(prev_worker_slabs.iter_mut()) {
+                    std::mem::swap(&mut s.slab, prev);
+                    s.slab.clear();
+                }
+                frontier_in_worker_slabs = true;
             }
-            std::mem::swap(step_arena, next_step_arena);
-            next_step_arena.clear();
 
             if let Some(cb) = progress_cb {
                 let elapsed_ms = started.elapsed().as_millis() as u64;
@@ -4700,7 +5952,9 @@ fn run_beam_pass_with_resources(
             }
             if !uncached_sp_ids.is_empty() {
                 for s in scratches.iter_mut() {
-                    s.reset_for_wave();
+                    if s.wave_dirty {
+                        s.reset_for_wave();
+                    }
                 }
                 let frozen_incumbent = *incumbent;
                 let sp_slice = uncached_sp_ids.as_slice();
@@ -4714,7 +5968,11 @@ fn run_beam_pass_with_resources(
                     let workers = dop.min(sp_slice.len()).min(scratches.len()).min(parent_states.len());
                     let next_idx = AtomicUsize::new(0);
                     let arena_ref: &NodeArena = &*arena;
-                    let step_arena_ref: &MainStateArena = &*step_arena;
+                    let sp_parent_source = if frontier_in_worker_slabs {
+                        ParentStateSource::WorkerSlabs(prev_worker_slabs.as_slice())
+                    } else {
+                        ParentStateSource::Main(step_arena)
+                    };
                     let tt_ref: &ShardedParetoTT = &*tt;
                     let probe_cache_ref: &ChoiceProbeCache = &*choice_probe_cache;
                     let rb_ref: &RootEvalBaseline = &root_baseline;
@@ -4729,63 +5987,74 @@ fn run_beam_pass_with_resources(
                             .enumerate()
                         {
                             let next_ref = &next_idx;
-                            scope.spawn(move |_| loop {
-                                if cancel.load(Ordering::Relaxed) {
-                                    break;
-                                }
-                                let rank = next_ref.fetch_add(1, Ordering::Relaxed);
-                                if rank >= sp_slice.len() {
-                                    break;
-                                }
-                                let nid = sp_slice[rank];
-                                let pnode = arena_ref.get(nid);
-                                let pbytes = step_arena_ref.get(pnode.state_handle);
-                                if unpack_state(pbytes, static_ctx_ref, parent_state)
-                                    .is_err()
-                                {
-                                    continue;
-                                }
-                                let filled = parent_state
-                                    .player
-                                    .potion_slots
-                                    .iter()
-                                    .filter(|s| s.is_some())
-                                    .count()
-                                    .min(u8::MAX as usize) as u8;
-                                let task =
-                                    make_stand_pat_task(rank as u32, nid, pnode, filled, 0);
-                                let c_start = scratch.candidates.len();
-                                execute_action_from_parent(
-                                    scratch,
-                                    parent_state,
-                                    &task,
-                                    static_ctx_ref,
-                                    content,
-                                    rb_ref,
-                                    policy,
-                                    profile,
-                                    cert,
-                                    &frozen_incumbent,
-                                    tt_ref,
-                                    probe_cache_ref,
-                                    sens_ref,
-                                    options.allow_paid_optional_potions,
-                                    options.eval_mode,
-                                );
-                                let c_len = scratch.candidates.len() - c_start;
-                                if c_len > 0 {
-                                    slices_ref[rank].store(
-                                        pack_parent_slice(w_idx, c_start, c_len),
-                                        Ordering::Relaxed,
+                            scope.spawn(move |_| {
+                                scratch.wave_dirty = true;
+                                let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
+                                loop {
+                                    if cancel.load(Ordering::Relaxed) {
+                                        break;
+                                    }
+                                    let rank = next_ref.fetch_add(1, Ordering::Relaxed);
+                                    if rank >= sp_slice.len() {
+                                        break;
+                                    }
+                                    let nid = sp_slice[rank];
+                                    let pnode = arena_ref.get(nid);
+                                    let pbytes = sp_parent_source.get(pnode.state_handle);
+                                    if unpack_state(pbytes, static_ctx_ref, parent_state)
+                                        .is_err()
+                                    {
+                                        continue;
+                                    }
+                                    let filled = parent_state
+                                        .player
+                                        .potion_slots
+                                        .iter()
+                                        .filter(|s| s.is_some())
+                                        .count()
+                                        .min(u8::MAX as usize) as u8;
+                                    let task =
+                                        make_stand_pat_task(rank as u32, nid, pnode, filled, 0);
+                                    let c_start = scratch.candidates.len();
+                                    execute_action_from_parent(
+                                        scratch,
+                                        parent_state,
+                                        &task,
+                                        static_ctx_ref,
+                                        content,
+                                        rb_ref,
+                                        policy,
+                                        profile,
+                                        cert,
+                                        &frozen_incumbent,
+                                        tt_ref,
+                                        &mut probe_access,
+                                        sens_ref,
+                                        options.allow_paid_optional_potions,
+                                        options.eval_mode,
                                     );
+                                    let c_len = scratch.candidates.len() - c_start;
+                                    if c_len > 0 {
+                                        slices_ref[rank].store(
+                                            pack_parent_slice(w_idx, c_start, c_len),
+                                            Ordering::Relaxed,
+                                        );
+                                    }
                                 }
                             });
                         }
                     });
                 } else {
+                    scratches[0].wave_dirty = true;
+                    let sp_parent_source = if frontier_in_worker_slabs {
+                        ParentStateSource::WorkerSlabs(prev_worker_slabs.as_slice())
+                    } else {
+                        ParentStateSource::Main(step_arena)
+                    };
+                    let mut probe_access = ProbeCacheAccess::SingleThread(choice_probe_cache);
                     for (rank, &nid) in sp_slice.iter().enumerate() {
                         let pnode = arena.get(nid).clone();
-                        let pbytes = step_arena.get(pnode.state_handle);
+                        let pbytes = sp_parent_source.get(pnode.state_handle);
                         if unpack_state(pbytes, &root.static_ctx, &mut parent_states[0])
                             .is_err()
                         {
@@ -4812,7 +6081,7 @@ fn run_beam_pass_with_resources(
                             cert,
                             &frozen_incumbent,
                             tt,
-                            choice_probe_cache,
+                            &mut probe_access,
                             &sensitivity,
                             options.allow_paid_optional_potions,
                             options.eval_mode,
@@ -4836,6 +6105,7 @@ fn run_beam_pass_with_resources(
                     &mut completed,
                     &mut sp_mid_unused,
                     &mut next_turn_candidates,
+                    None,
                     &mut transition_count,
                     &mut choice_replay_attempts,
                     &mut incumbent_pruned,
@@ -5237,6 +6507,9 @@ fn run_beam_pass_with_resources(
             }
         }
         turn_staging_arena.clear();
+        for slab in prev_worker_slabs.iter_mut() {
+            slab.clear();
+        }
         tt.reset_generation();
         stand_pat_seen.clear();
     }
@@ -5444,8 +6717,8 @@ fn run_novelty_pass(
     let mut main_arena = MainStateArena::default();
     let mut scratch = WorkerScratch::new(root.static_ctx.clone());
     let mut parent_state = empty_scratch_state(root.static_ctx.clone());
-        let tt = ShardedParetoTT::new(policy.transposition_entry_limit.max(65_536));
-        let probe_cache = ChoiceProbeCache::new();
+    let tt = ShardedParetoTT::new(policy.transposition_entry_limit.max(65_536));
+    let mut probe_cache = ChoiceProbeCache::new();
     let frozen_incumbent = FrozenIncumbentBound::default();
 
     pack_state(root, &mut scratch.pack_buf);
@@ -5569,24 +6842,27 @@ fn run_novelty_pass(
         );
 
         scratch.candidates.clear();
-        for task in &tasks {
-            execute_action_from_parent(
-                &mut scratch,
-                &parent_state,
-                task,
-                &root.static_ctx,
-                content,
-                &root_baseline,
-                policy,
-                profile,
-                cert,
-                &frozen_incumbent,
-                &tt,
-                &probe_cache,
-                &sensitivity,
-                true,
-                EvalMode::Balanced,
-            );
+        {
+            let mut probe_access = ProbeCacheAccess::SingleThread(&mut probe_cache);
+            for task in &tasks {
+                execute_action_from_parent(
+                    &mut scratch,
+                    &parent_state,
+                    task,
+                    &root.static_ctx,
+                    content,
+                    &root_baseline,
+                    policy,
+                    profile,
+                    cert,
+                    &frozen_incumbent,
+                    &tt,
+                    &mut probe_access,
+                    &sensitivity,
+                    true,
+                    EvalMode::Balanced,
+                );
+            }
         }
 
         let children: Vec<WorkerCandidate> = scratch.candidates.drain(..).collect();
@@ -5919,7 +7195,7 @@ fn run_boss_tempo_depth_first(
     let mut scratch = WorkerScratch::new(root.static_ctx.clone());
     let mut parent_state = empty_scratch_state(root.static_ctx.clone());
     let tt = ShardedParetoTT::new(16_384);
-    let probe_cache = ChoiceProbeCache::new();
+    let mut probe_cache = ChoiceProbeCache::new();
     let frozen_incumbent = FrozenIncumbentBound::default();
     let mut tempo_tt = BossTempoTranspositions::new(32_768);
     let mut boss_profile = profile.clone();
@@ -6022,24 +7298,27 @@ fn run_boss_tempo_depth_first(
             &mut por_pruned,
         );
         scratch.candidates.clear();
-        for task in &tasks {
-            execute_action_from_parent(
-                &mut scratch,
-                &parent_state,
-                task,
-                &root.static_ctx,
-                content,
-                &root_baseline,
-                policy,
-                &boss_profile,
-                cert,
-                &frozen_incumbent,
-                &tt,
-                &probe_cache,
-                &sensitivity,
-                true,
-                EvalMode::Balanced,
-            );
+        {
+            let mut probe_access = ProbeCacheAccess::SingleThread(&mut probe_cache);
+            for task in &tasks {
+                execute_action_from_parent(
+                    &mut scratch,
+                    &parent_state,
+                    task,
+                    &root.static_ctx,
+                    content,
+                    &root_baseline,
+                    policy,
+                    &boss_profile,
+                    cert,
+                    &frozen_incumbent,
+                    &tt,
+                    &mut probe_access,
+                    &sensitivity,
+                    true,
+                    EvalMode::Balanced,
+                );
+            }
         }
 
         let mut next_nodes = Vec::new();
@@ -6506,7 +7785,7 @@ fn run_adaptive_stage(
     shared_incumbent: &mut FrozenIncumbentBound,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
-    progress_cb: Option<&dyn Fn(&SearchProgress)>,
+    progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     started: &Instant,
     stage_width: usize,
     stage_node_ceiling: usize,
@@ -6832,7 +8111,7 @@ fn solve_beam_or_portfolio(
     incumbent_table: &PrimaryIncumbentTable,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
-    progress_cb: Option<&dyn Fn(&SearchProgress)>,
+    progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     total_expanded: &mut usize,
     total_transitions: &mut u64,
     total_choice_replays: &mut u64,
@@ -7148,7 +8427,8 @@ fn solve_beam_or_portfolio(
     let best_incumbent_target_hit: parking_lot::Mutex<bool> = parking_lot::Mutex::new(false);
     let pass_error: parking_lot::Mutex<Option<KernelError>> = parking_lot::Mutex::new(None);
 
-    let run_member_cb = |member_profile: &SolverSearchProfile, cb: Option<&dyn Fn(&SearchProgress)>| {
+    let run_member_cb = |member_profile: &SolverSearchProfile,
+                         cb: Option<&(dyn Fn(&SearchProgress) + Sync)>| {
         let m_start = Instant::now();
         let mut member_incumbent = FrozenIncumbentBound::default();
         let res = run_beam_pass(
@@ -7303,15 +8583,48 @@ impl CombatSearchCoordinator {
         policy: &SearchPolicy,
         content: &(dyn ContentDispatcher + Sync),
         cancel: &AtomicBool,
-        progress_cb: Option<&dyn Fn(&SearchProgress)>,
+        progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     ) -> Result<InCombatSolveResponse, KernelError> {
         let mut compacted_root;
-        let root = if !root.static_ctx.compact_turn_history || !root.static_ctx.has_root_rngs {
+        let need_card_floors =
+            root.static_ctx.root_card_floors.is_empty() && !root.cards.is_empty();
+        let need_clutter_indices = !root.static_ctx.has_root_clutter_indices
+            && !root.cards.is_empty()
+            && root.cards.len() <= u16::MAX as usize;
+        let root = if !root.static_ctx.compact_turn_history
+            || !root.static_ctx.has_root_rngs
+            || !root.static_ctx.has_root_relics
+            || need_card_floors
+            || need_clutter_indices
+        {
             compacted_root = root.clone();
             let mut ctx = (*root.static_ctx).clone();
             ctx.compact_turn_history = true;
             if !ctx.has_root_rngs {
                 ctx.set_root_rngs(root.run_rngs.streams, root.player_rngs.streams);
+            }
+            if !ctx.has_root_relics {
+                ctx.set_root_relics(&root.player.relics);
+                compacted_root.relic_dirty_mask = RelicDirtyMask(0);
+            }
+            if ctx.root_card_floors.is_empty() && !root.cards.is_empty() {
+                ctx.set_root_card_floors(&root.cards);
+            }
+            if !ctx.has_root_clutter_indices
+                && !root.cards.is_empty()
+                && root.cards.len() <= u16::MAX as usize
+            {
+                if let Some(tables) = content.hook_mask_tables() {
+                    ctx.set_root_clutter_indices(&root.cards, |id| {
+                        tables.card_is_status_or_curse(id)
+                    });
+                } else {
+                    ctx.set_root_clutter_indices(&root.cards, |id| {
+                        content.card_meta(id).is_ok_and(|m| {
+                            matches!(m.card_type, sts2_types::CardType::Status | sts2_types::CardType::Curse)
+                        })
+                    });
+                }
             }
             compacted_root.static_ctx = Arc::new(ctx);
             &compacted_root
@@ -7730,5 +9043,95 @@ impl CombatSearchCoordinator {
                 termination: selected.termination.to_owned(),
             },
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_resolved(
+        hash: u128,
+        beam_score: f64,
+        board: i32,
+        opt_cards: i32,
+        energy: i32,
+        cum_hp_lost: i32,
+        has_lookahead: bool,
+        lookahead_victory: bool,
+        lookahead_score: f64,
+        lookahead_hp_lost: i32,
+        lookahead_board_investment: i32,
+    ) -> ResolvedChoiceCandidate {
+        ResolvedChoiceCandidate {
+            choices_offset: 0,
+            choices_len: 1,
+            action: CompactAction::new(CompactActionKind::EndTurn, 1, PorActionClass::Barrier).0,
+            por_key: 0,
+            has_extra_end_turn: false,
+            state_slab_idx: 0,
+            state_off: 0,
+            state_len: 0,
+            state_hash: StateHash(hash),
+            turn: 1,
+            turn_completed: false,
+            action_count: 1,
+            potion_count: 0,
+            explicit_potion_count: 0,
+            optional_paid_potion_count: 0,
+            automatic_potion_count: 0,
+            used_potion_slot_mask: 0,
+            potion_strategic_cost: 0,
+            optional_paid_potion_cost: 0,
+            ambergris_count: 0,
+            forced_used_mask: 0,
+            forced_ambergris_count: 0,
+            is_terminal: false,
+            base_score: beam_score,
+            fast_eval: StoredFastEval {
+                energy: energy as i16,
+                stars: 1,
+                cumulative_hp_lost: cum_hp_lost as i16,
+                ..Default::default()
+            },
+            full_eval: Some(StoredNodeEval {
+                beam_rank_score: beam_score,
+                board_investment: board,
+                optionality_cards: opt_cards,
+                ..Default::default()
+            }),
+            rare_eval: None,
+            label: TranspositionLabel::new(0, 0, 0, 0, 0, cum_hp_lost, 1, beam_score),
+            terminal_probe_score: 0.0,
+            lookahead_score,
+            lookahead_hp_lost,
+            lookahead_board_investment,
+            has_lookahead,
+            lookahead_victory,
+        }
+    }
+
+    #[test]
+    fn choice_sort_key_matches_resolved_choice_ordering() {
+        let samples = [
+            make_resolved(1, 100.0, 5, 2, 2, 4, true, false, 150.0, 4, 6),
+            make_resolved(2, 100.0, 8, 1, 1, 6, true, false, 150.0, 4, 6),
+            make_resolved(3, 120.0, 3, 4, 3, 2, true, true, 200.0, 1, 4),
+            make_resolved(4, 90.0, 9, 5, 0, 1, false, false, 0.0, 1, 9),
+            make_resolved(5, 110.0, 8, 3, 2, 4, true, false, 140.0, 3, 7),
+        ];
+        for criterion in 0..=3 {
+            for a in &samples {
+                let ka = ChoiceSortKey::from_candidate(a);
+                for b in &samples {
+                    let kb = ChoiceSortKey::from_candidate(b);
+                    assert_eq!(
+                        compare_choice_sort_key(&ka, &kb, criterion),
+                        compare_resolved_choice(a, b, criterion),
+                        "mismatch at criterion={criterion}"
+                    );
+                }
+            }
+        }
     }
 }

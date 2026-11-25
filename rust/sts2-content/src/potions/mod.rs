@@ -1,5 +1,4 @@
 use smallvec::SmallVec;
-use std::borrow::Cow;
 use sts2_kernel::commands::{
     autoplay, block, card, card_factory, card_pile, card_select, creature, damage, forge, gold,
     orb, osty, potion as potion_cmd, power,
@@ -7,14 +6,14 @@ use sts2_kernel::commands::{
 use sts2_kernel::content_dispatch::CardPlayOutcome;
 use sts2_kernel::{
     BattleState, CardHandle, CardInst, CardTempFlags, ChoiceTiming, ContentDispatcher,
-    CreatureHandle, FieldValue, HookArgs, HookResult, KernelError, LocalEnergyModifier,
-    StepOutcome, hooks, ordering,
+    CreatureHandle, HookArgs, HookResult, KernelError, LocalEnergyModifier, StepOutcome, hooks,
+    ordering,
 };
 use sts2_types::generated_ids::generated_card_meta;
 use sts2_types::{
-    CardId, CardKeywords, CardPilePosition, CardRarity, CardStaticFlags, CardTags, CardType,
-    CharacterId, Dec, HookMask, HookSlot, LocalEnergyModifierKind, PileType, PlayerRngType,
-    PotionId, PotionMeta, PowerId, RunRngType, TargetType, ValueProp,
+    CardId, CardKeywords, CardPilePosition, CardStaticFlags, CardTags, CardType, CharacterId, Dec,
+    HookMask, HookSlot, LocalEnergyModifierKind, PileType, PlayerRngType, PotionId, PotionMeta,
+    PowerId, RunRngType, TargetType, ValueProp,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -343,13 +342,11 @@ fn character_potion_pool(character: CharacterId) -> &'static [PotionId] {
     }
 }
 
-const POTION_OFFER_MARKER: &str = "__potion_offer";
-
 fn create_offer_card_instance(state: &mut BattleState, card_id: CardId) -> CardHandle {
     let meta = generated_card_meta(card_id);
     let handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let mut temp_flags = CardTempFlags::empty();
+    let mut temp_flags = CardTempFlags::POTION_OFFER;
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
@@ -357,17 +354,21 @@ fn create_offer_card_instance(state: &mut BattleState, card_id: CardId) -> CardH
         handle,
         id: card_id,
         upgrade_level: 0,
-        canonical_base_energy_cost: meta.canonical_energy_cost,
-        base_energy_cost: meta.canonical_energy_cost,
+        canonical_base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+        base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
         captured_energy_x_value: 0,
         base_replay_count: 0,
-        floor_added_to_deck: None,
-        deck_card_handle: None,
-        clone_of_handle: None,
-        temp_star_cost_override_this_turn: None,
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_cost_override_this_combat: None,
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+        temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
         local_keywords: meta.base_keywords,
         keywords_added_from_outside: CardKeywords::empty(),
         keywords_removed_from_outside: CardKeywords::empty(),
@@ -378,10 +379,6 @@ fn create_offer_card_instance(state: &mut BattleState, card_id: CardId) -> CardH
         removed_from_state: false,
         transform_into_after_play: None,
     });
-    if let Some(ext) = state.card_ext_mut(handle) {
-        ext.private_fields
-            .insert(Cow::Borrowed(POTION_OFFER_MARKER), FieldValue::Bool(true));
-    }
     handle
 }
 
@@ -392,10 +389,10 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     let meta = generated_card_meta(card.id);
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_cost_override_this_turn_or_until_played = Some(0);
+            c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
         }
         if let Some(ext) = state.card_ext_mut(handle) {
-            ext.local_energy_modifiers.push(LocalEnergyModifier {
+            ext.push_local_energy_modifier(LocalEnergyModifier {
                 kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                 amount: 0,
                 is_reduce_only: false,
@@ -404,7 +401,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     }
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_star_cost_override_this_turn = Some(0);
+            c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
         }
     }
 }
@@ -414,7 +411,7 @@ fn make_free_this_combat(state: &mut BattleState, handle: CardHandle) {
         c.temp_flags.insert(CardTempFlags::TEMPORARY_FREE_COMBAT);
     }
     if let Some(ext) = state.card_ext_mut(handle) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind: LocalEnergyModifierKind::FreeThisCombat,
             amount: 0,
             is_reduce_only: false,
@@ -561,20 +558,31 @@ pub fn droplet_of_precognition_candidates(
     }
     let mut out: SmallVec<[CardHandle; 16]> = state.player.draw.iter().copied().collect();
     if out.len() > 1 {
-        let mut pairs: Vec<(CardHandle, CardRarity, CardId)> = Vec::with_capacity(out.len());
-        for &h in &out {
-            let cid = state
-                .card(h)
-                .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
-                .id;
-            let rarity = content
-                .card_meta(cid)
-                .unwrap_or_else(|_| generated_card_meta(cid))
-                .rarity;
-            pairs.push((h, rarity, cid));
+        if out.len() <= u16::MAX as usize {
+            let mut pairs: SmallVec<[(u64, CardHandle); 64]> = SmallVec::with_capacity(out.len());
+            for (orig_idx, &h) in out.iter().enumerate() {
+                let cid = state
+                    .card(h)
+                    .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
+                    .id;
+                let key = (u64::from(crate::card_draw_sort_key(cid)) << 16) | (orig_idx as u64);
+                pairs.push((key, h));
+            }
+            pairs.sort_unstable_by_key(|&(k, _)| k);
+            out.clear();
+            out.extend(pairs.into_iter().map(|(_, h)| h));
+        } else {
+            let mut pairs: SmallVec<[(u32, CardHandle); 64]> = SmallVec::with_capacity(out.len());
+            for &h in &out {
+                let cid = state
+                    .card(h)
+                    .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
+                    .id;
+                pairs.push((crate::card_draw_sort_key(cid), h));
+            }
+            pairs.sort_by_key(|&(k, _)| k);
+            out = pairs.into_iter().map(|(_, h)| h).collect();
         }
-        pairs.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.2.compare_model_id(b.2)));
-        out = pairs.into_iter().map(|p| p.0).collect();
     }
     Ok(out)
 }
@@ -724,18 +732,16 @@ pub fn card_choice_potion_resume(
 ) -> Result<(), KernelError> {
     let chosen = selected.first().copied();
     for &cand in all_candidates {
-        if let Some(ext) = state
-            .card(cand)
-            .and_then(|c| c.ext_index)
-            .and_then(|idx| state.card_extensions.get_mut(idx as usize))
-        {
-            ext.private_fields.remove(POTION_OFFER_MARKER);
-        }
-        if Some(cand) != chosen {
-            if let Some(c) = state.card_mut(cand) {
+        let mut removed_pile = PileType::None;
+        if let Some(c) = state.card_mut(cand) {
+            c.temp_flags.remove(CardTempFlags::POTION_OFFER);
+            if Some(cand) != chosen {
+                removed_pile = c.pile;
                 c.removed_from_state = true;
             }
-            state.invalidate_hook_cache();
+        }
+        if removed_pile != PileType::None {
+            state.invalidate_pile_hooks(sts2_kernel::state::pile_dirty_bit(removed_pile));
         }
     }
     if let Some(h) = chosen {
@@ -756,9 +762,7 @@ fn card_choice_potion_resume_from_pending(
         .filter(|c| {
             !c.removed_from_state
                 && c.pile == PileType::None
-                && state
-                    .card_ext(c.ext_index)
-                    .is_some_and(|e| e.private_fields.contains_key(POTION_OFFER_MARKER))
+                && c.temp_flags.contains(CardTempFlags::POTION_OFFER)
         })
         .map(|c| c.handle)
         .collect();
@@ -1695,10 +1699,11 @@ pub fn potion_on_use(
                         .get_mut(RunRngType::CombatEnergyCosts)
                         .next_int(4)?;
                     if let Some(c) = state.card_mut(h) {
-                        c.temp_cost_override_this_turn_or_until_played = Some(cost);
+                        c.temp_cost_override_this_turn_or_until_played =
+                            sts2_kernel::OptI16::some_clamped(cost);
                     }
                     if let Some(ext) = state.card_ext_mut(h) {
-                        ext.local_energy_modifiers.push(LocalEnergyModifier {
+                        ext.push_local_energy_modifier(LocalEnergyModifier {
                             kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                             amount: cost,
                             is_reduce_only: false,

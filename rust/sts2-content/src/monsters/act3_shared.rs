@@ -433,7 +433,7 @@ fn spawn_enemy_with_unique_hp(
         cumulative_hp_lost: 0,
         is_detached: false,
         has_minion_power: false,
-        monster: Some(MonsterInst {
+        monster: Some(Box::new(MonsterInst {
             monster_id,
             rng: Rng::from_seed(monster_seed),
             is_performing_move: false,
@@ -446,7 +446,7 @@ fn spawn_enemy_with_unique_hp(
             transient_move_follow_up_state_id: None,
             setup_fields: Default::default(),
             private_fields: Default::default(),
-        }),
+        })),
         powers: Vec::new(),
     };
 

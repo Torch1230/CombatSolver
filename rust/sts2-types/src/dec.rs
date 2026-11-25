@@ -23,9 +23,36 @@ impl fmt::Display for DecError {
 impl std::error::Error for DecError {}
 
 /// Fixed-point 96-bit mantissa decimal matching C# `System.Decimal` semantics.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Default)]
 #[repr(transparent)]
 pub struct Dec(pub Decimal);
+
+impl PartialEq for Dec {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        if self.0.scale() == other.0.scale() {
+            return self.0.mantissa() == other.0.mantissa();
+        }
+        self.0 == other.0
+    }
+}
+
+impl PartialOrd for Dec {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Dec {
+    #[inline(always)]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        if self.0.scale() == other.0.scale() {
+            return self.0.mantissa().cmp(&other.0.mantissa());
+        }
+        self.0.cmp(&other.0)
+    }
+}
 
 impl Dec {
     pub const ZERO: Self = Self(Decimal::ZERO);
@@ -39,7 +66,7 @@ impl Dec {
     pub const MIN_VALUE: Self = Self(Decimal::MIN);
     pub const CLAMP_MAX_999M: Self = Self(Decimal::from_parts(999_999_999, 0, 0, false, 0));
 
-    #[inline]
+    #[inline(always)]
     pub const fn from_i32(value: i32) -> Self {
         Self(Decimal::from_parts(value.unsigned_abs(), 0, 0, value < 0, 0))
     }
@@ -81,17 +108,17 @@ impl Dec {
         self.0.is_sign_positive() && !self.0.is_zero()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn max(self, other: Self) -> Self {
-        if self.0 >= other.0 { self } else { other }
+        if self >= other { self } else { other }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn min(self, other: Self) -> Self {
-        if self.0 <= other.0 { self } else { other }
+        if self <= other { self } else { other }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn clamp(self, min: Self, max: Self) -> Self {
         self.max(min).min(max)
     }
@@ -135,8 +162,20 @@ impl Dec {
     /// Exact match for C# `(int)decimal` (truncates toward zero, errors on overflow).
     #[inline(always)]
     pub fn to_i32_trunc(self) -> Result<i32, DecError> {
-        if self.0.scale() == 0 {
-            return i32::try_from(self.0.mantissa()).map_err(|_| DecError::Overflow);
+        let m = self.0.mantissa();
+        let scale = self.0.scale();
+        if scale == 0 {
+            return i32::try_from(m).map_err(|_| DecError::Overflow);
+        }
+        if let Ok(m64) = i64::try_from(m) {
+            let q = match scale {
+                1 => m64 / 10,
+                2 => m64 / 100,
+                3 => m64 / 1000,
+                4 => m64 / 10_000,
+                _ => return self.0.trunc().to_i32().ok_or(DecError::Overflow),
+            };
+            return i32::try_from(q).map_err(|_| DecError::Overflow);
         }
         self.0.trunc().to_i32().ok_or(DecError::Overflow)
     }
@@ -167,11 +206,18 @@ impl Dec {
 
     #[inline(always)]
     pub fn checked_mul(self, rhs: Self) -> Result<Self, DecError> {
-        if self.0.scale() == 0 && rhs.0.scale() == 0 {
+        let sum_scale = self.0.scale() + rhs.0.scale();
+        if sum_scale <= 4 {
             if let Some(res) = self.0.mantissa().checked_mul(rhs.0.mantissa()) {
                 let abs = res.unsigned_abs();
                 if abs <= u32::MAX as u128 {
-                    return Ok(Self(Decimal::from_parts(abs as u32, 0, 0, res < 0, 0)));
+                    return Ok(Self(Decimal::from_parts(
+                        abs as u32,
+                        0,
+                        0,
+                        res < 0,
+                        sum_scale,
+                    )));
                 }
             }
         }
@@ -331,5 +377,66 @@ mod tests {
         let json = serde_json::to_string(&d).unwrap();
         let d3: Dec = serde_json::from_str(&json).unwrap();
         assert_eq!(d3, d);
+    }
+
+    #[test]
+    fn fast_paths_match_decimal_across_scales_and_bounds() {
+        let mut samples = vec![
+            Dec::ZERO,
+            Dec::ONE,
+            Dec::TWO,
+            Dec::HALF,
+            Dec::THREE_QUARTERS,
+            Dec::SEVENTY_PERCENT,
+            Dec::ONE_POINT_FIVE,
+            Dec::MAX_VALUE,
+            Dec::MIN_VALUE,
+            Dec::CLAMP_MAX_999M,
+            Dec::from_i32(i32::MAX),
+            Dec::from_i32(i32::MIN),
+            Dec::from_i64(i32::MAX as i64 + 1),
+            Dec::from_i64(i32::MIN as i64 - 1),
+        ];
+        for scale in 0..=5u32 {
+            for m in [
+                0i64, 1, -1, 9, -9, 10, -10, 15, -15, 99, -99, 100, -100, 199, -199, 999, -999,
+                1000, -1000, 9999, -9999, 10_000, -10_000, 123_456, -123_456,
+            ] {
+                samples.push(Dec::from_parts(m, scale).unwrap());
+            }
+            samples.push(Dec::from_decimal(Decimal::from_parts(u32::MAX, 0, 0, false, scale)));
+            samples.push(Dec::from_decimal(Decimal::from_parts(u32::MAX, 0, 0, true, scale)));
+        }
+
+        for &a in &samples {
+            assert_eq!(
+                a.to_i32_trunc().ok(),
+                a.as_decimal().trunc().to_i32(),
+                "to_i32_trunc mismatch on {a:?}"
+            );
+            for &b in &samples {
+                assert_eq!(a == b, a.as_decimal() == b.as_decimal(), "eq mismatch {a:?} {b:?}");
+                assert_eq!(
+                    a.cmp(&b),
+                    a.as_decimal().cmp(&b.as_decimal()),
+                    "cmp mismatch {a:?} {b:?}"
+                );
+                assert_eq!(
+                    a.max(b).as_decimal(),
+                    a.as_decimal().max(b.as_decimal()),
+                    "max mismatch {a:?} {b:?}"
+                );
+                assert_eq!(
+                    a.min(b).as_decimal(),
+                    a.as_decimal().min(b.as_decimal()),
+                    "min mismatch {a:?} {b:?}"
+                );
+                assert_eq!(
+                    a.checked_mul(b).map(|x| x.as_decimal()).ok(),
+                    a.as_decimal().checked_mul(b.as_decimal()),
+                    "checked_mul mismatch {a:?} * {b:?}"
+                );
+            }
+        }
     }
 }

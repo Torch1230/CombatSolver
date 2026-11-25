@@ -11,7 +11,7 @@ use sts2_kernel::content_dispatch::{AttackContextInfo, CardPlayContext, CardPlay
 use sts2_kernel::{
     BattleState, CardHandle, CardInst, CardTempFlags, ChoiceTiming, ContentDispatcher,
     CreatureHandle, DamageResult, FieldValue, HookArgs, HookResult, KernelError,
-    LocalEnergyModifier, PowerExtension, hooks, ordering,
+    LocalEnergyModifier, OptCardHandle, OptI16, PowerExtension, hooks, ordering,
 };
 use sts2_types::generated_ids::{CARD_META_TABLE, generated_card_meta};
 use sts2_types::{
@@ -19,9 +19,6 @@ use sts2_types::{
     CardType, CombatSide, Dec, HookSlot, LocalEnergyModifierKind, PileType, PotionId, PowerId,
     PowerStaticFlags, PowerType, RunRngType, TargetType, ValueProp, card_partition,
 };
-
-const DISCOVERY_OFFER_MARKER: &str = "__discovery_offer";
-const SPLASH_OFFER_MARKER: &str = "__splash_offer";
 
 const STEP_DISCOVERY_SELECT: u8 = 1;
 const STEP_SPLASH_SELECT: u8 = 2;
@@ -745,8 +742,8 @@ pub fn on_play(
         }
         CardId::BeatDown => {
             let count = if upg { 4 } else { 3 };
-            let mut candidates: Vec<CardHandle> = Vec::new();
-            let discard: SmallVec<[CardHandle; 32]> = SmallVec::from_slice(&state.player.discard);
+            let mut candidates: SmallVec<[CardHandle; 64]> = SmallVec::new();
+            let discard: SmallVec<[CardHandle; 64]> = SmallVec::from_slice(&state.player.discard);
             for h in discard {
                 if let Some(c) = state.card(h) {
                     if resolved_card_type(state, c) == CardType::Attack
@@ -860,8 +857,8 @@ pub fn on_play(
         CardId::Catastrophe => {
             let count = if upg { 3 } else { 2 };
             for _ in 0..count {
-                let mut candidates: Vec<CardHandle> = Vec::new();
-                let draw: SmallVec<[CardHandle; 32]> = SmallVec::from_slice(&state.player.draw);
+                let mut candidates: SmallVec<[CardHandle; 64]> = SmallVec::new();
+                let draw: SmallVec<[CardHandle; 64]> = SmallVec::from_slice(&state.player.draw);
                 for h in draw {
                     if !card_pile::card_has_keyword(state, content, h, CardKeywords::UNPLAYABLE)? {
                         candidates.push(h);
@@ -872,7 +869,8 @@ pub fn on_play(
                 let picked = if let Some(&first) = candidates.first() {
                     Some(first)
                 } else {
-                    let mut fallback = state.player.draw.to_vec();
+                    let mut fallback: SmallVec<[CardHandle; 64]> =
+                        SmallVec::from_slice(&state.player.draw);
                     ordering::stable_shuffle_cards(state, content, &mut fallback, &mut sel_rng)?;
                     fallback.first().copied()
                 };
@@ -952,7 +950,7 @@ pub fn on_play(
             );
             let cands: SmallVec<[CardHandle; 16]> = chosen_ids
                 .into_iter()
-                .map(|cid| create_offer_card_instance(state, cid, 0, DISCOVERY_OFFER_MARKER))
+                .map(|cid| create_offer_card_instance(state, cid, 0, CardTempFlags::DISCOVERY_OFFER))
                 .collect();
             match card_select::select_cards(
                 state,
@@ -966,7 +964,7 @@ pub fn on_play(
                 choice_queue,
             )? {
                 SelectResult::Selected(sel) => {
-                    finish_offer_choice(content, state, &cands, &sel, DISCOVERY_OFFER_MARKER)?;
+                    finish_offer_choice(content, state, &cands, &sel, CardTempFlags::DISCOVERY_OFFER)?;
                     Ok(CardPlayOutcome::default())
                 }
                 SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
@@ -1220,7 +1218,7 @@ pub fn on_play(
                 }
             }
             if let Some(ext) = state.card_ext_mut(ctx.card) {
-                ext.local_energy_modifiers.push(LocalEnergyModifier {
+                ext.push_local_energy_modifier(LocalEnergyModifier {
                     kind: LocalEnergyModifierKind::AddThisCombat,
                     amount: 1,
                     is_reduce_only: false,
@@ -2159,7 +2157,7 @@ pub fn on_play(
                 .filter(|h| draw_shuffled.contains(h))
                 .collect();
             if options.len() > 1 {
-                sort_draw_candidates(state, content, &mut options)?;
+                sort_draw_candidates(state, &mut options)?;
             }
             match card_select::select_cards(
                 state,
@@ -2295,7 +2293,7 @@ pub fn on_play(
             let offer_upg = if upg { 1 } else { 0 };
             let cands: SmallVec<[CardHandle; 16]> = chosen_ids
                 .into_iter()
-                .map(|cid| create_offer_card_instance(state, cid, offer_upg, SPLASH_OFFER_MARKER))
+                .map(|cid| create_offer_card_instance(state, cid, offer_upg, CardTempFlags::SPLASH_OFFER))
                 .collect();
             match card_select::select_cards(
                 state,
@@ -2309,7 +2307,7 @@ pub fn on_play(
                 choice_queue,
             )? {
                 SelectResult::Selected(sel) => {
-                    finish_offer_choice(content, state, &cands, &sel, SPLASH_OFFER_MARKER)?;
+                    finish_offer_choice(content, state, &cands, &sel, CardTempFlags::SPLASH_OFFER)?;
                     Ok(CardPlayOutcome::default())
                 }
                 SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
@@ -2594,7 +2592,7 @@ pub fn on_play(
             for cid in chosen {
                 let h = card_pile::create_card_in_combat(state, content, cid, 0)?;
                 if let Some(ext) = state.card_ext_mut(h) {
-                    ext.local_energy_modifiers.push(LocalEnergyModifier {
+                    ext.push_local_energy_modifier(LocalEnergyModifier {
                         kind: LocalEnergyModifierKind::AddThisTurnOrUntilPlayed,
                         amount: -1,
                         is_reduce_only: false,
@@ -2954,13 +2952,13 @@ pub fn on_play_resume(
     let upg = card.upgrade_level > 0;
     match (card.id, resume_step) {
         (CardId::Discovery, STEP_DISCOVERY_SELECT) => {
-            let cands = collect_marked_offer_cards(state, DISCOVERY_OFFER_MARKER);
-            finish_offer_choice(content, state, &cands, selected, DISCOVERY_OFFER_MARKER)?;
+            let cands = collect_marked_offer_cards(state, CardTempFlags::DISCOVERY_OFFER);
+            finish_offer_choice(content, state, &cands, selected, CardTempFlags::DISCOVERY_OFFER)?;
             Ok(CardPlayOutcome::default())
         }
         (CardId::Splash, STEP_SPLASH_SELECT) => {
-            let cands = collect_marked_offer_cards(state, SPLASH_OFFER_MARKER);
-            finish_offer_choice(content, state, &cands, selected, SPLASH_OFFER_MARKER)?;
+            let cands = collect_marked_offer_cards(state, CardTempFlags::SPLASH_OFFER);
+            finish_offer_choice(content, state, &cands, selected, CardTempFlags::SPLASH_OFFER)?;
             Ok(CardPlayOutcome::default())
         }
         (CardId::DualWield, STEP_DUAL_WIELD_SELECT) => {
@@ -3548,10 +3546,10 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     let meta = generated_card_meta(card.id);
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_cost_override_this_turn_or_until_played = Some(0);
+            c.temp_cost_override_this_turn_or_until_played = OptI16::some(0);
         }
         if let Some(ext) = state.card_ext_mut(handle) {
-            ext.local_energy_modifiers.push(LocalEnergyModifier {
+            ext.push_local_energy_modifier(LocalEnergyModifier {
                 kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                 amount: 0,
                 is_reduce_only: false,
@@ -3560,7 +3558,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     }
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_star_cost_override_this_turn = Some(0);
+            c.temp_star_cost_override_this_turn = OptI16::some(0);
         }
     }
 }
@@ -3570,7 +3568,7 @@ fn make_free_this_combat(state: &mut BattleState, handle: CardHandle) {
         c.temp_flags.insert(CardTempFlags::TEMPORARY_FREE_COMBAT);
     }
     if let Some(ext) = state.card_ext_mut(handle) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind: LocalEnergyModifierKind::FreeThisCombat,
             amount: 0,
             is_reduce_only: false,
@@ -3584,10 +3582,10 @@ fn set_temporary_cost_override_this_turn_or_until_played(
     cost: i32,
 ) {
     if let Some(c) = state.card_mut(handle) {
-        c.temp_cost_override_this_turn_or_until_played = Some(cost);
+        c.temp_cost_override_this_turn_or_until_played = OptI16::some_clamped(cost);
     }
     if let Some(ext) = state.card_ext_mut(handle) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
             amount: cost,
             is_reduce_only: false,
@@ -3601,10 +3599,10 @@ fn set_temporary_cost_override_this_combat(
     cost: i32,
 ) {
     if let Some(c) = state.card_mut(handle) {
-        c.temp_cost_override_this_combat = Some(cost);
+        c.temp_cost_override_this_combat = OptI16::some_clamped(cost);
     }
     if let Some(ext) = state.card_ext_mut(handle) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind: LocalEnergyModifierKind::SetThisCombat,
             amount: cost,
             is_reduce_only: false,
@@ -3639,12 +3637,12 @@ fn create_offer_card_instance(
     state: &mut BattleState,
     card_id: CardId,
     upgrade_level: i32,
-    marker: &'static str,
+    marker_flag: CardTempFlags,
 ) -> CardHandle {
     let meta = generated_card_meta(card_id);
     let handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let mut temp_flags = CardTempFlags::empty();
+    let mut temp_flags = marker_flag;
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
@@ -3652,17 +3650,21 @@ fn create_offer_card_instance(
         handle,
         id: card_id,
         upgrade_level: 0,
-        canonical_base_energy_cost: meta.canonical_energy_cost,
-        base_energy_cost: meta.canonical_energy_cost,
+        canonical_base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+        base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
         captured_energy_x_value: 0,
         base_replay_count: 0,
-        floor_added_to_deck: None,
-        deck_card_handle: None,
-        clone_of_handle: None,
-        temp_star_cost_override_this_turn: None,
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_cost_override_this_combat: None,
+        floor_added_to_deck: OptI16::NONE,
+        deck_card_handle: OptCardHandle::NONE,
+        clone_of_handle: OptCardHandle::NONE,
+        temp_star_cost_override_this_turn: OptI16::NONE,
+        temp_cost_override_this_turn: OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: OptI16::NONE,
+        temp_cost_override_this_combat: OptI16::NONE,
         local_keywords: meta.base_keywords,
         keywords_added_from_outside: CardKeywords::empty(),
         keywords_removed_from_outside: CardKeywords::empty(),
@@ -3679,23 +3681,20 @@ fn create_offer_card_instance(
         }
         let _ = crate::cards::card_on_upgrade(state, handle);
     }
-    if let Some(ext) = state.card_ext_mut(handle) {
-        ext.private_fields
-            .insert(Cow::Borrowed(marker), FieldValue::Bool(true));
-    }
     handle
 }
 
-fn collect_marked_offer_cards(state: &BattleState, marker: &str) -> SmallVec<[CardHandle; 16]> {
+fn collect_marked_offer_cards(
+    state: &BattleState,
+    marker_flag: CardTempFlags,
+) -> SmallVec<[CardHandle; 16]> {
     state
         .cards
         .iter()
         .filter(|c| {
             !c.removed_from_state
                 && c.pile == PileType::None
-                && state
-                    .card_ext(c.ext_index)
-                    .is_some_and(|e| e.private_fields.contains_key(marker))
+                && c.temp_flags.contains(marker_flag)
         })
         .map(|c| c.handle)
         .collect()
@@ -3706,22 +3705,20 @@ fn finish_offer_choice(
     state: &mut BattleState,
     all_candidates: &[CardHandle],
     selected: &[CardHandle],
-    marker: &str,
+    marker_flag: CardTempFlags,
 ) -> Result<(), KernelError> {
     let chosen = selected.first().copied();
     for &cand in all_candidates {
-        if let Some(ext) = state
-            .card(cand)
-            .and_then(|c| c.ext_index)
-            .and_then(|idx| state.card_extensions.get_mut(idx as usize))
-        {
-            ext.private_fields.remove(marker);
-        }
-        if Some(cand) != chosen {
-            if let Some(c) = state.card_mut(cand) {
+        let mut removed_pile = PileType::None;
+        if let Some(c) = state.card_mut(cand) {
+            c.temp_flags.remove(marker_flag);
+            if Some(cand) != chosen {
+                removed_pile = c.pile;
                 c.removed_from_state = true;
             }
-            state.invalidate_hook_cache();
+        }
+        if removed_pile != PileType::None {
+            state.invalidate_pile_hooks(sts2_kernel::state::pile_dirty_bit(removed_pile));
         }
     }
     if let Some(h) = chosen {
@@ -3740,7 +3737,7 @@ fn clone_card_for_combat(state: &mut BattleState, original: CardHandle) -> Resul
         .card(original)
         .ok_or_else(|| KernelError::InvalidState("missing card to clone".to_owned()))?;
     let source_handle = if src.temp_flags.contains(CardTempFlags::IS_DUPE) {
-        if let Some(co) = src.clone_of_handle {
+        if let Some(co) = src.clone_of_handle.get() {
             if let Some(orig_card) = state.card(co) {
                 src = *orig_card;
                 co
@@ -3776,8 +3773,8 @@ fn clone_card_for_combat(state: &mut BattleState, original: CardHandle) -> Resul
     let mut copy = src;
     copy.handle = new_handle;
     copy.temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY);
-    copy.deck_card_handle = None;
-    copy.clone_of_handle = Some(source_handle);
+    copy.deck_card_handle = OptCardHandle::NONE;
+    copy.clone_of_handle = OptCardHandle::some(source_handle);
     copy.ext_index = new_ext_idx;
     copy.pile = PileType::None;
     copy.removed_from_state = false;
@@ -3831,30 +3828,42 @@ fn move_selected_to_hand(state: &mut BattleState, selected: &[CardHandle]) {
 
 fn sort_draw_candidates(
     state: &BattleState,
-    content: &dyn ContentDispatcher,
-    options: &mut SmallVec<[CardHandle; 16]>,
+    options: &mut [CardHandle],
 ) -> Result<(), KernelError> {
-    let mut pairs: Vec<(CardHandle, CardRarity, CardId)> = Vec::with_capacity(options.len());
-    for &h in options.iter() {
-        let cid = state
-            .card(h)
-            .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
-            .id;
-        let rarity = content
-            .card_meta(cid)
-            .unwrap_or_else(|_| generated_card_meta(cid))
-            .rarity;
-        pairs.push((h, rarity, cid));
+    if options.len() <= u16::MAX as usize {
+        let mut pairs: SmallVec<[(u64, CardHandle); 64]> = SmallVec::with_capacity(options.len());
+        for (orig_idx, &h) in options.iter().enumerate() {
+            let cid = state
+                .card(h)
+                .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
+                .id;
+            let key = (u64::from(crate::card_draw_sort_key(cid)) << 16) | (orig_idx as u64);
+            pairs.push((key, h));
+        }
+        pairs.sort_unstable_by_key(|&(k, _)| k);
+        for (i, &(_, h)) in pairs.iter().enumerate() {
+            options[i] = h;
+        }
+    } else {
+        let mut pairs: SmallVec<[(u32, CardHandle); 64]> = SmallVec::with_capacity(options.len());
+        for &h in options.iter() {
+            let cid = state
+                .card(h)
+                .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
+                .id;
+            pairs.push((crate::card_draw_sort_key(cid), h));
+        }
+        pairs.sort_by_key(|&(k, _)| k);
+        for (i, &(_, h)) in pairs.iter().enumerate() {
+            options[i] = h;
+        }
     }
-    pairs.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.2.compare_model_id(b.2)));
-    options.clear();
-    options.extend(pairs.into_iter().map(|p| p.0));
     Ok(())
 }
 
 fn select_from_draw_pile<F>(
     state: &mut BattleState,
-    content: &dyn ContentDispatcher,
+    _content: &dyn ContentDispatcher,
     source_id: &'static str,
     resume_step: u8,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
@@ -3866,16 +3875,44 @@ where
     if hooks::is_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
         return Ok(CardPlayOutcome::default());
     }
-    let mut options: SmallVec<[CardHandle; 16]> = state
-        .player
-        .draw
-        .iter()
-        .copied()
-        .filter(|&h| state.card(h).is_some_and(|c| filter(state, c)))
-        .collect();
-    if options.len() > 1 {
-        sort_draw_candidates(state, content, &mut options)?;
-    }
+    let draw = &state.player.draw;
+    let cards = &state.cards;
+    let options: SmallVec<[CardHandle; 64]> = if draw.len() <= u16::MAX as usize {
+        let mut pairs: SmallVec<[(u64, CardHandle); 64]> = SmallVec::new();
+        for (i, &h) in draw.iter().enumerate() {
+            #[cfg(target_arch = "x86_64")]
+            if i + 4 < draw.len() {
+                let ahead = unsafe { *draw.get_unchecked(i + 4) }.0.wrapping_sub(1) as usize;
+                if ahead < cards.len() {
+                    unsafe {
+                        core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
+                            cards.as_ptr().add(ahead).cast::<i8>(),
+                        );
+                    }
+                }
+            }
+            if let Some(c) = state.card(h) {
+                if filter(state, c) {
+                    let key = (u64::from(crate::card_draw_sort_key(c.id)) << 16) | (i as u64);
+                    pairs.push((key, h));
+                }
+            }
+        }
+        if pairs.len() > 1 {
+            pairs.sort_unstable_by_key(|&(k, _)| k);
+        }
+        pairs.into_iter().map(|(_, h)| h).collect()
+    } else {
+        let mut opts: SmallVec<[CardHandle; 64]> = draw
+            .iter()
+            .copied()
+            .filter(|&h| state.card(h).is_some_and(|c| filter(state, c)))
+            .collect();
+        if opts.len() > 1 {
+            sort_draw_candidates(state, &mut opts)?;
+        }
+        opts
+    };
     match card_select::select_cards(
         state,
         &options,

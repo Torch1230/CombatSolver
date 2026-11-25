@@ -64,3 +64,51 @@ pub use rng::{
     MegaRandom, PlayerRngSet, PlayerRngType, Rng, RngError, RngWords, RunRngSet, RunRngType,
     deterministic_hash_code, deterministic_hash_code_old, snake_case,
 };
+
+static CARD_MODEL_ENTRY_SORT_RANKS: std::sync::OnceLock<[u16; CardId::COUNT]> =
+    std::sync::OnceLock::new();
+
+impl CardId {
+    #[inline]
+    pub fn model_entry_sort_rank(self) -> u16 {
+        let ranks = CARD_MODEL_ENTRY_SORT_RANKS.get_or_init(|| {
+            let mut entries: Vec<(usize, &'static str)> = (0..CardId::COUNT)
+                .map(|idx| {
+                    // SAFETY: `CardId` is `#[repr(u16)]` with contiguous discriminants `0..CardId::COUNT`.
+                    let cid = unsafe { core::mem::transmute::<u16, CardId>(idx as u16) };
+                    (idx, cid.model_entry())
+                })
+                .collect();
+            entries.sort_by(|a, b| a.1.as_bytes().cmp(b.1.as_bytes()));
+            let mut out = [0u16; CardId::COUNT];
+            let mut rank = 0u16;
+            for i in 0..entries.len() {
+                if i > 0 && entries[i].1.as_bytes() != entries[i - 1].1.as_bytes() {
+                    rank += 1;
+                }
+                out[entries[i].0] = rank;
+            }
+            out
+        });
+        ranks[self as usize]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn card_model_entry_sort_rank_isomorphic_to_compare_model_id() {
+        for i in 0..CardId::COUNT {
+            let a = unsafe { core::mem::transmute::<u16, CardId>(i as u16) };
+            for j in (i + 1)..CardId::COUNT {
+                let b = unsafe { core::mem::transmute::<u16, CardId>(j as u16) };
+                assert_eq!(
+                    a.model_entry_sort_rank().cmp(&b.model_entry_sort_rank()),
+                    a.compare_model_id(b)
+                );
+            }
+        }
+    }
+}

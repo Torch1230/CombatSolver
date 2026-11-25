@@ -8,9 +8,10 @@ use sts2_kernel::{
     PlayerCounters, PlayerInst, RelicInst, RootStaticContext, SemanticHistory,
 };
 use sts2_types::{
-    AfflictionId, CardId, CardKeywords, CharacterId, CombatSide, DominionId, EnchantmentId,
-    EnchantmentStatus, GameMode, HookSlot, MonsterId, OrbId, PileType, PlayerRngSet,
-    PlayerTurnPhase, PotionId, PowerId, RelicId, Rng, RoomType, RunModelId, RunRngSet,
+    AfflictionId, CardId, CardKeywords, CardType, CharacterId, CombatSide, DominionId,
+    EnchantmentId, EnchantmentStatus, GameMode, HookSlot, MonsterId, OrbId, PileType,
+    PlayerRngSet, PlayerTurnPhase, PotionId, PowerId, RelicId, Rng, RoomType, RunModelId,
+    RunRngSet,
 };
 
 fn build_probe_state() -> BattleState {
@@ -122,7 +123,7 @@ fn build_probe_state() -> BattleState {
                 block: 0,
                 cumulative_hp_lost: 0,
                 is_detached: false,
-                monster: Some(MonsterInst {
+                monster: Some(Box::new(MonsterInst {
                     monster_id: MonsterId::FuzzyWurmCrawler,
                     rng: Rng::from_seed(42),
                     is_performing_move: false,
@@ -135,7 +136,7 @@ fn build_probe_state() -> BattleState {
                     transient_move_follow_up_state_id: None,
                     setup_fields: Default::default(),
                     private_fields: Default::default(),
-                }),
+                })),
                 has_minion_power: false,
                 powers: Vec::new(),
             },
@@ -153,6 +154,7 @@ fn build_probe_state() -> BattleState {
         vakuu_auto_select_depth: 0,
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
+        relic_dirty_mask: Default::default(),
     }
 }
 
@@ -173,17 +175,17 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
             handle: ch,
             id,
             upgrade_level: 0,
-            canonical_base_energy_cost: meta.canonical_energy_cost,
-            base_energy_cost: meta.canonical_energy_cost,
+            canonical_base_energy_cost: meta.canonical_energy_cost as i16,
+            base_energy_cost: meta.canonical_energy_cost as i16,
             captured_energy_x_value: 0,
             base_replay_count: 0,
-            floor_added_to_deck: Some(1),
-            deck_card_handle: Some(ch),
-            clone_of_handle: None,
-            temp_star_cost_override_this_turn: None,
-            temp_cost_override_this_turn: None,
-            temp_cost_override_this_turn_or_until_played: None,
-            temp_cost_override_this_combat: None,
+            floor_added_to_deck: sts2_kernel::OptI16::some(1),
+            deck_card_handle: sts2_kernel::OptCardHandle::some(ch),
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
             local_keywords: meta.base_keywords,
             keywords_added_from_outside: CardKeywords::empty(),
             keywords_removed_from_outside: CardKeywords::empty(),
@@ -284,13 +286,13 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
             base_energy_cost: 1,
             captured_energy_x_value: 0,
             base_replay_count: 0,
-            floor_added_to_deck: Some(1),
-            deck_card_handle: None,
-            clone_of_handle: None,
-            temp_star_cost_override_this_turn: None,
-            temp_cost_override_this_turn: None,
-            temp_cost_override_this_turn_or_until_played: None,
-            temp_cost_override_this_combat: None,
+            floor_added_to_deck: sts2_kernel::OptI16::some(1),
+            deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
             local_keywords: CardKeywords::empty(),
             keywords_added_from_outside: CardKeywords::empty(),
             keywords_removed_from_outside: CardKeywords::empty(),
@@ -407,15 +409,84 @@ fn hook_mask_tables_and_rollout_profiles_match_per_entity_queries() {
 
     for idx in 0..CardId::COUNT {
         let id: CardId = unsafe { std::mem::transmute(idx as u16) };
-        assert_eq!(tables.cards[idx], content.card_hook_mask(id).unwrap());
+        let mask = content.card_hook_mask(id).unwrap();
+        assert_eq!(tables.cards[idx], mask);
+        assert_eq!(tables.card_has_hook(id), !mask.is_empty());
+        assert_eq!(
+            tables.card_has_custom_playability(id),
+            matches!(id, CardId::Clash | CardId::HighFive)
+        );
+        let meta = content.card_meta(id).unwrap();
+        assert_eq!(
+            tables.card_is_status_or_curse(id),
+            matches!(meta.card_type, CardType::Status | CardType::Curse)
+        );
     }
     for idx in 0..PowerId::COUNT {
         let id: PowerId = unsafe { std::mem::transmute(idx as u16) };
-        assert_eq!(tables.powers[idx], content.power_hook_mask(id).unwrap());
+        let mask = content.power_hook_mask(id).unwrap();
+        assert_eq!(tables.powers[idx], mask);
+        assert_eq!(tables.power_has_hook(id), !mask.is_empty());
+        assert_eq!(
+            mask.contains(HookSlot::ShouldAllowHitting),
+            matches!(
+                id,
+                PowerId::AdaptablePower
+                    | PowerId::DieForYouPower
+                    | PowerId::IllusionPower
+                    | PowerId::ReattachPower
+                    | PowerId::WuppysLoyaltyPower
+            ),
+            "unexpected ShouldAllowHitting mask for {id:?}"
+        );
+        assert_eq!(
+            mask.contains(HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath),
+            matches!(
+                id,
+                PowerId::AdaptablePower
+                    | PowerId::DieForYouPower
+                    | PowerId::IllusionPower
+                    | PowerId::PainfulStabsPower
+                    | PowerId::ReattachPower
+                    | PowerId::SteamEruptionPower
+                    | PowerId::WuppysLoyaltyPower
+            ),
+            "unexpected ShouldCreatureBeRemovedFromCombatAfterDeath mask for {id:?}"
+        );
+        assert_eq!(
+            mask.contains(HookSlot::ShouldPowerBeRemovedOnDeath),
+            matches!(id, PowerId::IllusionPower | PowerId::ReattachPower),
+            "unexpected ShouldPowerBeRemovedOnDeath mask for {id:?}"
+        );
+        assert_eq!(
+            mask.contains(HookSlot::TryModifyEnergyCostInCombat),
+            matches!(
+                id,
+                PowerId::BorrowedTimePower | PowerId::CuriousPower | PowerId::TangledPower
+            ),
+            "unexpected TryModifyEnergyCostInCombat mask for {id:?}"
+        );
+        assert_eq!(
+            mask.contains(HookSlot::TryModifyEnergyCostInCombatLate),
+            matches!(
+                id,
+                PowerId::CorruptionPower
+                    | PowerId::EnsemblePower
+                    | PowerId::FreeAttackPower
+                    | PowerId::FreeCardPower
+                    | PowerId::FreePowerPower
+                    | PowerId::FreeSkillPower
+                    | PowerId::VeilpiercerPower
+                    | PowerId::VoidFormPower
+            ),
+            "unexpected TryModifyEnergyCostInCombatLate mask for {id:?}"
+        );
     }
     for idx in 0..RelicId::COUNT {
         let id: RelicId = unsafe { std::mem::transmute(idx as u16) };
-        assert_eq!(tables.relics[idx], content.relic_hook_mask(id).unwrap());
+        let mask = content.relic_hook_mask(id).unwrap();
+        assert_eq!(tables.relics[idx], mask);
+        assert_eq!(tables.relic_has_hook(id), !mask.is_empty());
     }
     for idx in 0..PotionId::COUNT {
         let id: PotionId = unsafe { std::mem::transmute(idx as u16) };
@@ -423,7 +494,9 @@ fn hook_mask_tables_and_rollout_profiles_match_per_entity_queries() {
     }
     for idx in 0..MonsterId::COUNT {
         let id: MonsterId = unsafe { std::mem::transmute(idx as u16) };
-        assert_eq!(tables.monsters[idx], content.monster_hook_mask(id).unwrap());
+        let mask = content.monster_hook_mask(id).unwrap();
+        assert_eq!(tables.monsters[idx], mask);
+        assert_eq!(tables.monster_has_hook(id), !mask.is_empty());
     }
     for idx in 0..OrbId::COUNT {
         let id: OrbId = unsafe { std::mem::transmute(idx as u8) };
@@ -469,4 +542,60 @@ fn hook_mask_tables_and_rollout_profiles_match_per_entity_queries() {
     assert_eq!((dash.base_damage, dash.upg_damage, dash.base_block, dash.upg_block), (10, 13, 10, 13));
     assert_ne!(dash.op_flags & op::HAS_ATTACK, 0);
     assert_ne!(dash.op_flags & op::HAS_BLOCK, 0);
+}
+
+#[test]
+fn dynamic_comparison_values_set_matches_all_cards() {
+    let content = Sts2Content;
+    for idx in 0..CardId::COUNT {
+        let id: CardId = unsafe { std::mem::transmute(idx as u16) };
+        let meta = content.card_meta(id).unwrap();
+        let mut s = build_probe_state();
+        let ch = CardHandle(1);
+        s.cards.push(CardInst {
+            handle: ch,
+            id,
+            upgrade_level: 0,
+            canonical_base_energy_cost: meta.canonical_energy_cost as i16,
+            base_energy_cost: meta.canonical_energy_cost as i16,
+            captured_energy_x_value: 0,
+            base_replay_count: 0,
+            floor_added_to_deck: sts2_kernel::OptI16::NONE,
+            deck_card_handle: sts2_kernel::OptCardHandle::some(ch),
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
+            local_keywords: meta.base_keywords,
+            keywords_added_from_outside: CardKeywords::empty(),
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags: CardTempFlags::empty(),
+            affliction: None,
+            ext_index: None,
+            pile: PileType::Hand,
+            removed_from_state: false,
+            transform_into_after_play: None,
+        });
+        s.player.hand.push(ch);
+        let is_dyn = sts2_kernel::ordering::card_has_dynamic_comparison_values(id);
+        let vals = match sts2_types::card_partition(id) {
+            sts2_types::CardPartition::Ironclad => sts2_content::cards::ironclad::comparison_base_values(&s, ch),
+            sts2_types::CardPartition::Silent => sts2_content::cards::silent::comparison_base_values(&s, ch),
+            sts2_types::CardPartition::Defect => sts2_content::cards::defect::comparison_base_values(&s, ch),
+            sts2_types::CardPartition::Regent => sts2_content::cards::regent::comparison_base_values(&s, ch),
+            sts2_types::CardPartition::Necrobinder => sts2_content::cards::necrobinder::comparison_base_values(&s, ch),
+            sts2_types::CardPartition::Fool => sts2_content::cards::fool::comparison_base_values(&s, ch),
+            sts2_types::CardPartition::ColorlessSpecial => {
+                sts2_content::cards::colorless_special::comparison_base_values(&s, ch)
+            }
+        }
+        .unwrap();
+        if !is_dyn {
+            assert!(
+                vals.is_empty(),
+                "card {id:?} returned non-empty comparison values {vals:?} but is missing from card_has_dynamic_comparison_values"
+            );
+        }
+    }
 }

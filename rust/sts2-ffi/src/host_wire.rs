@@ -1430,7 +1430,7 @@ impl Clone for TurnAcc {
 pub fn solve_in_combat_host_v1_json(
     req_json: &[u8],
     cancel: &AtomicBool,
-    progress_cb: Option<&dyn Fn(&HostProgressDto)>,
+    progress_cb: Option<&(dyn Fn(&HostProgressDto) + Sync)>,
 ) -> HostSolveResponse {
     let started = Instant::now();
     let mut req: HostSolveRequest = match serde_json::from_slice(req_json) {
@@ -1596,8 +1596,8 @@ pub fn solve_in_combat_host_v1_json(
             });
         }
     };
-    let progress_ref: Option<&dyn Fn(&SearchProgress)> =
-        progress_cb.map(|_| &forward_progress as &dyn Fn(&SearchProgress));
+    let progress_ref: Option<&(dyn Fn(&SearchProgress) + Sync)> =
+        progress_cb.map(|_| &forward_progress as &(dyn Fn(&SearchProgress) + Sync));
 
     let sol = match SearchEngine.solve_state_with_controls(
         &root_state,

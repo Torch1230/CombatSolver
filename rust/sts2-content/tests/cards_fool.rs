@@ -39,17 +39,17 @@ fn build_fool_battle(
             handle: h,
             id: cid,
             upgrade_level: 0,
-            canonical_base_energy_cost: meta.canonical_energy_cost,
-            base_energy_cost: meta.canonical_energy_cost,
+            canonical_base_energy_cost: meta.canonical_energy_cost as i16,
+            base_energy_cost: meta.canonical_energy_cost as i16,
             captured_energy_x_value: 0,
             base_replay_count: 0,
-            floor_added_to_deck: Some(1),
-            deck_card_handle: Some(h),
-            clone_of_handle: None,
-            temp_star_cost_override_this_turn: None,
-            temp_cost_override_this_turn: None,
-            temp_cost_override_this_turn_or_until_played: None,
-            temp_cost_override_this_combat: None,
+            floor_added_to_deck: sts2_kernel::OptI16::some(1),
+            deck_card_handle: sts2_kernel::OptCardHandle::some(h),
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
             local_keywords: meta.base_keywords,
             keywords_added_from_outside: CardKeywords::empty(),
             keywords_removed_from_outside: CardKeywords::empty(),
@@ -107,7 +107,7 @@ fn build_fool_battle(
             block: 0,
             cumulative_hp_lost: 0,
             is_detached: false,
-            monster: Some(MonsterInst {
+            monster: Some(Box::new(MonsterInst {
                 monster_id: MonsterId::FuzzyWurmCrawler,
                 rng: Rng::from_seed(run_rngs.seed + idx as u64 + 1),
                 is_performing_move: false,
@@ -120,7 +120,7 @@ fn build_fool_battle(
                 transient_move_follow_up_state_id: None,
                 setup_fields: Default::default(),
                 private_fields: Default::default(),
-            }),
+            })),
             has_minion_power: false,
             powers: Vec::new(),
         });
@@ -219,6 +219,7 @@ fn build_fool_battle(
         vakuu_auto_select_depth: 0,
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
+        relic_dirty_mask: Default::default(),
     };
     (state, enemies_vec)
 }
@@ -298,7 +299,10 @@ fn all_90_fool_cards_meta_playable_upgrade_and_comparison_complete() {
         if cid == CardId::Lullaby {
             assert!(after.has_local_keyword(CardKeywords::INNATE));
         }
-        assert_eq!(after.canonical_base_energy_cost, meta.canonical_energy_cost);
+        assert_eq!(
+            i32::from(after.canonical_base_energy_cost),
+            meta.canonical_energy_cost
+        );
     }
 }
 

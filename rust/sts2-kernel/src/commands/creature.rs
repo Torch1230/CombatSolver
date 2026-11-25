@@ -19,11 +19,23 @@ pub fn damage_block_internal(
     let c = state
         .creature_mut(creature)
         .ok_or_else(|| KernelError::InvalidState("missing creature".to_owned()))?;
-    let blocked = if props.contains(ValueProp::UNBLOCKABLE) {
-        Dec::ZERO
-    } else {
-        Dec::from_i32(c.block).min(amount)
-    };
+    if props.contains(ValueProp::UNBLOCKABLE) {
+        return Ok(Dec::ZERO);
+    }
+    if amount.as_decimal().scale() == 0 && c.block >= 0 {
+        if let Ok(amt_i32) = amount.to_i32_trunc() {
+            if amt_i32 >= 0 {
+                let blocked_i32 = c.block.min(amt_i32);
+                c.block -= blocked_i32;
+                let new_block = c.block;
+                if creature == state.player.creature_handle {
+                    state.player.block = new_block;
+                }
+                return Ok(Dec::from_i32(blocked_i32));
+            }
+        }
+    }
+    let blocked = Dec::from_i32(c.block).min(amount);
     // Exact port of Creature.DamageBlockInternal: subtracts (int)blocked, returns un-truncated blocked.
     c.block -= blocked.to_i32_trunc()?;
     let new_block = c.block;
@@ -43,8 +55,21 @@ pub fn lose_hp_internal(
         .creature_mut(creature)
         .ok_or_else(|| KernelError::InvalidState("missing creature".to_owned()))?;
     let hp_before = c.current_hp;
-    let will_kill = hp_before > 0 && amount >= Dec::from_i32(hp_before);
-    let loss = amount.clamp(Dec::ZERO, Dec::CLAMP_MAX_999M).to_i32_trunc()?;
+    let (will_kill, loss) = if amount.as_decimal().scale() == 0 && hp_before >= 0 {
+        if let Ok(raw_i32) = amount.to_i32_trunc() {
+            (hp_before > 0 && raw_i32 >= hp_before, raw_i32.clamp(0, 999_999_999))
+        } else {
+            (
+                hp_before > 0 && amount >= Dec::from_i32(hp_before),
+                amount.clamp(Dec::ZERO, Dec::CLAMP_MAX_999M).to_i32_trunc()?,
+            )
+        }
+    } else {
+        (
+            hp_before > 0 && amount >= Dec::from_i32(hp_before),
+            amount.clamp(Dec::ZERO, Dec::CLAMP_MAX_999M).to_i32_trunc()?,
+        )
+    };
     c.current_hp = (hp_before - loss).max(0);
     let unblocked = hp_before - c.current_hp;
     c.cumulative_hp_lost = c
@@ -79,10 +104,21 @@ pub fn gain_block_internal(
     let c = state
         .creature_mut(creature)
         .ok_or_else(|| KernelError::InvalidState("missing creature".to_owned()))?;
-    let next = Dec::from_i32(c.block)
-        .checked_add(amount)?
-        .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
-        .to_i32_trunc()?;
+    let next = if amount.as_decimal().scale() == 0 {
+        if let Ok(amt_i32) = amount.to_i32_trunc() {
+            (i64::from(c.block) + i64::from(amt_i32)).clamp(0, 999_999_999) as i32
+        } else {
+            Dec::from_i32(c.block)
+                .checked_add(amount)?
+                .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
+                .to_i32_trunc()?
+        }
+    } else {
+        Dec::from_i32(c.block)
+            .checked_add(amount)?
+            .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
+            .to_i32_trunc()?
+    };
     c.block = next;
     if creature == state.player.creature_handle {
         state.player.block = next;
@@ -98,10 +134,21 @@ pub fn lose_block_internal(
     let c = state
         .creature_mut(creature)
         .ok_or_else(|| KernelError::InvalidState("missing creature".to_owned()))?;
-    let next = Dec::from_i32(c.block)
-        .checked_sub(amount)?
-        .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
-        .to_i32_trunc()?;
+    let next = if amount.as_decimal().scale() == 0 {
+        if let Ok(amt_i32) = amount.to_i32_trunc() {
+            (i64::from(c.block) - i64::from(amt_i32)).clamp(0, 999_999_999) as i32
+        } else {
+            Dec::from_i32(c.block)
+                .checked_sub(amount)?
+                .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
+                .to_i32_trunc()?
+        }
+    } else {
+        Dec::from_i32(c.block)
+            .checked_sub(amount)?
+            .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
+            .to_i32_trunc()?
+    };
     c.block = next;
     if creature == state.player.creature_handle {
         state.player.block = next;
@@ -549,7 +596,7 @@ pub fn create_monster_creature(
         cumulative_hp_lost: 0,
         is_detached: false,
         has_minion_power: false,
-        monster: Some(MonsterInst {
+        monster: Some(Box::new(MonsterInst {
             monster_id,
             rng: Rng::from_seed(monster_seed),
             is_performing_move: false,
@@ -562,7 +609,7 @@ pub fn create_monster_creature(
             transient_move_follow_up_state_id: None,
             setup_fields: Default::default(),
             private_fields: Default::default(),
-        }),
+        })),
         powers: Vec::new(),
     };
 

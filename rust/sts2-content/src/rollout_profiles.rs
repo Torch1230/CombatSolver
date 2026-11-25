@@ -1,4 +1,4 @@
-use sts2_kernel::{rollout_op_flags as op, CardRolloutProfile};
+use sts2_kernel::{rollout_meta_flags as mf, rollout_op_flags as op, CardRolloutProfile};
 use sts2_types::{CardId, CardMeta, CardStaticFlags, CardTags, CardType};
 
 const DRAW: u8 = op::HAS_DRAW;
@@ -646,14 +646,40 @@ pub fn build_card_rollout_profile(id: CardId, meta: &CardMeta) -> CardRolloutPro
         op_flags |= SBUF;
     }
 
+    assert!(
+        meta.canonical_star_cost >= i8::MIN as i32 && meta.canonical_star_cost <= i8::MAX as i32,
+        "canonical_star_cost out of i8 range for {id:?}: {}",
+        meta.canonical_star_cost
+    );
+    let mut meta_flags = 0u8;
+    if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
+        meta_flags |= mf::IS_X_ENERGY_COST;
+    }
+    if meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
+        meta_flags |= mf::IS_X_STAR_COST;
+    }
+    if meta.flags.contains(CardStaticFlags::MAY_HEAL) {
+        meta_flags |= mf::MAY_HEAL;
+    }
+    if meta.flags.contains(CardStaticFlags::GAINS_BLOCK) {
+        meta_flags |= mf::GAINS_BLOCK;
+    }
+    if matches!(id, CardId::Clash | CardId::HighFive) {
+        meta_flags |= mf::HAS_CUSTOM_PLAYABILITY;
+    }
+
     CardRolloutProfile {
         base_damage,
         upg_damage,
-        hits: hits.max(1),
-        upg_hits: upg_hits.max(1),
         base_block,
         upg_block,
+        hits: hits.max(1),
+        upg_hits: upg_hits.max(1),
         setup_weight,
         op_flags,
+        card_type: meta.card_type,
+        target_type: meta.target_type,
+        canonical_star_cost: meta.canonical_star_cost as i8,
+        meta_flags,
     }
 }

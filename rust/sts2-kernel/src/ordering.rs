@@ -4,15 +4,19 @@ use crate::hooks;
 use crate::state::{BattleState, CardHandle, CardInst};
 use core::cmp::Ordering;
 use smallvec::SmallVec;
+use std::sync::LazyLock;
 use sts2_types::{AfflictionId, CardId, Dec, EnchantmentId, Rng};
 
-#[inline]
+#[inline(always)]
 pub fn resolve_local_energy_cost_card(state: &BattleState, card: &CardInst, is_x_energy: bool) -> i32 {
     if card.canonical_base_energy_cost < 0 || is_x_energy {
-        return card.canonical_base_energy_cost;
+        return card.canonical_base_energy_cost as i32;
     }
-    let mut cost = card.base_energy_cost.max(0);
+    let mut cost = (card.base_energy_cost as i32).max(0);
     if let Some(ext) = state.card_ext(card.ext_index) {
+        if ext.local_energy_modifiers.is_empty() {
+            return cost;
+        }
         for modifier in &ext.local_energy_modifiers {
             let next = if modifier.kind.is_absolute() {
                 modifier.amount
@@ -62,7 +66,7 @@ pub fn resolve_energy_cost(
 
 #[inline]
 pub fn resolve_local_star_cost_card(card: &CardInst, canonical_star_cost: i32) -> i32 {
-    if let Some(override_turn) = card.temp_star_cost_override_this_turn {
+    if let Some(override_turn) = card.temp_star_cost_override_this_turn.get() {
         return override_turn;
     }
     if card.temp_flags.intersects(
@@ -119,7 +123,7 @@ pub fn resolved_energy_cost_for_comparison(
         .flags
         .contains(sts2_types::CardStaticFlags::IS_X_ENERGY_COST)
     {
-        return Ok(card.captured_energy_x_value);
+        return Ok(card.captured_energy_x_value as i32);
     }
     if card.canonical_base_energy_cost < 0 {
         return Ok(0);
@@ -210,65 +214,96 @@ pub fn compare_cards(
     Ok(Ordering::Equal)
 }
 
+fn build_rank_table<const N: usize>(mut cmp_idx: impl FnMut(usize, usize) -> Ordering) -> [u16; N] {
+    let mut order: Vec<u16> = (0..N as u16).collect();
+    order.sort_unstable_by(|&a, &b| cmp_idx(a as usize, b as usize));
+    let mut ranks = [0u16; N];
+    for (rank, &raw_id) in order.iter().enumerate() {
+        ranks[raw_id as usize] = rank as u16;
+    }
+    ranks
+}
+
+static CARD_MODEL_ORDER: LazyLock<[u16; CardId::COUNT]> = LazyLock::new(|| {
+    build_rank_table(|a, b| {
+        let ca: CardId = unsafe { core::mem::transmute(a as u16) };
+        let cb: CardId = unsafe { core::mem::transmute(b as u16) };
+        ca.compare_model_id(cb)
+    })
+});
+
+static ENCH_MODEL_ORDER: LazyLock<[u16; EnchantmentId::COUNT]> = LazyLock::new(|| {
+    build_rank_table(|a, b| {
+        let ea: EnchantmentId = unsafe { core::mem::transmute(a as u16) };
+        let eb: EnchantmentId = unsafe { core::mem::transmute(b as u16) };
+        ea.compare_model_id(eb)
+    })
+});
+
+static AFF_MODEL_ORDER: LazyLock<[u16; AfflictionId::COUNT]> = LazyLock::new(|| {
+    build_rank_table(|a, b| {
+        let aa: AfflictionId = unsafe { core::mem::transmute(a as u16) };
+        let ab: AfflictionId = unsafe { core::mem::transmute(b as u16) };
+        aa.compare_model_id(ab)
+    })
+});
+
+#[inline(always)]
+pub const fn card_has_dynamic_comparison_values(id: CardId) -> bool {
+    matches!(
+        id,
+        CardId::Disintegration
+            | CardId::Dowsing
+            | CardId::Guilty
+            | CardId::Maul
+            | CardId::SovereignBlade
+            | CardId::TheBall
+            | CardId::Wither
+            | CardId::Claw
+            | CardId::GeneticAlgorithm
+            | CardId::ShowOff
+            | CardId::Rampage
+            | CardId::Thrash
+            | CardId::TheScythe
+            | CardId::KinglyPunch
+    )
+}
+
 #[derive(Clone, Copy)]
 struct ShuffleCardKey {
     handle: CardHandle,
-    id: CardId,
+    card_id: CardId,
+    card_rank: u16,
     upgrade_level: i32,
-    ench: Option<EnchantmentId>,
-    aff: Option<AfflictionId>,
+    ench_rank: u16,
+    aff_rank: u16,
     base_replay_count: i32,
     orig_idx: usize,
 }
 
 #[inline]
-fn compare_opt_ench(a: Option<EnchantmentId>, b: Option<EnchantmentId>) -> Ordering {
-    match (a, b) {
-        (None, None) => Ordering::Equal,
-        (None, Some(_)) => Ordering::Less,
-        (Some(_), None) => Ordering::Greater,
-        (Some(x), Some(y)) => x.compare_model_id(y),
+fn local_cmp_cost(state: &BattleState, card: &CardInst, is_x_energy: bool) -> i32 {
+    if is_x_energy {
+        card.captured_energy_x_value as i32
+    } else if card.canonical_base_energy_cost < 0 {
+        0
+    } else {
+        resolve_local_energy_cost_card(state, card, false).max(0)
     }
 }
 
 #[inline]
-fn compare_opt_aff(a: Option<AfflictionId>, b: Option<AfflictionId>) -> Ordering {
-    match (a, b) {
-        (None, None) => Ordering::Equal,
-        (None, Some(_)) => Ordering::Less,
-        (Some(_), None) => Ordering::Greater,
-        (Some(x), Some(y)) => x.compare_model_id(y),
-    }
-}
-
-#[inline]
-fn compare_shuffle_keys(
+fn compare_shuffle_tiebreak(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     a: &ShuffleCardKey,
     b: &ShuffleCardKey,
     cost_cache: &mut [i32],
+    has_dyn_vars: bool,
 ) -> Result<Ordering, KernelError> {
     if a.handle == b.handle {
         return Ok(Ordering::Equal);
     }
-    let by_id = a.id.compare_model_id(b.id);
-    if by_id != Ordering::Equal {
-        return Ok(by_id);
-    }
-    let by_upgrade = a.upgrade_level.cmp(&b.upgrade_level);
-    if by_upgrade != Ordering::Equal {
-        return Ok(by_upgrade);
-    }
-    let by_ench = compare_opt_ench(a.ench, b.ench);
-    if by_ench != Ordering::Equal {
-        return Ok(by_ench);
-    }
-    let by_aff = compare_opt_aff(a.aff, b.aff);
-    if by_aff != Ordering::Equal {
-        return Ok(by_aff);
-    }
-
     let mut cost_a = cost_cache[a.orig_idx];
     if cost_a == i32::MIN {
         cost_a = resolved_energy_cost_for_comparison(state, content, a.handle)?;
@@ -287,6 +322,9 @@ fn compare_shuffle_keys(
     let by_replay = a.base_replay_count.cmp(&b.base_replay_count);
     if by_replay != Ordering::Equal {
         return Ok(by_replay);
+    }
+    if !has_dyn_vars {
+        return Ok(Ordering::Equal);
     }
 
     let vars_a = content.card_comparison_base_values(state, a.handle)?;
@@ -314,37 +352,142 @@ pub fn stable_shuffle_cards(
         return Ok(());
     }
     let n = handles.len();
+    let card_ranks = &*CARD_MODEL_ORDER;
+    let ench_ranks = &*ENCH_MODEL_ORDER;
+    let aff_ranks = &*AFF_MODEL_ORDER;
     let mut keys: SmallVec<[ShuffleCardKey; 64]> = SmallVec::with_capacity(n);
     for (orig_idx, &h) in handles.iter().enumerate() {
         let c = state
             .card(h)
             .ok_or_else(|| KernelError::InvalidState("missing card in shuffle".to_owned()))?;
-        let ench = state
+        let ench_rank = state
             .card_ext(c.ext_index)
-            .and_then(|e| e.enchantment.as_ref().map(|x| x.id));
+            .and_then(|e| e.enchantment.as_ref().map(|x| ench_ranks[x.id as usize] + 1))
+            .unwrap_or(0);
+        let aff_rank = c
+            .affliction
+            .map_or(0, |x| aff_ranks[x.id as usize] + 1);
         keys.push(ShuffleCardKey {
             handle: h,
-            id: c.id,
+            card_id: c.id,
+            card_rank: card_ranks[c.id as usize],
             upgrade_level: c.upgrade_level,
-            ench,
-            aff: c.affliction.map(|x| x.id),
-            base_replay_count: c.base_replay_count,
+            ench_rank,
+            aff_rank,
+            base_replay_count: c.base_replay_count as i32,
             orig_idx,
         });
     }
-    let mut cost_cache: SmallVec<[i32; 64]> = smallvec::smallvec![i32::MIN; n];
-    for i in 1..n {
-        let mut j = i;
-        while j > 0 {
-            if compare_shuffle_keys(state, content, &keys[j - 1], &keys[j], &mut cost_cache)?
-                == Ordering::Greater
+    keys.sort_unstable_by(|a, b| {
+        a.card_rank
+            .cmp(&b.card_rank)
+            .then_with(|| a.upgrade_level.cmp(&b.upgrade_level))
+            .then_with(|| a.ench_rank.cmp(&b.ench_rank))
+            .then_with(|| a.aff_rank.cmp(&b.aff_rank))
+            .then_with(|| a.orig_idx.cmp(&b.orig_idx))
+    });
+    let mut cost_cache: SmallVec<[i32; 64]> = SmallVec::new();
+    let mut start = 0usize;
+    while start < n {
+        let first = keys[start];
+        let mut end = start + 1;
+        while end < n {
+            let cur = keys[end];
+            if cur.card_rank == first.card_rank
+                && cur.upgrade_level == first.upgrade_level
+                && cur.ench_rank == first.ench_rank
+                && cur.aff_rank == first.aff_rank
             {
-                keys.swap(j - 1, j);
-                j -= 1;
+                end += 1;
             } else {
                 break;
             }
         }
+        if end - start > 1 {
+            let has_dyn_vars = card_has_dynamic_comparison_values(first.card_id);
+            let no_energy_hooks = state.hook_cache.dirty_mask == 0
+                && state.hook_cache.cached_tables.is_some()
+                && !state
+                    .hook_cache
+                    .masks
+                    .combat_combined
+                    .contains(sts2_types::HookSlot::TryModifyEnergyCostInCombat)
+                && !state
+                    .hook_cache
+                    .masks
+                    .combat_combined
+                    .contains(sts2_types::HookSlot::TryModifyEnergyCostInCombatLate);
+            if !has_dyn_vars && no_energy_hooks {
+                let is_x = state
+                    .fast_card_meta(content, first.card_id)?
+                    .flags
+                    .contains(sts2_types::CardStaticFlags::IS_X_ENERGY_COST);
+                let first_c = state
+                    .card(first.handle)
+                    .ok_or_else(|| KernelError::InvalidState("missing card handle".to_owned()))?;
+                let c0 = local_cmp_cost(state, first_c, is_x);
+                let r0 = first.base_replay_count;
+                let mut all_equal = true;
+                for k in &keys[(start + 1)..end] {
+                    let c = state
+                        .card(k.handle)
+                        .ok_or_else(|| KernelError::InvalidState("missing card handle".to_owned()))?;
+                    if local_cmp_cost(state, c, is_x) != c0 || k.base_replay_count != r0 {
+                        all_equal = false;
+                        break;
+                    }
+                }
+                if !all_equal {
+                    if cost_cache.is_empty() {
+                        cost_cache.resize(n, i32::MIN);
+                    }
+                    for k in &keys[start..end] {
+                        let c = state.card(k.handle).expect("checked above");
+                        cost_cache[k.orig_idx] = local_cmp_cost(state, c, is_x);
+                    }
+                    for i in (start + 1)..end {
+                        let mut j = i;
+                        while j > start {
+                            let ka = &keys[j - 1];
+                            let kb = &keys[j];
+                            let ord = cost_cache[ka.orig_idx]
+                                .cmp(&cost_cache[kb.orig_idx])
+                                .then_with(|| ka.base_replay_count.cmp(&kb.base_replay_count));
+                            if ord == Ordering::Greater {
+                                keys.swap(j - 1, j);
+                                j -= 1;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else {
+                if cost_cache.is_empty() {
+                    cost_cache.resize(n, i32::MIN);
+                }
+                for i in (start + 1)..end {
+                    let mut j = i;
+                    while j > start {
+                        if compare_shuffle_tiebreak(
+                            state,
+                            content,
+                            &keys[j - 1],
+                            &keys[j],
+                            &mut cost_cache,
+                            has_dyn_vars,
+                        )? == Ordering::Greater
+                        {
+                            keys.swap(j - 1, j);
+                            j -= 1;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        start = end;
     }
     for (dst, k) in handles.iter_mut().zip(keys.iter()) {
         *dst = k.handle;

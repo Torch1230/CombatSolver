@@ -9,8 +9,8 @@ pub mod snapshot;
 pub mod state;
 
 pub use content_dispatch::{
-    rollout_op_flags, AttackContextInfo, CardRolloutProfile, CategoryHookMasks, ContentDispatcher,
-    HookArgs, HookListener, HookMaskTableView, HookResult,
+    rollout_meta_flags, rollout_op_flags, AttackContextInfo, CachedHookListener, CardRolloutProfile,
+    CategoryHookMasks, ContentDispatcher, HookArgs, HookListener, HookMaskTableView, HookResult,
 };
 pub use continuation::{
     ChoiceRequest, ChoiceTiming, ContinuationFrame, PendingContinuation, StepOutcome,
@@ -26,7 +26,8 @@ pub use state::{
     ActiveHookCache, ActiveHookMasks, ArrowSlotInst, BattleState, CardExtension, CardHandle,
     CardInst, CardTempFlags, CreatureHandle, CreatureInst, DamageHistoryEntry, DamageResult,
     DeckDirtyFlag, EnchantmentInst, FieldMap, FieldValue, GrowthCounters, GrowthSource,
-    InlineI32Vec4, InlineOptI32Vec4, LocalEnergyModifier, MonsterInst, OrbInst, PlayerCounters,
-    PlayerInst, PowerExtension, PowerInst, RelicInst, RootStaticContext, SYM_FALLBACK_ID,
-    SemanticHistory, intern_static, intern_str, sym_cow, sym_str,
+    InlineI32Vec4, InlineOptI32Vec4, LocalEnergyModifier, MonsterInst, OptCardHandle, OptI16,
+    OrbInst, PlayerCounters, PlayerInst, PowerExtension, PowerInst, RelicDirtyMask, RelicInst,
+    RootStaticContext, SYM_FALLBACK_ID, SemanticHistory, intern_static, intern_str, sym_cow,
+    sym_str,
 };

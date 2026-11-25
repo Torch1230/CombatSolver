@@ -158,8 +158,15 @@ pub enum HookSlot {
 }
 
 /// 192-bit bitmask covering every combat hook slot for O(1) listener skipping.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Default)]
 pub struct HookMask(pub [u64; 3]);
+
+impl PartialEq for HookMask {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        ((self.0[0] ^ other.0[0]) | (self.0[1] ^ other.0[1]) | (self.0[2] ^ other.0[2])) == 0
+    }
+}
 
 impl HookMask {
     pub const EMPTY: Self = Self([0, 0, 0]);
@@ -186,6 +193,11 @@ impl HookMask {
     #[inline(always)]
     pub const fn contains_slot_parts(self, word: usize, bit: u64) -> bool {
         (self.0[word] & bit) != 0
+    }
+
+    #[inline(always)]
+    pub const fn contains_slot_idx(self, idx: usize) -> bool {
+        (self.0[idx >> 6] & (1u64 << (idx & 63))) != 0
     }
 
     #[inline(always)]

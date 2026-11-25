@@ -329,21 +329,62 @@ pub fn relic_meta(id: RelicId) -> Result<&'static RelicMeta, KernelError> {
 }
 
 #[inline]
-fn relic_inst(state: &BattleState, id: RelicId) -> Option<&RelicInst> {
+fn relic_inst_at(
+    state: &BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+) -> Option<&RelicInst> {
+    if let Some(idx) = relic_idx {
+        if let Some(r) = state
+            .player
+            .relics
+            .get(idx)
+            .filter(|r| r.id == id && !r.is_melted)
+        {
+            return Some(r);
+        }
+    }
     state.player.relics.iter().find(|r| r.id == id && !r.is_melted)
 }
 
 #[inline]
-fn relic_inst_mut(state: &mut BattleState, id: RelicId) -> Option<&mut RelicInst> {
-    state
-        .player
-        .relics
-        .iter_mut()
-        .find(|r| r.id == id && !r.is_melted)
+fn relic_inst_mut_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+) -> Option<&mut RelicInst> {
+    let idx = if let Some(idx) = relic_idx.filter(|&i| {
+        state
+            .player
+            .relics
+            .get(i)
+            .is_some_and(|r| r.id == id && !r.is_melted)
+    }) {
+        idx
+    } else {
+        state
+            .player
+            .relics
+            .iter()
+            .position(|r| r.id == id && !r.is_melted)?
+    };
+    state.mark_relic_dirty(idx);
+    Some(&mut state.player.relics[idx])
 }
 
-fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool {
-    relic_inst(state, id)
+#[inline]
+fn relic_inst(state: &BattleState, id: RelicId) -> Option<&RelicInst> {
+    relic_inst_at(state, id, None)
+}
+
+fn get_bool_at(
+    state: &BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &str,
+    default: bool,
+) -> bool {
+    relic_inst_at(state, id, relic_idx)
         .and_then(|r| r.private_fields.get(key))
         .and_then(|v| match v {
             FieldValue::Bool(b) => Some(*b),
@@ -352,15 +393,27 @@ fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool 
         .unwrap_or(default)
 }
 
-fn set_bool(state: &mut BattleState, id: RelicId, key: &'static str, val: bool) {
-    if let Some(r) = relic_inst_mut(state, id) {
+fn set_bool_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &'static str,
+    val: bool,
+) {
+    if let Some(r) = relic_inst_mut_at(state, id, relic_idx) {
         r.private_fields
             .insert(Cow::Borrowed(key), FieldValue::Bool(val));
     }
 }
 
-fn get_i32(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
-    relic_inst(state, id)
+fn get_i32_at(
+    state: &BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &str,
+    default: i32,
+) -> i32 {
+    relic_inst_at(state, id, relic_idx)
         .and_then(|r| r.private_fields.get(key))
         .and_then(|v| match v {
             FieldValue::Int(i) => Some(*i),
@@ -369,15 +422,42 @@ fn get_i32(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
         .unwrap_or(default)
 }
 
-fn set_i32(state: &mut BattleState, id: RelicId, key: &'static str, val: i32) {
-    if let Some(r) = relic_inst_mut(state, id) {
+fn set_i32_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &'static str,
+    val: i32,
+) {
+    if let Some(r) = relic_inst_mut_at(state, id, relic_idx) {
         r.private_fields
             .insert(Cow::Borrowed(key), FieldValue::Int(val));
     }
 }
 
-fn get_card_handle(state: &BattleState, id: RelicId, key: &str) -> Option<CardHandle> {
-    relic_inst(state, id)
+fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool {
+    get_bool_at(state, id, None, key, default)
+}
+
+fn set_bool(state: &mut BattleState, id: RelicId, key: &'static str, val: bool) {
+    set_bool_at(state, id, None, key, val);
+}
+
+fn get_i32(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
+    get_i32_at(state, id, None, key, default)
+}
+
+fn set_i32(state: &mut BattleState, id: RelicId, key: &'static str, val: i32) {
+    set_i32_at(state, id, None, key, val);
+}
+
+fn get_card_handle_at(
+    state: &BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &str,
+) -> Option<CardHandle> {
+    relic_inst_at(state, id, relic_idx)
         .and_then(|r| r.private_fields.get(key))
         .and_then(|v| match v {
             FieldValue::CardHandle(h) | FieldValue::Int(h) | FieldValue::NullableInt(Some(h))
@@ -389,8 +469,14 @@ fn get_card_handle(state: &BattleState, id: RelicId, key: &str) -> Option<CardHa
         })
 }
 
-fn set_card_handle(state: &mut BattleState, id: RelicId, key: &'static str, val: Option<CardHandle>) {
-    if let Some(r) = relic_inst_mut(state, id) {
+fn set_card_handle_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &'static str,
+    val: Option<CardHandle>,
+) {
+    if let Some(r) = relic_inst_mut_at(state, id, relic_idx) {
         match val {
             Some(ch) => {
                 r.private_fields
@@ -404,22 +490,22 @@ fn set_card_handle(state: &mut BattleState, id: RelicId, key: &'static str, val:
     }
 }
 
+fn get_card_handle(state: &BattleState, id: RelicId, key: &str) -> Option<CardHandle> {
+    get_card_handle_at(state, id, None, key)
+}
+
+fn set_card_handle(state: &mut BattleState, id: RelicId, key: &'static str, val: Option<CardHandle>) {
+    set_card_handle_at(state, id, None, key, val);
+}
+
 fn collect_hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let mut out = SmallVec::new();
-    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
-    for eh in enemies {
-        if state.creature(eh).is_some_and(|c| c.is_alive())
-            && hooks::should_allow_hitting(state, content, eh)?
-        {
-            out.push(eh);
-        }
-    }
-    Ok(out)
+    super::hittable_enemies_fast(state, content)
 }
 
+#[inline]
 fn is_card_type(
     state: &BattleState,
     content: &dyn ContentDispatcher,
@@ -429,7 +515,7 @@ fn is_card_type(
     let Some(ci) = state.card(card) else {
         return Ok(false);
     };
-    Ok(content.card_meta(ci.id)?.card_type == expected)
+    Ok(state.fast_card_meta(content, ci.id)?.card_type == expected)
 }
 
 fn card_has_tag(
@@ -464,17 +550,21 @@ fn create_offer_card_instance(
         handle,
         id: card_id,
         upgrade_level: 0,
-        canonical_base_energy_cost: meta.canonical_energy_cost,
-        base_energy_cost: meta.canonical_energy_cost,
+        canonical_base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+        base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
         captured_energy_x_value: 0,
         base_replay_count: 0,
-        floor_added_to_deck: None,
-        deck_card_handle: None,
-        clone_of_handle: None,
-        temp_star_cost_override_this_turn: None,
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_cost_override_this_combat: None,
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+        temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
         local_keywords: meta.base_keywords,
         keywords_added_from_outside: CardKeywords::empty(),
         keywords_removed_from_outside: CardKeywords::empty(),
@@ -522,10 +612,10 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     let meta = generated_card_meta(card.id);
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_cost_override_this_turn_or_until_played = Some(0);
+            c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
         }
         if let Some(ext) = state.card_ext_mut(handle) {
-            ext.local_energy_modifiers.push(LocalEnergyModifier {
+            ext.push_local_energy_modifier(LocalEnergyModifier {
                 kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                 amount: 0,
                 is_reduce_only: false,
@@ -534,7 +624,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     }
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_star_cost_override_this_turn = Some(0);
+            c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
         }
     }
 }
@@ -544,7 +634,7 @@ fn make_free_this_combat(state: &mut BattleState, handle: CardHandle) {
         c.temp_flags.insert(CardTempFlags::TEMPORARY_FREE_COMBAT);
     }
     if let Some(ext) = state.card_ext_mut(handle) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind: LocalEnergyModifierKind::FreeThisCombat,
             amount: 0,
             is_reduce_only: false,
@@ -582,9 +672,9 @@ fn create_clone(state: &mut BattleState, orig_handle: CardHandle) -> Result<Card
     temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
     state.cards.push(CardInst {
         handle: new_handle,
-        deck_card_handle: None,
-        clone_of_handle: Some(source_handle),
-        floor_added_to_deck: None,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
         ext_index,
         temp_flags,
         pile: PileType::None,
@@ -623,9 +713,9 @@ fn create_dupe(state: &mut BattleState, orig_handle: CardHandle) -> Result<CardH
     local_kw.remove(CardKeywords::EXHAUST);
     state.cards.push(CardInst {
         handle: new_handle,
-        deck_card_handle: None,
-        clone_of_handle: Some(source_handle),
-        floor_added_to_deck: None,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
         ext_index,
         temp_flags,
         local_keywords: local_kw,
@@ -818,8 +908,8 @@ fn mummified_hand_pick_card(
         let Some(c) = state.card(*h) else {
             continue;
         };
-        let meta = content
-            .card_meta(c.id)
+        let meta = state
+            .fast_card_meta(content, c.id)
             .unwrap_or_else(|_| generated_card_meta(c.id));
         let is_x_energy = meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST);
         let is_x_star = meta.flags.contains(CardStaticFlags::IS_X_STAR_COST);
@@ -854,6 +944,17 @@ pub fn dispatch_hook(
     content: &dyn ContentDispatcher,
     state: &mut BattleState,
     id: RelicId,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<HookResult, KernelError> {
+    dispatch_hook_at(content, state, id, None, slot, args)
+}
+
+pub(crate) fn dispatch_hook_at(
+    content: &dyn ContentDispatcher,
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
     slot: HookSlot,
     args: &HookArgs<'_>,
 ) -> Result<HookResult, KernelError> {
@@ -1271,7 +1372,7 @@ pub fn dispatch_hook(
                         .next_item(&candidates)
                     {
                         if let Some(ext) = state.card_ext_mut(picked) {
-                            ext.local_energy_modifiers.push(LocalEnergyModifier {
+                            ext.push_local_energy_modifier(LocalEnergyModifier {
                                 kind: LocalEnergyModifierKind::AddUntilPlayed,
                                 amount: -1,
                                 is_reduce_only: false,
@@ -2733,15 +2834,16 @@ pub fn dispatch_hook(
                 HookSlot::BeforeSideTurnStart => {
                     if let HookArgs::SideTurn { participants, .. } = args {
                         if participants.contains(&pc) {
-                            set_i32(state, id, "Kunai._attacksThisTurn", 0);
+                            set_i32_at(state, id, relic_idx, "Kunai._attacksThisTurn", 0);
                         }
                     }
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(ctx) = args {
                         if is_card_type(state, content, ctx.card, CardType::Attack)? {
-                            let attacks = get_i32(state, id, "Kunai._attacksThisTurn", 0) + 1;
-                            set_i32(state, id, "Kunai._attacksThisTurn", attacks);
+                            let attacks =
+                                get_i32_at(state, id, relic_idx, "Kunai._attacksThisTurn", 0) + 1;
+                            set_i32_at(state, id, relic_idx, "Kunai._attacksThisTurn", attacks);
                             if attacks % 3 == 0 {
                                 power::apply(
                                     state,
@@ -2757,7 +2859,7 @@ pub fn dispatch_hook(
                     }
                 }
                 HookSlot::AfterCombatEnd => {
-                    set_i32(state, id, "Kunai._attacksThisTurn", 0);
+                    set_i32_at(state, id, relic_idx, "Kunai._attacksThisTurn", 0);
                 }
                 _ => {}
             }
@@ -2826,7 +2928,7 @@ pub fn dispatch_hook(
         RelicId::LavaLamp => {
             match slot {
                 HookSlot::AfterRoomEntered => {
-                    set_bool(state, id, "LavaLamp._tookDamageThisCombat", false);
+                    set_bool_at(state, id, relic_idx, "LavaLamp._tookDamageThisCombat", false);
                 }
                 HookSlot::AfterDamageReceived => {
                     if let HookArgs::DamageResult {
@@ -2841,7 +2943,13 @@ pub fn dispatch_hook(
                             && *unblocked_damage > 0
                             && !props.contains(ValueProp::UNBLOCKABLE)
                         {
-                            set_bool(state, id, "LavaLamp._tookDamageThisCombat", true);
+                            set_bool_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "LavaLamp._tookDamageThisCombat",
+                                true,
+                            );
                         }
                     }
                 }
@@ -2853,12 +2961,12 @@ pub fn dispatch_hook(
         RelicId::LetterOpener => {
             match slot {
                 HookSlot::BeforeCombatStart => {
-                    set_i32(state, id, "LetterOpener._skillsThisTurn", 0);
+                    set_i32_at(state, id, relic_idx, "LetterOpener._skillsThisTurn", 0);
                 }
                 HookSlot::AfterSideTurnStart => {
                     if let HookArgs::SideTurn { participants, .. } = args {
                         if participants.contains(&pc) && state.player.turn_number != 1 {
-                            set_i32(state, id, "LetterOpener._skillsThisTurn", 0);
+                            set_i32_at(state, id, relic_idx, "LetterOpener._skillsThisTurn", 0);
                         }
                     }
                 }
@@ -2866,8 +2974,9 @@ pub fn dispatch_hook(
                     if let HookArgs::CardPlay(ctx) = args {
                         if is_card_type(state, content, ctx.card, CardType::Skill)? {
                             let skills =
-                                get_i32(state, id, "LetterOpener._skillsThisTurn", 0) + 1;
-                            set_i32(state, id, "LetterOpener._skillsThisTurn", skills);
+                                get_i32_at(state, id, relic_idx, "LetterOpener._skillsThisTurn", 0)
+                                    + 1;
+                            set_i32_at(state, id, relic_idx, "LetterOpener._skillsThisTurn", skills);
                             if skills % 3 == 0 {
                                 let targets = collect_hittable_enemies(state, content)?;
                                 damage::damage_targets(
@@ -2894,7 +3003,7 @@ pub fn dispatch_hook(
                 HookSlot::ShouldDieLate => {
                     if let HookArgs::Creature(target) = args {
                         let prevent = *target == pc
-                            && !get_bool(state, id, "LizardTail._wasUsed", false);
+                            && !get_bool_at(state, id, relic_idx, "LizardTail._wasUsed", false);
                         return Ok(HookResult {
                             bool_val: Some(!prevent),
                             ..Default::default()
@@ -2903,7 +3012,7 @@ pub fn dispatch_hook(
                 }
                 HookSlot::AfterPreventingDeath => {
                     if let HookArgs::Creature(target) = args {
-                        set_bool(state, id, "LizardTail._wasUsed", true);
+                        set_bool_at(state, id, relic_idx, "LizardTail._wasUsed", true);
                         let max_hp = state.creature(*target).map_or(1, |c| c.max_hp);
                         let heal_amt = Dec::ONE.max(Dec::from_i32(max_hp).checked_mul(Dec::HALF)?);
                         creature::heal(state, content, *target, heal_amt)?;
@@ -3166,13 +3275,21 @@ pub fn dispatch_hook(
             match slot {
                 HookSlot::BeforeCardPlayed => {
                     if let HookArgs::CardPlay(ctx) = args {
-                        if get_card_handle(state, id, "MusicBox._cardBeingPlayed").is_none()
-                            && !get_bool(state, id, "MusicBox._wasUsedThisTurn", false)
-                            && is_card_type(state, content, ctx.card, CardType::Attack)?
-                        {
-                            set_card_handle(
+                        if get_card_handle_at(state, id, relic_idx, "MusicBox._cardBeingPlayed")
+                            .is_none()
+                            && !get_bool_at(
                                 state,
                                 id,
+                                relic_idx,
+                                "MusicBox._wasUsedThisTurn",
+                                false,
+                            )
+                            && is_card_type(state, content, ctx.card, CardType::Attack)?
+                        {
+                            set_card_handle_at(
+                                state,
+                                id,
+                                relic_idx,
                                 "MusicBox._cardBeingPlayed",
                                 Some(ctx.card),
                             );
@@ -3181,7 +3298,8 @@ pub fn dispatch_hook(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(ctx) = args {
-                        if get_card_handle(state, id, "MusicBox._cardBeingPlayed") == Some(ctx.card)
+                        if get_card_handle_at(state, id, relic_idx, "MusicBox._cardBeingPlayed")
+                            == Some(ctx.card)
                             && state.is_in_progress
                         {
                             let copy = create_clone(state, ctx.card)?;
@@ -3189,22 +3307,52 @@ pub fn dispatch_hook(
                                 c.local_keywords.insert(CardKeywords::ETHEREAL);
                             }
                             enter_generated_into_hand_with_creator(content, state, copy, Some(pc))?;
-                            set_bool(state, id, "MusicBox._wasUsedThisTurn", true);
-                            set_card_handle(state, id, "MusicBox._cardBeingPlayed", None);
+                            set_bool_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "MusicBox._wasUsedThisTurn",
+                                true,
+                            );
+                            set_card_handle_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "MusicBox._cardBeingPlayed",
+                                None,
+                            );
                         }
                     }
                 }
                 HookSlot::BeforeSideTurnStart => {
                     if let HookArgs::SideTurn { participants, .. } = args {
                         if participants.contains(&pc) {
-                            set_bool(state, id, "MusicBox._wasUsedThisTurn", false);
-                            set_card_handle(state, id, "MusicBox._cardBeingPlayed", None);
+                            set_bool_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "MusicBox._wasUsedThisTurn",
+                                false,
+                            );
+                            set_card_handle_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "MusicBox._cardBeingPlayed",
+                                None,
+                            );
                         }
                     }
                 }
                 HookSlot::AfterCombatEnd => {
-                    set_bool(state, id, "MusicBox._wasUsedThisTurn", false);
-                    set_card_handle(state, id, "MusicBox._cardBeingPlayed", None);
+                    set_bool_at(state, id, relic_idx, "MusicBox._wasUsedThisTurn", false);
+                    set_card_handle_at(
+                        state,
+                        id,
+                        relic_idx,
+                        "MusicBox._cardBeingPlayed",
+                        None,
+                    );
                 }
                 _ => {}
             }

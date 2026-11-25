@@ -4,18 +4,19 @@ use crate::ordering;
 use crate::state::{
     ArrowSlotInst, BattleState, CardExtension, CardHandle, CardInst, CardTempFlags, CreatureHandle,
     CreatureInst, DamageHistoryEntry, DeckDirtyFlag, EnchantmentInst, FieldMap, FieldValue,
-    LocalEnergyModifier, MonsterInst, OrbInst, PlayerCounters, PlayerInst, PowerExtension,
-    PowerInst, RelicInst, RootStaticContext, SemanticHistory, TurnKey, sym_cow,
+    LocalEnergyModifier, MonsterInst, OptCardHandle, OptI16, OrbInst, PlayerCounters, PlayerInst,
+    PowerExtension, PowerInst, RelicDirtyMask, RelicInst, RootRelicHeader, RootStaticContext,
+    SemanticHistory, TurnKey, sym_cow,
 };
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use sts2_types::{
-    AfflictionId, ArrowStatus, CardId, CardKeywords, CharacterId, CombatSide, Dec, DominionId,
-    EnchantmentId, EnchantmentStatus, GameMode, LocalEnergyModifierKind, MonsterId, OrbId,
-    PileType, PlayerRngSet, PlayerRngType, PlayerTurnPhase, PotionId, PowerId, RelicId, Rng,
-    RngWords, RoomType, RunModelId, RunRngSet, RunRngType, ValueProp,
+    AfflictionId, ArrowStatus, CardId, CardKeywords, CardType, CharacterId, CombatSide, Dec,
+    DominionId, EnchantmentId, EnchantmentStatus, GameMode, LocalEnergyModifierKind, MonsterId,
+    OrbId, PileType, PlayerRngSet, PlayerRngType, PlayerTurnPhase, PotionId, PowerId, RelicId,
+    Rng, RngWords, RoomType, RunModelId, RunRngSet, RunRngType, ValueProp,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -909,6 +910,7 @@ pub fn import_live_state(
     }
 
     let mut cards = Vec::with_capacity(dto.cards.len());
+    let mut root_all_clutter_indices: Vec<u16> = Vec::new();
     let mut card_extensions = Vec::new();
     let mut max_card_handle = 0u32;
     let mut handle_to_pile: HashMap<i32, PileType> = HashMap::new();
@@ -931,12 +933,17 @@ pub fn import_live_state(
         handle_to_pile.insert(h, PileType::Deck);
     }
 
-    for c in &dto.cards {
+    for (card_pos, c) in dto.cards.iter().enumerate() {
         let card_id = CardId::from_model_id_str(&c.card_id).ok_or_else(|| KernelError::Unsupported {
             kind: "Card",
             id: c.card_id.clone(),
         })?;
-        let _ = content.card_meta(card_id)?;
+        let meta = content.card_meta(card_id)?;
+        if matches!(meta.card_type, CardType::Status | CardType::Curse) {
+            if let Ok(idx_u16) = u16::try_from(card_pos) {
+                root_all_clutter_indices.push(idx_u16);
+            }
+        }
         let handle_u = u32::try_from(c.handle).map_err(|_| KernelError::SnapshotImport {
             field_path: "cards[].handle".to_owned(),
             message: "negative card handle".to_owned(),
@@ -1039,18 +1046,35 @@ pub fn import_live_state(
             handle: CardHandle(handle_u),
             id: card_id,
             upgrade_level: c.upgrade_level,
-            canonical_base_energy_cost: c.canonical_base_energy_cost,
-            base_energy_cost: c.base_energy_cost,
-            captured_energy_x_value: c.captured_energy_x_value,
-            base_replay_count: c.base_replay_count,
-            floor_added_to_deck: c.floor_added_to_deck,
-            deck_card_handle: c.deck_card_handle.map(|h| CardHandle(h as u32)),
-            clone_of_handle: c.clone_of_handle.map(|h| CardHandle(h as u32)),
-            temp_star_cost_override_this_turn: c.temporary_star_cost_override_this_turn,
-            temp_cost_override_this_turn: c.temporary_cost_override_this_turn,
-            temp_cost_override_this_turn_or_until_played: c
-                .temporary_cost_override_this_turn_or_until_played,
-            temp_cost_override_this_combat: c.temporary_cost_override_this_combat,
+            canonical_base_energy_cost: c
+                .canonical_base_energy_cost
+                .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            base_energy_cost: c
+                .base_energy_cost
+                .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            captured_energy_x_value: c
+                .captured_energy_x_value
+                .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            base_replay_count: c
+                .base_replay_count
+                .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            floor_added_to_deck: OptI16::from_option(c.floor_added_to_deck),
+            deck_card_handle: OptCardHandle::from_option(
+                c.deck_card_handle.map(|h| CardHandle(h as u32)),
+            ),
+            clone_of_handle: OptCardHandle::from_option(
+                c.clone_of_handle.map(|h| CardHandle(h as u32)),
+            ),
+            temp_star_cost_override_this_turn: OptI16::from_option(
+                c.temporary_star_cost_override_this_turn,
+            ),
+            temp_cost_override_this_turn: OptI16::from_option(c.temporary_cost_override_this_turn),
+            temp_cost_override_this_turn_or_until_played: OptI16::from_option(
+                c.temporary_cost_override_this_turn_or_until_played,
+            ),
+            temp_cost_override_this_combat: OptI16::from_option(
+                c.temporary_cost_override_this_combat,
+            ),
             local_keywords: local_kw,
             keywords_added_from_outside: parse_keywords(
                 &c.keywords_added_from_outside,
@@ -1181,7 +1205,7 @@ pub fn import_live_state(
                 for (k, v) in &m.private_fields {
                     private_fields.insert(sym_cow(k), parse_field_value(v)?);
                 }
-                Some(MonsterInst {
+                Some(Box::new(MonsterInst {
                     monster_id: mid,
                     rng: Rng::from_words(m.rng),
                     is_performing_move: m.is_performing_move,
@@ -1197,7 +1221,7 @@ pub fn import_live_state(
                         .map(sym_cow),
                     setup_fields,
                     private_fields,
-                })
+                }))
             }
             None => None,
         };
@@ -1318,6 +1342,21 @@ pub fn import_live_state(
     let root_deck_prefix_len = cards.iter().take_while(|c| c.pile == PileType::Deck).count();
     let root_deck_cards = cards[..root_deck_prefix_len].to_vec();
     let root_deck_handles = player.deck.clone();
+    let root_card_floors = cards.iter().map(|c| c.floor_added_to_deck).collect();
+    let (has_root_clutter_indices, root_initial_cards_len, root_combat_clutter_indices, root_all_clutter_indices) =
+        if cards.len() <= u16::MAX as usize {
+            let prefix_u16 = root_deck_prefix_len as u16;
+            let combat_indices: Vec<u16> = root_all_clutter_indices
+                .iter()
+                .copied()
+                .filter(|&i| i >= prefix_u16)
+                .collect();
+            (true, cards.len(), combat_indices, root_all_clutter_indices)
+        } else {
+            (false, 0, Vec::new(), Vec::new())
+        };
+    let root_relics = player.relics.clone();
+    let root_relic_headers = root_relics.iter().map(RootRelicHeader::from_relic).collect();
     let static_ctx = Arc::new(RootStaticContext {
         encounter_id: dto.encounter_id.clone(),
         encounter_is_weak: dto.encounter_is_weak || dto.encounter_id.ends_with("_WEAK"),
@@ -1339,16 +1378,25 @@ pub fn import_live_state(
         map_row: 0,
         act_index: 0,
         total_floor: dto.total_floor,
-        root_run_rng_string_seed: run_rngs.string_seed.clone(),
+        root_run_rng_string_seed: Arc::clone(&run_rngs.string_seed),
         root_deck_prefix_len,
         root_deck_cards,
         root_deck_handles,
+        root_card_floors,
+        has_root_relics: true,
+        root_relics,
+        root_relic_headers,
         compact_turn_history: false,
         has_root_rngs: true,
         root_run_rngs: run_rngs.streams,
         root_player_rngs: player_rngs.streams,
         root_run_rng_counters: run_rngs.streams.map(|r| r.counter),
         root_player_rng_counters: player_rngs.streams.map(|r| r.counter),
+        has_root_clutter_indices,
+        root_initial_cards_len,
+        root_combat_clutter_indices,
+        root_all_clutter_indices,
+        pool_cache: crate::state::RootPoolCache::default(),
     });
 
     let damage_history = dto
@@ -1477,6 +1525,7 @@ pub fn import_live_state(
         vakuu_auto_select_depth: 0,
         hook_cache: Default::default(),
         deck_dirty: DeckDirtyFlag(false),
+        relic_dirty_mask: RelicDirtyMask(0),
     })
 }
 
@@ -1524,15 +1573,15 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                 handle: c.handle.0 as i32,
                 card_id: c.id.model_id_str().to_owned(),
                 upgrade_level: c.upgrade_level,
-                deck_card_handle: c.deck_card_handle.map(|h| h.0 as i32),
-                clone_of_handle: c.clone_of_handle.map(|h| h.0 as i32),
+                deck_card_handle: c.deck_card_handle.get().map(|h| h.0 as i32),
+                clone_of_handle: c.clone_of_handle.get().map(|h| h.0 as i32),
                 is_dupe: c.temp_flags.contains(CardTempFlags::IS_DUPE),
                 exhaust_on_next_play: c.temp_flags.contains(CardTempFlags::EXHAUST_ON_NEXT_PLAY),
-                base_replay_count: c.base_replay_count,
-                captured_energy_x_value: c.captured_energy_x_value,
-                floor_added_to_deck: c.floor_added_to_deck,
-                canonical_base_energy_cost: c.canonical_base_energy_cost,
-                base_energy_cost: c.base_energy_cost,
+                base_replay_count: c.base_replay_count as i32,
+                captured_energy_x_value: c.captured_energy_x_value as i32,
+                floor_added_to_deck: c.floor_added_to_deck.get(),
+                canonical_base_energy_cost: c.canonical_base_energy_cost as i32,
+                base_energy_cost: c.base_energy_cost as i32,
                 costs_x_energy: c.temp_flags.contains(CardTempFlags::COSTS_X_ENERGY),
                 local_energy_modifiers: ext
                     .map(|e| {
@@ -1546,7 +1595,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                             .collect()
                     })
                     .unwrap_or_default(),
-                temporary_star_cost_override_this_turn: c.temp_star_cost_override_this_turn,
+                temporary_star_cost_override_this_turn: c.temp_star_cost_override_this_turn.get(),
                 temporary_free_this_turn: c.temp_flags.contains(CardTempFlags::TEMPORARY_FREE_TURN),
                 temporary_free_until_played: c
                     .temp_flags
@@ -1554,10 +1603,11 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                 temporary_free_this_combat: c
                     .temp_flags
                     .contains(CardTempFlags::TEMPORARY_FREE_COMBAT),
-                temporary_cost_override_this_turn: c.temp_cost_override_this_turn,
+                temporary_cost_override_this_turn: c.temp_cost_override_this_turn.get(),
                 temporary_cost_override_this_turn_or_until_played: c
-                    .temp_cost_override_this_turn_or_until_played,
-                temporary_cost_override_this_combat: c.temp_cost_override_this_combat,
+                    .temp_cost_override_this_turn_or_until_played
+                    .get(),
+                temporary_cost_override_this_combat: c.temp_cost_override_this_combat.get(),
                 temporary_retain_this_turn: c
                     .temp_flags
                     .contains(CardTempFlags::TEMPORARY_RETAIN_TURN),
@@ -1724,7 +1774,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
         is_player_extra_turn: state.is_player_extra_turn,
         gold_was_stolen: state.gold_was_stolen,
         next_creature_id: state.next_creature_id,
-        run_rng_seed: state.run_rngs.string_seed.clone(),
+        run_rng_seed: state.run_rngs.string_seed.to_string(),
         run_rngs: run_rngs_map,
         player_rng_seed: state.player_rngs.seed,
         player_rngs: player_rngs_map,
@@ -1824,7 +1874,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                     turn: TurnKeyDto {
                         round_number: tk.round_number,
                         side: side_to_str(tk.side).to_owned(),
-                        player_turn_numbers: tk.player_turn_numbers.iter().copied().collect(),
+                        player_turn_numbers: tk.player_turn_numbers.iter().collect(),
                     },
                     actor_index: *actor,
                 })
@@ -1837,7 +1887,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                     turn: TurnKeyDto {
                         round_number: tk.round_number,
                         side: side_to_str(tk.side).to_owned(),
-                        player_turn_numbers: tk.player_turn_numbers.iter().copied().collect(),
+                        player_turn_numbers: tk.player_turn_numbers.iter().collect(),
                     },
                     actor_index: *actor,
                     play_ordinal: *ord,
@@ -1851,7 +1901,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                     turn: TurnKeyDto {
                         round_number: tk.round_number,
                         side: side_to_str(tk.side).to_owned(),
-                        player_turn_numbers: tk.player_turn_numbers.iter().copied().collect(),
+                        player_turn_numbers: tk.player_turn_numbers.iter().collect(),
                     },
                     actor_index: *actor,
                     orb_id: oid.model_id_str().to_owned(),
@@ -1865,7 +1915,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                     turn: TurnKeyDto {
                         round_number: tk.round_number,
                         side: side_to_str(tk.side).to_owned(),
-                        player_turn_numbers: tk.player_turn_numbers.iter().copied().collect(),
+                        player_turn_numbers: tk.player_turn_numbers.iter().collect(),
                     },
                     actor_index: *actor,
                     amount: *amt,
@@ -1879,7 +1929,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                     turn: TurnKeyDto {
                         round_number: tk.round_number,
                         side: side_to_str(tk.side).to_owned(),
-                        player_turn_numbers: tk.player_turn_numbers.iter().copied().collect(),
+                        player_turn_numbers: tk.player_turn_numbers.iter().collect(),
                     },
                     actor_index: *actor,
                     card_type: format!("{ct:?}"),
@@ -1895,7 +1945,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                     turn: TurnKeyDto {
                         round_number: tk.round_number,
                         side: side_to_str(tk.side).to_owned(),
-                        player_turn_numbers: tk.player_turn_numbers.iter().copied().collect(),
+                        player_turn_numbers: tk.player_turn_numbers.iter().collect(),
                     },
                     actor_index: *actor,
                 })

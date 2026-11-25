@@ -27,17 +27,17 @@ fn make_card(handle: u32, id: CardId, pile: PileType) -> CardInst {
         handle: CardHandle(handle),
         id,
         upgrade_level: 0,
-        canonical_base_energy_cost: meta.canonical_energy_cost,
-        base_energy_cost: meta.canonical_energy_cost,
+        canonical_base_energy_cost: meta.canonical_energy_cost as i16,
+        base_energy_cost: meta.canonical_energy_cost as i16,
         captured_energy_x_value: 0,
         base_replay_count: 0,
-        floor_added_to_deck: None,
-        deck_card_handle: None,
-        clone_of_handle: None,
-        temp_star_cost_override_this_turn: None,
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_cost_override_this_combat: None,
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+        temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
         local_keywords: meta.base_keywords,
         keywords_added_from_outside: CardKeywords::empty(),
         keywords_removed_from_outside: CardKeywords::empty(),
@@ -106,7 +106,7 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
         block: 0,
         cumulative_hp_lost: 0,
         is_detached: false,
-        monster: Some(MonsterInst {
+        monster: Some(Box::new(MonsterInst {
             monster_id: MonsterId::FuzzyWurmCrawler,
             rng: Rng::from_seed(run_rngs.seed ^ 99),
             is_performing_move: false,
@@ -119,7 +119,7 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
             transient_move_follow_up_state_id: None,
             setup_fields: FieldMap::new(),
             private_fields: FieldMap::new(),
-        }),
+        })),
         has_minion_power: false,
         powers: Vec::new(),
     };
@@ -193,6 +193,7 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
         vakuu_auto_select_depth: 0,
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
+        relic_dirty_mask: Default::default(),
     }
 }
 

@@ -125,6 +125,9 @@ pub fn card_comparison_base_values(
         .card(card)
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
         .id;
+    if !sts2_kernel::ordering::card_has_dynamic_comparison_values(id) {
+        return Ok(SmallVec::new());
+    }
     match card_partition(id) {
         CardPartition::Ironclad => ironclad::comparison_base_values(state, card),
         CardPartition::Silent => silent::comparison_base_values(state, card),

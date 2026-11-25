@@ -1,6 +1,7 @@
 use crate::hash::StateHash;
 use rayon::prelude::*;
 use smallvec::SmallVec;
+use std::sync::atomic::{AtomicU8, Ordering};
 
 pub const TT_SHARD_COUNT: usize = 256;
 const INITIAL_SHARD_SLOTS: usize = 256;
@@ -116,14 +117,18 @@ impl TranspositionFrontier {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[repr(C, align(64))]
 struct TtSlot {
-    hash: StateHash,
-    single: TranspositionLabel,
     generation: u32,
     overflow_idx: u32,
+    hash: StateHash,
+    single: TranspositionLabel,
 }
 
-const _: () = assert!(std::mem::size_of::<TtSlot>() <= 64);
+const _: () = {
+    assert!(std::mem::size_of::<TtSlot>() == 64);
+    assert!(std::mem::align_of::<TtSlot>() == 64);
+};
 
 impl TtSlot {
     #[inline(always)]
@@ -197,6 +202,24 @@ impl TtShard {
         }
         self.slots = new_slots;
         self.mask = new_mask;
+    }
+
+    /// Soft-prefetches the TT bucket for `hash` into L1 cache.
+    #[inline(always)]
+    pub fn prefetch(&self, hash: StateHash) {
+        #[cfg(target_arch = "x86_64")]
+        {
+            let idx = (hash.0 as usize) & self.mask;
+            // SAFETY: `idx < self.slots.len()` because `self.mask == self.slots.len() - 1` (power of 2).
+            unsafe {
+                let ptr = self.slots.as_ptr().add(idx).cast::<i8>();
+                std::arch::x86_64::_mm_prefetch(ptr, std::arch::x86_64::_MM_HINT_T0);
+            }
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            let _ = hash;
+        }
     }
 
     #[inline]
@@ -274,7 +297,7 @@ impl TtShard {
             return true;
         }
 
-        if (self.active_entries + 1) * 4 >= self.slots.len() * 3 {
+        if (self.active_entries + 1) * 8 >= self.slots.len() * 5 {
             self.grow(generation);
             idx = (hash.0 as usize) & self.mask;
             while self.slots[idx].generation == generation {
@@ -351,6 +374,12 @@ impl ShardedParetoTT {
         }
     }
 
+    /// Soft-prefetches the shard TT bucket for `hash` into L1 cache.
+    #[inline(always)]
+    pub fn prefetch(&self, hash: StateHash) {
+        self.shards[hash.shard_index()].prefetch(hash);
+    }
+
     /// Lock-free read-only probe against committed entries in the current generation.
     #[inline]
     pub fn probe_dominated(&self, hash: StateHash, label: &TranspositionLabel) -> bool {
@@ -372,6 +401,134 @@ impl ShardedParetoTT {
             self.branches_pruned += 1;
         }
         accepted
+    }
+
+    pub fn insert_sharded_batch_atomic_flags(
+        &mut self,
+        shard_buckets: &mut [Vec<(usize, StateHash, TranspositionLabel)>],
+        is_parallel: bool,
+        accepted_flags: &[AtomicU8],
+    ) {
+        let generation = self.generation;
+        let cap = self.entry_limit_per_shard;
+
+        for f in accepted_flags {
+            f.store(0, Ordering::Relaxed);
+        }
+        if is_parallel {
+            let pruned_total: u64 = self
+                .shards
+                .par_iter_mut()
+                .zip(shard_buckets.par_iter_mut())
+                .map(|(shard, items)| {
+                    if items.is_empty() {
+                        return 0u64;
+                    }
+                    let len = items.len();
+                    let mut pruned = 0u64;
+                    for (idx, &(sort_idx, hash, label)) in items.iter().enumerate() {
+                        if idx + 4 < len {
+                            shard.prefetch(items[idx + 4].1);
+                        }
+                        if shard.try_insert(generation, cap, hash, label) {
+                            accepted_flags[sort_idx].store(1, Ordering::Relaxed);
+                        } else {
+                            pruned += 1;
+                        }
+                    }
+                    items.clear();
+                    pruned
+                })
+                .sum();
+            self.branches_pruned += pruned_total;
+        } else {
+            for (shard, items) in self.shards.iter_mut().zip(shard_buckets.iter_mut()) {
+                let len = items.len();
+                for (idx, &(sort_idx, hash, label)) in items.iter().enumerate() {
+                    if idx + 4 < len {
+                        shard.prefetch(items[idx + 4].1);
+                    }
+                    if shard.try_insert(generation, cap, hash, label) {
+                        accepted_flags[sort_idx].store(1, Ordering::Relaxed);
+                    } else {
+                        self.branches_pruned += 1;
+                    }
+                }
+                items.clear();
+            }
+        }
+    }
+
+    /// Deterministically deduplicates and inserts worker-slice candidates across 16 shard groups
+    /// without building a main-thread scatter table.
+    pub fn insert_grouped_parallel_from_slices<'a, FS, FHL>(
+        &mut self,
+        active_slices: &[(u32, u16, u32, u32)],
+        group_accepted: &mut [Vec<u32>; 16],
+        get_shards: FS,
+        get_hash_label: FHL,
+    ) where
+        FS: Fn(usize) -> &'a [u16] + Sync,
+        FHL: Fn(usize, usize) -> (StateHash, TranspositionLabel) + Sync,
+    {
+        let generation = self.generation;
+        let cap = self.entry_limit_per_shard;
+        let pruned_total: u64 = self
+            .shards
+            .par_chunks_mut(16)
+            .enumerate()
+            .zip(group_accepted.par_iter_mut())
+            .map(|((g, shard_group), acc)| {
+                acc.clear();
+                let g_u16 = g as u16;
+                let mut pruned = 0u64;
+                let mut q: [std::mem::MaybeUninit<(usize, u32, StateHash, TranspositionLabel)>; 4] =
+                    [const { std::mem::MaybeUninit::uninit() }; 4];
+                let mut q_head = 0usize;
+                let mut q_len = 0usize;
+                for &(base_sort, w_idx, start, len) in active_slices {
+                    let w = w_idx as usize;
+                    let s = start as usize;
+                    let sub = &get_shards(w)[s..s + len as usize];
+                    for (i, &sh) in sub.iter().enumerate() {
+                        if (sh >> 4) == g_u16 {
+                            if q_len == 4 {
+                                let (ls, s_idx, h, lbl) = unsafe { q[q_head].assume_init_read() };
+                                q_head = (q_head + 1) & 3;
+                                q_len -= 1;
+                                if shard_group[ls].try_insert(generation, cap, h, lbl) {
+                                    acc.push(s_idx);
+                                } else {
+                                    pruned += 1;
+                                }
+                            }
+                            let local_s = (sh & 15) as usize;
+                            let (hash, label) = get_hash_label(w, s + i);
+                            shard_group[local_s].prefetch(hash);
+                            q[(q_head + q_len) & 3].write((
+                                local_s,
+                                base_sort + i as u32,
+                                hash,
+                                label,
+                            ));
+                            q_len += 1;
+                        }
+                    }
+                }
+                while q_len > 0 {
+                    let (ls, s_idx, h, lbl) = unsafe { q[q_head].assume_init_read() };
+                    q_head = (q_head + 1) & 3;
+                    q_len -= 1;
+                    if shard_group[ls].try_insert(generation, cap, h, lbl) {
+                        acc.push(s_idx);
+                    } else {
+                        pruned += 1;
+                    }
+                }
+                pruned
+            })
+            .sum();
+        self.branches_pruned += pruned_total;
     }
 
     /// Deterministically inserts shard-bucketed candidates across all 256 shards and writes
@@ -399,8 +556,12 @@ impl ShardedParetoTT {
                     if items.is_empty() {
                         return 0u64;
                     }
+                    let len = items.len();
                     let mut pruned = 0u64;
-                    for &(sort_idx, hash, label) in items.iter() {
+                    for (idx, &(sort_idx, hash, label)) in items.iter().enumerate() {
+                        if idx + 4 < len {
+                            shard.prefetch(items[idx + 4].1);
+                        }
                         if shard.try_insert(generation, cap, hash, label) {
                             acc.push(sort_idx);
                         } else {
@@ -419,13 +580,18 @@ impl ShardedParetoTT {
             }
         } else {
             for (shard, items) in self.shards.iter_mut().zip(shard_buckets.iter_mut()) {
-                for (sort_idx, hash, label) in items.drain(..) {
+                let len = items.len();
+                for (idx, &(sort_idx, hash, label)) in items.iter().enumerate() {
+                    if idx + 4 < len {
+                        shard.prefetch(items[idx + 4].1);
+                    }
                     if shard.try_insert(generation, cap, hash, label) {
                         accepted_flags[sort_idx] = true;
                     } else {
                         self.branches_pruned += 1;
                     }
                 }
+                items.clear();
             }
         }
     }
@@ -639,5 +805,84 @@ mod tests {
 
         assert_eq!(seq_flags, par_flags);
         assert_eq!(tt_seq.branches_pruned, tt_par.branches_pruned);
+
+        let mut tt_atomic = ShardedParetoTT::new(65_536);
+        let mut atomic_buckets: Vec<Vec<(usize, StateHash, TranspositionLabel)>> =
+            (0..TT_SHARD_COUNT).map(|_| Vec::new()).collect();
+        for &(sort_idx, h, l) in &items {
+            atomic_buckets[h.shard_index()].push((sort_idx, h, l));
+        }
+        let atomic_flags: Vec<AtomicU8> = (0..items.len()).map(|_| AtomicU8::new(0)).collect();
+        tt_atomic.insert_sharded_batch_atomic_flags(&mut atomic_buckets, true, &atomic_flags);
+        let atomic_bools: Vec<bool> = atomic_flags
+            .iter()
+            .map(|f| f.load(Ordering::Relaxed) != 0)
+            .collect();
+        assert_eq!(seq_flags, atomic_bools);
+        assert_eq!(tt_seq.branches_pruned, tt_atomic.branches_pruned);
+    }
+
+    #[test]
+    fn insert_grouped_parallel_from_slices_matches_single() {
+        let mut tt_seq = ShardedParetoTT::new(65_536);
+        let mut tt_grp = ShardedParetoTT::new(65_536);
+
+        let mut worker_items: [Vec<(StateHash, TranspositionLabel)>; 3] =
+            [Vec::new(), Vec::new(), Vec::new()];
+        let mut worker_shards: [Vec<u16>; 3] = [Vec::new(), Vec::new(), Vec::new()];
+        let mut active_slices: Vec<(u32, u16, u32, u32)> = Vec::new();
+        let mut seq_expected: Vec<bool> = Vec::new();
+        let mut total = 0usize;
+
+        for slice_idx in 0..8usize {
+            let w = slice_idx % 3;
+            let start = worker_items[w].len();
+            let len = 80 + slice_idx * 7;
+            active_slices.push((total as u32, w as u16, start as u32, len as u32));
+            for j in 0..len {
+                let idx = total + j;
+                let h = mk_hash((idx as u64) % 95);
+                let is_terminal = idx % 17 == 0;
+                let hp_loss = (idx % 9) as i32;
+                let score = ((idx * 23) % 100) as f64;
+                let pot = ((idx / 11) % 3) as u16;
+                let label =
+                    TranspositionLabel::new(0, 0, pot, pot as i32 * 5, 0, hp_loss, 1, score);
+                worker_items[w].push((h, label));
+                worker_shards[w].push(if is_terminal {
+                    u16::MAX
+                } else {
+                    h.shard_index() as u16
+                });
+                let ok = is_terminal || tt_seq.try_insert_single(h, label);
+                seq_expected.push(ok);
+            }
+            total += len;
+        }
+
+        let mut group_accepted: Box<[Vec<u32>; 16]> =
+            Box::new(std::array::from_fn(|_| Vec::new()));
+        tt_grp.insert_grouped_parallel_from_slices(
+            &active_slices,
+            &mut group_accepted,
+            |w| worker_shards[w].as_slice(),
+            |w, c| worker_items[w][c],
+        );
+
+        let mut got = vec![false; total];
+        for acc in group_accepted.iter() {
+            for &idx in acc {
+                got[idx as usize] = true;
+            }
+        }
+        for &(base, w, start, len) in &active_slices {
+            for i in 0..len as usize {
+                if worker_shards[w as usize][start as usize + i] == u16::MAX {
+                    got[base as usize + i] = true;
+                }
+            }
+        }
+        assert_eq!(seq_expected, got);
+        assert_eq!(tt_seq.branches_pruned, tt_grp.branches_pruned);
     }
 }

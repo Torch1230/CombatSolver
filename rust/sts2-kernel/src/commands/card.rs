@@ -3,6 +3,7 @@ use crate::content_dispatch::ContentDispatcher;
 use crate::error::KernelError;
 use crate::hooks;
 use crate::state::{AfflictionInst, BattleState, CardHandle, CardTempFlags};
+use smallvec::SmallVec;
 use sts2_types::{AfflictionId, CardId, CardKeywords, CardPilePosition, PileType, RunRngType};
 
 pub fn afflict(
@@ -36,7 +37,12 @@ pub fn afflict(
             });
         }
     }
-    if !is_same {
+    if !is_same
+        && !state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.afflictions_self_card_entered_only)
+    {
         state.invalidate_pile_hooks(crate::state::pile_dirty_bit(pile));
     }
     if affliction_id == AfflictionId::Bound && state.is_live_combat() {
@@ -56,7 +62,12 @@ pub fn clear_affliction(state: &mut BattleState, card: CardHandle) {
     } else {
         0
     };
-    if dirty != 0 {
+    if dirty != 0
+        && !state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.afflictions_self_card_entered_only)
+    {
         state.invalidate_pile_hooks(dirty);
     }
 }
@@ -146,7 +157,7 @@ pub fn transform_with_upgrade(
         if pile == PileType::Deck {
             let floor_idx = state.static_ctx.act_index;
             if let Some(c) = state.card_mut(rep) {
-                c.floor_added_to_deck = Some(floor_idx);
+                c.floor_added_to_deck = crate::state::OptI16::some_clamped(floor_idx);
             }
         }
         state.add_card_to_pile_at(rep, pile, Some(original_index));
@@ -179,12 +190,12 @@ pub fn transform_to_random(
     if state.is_live_combat() && hooks::is_over_or_ending_checked(state, content)? {
         return Ok(None);
     }
-    let options = card_factory::default_transformation_options(state, original, state.is_live_combat())?;
-    let chosen = *state
-        .run_rngs
-        .get_mut(rng_type)
-        .next_item(&options)
-        .ok_or_else(|| KernelError::InvalidState("No valid transformation target.".to_owned()))?;
+    let chosen = card_factory::pick_random_transformation_target(
+        state,
+        original,
+        state.is_live_combat(),
+        rng_type,
+    )?;
     transform(state, content, original, chosen)
 }
 
@@ -237,23 +248,19 @@ pub fn discard_batch(
     if cards.is_empty() {
         return Ok(());
     }
-    let departed_hand = cards
-        .iter()
-        .any(|&h| state.card(h).is_some_and(|c| c.pile == PileType::Hand));
-    let mut sly_cards = Vec::new();
+    let mut departed_hand = false;
+    let mut sly_cards: SmallVec<[CardHandle; 8]> = SmallVec::new();
     for &h in cards {
-        if state.card(h).is_some_and(|c| c.pile == PileType::Hand)
-            && card_pile::card_has_keyword(state, content, h, CardKeywords::SLY)?
-        {
-            sly_cards.push(h);
+        if state.card(h).is_some_and(|c| c.pile == PileType::Hand) {
+            departed_hand = true;
+            if card_pile::card_has_keyword(state, content, h, CardKeywords::SLY)? {
+                sly_cards.push(h);
+            }
         }
     }
     for &h in cards {
-        let was_hand = state.card(h).is_some_and(|c| c.pile == PileType::Hand);
         card_pile::add_sync(state, h, PileType::Discard, CardPilePosition::Bottom);
-        if was_hand || true {
-            state.player.counters.cards_discarded_this_turn += 1;
-        }
+        state.player.counters.cards_discarded_this_turn += 1;
         hooks::after_card_discarded(state, content, h)?;
     }
     card_pile::notify_hand_departure(state, content, departed_hand)?;

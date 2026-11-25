@@ -463,11 +463,21 @@ impl PlayerRngType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq)]
 pub struct RunRngSet {
-    pub string_seed: String,
+    pub string_seed: std::sync::Arc<str>,
     pub seed: u64,
     pub streams: [Rng; 12],
+}
+
+impl PartialEq for RunRngSet {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        self.seed == other.seed
+            && self.streams == other.streams
+            && (std::sync::Arc::ptr_eq(&self.string_seed, &other.string_seed)
+                || *self.string_seed == *other.string_seed)
+    }
 }
 
 impl RunRngSet {
@@ -482,7 +492,7 @@ impl RunRngSet {
             streams[i] = Rng::from_named_seed(seed, rng_type.snake_case_name());
         }
         Self {
-            string_seed: seed_str.to_owned(),
+            string_seed: std::sync::Arc::from(seed_str),
             seed,
             streams,
         }

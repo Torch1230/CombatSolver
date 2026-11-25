@@ -380,9 +380,9 @@ fn clone_card_in_combat(
     );
     state.cards.push(sts2_kernel::CardInst {
         handle: new_handle,
-        deck_card_handle: None,
-        clone_of_handle: Some(source_handle),
-        floor_added_to_deck: None,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
         ext_index,
         temp_flags,
         pile: PileType::None,
@@ -400,10 +400,10 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     let meta = generated_card_meta(card.id);
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_cost_override_this_turn_or_until_played = Some(0);
+            c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
         }
         if let Some(ext) = state.card_ext_mut(handle) {
-            ext.local_energy_modifiers.push(LocalEnergyModifier {
+            ext.push_local_energy_modifier(LocalEnergyModifier {
                 kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                 amount: 0,
                 is_reduce_only: false,
@@ -412,7 +412,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     }
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_star_cost_override_this_turn = Some(0);
+            c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
         }
     }
 }
@@ -427,7 +427,7 @@ fn add_local_energy_modifier(
         return;
     }
     if let Some(ext) = state.card_ext_mut(handle) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind,
             amount,
             is_reduce_only: false,
@@ -1597,7 +1597,7 @@ pub fn dispatch_hook(
                 } = args
                 {
                     if *exhausted_card == card && state.is_live_combat() {
-                        let base_count = ci.base_replay_count + 1;
+                        let base_count = (ci.base_replay_count as i32) + 1;
                         let has_ench = state
                             .card_ext(ci.ext_index)
                             .and_then(|e| e.enchantment.as_ref())

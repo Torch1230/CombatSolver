@@ -590,7 +590,7 @@ pub fn enchantment_on_play(
                     ench.amount += 1;
                 }
             }
-            if let Some(deck_h) = state.card(card).and_then(|c| c.deck_card_handle) {
+            if let Some(deck_h) = state.card(card).and_then(|c| c.deck_card_handle.get()) {
                 if let Some(deck_ext) = state.card_ext_mut(deck_h) {
                     if let Some(deck_ench) = deck_ext.enchantment.as_mut() {
                         if deck_ench.id == EnchantmentId::Goopy {
@@ -776,10 +776,11 @@ pub fn dispatch_enchantment_hook(
                             .get_mut(RunRngType::CombatEnergyCosts)
                             .next_int(4)?;
                         if let Some(c) = state.card_mut(card) {
-                            c.temp_cost_override_this_combat = Some(cost);
+                            c.temp_cost_override_this_combat =
+                                sts2_kernel::OptI16::some_clamped(cost);
                         }
                         if let Some(ext) = state.card_ext_mut(card) {
-                            ext.local_energy_modifiers.push(LocalEnergyModifier {
+                            ext.push_local_energy_modifier(LocalEnergyModifier {
                                 kind: LocalEnergyModifierKind::SetThisCombat,
                                 amount: cost,
                                 is_reduce_only: false,

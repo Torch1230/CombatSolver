@@ -487,13 +487,13 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
             base_energy_cost: 1,
             captured_energy_x_value: 0,
             base_replay_count: 0,
-            floor_added_to_deck: Some(1),
-            deck_card_handle: Some(h),
-            clone_of_handle: None,
-            temp_star_cost_override_this_turn: None,
-            temp_cost_override_this_turn: None,
-            temp_cost_override_this_turn_or_until_played: None,
-            temp_cost_override_this_combat: None,
+            floor_added_to_deck: sts2_kernel::OptI16::some(1),
+            deck_card_handle: sts2_kernel::OptCardHandle::some(h),
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
             local_keywords: CardKeywords::empty(),
             keywords_added_from_outside: CardKeywords::empty(),
             keywords_removed_from_outside: CardKeywords::empty(),
@@ -617,7 +617,7 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
                 block: 0,
                 cumulative_hp_lost: 0,
                 is_detached: false,
-                monster: Some(MonsterInst {
+                monster: Some(Box::new(MonsterInst {
                     monster_id: MonsterId::FuzzyWurmCrawler,
                     rng: Rng::from_seed(7),
                     is_performing_move: false,
@@ -630,7 +630,7 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
                     transient_move_follow_up_state_id: None,
                     setup_fields: Default::default(),
                     private_fields: Default::default(),
-                }),
+                })),
                 has_minion_power: false,
                 powers: Vec::new(),
             },
@@ -648,6 +648,7 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
         vakuu_auto_select_depth: 0,
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
+        relic_dirty_mask: Default::default(),
     };
     (state, enemy)
 }
@@ -726,7 +727,12 @@ fn forge_autoplay_card_entry_and_enchantment_hooks_work() {
     CombatEngine::start_combat(&mut state, &content).unwrap();
     // Imbued card stayed at the bottom of draw pile (not drawn in opening 5)
     assert_eq!(
-        state.player.draw.last().and_then(|&h| state.card(h)).and_then(|c| c.deck_card_handle),
+        state
+            .player
+            .draw
+            .last()
+            .and_then(|&h| state.card(h))
+            .and_then(|c| c.deck_card_handle.get()),
         Some(CardHandle(1))
     );
 
@@ -755,7 +761,7 @@ fn forge_autoplay_card_entry_and_enchantment_hooks_work() {
         .player
         .hand
         .iter()
-        .find(|&&h| state.card(h).unwrap().deck_card_handle == Some(CardHandle(2)))
+        .find(|&&h| state.card(h).unwrap().deck_card_handle.get() == Some(CardHandle(2)))
     {
         let mut choices = SmallVec::new();
         CombatEngine::play_card(&mut state, &content, glam_h, Some(enemy), &mut choices).unwrap();
@@ -2307,4 +2313,179 @@ fn part_a_kernel_additions_verify() {
         &state,
         HookListener::Affliction(ench_card)
     ));
+}
+
+#[test]
+fn stable_shuffle_matches_insertion_compare_cards_order() {
+    use core::cmp::Ordering;
+    use sts2_kernel::ordering::{compare_cards, stable_shuffle_cards};
+
+    let content = TestKernelContent::default();
+    let mut state = BattleState {
+        static_ctx: Arc::new(RootStaticContext {
+            encounter_id: "SHUF".to_owned(),
+            game_mode: GameMode::Standard,
+            room_type: RoomType::Monster,
+            ..Default::default()
+        }),
+        current_side: CombatSide::Player,
+        round_number: 1,
+        is_in_progress: true,
+        is_starting: false,
+        won: false,
+        is_player_extra_turn: false,
+        gold_was_stolen: false,
+        end_player_turn_requested: false,
+        card_action_boundary_depth: 0,
+        next_creature_id: 2,
+        initial_encounter_monster_count: 1,
+        next_card_handle: 1,
+        next_creature_handle: 2,
+        next_power_handle: 1,
+        next_attack_id: 1,
+        run_rngs: RunRngSet::from_string_seed("SHUF"),
+        player_rngs: PlayerRngSet::from_seed(1),
+        player: PlayerInst {
+            creature_handle: CreatureHandle(1),
+            current_hp: 80,
+            max_hp: 80,
+            block: 0,
+            cumulative_hp_lost: 0,
+            gold: 0,
+            max_energy: 3,
+            base_orb_slot_count: 0,
+            is_active_for_hooks: true,
+            can_use_or_remove_potions: true,
+            energy: 3,
+            stars: 0,
+            phase: PlayerTurnPhase::Play,
+            turn_number: 1,
+            counters: PlayerCounters::default(),
+            hand: Vec::new(),
+            draw: Vec::new(),
+            discard: Vec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
+            deck: Vec::new(),
+            potion_slots: SmallVec::new(),
+            combat_generated_potion_mask: 0,
+            orb_capacity: 0,
+            orbs: Vec::new(),
+            arrows: Vec::new(),
+            relics: Vec::new(),
+            card_or_potion_effect_depth: 0,
+        },
+        cards: Vec::new(),
+        card_extensions: Vec::new(),
+        creatures: vec![CreatureInst {
+            handle: CreatureHandle(1),
+            combat_id: Some(0),
+            side: CombatSide::Player,
+            slot_name: None,
+            is_player: true,
+            pet_owner_player_index: None,
+            monster_id: None,
+            current_hp: 80,
+            max_hp: 80,
+            block: 0,
+            cumulative_hp_lost: 0,
+            is_detached: false,
+            has_minion_power: false,
+            monster: None,
+            powers: Vec::new(),
+        }],
+        power_extensions: Vec::new(),
+        ally_handles: vec![CreatureHandle(1)],
+        enemy_handles: Vec::new(),
+        escaped_handles: SmallVec::new(),
+        removed_handles: SmallVec::new(),
+        spawned_enemy_handles: SmallVec::new(),
+        pet_handles: SmallVec::new(),
+        damage_history: Vec::new(),
+        semantic_history: SemanticHistory::default(),
+        pending: None,
+        vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
+        relic_dirty_mask: Default::default(),
+    };
+
+    let specs = [
+        (CardId::StrikeIronclad, 0, None, None, 1, 0),
+        (CardId::Bash, 0, Some(EnchantmentId::Swift), None, 2, 0),
+        (CardId::DefendIronclad, 1, None, Some(AfflictionId::Hexed), 1, 0),
+        (CardId::StrikeIronclad, 1, None, None, 1, 0),
+        (CardId::Bash, 0, None, None, 2, 0),
+        (CardId::StrikeIronclad, 0, None, None, 0, 1),
+        (CardId::StrikeIronclad, 0, None, None, 0, 0),
+        (CardId::DefendIronclad, 0, Some(EnchantmentId::Sharp), None, 1, 0),
+        (CardId::StrikeIronclad, 0, Some(EnchantmentId::Adroit), None, 1, 0),
+        (CardId::DefendIronclad, 1, None, Some(AfflictionId::Bound), 1, 0),
+    ];
+    let mut handles = Vec::new();
+    for (i, &(id, upg, ench, aff, cost, replay)) in specs.iter().enumerate() {
+        let h = CardHandle((i + 1) as u32);
+        let ext_index = ench.map(|eid| {
+            let idx = state.card_extensions.len() as u32;
+            state.card_extensions.push(CardExtension {
+                local_energy_modifiers: SmallVec::new(),
+                enchantment: Some(EnchantmentInst {
+                    id: eid,
+                    amount: 1,
+                    status: EnchantmentStatus::Normal,
+                    private_fields: Default::default(),
+                }),
+                private_fields: Default::default(),
+            });
+            idx
+        });
+        state.cards.push(CardInst {
+            handle: h,
+            id,
+            upgrade_level: upg,
+            canonical_base_energy_cost: cost as i16,
+            base_energy_cost: cost as i16,
+            captured_energy_x_value: 0,
+            base_replay_count: replay as i16,
+            floor_added_to_deck: sts2_kernel::OptI16::NONE,
+            deck_card_handle: sts2_kernel::OptCardHandle::some(h),
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
+            local_keywords: CardKeywords::empty(),
+            keywords_added_from_outside: CardKeywords::empty(),
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags: CardTempFlags::empty(),
+            affliction: aff.map(|id| sts2_kernel::state::AfflictionInst { id, amount: 1 }),
+            ext_index,
+            pile: PileType::Draw,
+            removed_from_state: false,
+            transform_into_after_play: None,
+        });
+        handles.push(h);
+    }
+
+    let mut expected = handles.clone();
+    for i in 1..expected.len() {
+        let mut j = i;
+        while j > 0 {
+            if compare_cards(&mut state, &content, expected[j - 1], expected[j]).unwrap()
+                == Ordering::Greater
+            {
+                expected.swap(j - 1, j);
+                j -= 1;
+            } else {
+                break;
+            }
+        }
+    }
+    let mut r_ref = Rng::from_seed(999);
+    r_ref.unstable_shuffle(&mut expected);
+
+    let mut actual = handles;
+    let mut r_fast = Rng::from_seed(999);
+    stable_shuffle_cards(&mut state, &content, &mut actual, &mut r_fast).unwrap();
+    assert_eq!(actual, expected);
 }

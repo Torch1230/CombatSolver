@@ -7,7 +7,9 @@ use crate::continuation::{
 use crate::error::KernelError;
 use crate::hooks;
 use crate::ordering;
-use crate::state::{BattleState, CardHandle, CardInst, CardTempFlags, CreatureHandle};
+use crate::state::{
+    BattleState, CardHandle, CardInst, CardTempFlags, CreatureHandle, OptCardHandle, OptI16,
+};
 use smallvec::SmallVec;
 use sts2_types::{
     CardKeywords, CardPilePosition, CardStaticFlags, CardTags, CardType, CombatSide, Dec,
@@ -65,13 +67,13 @@ impl CombatEngine {
             state.next_card_handle += 1;
             let mut copy = CardInst {
                 handle: copy_handle,
-                deck_card_handle: Some(deck_h),
+                deck_card_handle: OptCardHandle::some(deck_h),
                 pile: PileType::Draw,
                 ext_index: None,
-                temp_star_cost_override_this_turn: None,
-                temp_cost_override_this_turn: None,
-                temp_cost_override_this_turn_or_until_played: None,
-                temp_cost_override_this_combat: None,
+                temp_star_cost_override_this_turn: OptI16::NONE,
+                temp_cost_override_this_turn: OptI16::NONE,
+                temp_cost_override_this_turn_or_until_played: OptI16::NONE,
+                temp_cost_override_this_combat: OptI16::NONE,
                 temp_flags: deck_card.temp_flags
                     & !(CardTempFlags::TEMPORARY_SLY_TURN
                         | CardTempFlags::TEMPORARY_FREE_TURN
@@ -603,7 +605,11 @@ impl CombatEngine {
             }
         }
 
-        if content.card_is_playable(state, card_handle)? {
+        let custom_playable = match state.hook_cache.cached_tables {
+            Some(tables) => tables.card_has_custom_playability(card_id),
+            None => true,
+        };
+        if !custom_playable || content.card_is_playable(state, card_handle)? {
             Ok(Some((energy_cost, star_cost)))
         } else {
             Ok(None)
@@ -720,7 +726,7 @@ impl CombatEngine {
             if is_x {
                 let cur_e = state.player.energy;
                 if let Some(c) = state.card_mut(card_handle) {
-                    c.captured_energy_x_value = cur_e;
+                    c.captured_energy_x_value = cur_e.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
                 }
             }
         }
@@ -843,7 +849,7 @@ impl CombatEngine {
             };
             if is_x_energy {
                 if let Some(c) = state.card_mut(card_handle) {
-                    c.captured_energy_x_value = e_spend;
+                    c.captured_energy_x_value = e_spend.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
                 }
             }
             if e_spend > 0 && state.is_live_combat() {
@@ -895,7 +901,7 @@ impl CombatEngine {
 
         let base_replay = state
             .card(card_handle)
-            .map_or(0, |c| c.base_replay_count);
+            .map_or(0, |c| c.base_replay_count as i32);
         let has_ench = state
             .card(card_handle)
             .and_then(|c| state.card_ext(c.ext_index))
@@ -1208,8 +1214,8 @@ impl CombatEngine {
     fn clear_after_play_modifiers(state: &mut BattleState, card_handle: CardHandle) {
         if let Some(c) = state.card_mut(card_handle) {
             c.temp_flags.remove(CardTempFlags::TEMPORARY_FREE_PLAY);
-            c.temp_cost_override_this_turn_or_until_played = None;
-            c.temp_star_cost_override_this_turn = None;
+            c.temp_cost_override_this_turn_or_until_played = OptI16::NONE;
+            c.temp_star_cost_override_this_turn = OptI16::NONE;
             if let Some(ext_idx) = c.ext_index {
                 state.card_extensions[ext_idx as usize]
                     .local_energy_modifiers
@@ -1931,14 +1937,18 @@ impl CombatEngine {
         content: &dyn ContentDispatcher,
     ) -> Result<StepOutcome, KernelError> {
         if Self::check_win_condition(state, content)? {
-            state.ensure_hook_cache(content)?;
+            if state.hook_cache.cached_tables.is_none() {
+                state.ensure_hook_cache(content)?;
+            }
             return Ok(StepOutcome::CombatEnded { won: state.won });
         }
         if state.end_player_turn_requested {
             state.end_player_turn_requested = false;
             return Self::end_player_turn(state, content);
         }
-        state.ensure_hook_cache(content)?;
+        if state.hook_cache.cached_tables.is_none() {
+            state.ensure_hook_cache(content)?;
+        }
         Ok(StepOutcome::Completed)
     }
 
@@ -2178,34 +2188,35 @@ impl CombatEngine {
     }
 
     fn end_of_turn_cleanup(state: &mut BattleState) {
-        let mut card_handles: SmallVec<[CardHandle; 64]> = SmallVec::new();
-        card_handles.extend(
-            state
-                .player
-                .hand
-                .iter()
-                .chain(state.player.draw.iter())
-                .chain(state.player.discard.iter())
-                .chain(state.player.exhaust.iter())
-                .chain(state.player.play.iter())
-                .copied(),
-        );
-        for h in card_handles {
-            if let Some(c) = state.card_mut(h) {
-                c.temp_flags.remove(
-                    CardTempFlags::TEMPORARY_FREE_TURN
-                        | CardTempFlags::TEMPORARY_RETAIN_TURN
-                        | CardTempFlags::TEMPORARY_SLY_TURN
-                        | CardTempFlags::EXHAUST_ON_NEXT_PLAY,
-                );
-                c.temp_cost_override_this_turn = None;
-                c.temp_cost_override_this_turn_or_until_played = None;
-                c.temp_star_cost_override_this_turn = None;
-                if let Some(ext_idx) = c.ext_index {
-                    state.card_extensions[ext_idx as usize]
-                        .local_energy_modifiers
-                        .retain(|m| !m.kind.clears_at_end_of_turn());
-                }
+        let start = if !state.deck_dirty.0 {
+            state.static_ctx.root_deck_prefix_len.min(state.cards.len())
+        } else {
+            0
+        };
+        for c in &mut state.cards[start..] {
+            if !matches!(
+                c.pile,
+                PileType::Hand
+                    | PileType::Draw
+                    | PileType::Discard
+                    | PileType::Exhaust
+                    | PileType::Play
+            ) {
+                continue;
+            }
+            c.temp_flags.remove(
+                CardTempFlags::TEMPORARY_FREE_TURN
+                    | CardTempFlags::TEMPORARY_RETAIN_TURN
+                    | CardTempFlags::TEMPORARY_SLY_TURN
+                    | CardTempFlags::EXHAUST_ON_NEXT_PLAY,
+            );
+            c.temp_cost_override_this_turn = OptI16::NONE;
+            c.temp_cost_override_this_turn_or_until_played = OptI16::NONE;
+            c.temp_star_cost_override_this_turn = OptI16::NONE;
+            if let Some(ext_idx) = c.ext_index {
+                state.card_extensions[ext_idx as usize]
+                    .local_energy_modifiers
+                    .retain(|m| !m.kind.clears_at_end_of_turn());
             }
         }
         Self::reset_turn_counters(state);

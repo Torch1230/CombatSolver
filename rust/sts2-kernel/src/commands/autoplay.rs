@@ -48,7 +48,7 @@ pub fn prepay_resources_for_autoplay(
 
     if is_x_energy {
         if let Some(c) = state.card_mut(card_handle) {
-            c.captured_energy_x_value = energy_to_spend;
+            c.captured_energy_x_value = energy_to_spend.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
         }
     }
     if energy_to_spend > 0 && state.is_live_combat() {

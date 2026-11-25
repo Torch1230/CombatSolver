@@ -392,7 +392,7 @@ pub extern "C" fn sts2_rs_cancel_token_free(token: *mut c_void) {
 pub fn solve_in_combat_with_controls_json(
     req_json: &[u8],
     cancel: &AtomicBool,
-    progress_cb: Option<&dyn Fn(&SearchProgress)>,
+    progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
 ) -> SolveInCombatJsonResponse {
     let req: InCombatSolveRequest = match serde_json::from_slice(req_json) {
         Ok(r) => r,
@@ -486,14 +486,16 @@ pub extern "C" fn sts2_rs_solve_in_combat_with_controls(
                 Arc::from_raw(raw)
             }
         };
-        let forwarder = |p: &SearchProgress| {
+        let user_data_addr = user_data as usize;
+        let forwarder = move |p: &SearchProgress| {
             if let Some(cb) = progress_cb {
                 if let Ok(bytes) = serde_json::to_vec(p) {
-                    cb(bytes.as_ptr(), bytes.len(), user_data);
+                    cb(bytes.as_ptr(), bytes.len(), user_data_addr as *mut c_void);
                 }
             }
         };
-        let progress_ref: Option<&dyn Fn(&SearchProgress)> = progress_cb.map(|_| &forwarder as &dyn Fn(&SearchProgress));
+        let progress_ref: Option<&(dyn Fn(&SearchProgress) + Sync)> =
+            progress_cb.map(|_| &forwarder as &(dyn Fn(&SearchProgress) + Sync));
         let resp = solve_in_combat_with_controls_json(req_slice, &cancel_holder, progress_ref);
         let bytes = serde_json::to_vec(&resp).unwrap_or_default();
         write_owned_bytes(bytes, out_ptr, out_len)
@@ -525,15 +527,16 @@ pub extern "C" fn sts2_rs_solve_in_combat_host_v1(
                 Arc::from_raw(raw)
             }
         };
-        let forwarder = |p: &HostProgressDto| {
+        let user_data_addr = user_data as usize;
+        let forwarder = move |p: &HostProgressDto| {
             if let Some(cb) = progress_cb {
                 if let Ok(bytes) = serde_json::to_vec(p) {
-                    cb(bytes.as_ptr(), bytes.len(), user_data);
+                    cb(bytes.as_ptr(), bytes.len(), user_data_addr as *mut c_void);
                 }
             }
         };
-        let progress_ref: Option<&dyn Fn(&HostProgressDto)> =
-            progress_cb.map(|_| &forwarder as &dyn Fn(&HostProgressDto));
+        let progress_ref: Option<&(dyn Fn(&HostProgressDto) + Sync)> =
+            progress_cb.map(|_| &forwarder as &(dyn Fn(&HostProgressDto) + Sync));
         let resp = solve_in_combat_host_v1_json(req_slice, &cancel_holder, progress_ref);
         let bytes = serde_json::to_vec(&resp).unwrap_or_default();
         write_owned_bytes(bytes, out_ptr, out_len)

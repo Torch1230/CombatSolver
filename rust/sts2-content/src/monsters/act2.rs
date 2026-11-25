@@ -180,17 +180,21 @@ fn create_ephemeral_choice_card(state: &mut BattleState, card_id: CardId) -> Car
         handle,
         id: card_id,
         upgrade_level: 0,
-        canonical_base_energy_cost: meta.canonical_energy_cost,
-        base_energy_cost: meta.canonical_energy_cost,
+        canonical_base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+        base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
         captured_energy_x_value: 0,
         base_replay_count: 0,
-        floor_added_to_deck: None,
-        deck_card_handle: None,
-        clone_of_handle: None,
-        temp_star_cost_override_this_turn: None,
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_cost_override_this_combat: None,
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+        temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+        temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
         local_keywords: meta.base_keywords,
         keywords_added_from_outside: CardKeywords::empty(),
         keywords_removed_from_outside: CardKeywords::empty(),
@@ -1833,7 +1837,7 @@ pub fn monster_perform_move(
                     {
                         let deck_h = state
                             .card(chosen_combat_card)
-                            .and_then(|c| c.deck_card_handle)
+                            .and_then(|c| c.deck_card_handle.get())
                             .ok_or_else(|| {
                                 KernelError::InvalidState(
                                     "Only a persistent-deck combat copy can be stolen.".to_owned(),

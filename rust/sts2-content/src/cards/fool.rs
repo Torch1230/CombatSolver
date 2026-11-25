@@ -262,17 +262,19 @@ where
         .collect();
 
     if pile == PileType::Draw && (min_count != max_count || candidates.len() > min_count) {
-        let mut keyed: SmallVec<[(u8, CardId, CardHandle); 16]> = SmallVec::with_capacity(candidates.len());
+        let mut keyed: SmallVec<[(u32, CardHandle); 64]> = SmallVec::with_capacity(candidates.len());
         for &h in &candidates {
             let cid = state
                 .card(h)
                 .ok_or_else(|| KernelError::InvalidState("missing candidate card".to_owned()))?
                 .id;
             let meta = content.card_meta(cid)?;
-            keyed.push((csharp_rarity_rank(meta.rarity), cid, h));
+            let key = (u32::from(csharp_rarity_rank(meta.rarity)) << 16)
+                | u32::from(cid.model_entry_sort_rank());
+            keyed.push((key, h));
         }
-        keyed.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.compare_model_id(b.1)));
-        candidates = keyed.into_iter().map(|(_, _, h)| h).collect();
+        keyed.sort_by_key(|&(k, _)| k);
+        candidates = keyed.into_iter().map(|(_, h)| h).collect();
     }
 
     card_select::select_cards(
@@ -295,10 +297,10 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     let meta = generated_card_meta(card.id);
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_cost_override_this_turn_or_until_played = Some(0);
+            c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
         }
         if let Some(ext) = state.card_ext_mut(handle) {
-            ext.local_energy_modifiers.push(sts2_kernel::LocalEnergyModifier {
+            ext.push_local_energy_modifier(sts2_kernel::LocalEnergyModifier {
                 kind: sts2_types::LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                 amount: 0,
                 is_reduce_only: false,
@@ -307,7 +309,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     }
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_star_cost_override_this_turn = Some(0);
+            c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
         }
     }
 }

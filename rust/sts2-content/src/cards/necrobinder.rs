@@ -13,10 +13,9 @@ use sts2_kernel::{
 };
 use sts2_types::generated_ids::CARD_POOL_NECROBINDER;
 use sts2_types::{
-    generated_card_meta, CardId, CardKeywords, CardMeta, CardPilePosition, CardRarity,
-    CardStaticFlags, CardTags, CombatSide, Dec, HookSlot, LocalEnergyModifierKind, PileType,
-    PowerId, PowerMeta, PowerStackType, PowerStaticFlags, PowerType, RunRngType,
-    ValueProp,
+    generated_card_meta, CardId, CardKeywords, CardMeta, CardPilePosition, CardStaticFlags,
+    CardTags, CombatSide, Dec, HookSlot, LocalEnergyModifierKind, PileType, PowerId, PowerMeta,
+    PowerStackType, PowerStaticFlags, PowerType, RunRngType, ValueProp,
 };
 
 const NECRO_CARD_COUNT: usize = 91;
@@ -251,7 +250,7 @@ fn add_energy_cost_this_combat(state: &mut BattleState, card: CardHandle, delta:
         return;
     }
     if let Some(ext) = state.card_ext_mut(card) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind: LocalEnergyModifierKind::AddThisCombat,
             amount: delta,
             is_reduce_only: false,
@@ -261,10 +260,10 @@ fn add_energy_cost_this_combat(state: &mut BattleState, card: CardHandle, delta:
 
 fn set_temp_cost_override_this_turn(state: &mut BattleState, card: CardHandle, cost: i32) {
     if let Some(c) = state.card_mut(card) {
-        c.temp_cost_override_this_turn = Some(cost);
+        c.temp_cost_override_this_turn = sts2_kernel::OptI16::some_clamped(cost);
     }
     if let Some(ext) = state.card_ext_mut(card) {
-        ext.local_energy_modifiers.push(LocalEnergyModifier {
+        ext.push_local_energy_modifier(LocalEnergyModifier {
             kind: LocalEnergyModifierKind::SetThisTurn,
             amount: cost,
             is_reduce_only: false,
@@ -408,9 +407,9 @@ fn clone_card_in_combat(
     temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
     state.cards.push(CardInst {
         handle: new_handle,
-        deck_card_handle: None,
-        clone_of_handle: Some(source_handle),
-        floor_added_to_deck: None,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
         ext_index,
         temp_flags,
         pile: PileType::None,
@@ -503,26 +502,37 @@ fn power_type_for_amount(meta: &PowerMeta, amount: i32) -> PowerType {
 
 fn sorted_draw_candidates(
     state: &BattleState,
-    content: &dyn ContentDispatcher,
+    _content: &dyn ContentDispatcher,
     min_count: usize,
     max_count: usize,
 ) -> Result<SmallVec<[CardHandle; 16]>, KernelError> {
     let mut cands: SmallVec<[CardHandle; 16]> = state.player.draw.iter().copied().collect();
     if min_count != max_count || cands.len() > min_count {
-        let mut pairs: Vec<(CardHandle, CardRarity, CardId)> = Vec::with_capacity(cands.len());
-        for &h in &cands {
-            let cid = state
-                .card(h)
-                .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
-                .id;
-            let rarity = content
-                .card_meta(cid)
-                .unwrap_or_else(|_| generated_card_meta(cid))
-                .rarity;
-            pairs.push((h, rarity, cid));
+        if cands.len() <= u16::MAX as usize {
+            let mut pairs: SmallVec<[(u64, CardHandle); 64]> = SmallVec::with_capacity(cands.len());
+            for (orig_idx, &h) in cands.iter().enumerate() {
+                let cid = state
+                    .card(h)
+                    .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
+                    .id;
+                let key = (u64::from(crate::card_draw_sort_key(cid)) << 16) | (orig_idx as u64);
+                pairs.push((key, h));
+            }
+            pairs.sort_unstable_by_key(|&(k, _)| k);
+            cands.clear();
+            cands.extend(pairs.into_iter().map(|(_, h)| h));
+        } else {
+            let mut pairs: SmallVec<[(u32, CardHandle); 64]> = SmallVec::with_capacity(cands.len());
+            for &h in &cands {
+                let cid = state
+                    .card(h)
+                    .ok_or_else(|| KernelError::InvalidState("missing draw card".to_owned()))?
+                    .id;
+                pairs.push((crate::card_draw_sort_key(cid), h));
+            }
+            pairs.sort_by_key(|&(k, _)| k);
+            cands = pairs.into_iter().map(|(_, h)| h).collect();
         }
-        pairs.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.2.compare_model_id(b.2)));
-        cands = pairs.into_iter().map(|p| p.0).collect();
     }
     Ok(cands)
 }
@@ -1869,7 +1879,7 @@ pub fn on_play(
                 .execute(state, content)?;
             let inc = if upg { 7 } else { 5 };
             add_the_scythe_increased_damage(state, ctx.card, inc)?;
-            if let Some(deck_h) = card.deck_card_handle {
+            if let Some(deck_h) = card.deck_card_handle.get() {
                 if state.card(deck_h).is_some() {
                     add_the_scythe_increased_damage(state, deck_h, inc)?;
                     state

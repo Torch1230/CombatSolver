@@ -4,6 +4,21 @@ use crate::hooks;
 use crate::state::{BattleState, CardHandle, CreatureHandle, PowerExtension, PowerInst};
 use sts2_types::{CombatSide, Dec, PowerId, PowerInstanceType, PowerType};
 
+#[inline(always)]
+fn invalidates_creature_hooks(state: &BattleState, power_id: PowerId) -> bool {
+    matches!(
+        power_id,
+        PowerId::MinionPower
+            | PowerId::ThieveryPower
+            | PowerId::SwipePower
+            | PowerId::ReattachPower
+            | PowerId::AdaptablePower
+    ) || !state
+        .hook_cache
+        .cached_tables
+        .is_some_and(|t| t.powers.get(power_id as usize).is_some_and(|m| m.is_empty()))
+}
+
 pub fn find_existing_instance_for_stacking(
     state: &BattleState,
     content: &dyn ContentDispatcher,
@@ -11,7 +26,7 @@ pub fn find_existing_instance_for_stacking(
     target: CreatureHandle,
     applier: Option<CreatureHandle>,
 ) -> Result<Option<usize>, KernelError> {
-    let meta = content.power_meta(power_id)?;
+    let meta = state.fast_power_meta(content, power_id)?;
     let Some(creature) = state.creature(target) else {
         return Ok(None);
     };
@@ -97,45 +112,74 @@ fn apply_new(
     card_source: Option<CardHandle>,
     ext_index: Option<u32>,
 ) -> Result<Option<usize>, KernelError> {
-    let meta = content.power_meta(power_id)?;
+    let meta = state.fast_power_meta(content, power_id)?;
     let power_handle = state.next_power_handle;
     state.next_power_handle += 1;
 
-    hooks::before_power_amount_changed(
-        state,
-        content,
-        power_id,
-        power_handle,
-        target,
-        amount,
-        applier,
-        card_source,
-    )?;
+    const GIVEN_MASK: sts2_types::HookMask = sts2_types::HookMask::EMPTY
+        .with(sts2_types::HookSlot::ModifyPowerAmountGivenAdditive)
+        .with(sts2_types::HookSlot::ModifyPowerAmountGivenMultiplicative);
 
-    let mut modified_amount = amount;
-    if let Some(giver) = applier {
-        modified_amount = hooks::modify_power_amount_given(
+    let mut clean = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    if !clean
+        || state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(sts2_types::HookSlot::BeforePowerAmountChanged)
+    {
+        hooks::before_power_amount_changed(
             state,
             content,
             power_id,
             power_handle,
             target,
-            modified_amount,
-            giver,
+            amount,
+            applier,
             card_source,
         )?;
+        clean = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
     }
 
-    let (received_amount, received_modifiers) = hooks::modify_power_amount_received(
-        state,
-        content,
-        power_id,
-        power_handle,
-        target,
-        modified_amount,
-        applier,
-    )?;
-    modified_amount = received_amount;
+    let mut modified_amount = amount;
+    if let Some(giver) = applier {
+        if !clean || state.hook_cache.masks.combat_combined.intersects(GIVEN_MASK) {
+            modified_amount = hooks::modify_power_amount_given(
+                state,
+                content,
+                power_id,
+                power_handle,
+                target,
+                modified_amount,
+                giver,
+                card_source,
+            )?;
+            clean = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+        }
+    }
+
+    let mut received_modifiers = smallvec::SmallVec::new();
+    if !clean
+        || state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(sts2_types::HookSlot::TryModifyPowerAmountReceived)
+    {
+        if hooks::has_modify_power_amount_received_hook(state, content)? {
+            let (received_amount, mods) = hooks::modify_power_amount_received(
+                state,
+                content,
+                power_id,
+                power_handle,
+                target,
+                modified_amount,
+                applier,
+            )?;
+            modified_amount = received_amount;
+            received_modifiers = mods;
+        }
+    }
 
     let amt_i32 = modified_amount.to_i32_trunc()?;
     let target_side = state.creature(target).map_or(CombatSide::Player, |c| c.side);
@@ -164,19 +208,21 @@ fn apply_new(
 
     let mut applied_idx: Option<usize> = None;
     if !modified_amount.is_zero() {
-        let c = state
-            .creature_mut(target)
+        let c_idx = state
+            .creature_index(target)
             .ok_or_else(|| KernelError::InvalidState("missing power target".to_owned()))?;
-        let idx = c.powers.len();
-        c.powers.push(pending_power);
-        if power_id == PowerId::MinionPower {
-            c.has_minion_power = true;
-        }
+        let idx = {
+            let c = &mut state.creatures[c_idx];
+            let idx = c.powers.len();
+            c.powers.push(pending_power);
+            if power_id == PowerId::MinionPower {
+                c.has_minion_power = true;
+            }
+            idx
+        };
         applied_idx = Some(idx);
-        if !state
-            .hook_cache
-            .cached_tables
-            .is_some_and(|t| t.powers.get(power_id as usize).is_some_and(|m| m.is_empty()))
+        if !state.try_add_power_to_hook_cache(target, c_idx, idx, pending_power)
+            && invalidates_creature_hooks(state, power_id)
         {
             state.invalidate_creature_hooks();
         }
@@ -188,7 +234,9 @@ fn apply_new(
         }
     }
 
-    hooks::after_modifying_power_amount_received(state, content, &received_modifiers)?;
+    if !received_modifiers.is_empty() {
+        hooks::after_modifying_power_amount_received(state, content, &received_modifiers)?;
+    }
 
     if !modified_amount.is_zero() {
         hooks::after_power_applied(
@@ -201,16 +249,25 @@ fn apply_new(
             applier,
             card_source,
         )?;
-        hooks::after_power_amount_changed(
-            state,
-            content,
-            power_id,
-            power_handle,
-            target,
-            modified_amount,
-            applier,
-            card_source,
-        )?;
+        let clean_after = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+        if !clean_after
+            || state
+                .hook_cache
+                .masks
+                .combat_combined
+                .contains(sts2_types::HookSlot::AfterPowerAmountChanged)
+        {
+            hooks::after_power_amount_changed(
+                state,
+                content,
+                power_id,
+                power_handle,
+                target,
+                modified_amount,
+                applier,
+                card_source,
+            )?;
+        }
     }
     Ok(applied_idx)
 }
@@ -234,40 +291,69 @@ pub fn modify_amount(
         return Ok(0);
     };
 
-    hooks::before_power_amount_changed(
-        state,
-        content,
-        power_id,
-        power_handle,
-        owner,
-        offset,
-        applier,
-        card_source,
-    )?;
+    const GIVEN_MASK: sts2_types::HookMask = sts2_types::HookMask::EMPTY
+        .with(sts2_types::HookSlot::ModifyPowerAmountGivenAdditive)
+        .with(sts2_types::HookSlot::ModifyPowerAmountGivenMultiplicative);
 
-    let mut modified_offset = offset;
-    if let Some(giver) = applier {
-        modified_offset = hooks::modify_power_amount_given(
+    let mut clean = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+    if !clean
+        || state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(sts2_types::HookSlot::BeforePowerAmountChanged)
+    {
+        hooks::before_power_amount_changed(
             state,
             content,
             power_id,
             power_handle,
             owner,
-            modified_offset,
-            giver,
+            offset,
+            applier,
             card_source,
         )?;
+        clean = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
     }
-    let (received_offset, received_modifiers) = hooks::modify_power_amount_received(
-        state,
-        content,
-        power_id,
-        power_handle,
-        owner,
-        modified_offset,
-        applier,
-    )?;
-    modified_offset = received_offset;
+
+    let mut modified_offset = offset;
+    if let Some(giver) = applier {
+        if !clean || state.hook_cache.masks.combat_combined.intersects(GIVEN_MASK) {
+            modified_offset = hooks::modify_power_amount_given(
+                state,
+                content,
+                power_id,
+                power_handle,
+                owner,
+                modified_offset,
+                giver,
+                card_source,
+            )?;
+            clean = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+        }
+    }
+    let mut received_modifiers = smallvec::SmallVec::new();
+    if !clean
+        || state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(sts2_types::HookSlot::TryModifyPowerAmountReceived)
+    {
+        if hooks::has_modify_power_amount_received_hook(state, content)? {
+            let (received_offset, mods) = hooks::modify_power_amount_received(
+                state,
+                content,
+                power_id,
+                power_handle,
+                owner,
+                modified_offset,
+                applier,
+            )?;
+            modified_offset = received_offset;
+            received_modifiers = mods;
+        }
+    }
 
     if power_id == PowerId::DoomPower
         && applier.is_some_and(|a| state.creature(a).is_some_and(|cr| cr.is_player))
@@ -276,34 +362,58 @@ pub fn modify_amount(
     }
 
     let offset_i32 = modified_offset.to_i32_trunc()?;
+    let allow_neg = state
+        .fast_power_meta(content, power_id)?
+        .flags
+        .contains(sts2_types::PowerStaticFlags::ALLOW_NEGATIVE);
     let (new_amount, should_remove) = {
         let c = state
             .creature_mut(owner)
             .ok_or_else(|| KernelError::InvalidState("missing power owner".to_owned()))?;
-        let idx = c
-            .powers
-            .iter()
-            .position(|p| p.handle == power_handle)
-            .ok_or_else(|| KernelError::InvalidState("missing power handle".to_owned()))?;
+        let idx = if c.powers.get(power_idx).is_some_and(|p| p.handle == power_handle) {
+            power_idx
+        } else {
+            c.powers
+                .iter()
+                .position(|p| p.handle == power_handle)
+                .ok_or_else(|| KernelError::InvalidState("missing power handle".to_owned()))?
+        };
         let p = &mut c.powers[idx];
         p.amount += offset_i32;
-        let remove = content.power_should_remove_due_to_amount(p)?;
+        let remove = if allow_neg {
+            p.amount == 0
+        } else {
+            p.amount <= 0
+        };
+        #[cfg(debug_assertions)]
+        debug_assert_eq!(remove, content.power_should_remove_due_to_amount(p)?);
         (p.amount, remove)
     };
 
-    hooks::after_modifying_power_amount_received(state, content, &received_modifiers)?;
+    if !received_modifiers.is_empty() {
+        hooks::after_modifying_power_amount_received(state, content, &received_modifiers)?;
+    }
 
     if !modified_offset.is_zero() {
-        hooks::after_power_amount_changed(
-            state,
-            content,
-            power_id,
-            power_handle,
-            owner,
-            modified_offset,
-            applier,
-            card_source,
-        )?;
+        let clean_after = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+        if !clean_after
+            || state
+                .hook_cache
+                .masks
+                .combat_combined
+                .contains(sts2_types::HookSlot::AfterPowerAmountChanged)
+        {
+            hooks::after_power_amount_changed(
+                state,
+                content,
+                power_id,
+                power_handle,
+                owner,
+                modified_offset,
+                applier,
+                card_source,
+            )?;
+        }
     }
 
     if should_remove {
@@ -322,25 +432,25 @@ pub fn remove_by_index(
     let removed = state.creature_mut(owner).and_then(|c| {
         if power_idx < c.powers.len() {
             let p = c.powers.remove(power_idx);
+            let shifted_tail = power_idx < c.powers.len();
             if p.id == PowerId::MinionPower {
                 c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
             }
-            Some(p)
+            Some((power_idx, p, shifted_tail))
         } else {
             None
         }
     });
-    if let Some(p) = removed {
-        if !state
-            .hook_cache
-            .cached_tables
-            .is_some_and(|t| t.powers.get(p.id as usize).is_some_and(|m| m.is_empty()))
+    if let Some((idx, p, shifted_tail)) = removed {
+        if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
+            && (shifted_tail || invalidates_creature_hooks(state, p.id))
         {
             state.invalidate_creature_hooks();
         }
         hooks::after_power_removed(state, content, owner, p)?;
+        return Ok(Some(p));
     }
-    Ok(removed)
+    Ok(None)
 }
 
 pub fn remove_by_id(
@@ -352,23 +462,23 @@ pub fn remove_by_id(
     let removed = state.creature_mut(owner).and_then(|c| {
         c.powers.iter().position(|p| p.id == power_id).map(|idx| {
             let p = c.powers.remove(idx);
+            let shifted_tail = idx < c.powers.len();
             if p.id == PowerId::MinionPower {
                 c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
             }
-            p
+            (idx, p, shifted_tail)
         })
     });
-    if let Some(p) = removed {
-        if !state
-            .hook_cache
-            .cached_tables
-            .is_some_and(|t| t.powers.get(p.id as usize).is_some_and(|m| m.is_empty()))
+    if let Some((idx, p, shifted_tail)) = removed {
+        if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
+            && (shifted_tail || invalidates_creature_hooks(state, p.id))
         {
             state.invalidate_creature_hooks();
         }
         hooks::after_power_removed(state, content, owner, p)?;
+        return Ok(Some(p));
     }
-    Ok(removed)
+    Ok(None)
 }
 
 pub fn remove_by_handle(
@@ -383,23 +493,23 @@ pub fn remove_by_handle(
             .position(|p| p.handle == power_handle)
             .map(|idx| {
                 let p = c.powers.remove(idx);
+                let shifted_tail = idx < c.powers.len();
                 if p.id == PowerId::MinionPower {
                     c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
                 }
-                p
+                (idx, p, shifted_tail)
             })
     });
-    if let Some(p) = removed {
-        if !state
-            .hook_cache
-            .cached_tables
-            .is_some_and(|t| t.powers.get(p.id as usize).is_some_and(|m| m.is_empty()))
+    if let Some((idx, p, shifted_tail)) = removed {
+        if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
+            && (shifted_tail || invalidates_creature_hooks(state, p.id))
         {
             state.invalidate_creature_hooks();
         }
         hooks::after_power_removed(state, content, owner, p)?;
+        return Ok(Some(p));
     }
-    Ok(removed)
+    Ok(None)
 }
 
 pub fn modify_amount_by_handle(

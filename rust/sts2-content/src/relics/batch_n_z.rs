@@ -334,22 +334,68 @@ static WUPPY_META: RelicMeta = meta(
 );
 
 #[inline]
-fn find_relic(state: &BattleState, id: RelicId) -> Option<&RelicInst> {
+fn find_relic_at(
+    state: &BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+) -> Option<&RelicInst> {
+    if let Some(idx) = relic_idx {
+        if let Some(r) = state
+            .player
+            .relics
+            .get(idx)
+            .filter(|r| r.id == id && !r.is_melted)
+        {
+            return Some(r);
+        }
+    }
     state.player.relics.iter().find(|r| r.id == id && !r.is_melted)
 }
 
 #[inline]
-fn find_relic_mut(state: &mut BattleState, id: RelicId) -> Option<&mut RelicInst> {
-    state
-        .player
-        .relics
-        .iter_mut()
-        .find(|r| r.id == id && !r.is_melted)
+fn find_relic_mut_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+) -> Option<&mut RelicInst> {
+    let idx = if let Some(idx) = relic_idx.filter(|&i| {
+        state
+            .player
+            .relics
+            .get(i)
+            .is_some_and(|r| r.id == id && !r.is_melted)
+    }) {
+        idx
+    } else {
+        state
+            .player
+            .relics
+            .iter()
+            .position(|r| r.id == id && !r.is_melted)?
+    };
+    state.mark_relic_dirty(idx);
+    Some(&mut state.player.relics[idx])
 }
 
 #[inline]
-fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool {
-    find_relic(state, id)
+fn find_relic(state: &BattleState, id: RelicId) -> Option<&RelicInst> {
+    find_relic_at(state, id, None)
+}
+
+#[inline]
+fn find_relic_mut(state: &mut BattleState, id: RelicId) -> Option<&mut RelicInst> {
+    find_relic_mut_at(state, id, None)
+}
+
+#[inline]
+fn get_bool_at(
+    state: &BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &str,
+    default: bool,
+) -> bool {
+    find_relic_at(state, id, relic_idx)
         .and_then(|r| r.private_fields.get(key))
         .and_then(|v| match v {
             FieldValue::Bool(b) => Some(*b),
@@ -359,16 +405,28 @@ fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool 
 }
 
 #[inline]
-fn set_bool(state: &mut BattleState, id: RelicId, key: &'static str, val: bool) {
-    if let Some(r) = find_relic_mut(state, id) {
+fn set_bool_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &'static str,
+    val: bool,
+) {
+    if let Some(r) = find_relic_mut_at(state, id, relic_idx) {
         r.private_fields
             .insert(std::borrow::Cow::Borrowed(key), FieldValue::Bool(val));
     }
 }
 
 #[inline]
-fn get_int(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
-    find_relic(state, id)
+fn get_int_at(
+    state: &BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &str,
+    default: i32,
+) -> i32 {
+    find_relic_at(state, id, relic_idx)
         .and_then(|r| r.private_fields.get(key))
         .and_then(|v| match v {
             FieldValue::Int(i) | FieldValue::NullableInt(Some(i)) => Some(*i),
@@ -378,11 +436,67 @@ fn get_int(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
 }
 
 #[inline]
-fn set_int(state: &mut BattleState, id: RelicId, key: &'static str, val: i32) {
-    if let Some(r) = find_relic_mut(state, id) {
+fn set_int_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &'static str,
+    val: i32,
+) {
+    if let Some(r) = find_relic_mut_at(state, id, relic_idx) {
         r.private_fields
             .insert(std::borrow::Cow::Borrowed(key), FieldValue::Int(val));
     }
+}
+
+#[inline]
+fn set_card_handle_at(
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    key: &'static str,
+    card: Option<CardHandle>,
+) {
+    if let Some(r) = find_relic_mut_at(state, id, relic_idx) {
+        match card {
+            Some(ch) => {
+                r.private_fields.insert(
+                    std::borrow::Cow::Borrowed(key),
+                    FieldValue::CardHandle(ch.0 as i32),
+                );
+            }
+            None => {
+                r.private_fields.remove(key);
+            }
+        }
+    }
+}
+
+#[inline]
+fn remove_field_at(state: &mut BattleState, id: RelicId, relic_idx: Option<usize>, key: &str) {
+    if let Some(r) = find_relic_mut_at(state, id, relic_idx) {
+        r.private_fields.remove(key);
+    }
+}
+
+#[inline]
+fn get_bool(state: &BattleState, id: RelicId, key: &str, default: bool) -> bool {
+    get_bool_at(state, id, None, key, default)
+}
+
+#[inline]
+fn set_bool(state: &mut BattleState, id: RelicId, key: &'static str, val: bool) {
+    set_bool_at(state, id, None, key, val);
+}
+
+#[inline]
+fn get_int(state: &BattleState, id: RelicId, key: &str, default: i32) -> i32 {
+    get_int_at(state, id, None, key, default)
+}
+
+#[inline]
+fn set_int(state: &mut BattleState, id: RelicId, key: &'static str, val: i32) {
+    set_int_at(state, id, None, key, val);
 }
 
 #[inline]
@@ -404,19 +518,7 @@ fn set_card_handle(
     key: &'static str,
     card: Option<CardHandle>,
 ) {
-    if let Some(r) = find_relic_mut(state, id) {
-        match card {
-            Some(ch) => {
-                r.private_fields.insert(
-                    std::borrow::Cow::Borrowed(key),
-                    FieldValue::CardHandle(ch.0 as i32),
-                );
-            }
-            None => {
-                r.private_fields.remove(key);
-            }
-        }
-    }
+    set_card_handle_at(state, id, None, key, card);
 }
 
 #[inline]
@@ -448,25 +550,14 @@ fn set_string(state: &mut BattleState, id: RelicId, key: &'static str, val: Opti
 
 #[inline]
 fn remove_field(state: &mut BattleState, id: RelicId, key: &str) {
-    if let Some(r) = find_relic_mut(state, id) {
-        r.private_fields.remove(key);
-    }
+    remove_field_at(state, id, None, key);
 }
 
 fn hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    let mut out = SmallVec::new();
-    let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
-    for eh in enemies {
-        if state.creature(eh).is_some_and(|c| c.is_alive())
-            && hooks::should_allow_hitting(state, content, eh)?
-        {
-            out.push(eh);
-        }
-    }
-    Ok(out)
+    super::hittable_enemies_fast(state, content)
 }
 
 fn power_type_for_amount(
@@ -525,20 +616,20 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
         .contains(sts2_types::CardStaticFlags::IS_X_ENERGY_COST)
     {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_cost_override_this_turn_or_until_played = Some(0);
+            c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
         }
         if let Some(ext_idx) = state.card(handle).and_then(|c| c.ext_index) {
-            state.card_extensions[ext_idx as usize]
-                .local_energy_modifiers
-                .push(LocalEnergyModifier {
+            state.card_extensions[ext_idx as usize].push_local_energy_modifier(
+                LocalEnergyModifier {
                     kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                     amount: 0,
                     is_reduce_only: false,
-                });
+                },
+            );
         } else if let Some(idx) = state.cards.iter().position(|c| c.handle == handle) {
             let ext_idx = state.card_extensions.len() as u32;
             let mut ext = CardExtension::default();
-            ext.local_energy_modifiers.push(LocalEnergyModifier {
+            ext.push_local_energy_modifier(LocalEnergyModifier {
                 kind: LocalEnergyModifierKind::SetThisTurnOrUntilPlayed,
                 amount: 0,
                 is_reduce_only: false,
@@ -555,7 +646,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
         .contains(sts2_types::CardStaticFlags::IS_X_STAR_COST)
     {
         if let Some(c) = state.card_mut(handle) {
-            c.temp_star_cost_override_this_turn = Some(0);
+            c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
         }
     }
 }
@@ -849,6 +940,17 @@ pub fn dispatch_hook(
     slot: HookSlot,
     args: &HookArgs<'_>,
 ) -> Result<HookResult, KernelError> {
+    dispatch_hook_at(content, state, id, None, slot, args)
+}
+
+pub(crate) fn dispatch_hook_at(
+    content: &dyn ContentDispatcher,
+    state: &mut BattleState,
+    id: RelicId,
+    relic_idx: Option<usize>,
+    slot: HookSlot,
+    args: &HookArgs<'_>,
+) -> Result<HookResult, KernelError> {
     let pc = state.player.creature_handle;
     match id {
         RelicId::NeowsBones
@@ -927,9 +1029,10 @@ pub fn dispatch_hook(
             if slot == HookSlot::AfterCardPlayed {
                 if let HookArgs::CardPlay(cp) = args {
                     if let Some(c) = state.card(cp.card) {
-                        if content.card_meta(c.id)?.card_type == CardType::Attack {
-                            let next = get_int(state, id, "Nunchaku._attacksPlayed", 0) + 1;
-                            set_int(state, id, "Nunchaku._attacksPlayed", next);
+                        if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
+                            let next =
+                                get_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", 0) + 1;
+                            set_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", next);
                             if next % 10 == 0 {
                                 gold::gain_energy(state, Dec::ONE)?;
                             }
@@ -1047,7 +1150,7 @@ pub fn dispatch_hook(
                 HookSlot::BeforeSideTurnStart => {
                     if let HookArgs::SideTurn { participants, .. } = args {
                         if participants.contains(&pc) {
-                            set_bool(state, id, "Orichalcum._shouldTrigger", false);
+                            set_bool_at(state, id, relic_idx, "Orichalcum._shouldTrigger", false);
                         }
                     }
                 }
@@ -1056,13 +1159,13 @@ pub fn dispatch_hook(
                         if participants.contains(&pc)
                             && state.player_creature().is_some_and(|c| c.block == 0)
                         {
-                            set_bool(state, id, "Orichalcum._shouldTrigger", true);
+                            set_bool_at(state, id, relic_idx, "Orichalcum._shouldTrigger", true);
                         }
                     }
                 }
                 HookSlot::BeforeSideTurnEnd => {
-                    if get_bool(state, id, "Orichalcum._shouldTrigger", false) {
-                        set_bool(state, id, "Orichalcum._shouldTrigger", false);
+                    if get_bool_at(state, id, relic_idx, "Orichalcum._shouldTrigger", false) {
+                        set_bool_at(state, id, relic_idx, "Orichalcum._shouldTrigger", false);
                         block::gain_block(
                             state,
                             content,
@@ -1084,17 +1187,34 @@ pub fn dispatch_hook(
                 HookSlot::BeforeSideTurnStart => {
                     if let HookArgs::SideTurn { participants, .. } = args {
                         if participants.contains(&pc) {
-                            set_int(state, id, "OrnamentalFan._attacksThisTurn", 0);
+                            set_int_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "OrnamentalFan._attacksThisTurn",
+                                0,
+                            );
                         }
                     }
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
                         if let Some(c) = state.card(cp.card) {
-                            if content.card_meta(c.id)?.card_type == CardType::Attack {
-                                let next =
-                                    get_int(state, id, "OrnamentalFan._attacksThisTurn", 0) + 1;
-                                set_int(state, id, "OrnamentalFan._attacksThisTurn", next);
+                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
+                                let next = get_int_at(
+                                    state,
+                                    id,
+                                    relic_idx,
+                                    "OrnamentalFan._attacksThisTurn",
+                                    0,
+                                ) + 1;
+                                set_int_at(
+                                    state,
+                                    id,
+                                    relic_idx,
+                                    "OrnamentalFan._attacksThisTurn",
+                                    next,
+                                );
                                 if next % 3 == 0 {
                                     block::gain_block(
                                         state,
@@ -1111,7 +1231,7 @@ pub fn dispatch_hook(
                     }
                 }
                 HookSlot::AfterCombatEnd => {
-                    set_int(state, id, "OrnamentalFan._attacksThisTurn", 0);
+                    set_int_at(state, id, relic_idx, "OrnamentalFan._attacksThisTurn", 0);
                 }
                 _ => {}
             }
@@ -1478,19 +1598,23 @@ pub fn dispatch_hook(
                 HookSlot::BeforeCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
                         if let Some(c) = state.card(cp.card) {
-                            if content.card_meta(c.id)?.card_type == CardType::Attack {
-                                let next = get_int(state, id, "PenNib._attacksPlayed", 0) + 1;
-                                set_int(state, id, "PenNib._attacksPlayed", next);
+                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
+                                let next =
+                                    get_int_at(state, id, relic_idx, "PenNib._attacksPlayed", 0)
+                                        + 1;
+                                set_int_at(state, id, relic_idx, "PenNib._attacksPlayed", next);
                                 if next % 10 == 0 {
-                                    set_int(
+                                    set_int_at(
                                         state,
                                         id,
+                                        relic_idx,
                                         "PenNib._doubleDamagePlayOrdinal",
                                         cp.play_ordinal,
                                     );
-                                    set_card_handle(
+                                    set_card_handle_at(
                                         state,
                                         id,
+                                        relic_idx,
                                         "PenNib._doubleDamageCard",
                                         Some(cp.card),
                                     );
@@ -1508,25 +1632,45 @@ pub fn dispatch_hook(
                         ..
                     } = args
                     {
-                        let tracked_ord = find_relic(state, id)
-                            .and_then(|r| r.private_fields.get("PenNib._doubleDamagePlayOrdinal"))
-                            .and_then(|v| match v {
-                                FieldValue::Int(i) => Some(*i),
-                                _ => None,
-                            });
-                        let tracked_card = get_card_handle(state, id, "PenNib._doubleDamageCard");
-                        let osty = state.osty_handle();
-                        let dealer_ok = *dealer == Some(pc) || (osty.is_some() && *dealer == osty);
-                        let play_ok = card_play.is_some_and(|cp| {
-                            Some(cp.play_ordinal) == tracked_ord
-                                && Some(cp.card) == tracked_card
-                                && *card_source == Some(cp.card)
-                        });
-                        if play_ok && dealer_ok && props.is_powered_attack() {
+                        if !props.is_powered_attack() || card_play.is_none() {
                             return Ok(HookResult {
-                                dec_val: Some(Dec::TWO),
+                                dec_val: Some(Dec::ONE),
                                 ..Default::default()
                             });
+                        }
+                        if let Some(r) = find_relic_at(state, id, relic_idx) {
+                            if r.private_fields.len() > 1 {
+                                let cp = card_play.expect("checked Some above");
+                                let tracked_ord = r
+                                    .private_fields
+                                    .get("PenNib._doubleDamagePlayOrdinal")
+                                    .and_then(|v| match v {
+                                        FieldValue::Int(i) => Some(*i),
+                                        _ => None,
+                                    });
+                                if tracked_ord == Some(cp.play_ordinal)
+                                    && *card_source == Some(cp.card)
+                                {
+                                    let tracked_card =
+                                        match r.private_fields.get("PenNib._doubleDamageCard") {
+                                            Some(
+                                                FieldValue::CardHandle(h)
+                                                | FieldValue::Int(h)
+                                                | FieldValue::NullableInt(Some(h)),
+                                            ) => u32::try_from(*h).ok().map(CardHandle),
+                                            _ => None,
+                                        };
+                                    let osty = state.osty_handle();
+                                    let dealer_ok =
+                                        *dealer == Some(pc) || (osty.is_some() && *dealer == osty);
+                                    if dealer_ok && Some(cp.card) == tracked_card {
+                                        return Ok(HookResult {
+                                            dec_val: Some(Dec::TWO),
+                                            ..Default::default()
+                                        });
+                                    }
+                                }
+                            }
                         }
                         return Ok(HookResult {
                             dec_val: Some(Dec::ONE),
@@ -1536,15 +1680,30 @@ pub fn dispatch_hook(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        let tracked_ord = find_relic(state, id)
-                            .and_then(|r| r.private_fields.get("PenNib._doubleDamagePlayOrdinal"))
-                            .and_then(|v| match v {
-                                FieldValue::Int(i) => Some(*i),
-                                _ => None,
-                            });
-                        if tracked_ord == Some(cp.play_ordinal) {
-                            remove_field(state, id, "PenNib._doubleDamagePlayOrdinal");
-                            remove_field(state, id, "PenNib._doubleDamageCard");
+                        if let Some(r) = find_relic_at(state, id, relic_idx) {
+                            if r.private_fields.len() > 1 {
+                                let tracked_ord = r
+                                    .private_fields
+                                    .get("PenNib._doubleDamagePlayOrdinal")
+                                    .and_then(|v| match v {
+                                        FieldValue::Int(i) => Some(*i),
+                                        _ => None,
+                                    });
+                                if tracked_ord == Some(cp.play_ordinal) {
+                                    remove_field_at(
+                                        state,
+                                        id,
+                                        relic_idx,
+                                        "PenNib._doubleDamagePlayOrdinal",
+                                    );
+                                    remove_field_at(
+                                        state,
+                                        id,
+                                        relic_idx,
+                                        "PenNib._doubleDamageCard",
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -1665,15 +1824,34 @@ pub fn dispatch_hook(
                 HookSlot::BeforeSideTurnStart => {
                     if let HookArgs::SideTurn { participants, .. } = args {
                         if participants.contains(&pc) {
-                            let this_turn = get_int(state, id, "Pocketwatch._cardsPlayedThisTurn", 0);
-                            set_int(state, id, "Pocketwatch._cardsPlayedLastTurn", this_turn);
-                            set_int(state, id, "Pocketwatch._cardsPlayedThisTurn", 0);
+                            let this_turn = get_int_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "Pocketwatch._cardsPlayedThisTurn",
+                                0,
+                            );
+                            set_int_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "Pocketwatch._cardsPlayedLastTurn",
+                                this_turn,
+                            );
+                            set_int_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "Pocketwatch._cardsPlayedThisTurn",
+                                0,
+                            );
                         }
                     }
                 }
                 HookSlot::ModifyHandDraw => {
                     if state.player.turn_number != 1
-                        && get_int(state, id, "Pocketwatch._cardsPlayedLastTurn", 0) <= 3
+                        && get_int_at(state, id, relic_idx, "Pocketwatch._cardsPlayedLastTurn", 0)
+                            <= 3
                     {
                         if let HookArgs::ModifyHandDraw { original_count } = args {
                             return Ok(HookResult {
@@ -1685,13 +1863,25 @@ pub fn dispatch_hook(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(_) = args {
-                        let next = get_int(state, id, "Pocketwatch._cardsPlayedThisTurn", 0) + 1;
-                        set_int(state, id, "Pocketwatch._cardsPlayedThisTurn", next);
+                        let next = get_int_at(
+                            state,
+                            id,
+                            relic_idx,
+                            "Pocketwatch._cardsPlayedThisTurn",
+                            0,
+                        ) + 1;
+                        set_int_at(
+                            state,
+                            id,
+                            relic_idx,
+                            "Pocketwatch._cardsPlayedThisTurn",
+                            next,
+                        );
                     }
                 }
                 HookSlot::AfterCombatEnd => {
-                    set_int(state, id, "Pocketwatch._cardsPlayedThisTurn", 0);
-                    set_int(state, id, "Pocketwatch._cardsPlayedLastTurn", 0);
+                    set_int_at(state, id, relic_idx, "Pocketwatch._cardsPlayedThisTurn", 0);
+                    set_int_at(state, id, relic_idx, "Pocketwatch._cardsPlayedLastTurn", 0);
                 }
                 _ => {}
             }
@@ -2241,16 +2431,22 @@ pub fn dispatch_hook(
                 HookSlot::BeforeSideTurnStart => {
                     if let HookArgs::SideTurn { participants, .. } = args {
                         if participants.contains(&pc) {
-                            set_int(state, id, "Shuriken._attacksThisTurn", 0);
+                            set_int_at(state, id, relic_idx, "Shuriken._attacksThisTurn", 0);
                         }
                     }
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
                         if let Some(c) = state.card(cp.card) {
-                            if content.card_meta(c.id)?.card_type == CardType::Attack {
-                                let next = get_int(state, id, "Shuriken._attacksThisTurn", 0) + 1;
-                                set_int(state, id, "Shuriken._attacksThisTurn", next);
+                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
+                                let next = get_int_at(
+                                    state,
+                                    id,
+                                    relic_idx,
+                                    "Shuriken._attacksThisTurn",
+                                    0,
+                                ) + 1;
+                                set_int_at(state, id, relic_idx, "Shuriken._attacksThisTurn", next);
                                 if next % 3 == 0 {
                                     power::apply(
                                         state,
@@ -2267,7 +2463,7 @@ pub fn dispatch_hook(
                     }
                 }
                 HookSlot::AfterCombatEnd => {
-                    set_int(state, id, "Shuriken._attacksThisTurn", 0);
+                    set_int_at(state, id, relic_idx, "Shuriken._attacksThisTurn", 0);
                 }
                 _ => {}
             }
@@ -2955,13 +3151,14 @@ pub fn dispatch_hook(
                     let next = seen + 1;
                     set_int(state, id, "ToyBox.<CombatsSeen>k__BackingField", next);
                     if next % 3 == 0 {
-                        if let Some(wax) = state
+                        if let Some(idx) = state
                             .player
                             .relics
-                            .iter_mut()
-                            .find(|r| r.is_wax && !r.is_melted)
+                            .iter()
+                            .position(|r| r.is_wax && !r.is_melted)
                         {
-                            wax.is_melted = true;
+                            state.player.relics[idx].is_melted = true;
+                            state.mark_relic_dirty(idx);
                             state.invalidate_hook_cache();
                         }
                     }

@@ -650,6 +650,220 @@ pub fn dispatch_hook(
             _ => Ok(HookResult::default()),
         },
 
+        PowerId::ChainsOfBindingPower => match slot {
+            HookSlot::AfterCardDrawn => {
+                if let HookArgs::CardDrawn { card: card_h, .. } = args {
+                    if chains_of_binding_can_afflict_on_draw(
+                        state,
+                        creature,
+                        owner_side,
+                        p.amount,
+                        *card_h,
+                    ) {
+                        let _ = card::afflict(state, *card_h, AfflictionId::Bound, p.amount);
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::BeforeCardPlayed => {
+                if let HookArgs::CardPlay(ctx) = args {
+                    let is_bound_non_dupe = creature == state.player.creature_handle
+                        && state.card(ctx.card).is_some_and(|c| {
+                            !c.temp_flags.contains(CardTempFlags::IS_DUPE)
+                                && c.affliction.is_some_and(|a| a.id == AfflictionId::Bound)
+                        });
+                    if is_bound_non_dupe {
+                        set_bool_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "ChainsOfBindingPower._boundCardPlayedThisTurn",
+                            true,
+                        );
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::ShouldPlay => {
+                if let HookArgs::CardOnly(card_h) = args {
+                    if creature == state.player.creature_handle
+                        && state
+                            .card(*card_h)
+                            .is_some_and(|c| c.affliction.is_some_and(|a| a.id == AfflictionId::Bound))
+                        && get_bool_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "ChainsOfBindingPower._boundCardPlayedThisTurn",
+                            false,
+                        )
+                    {
+                        return Ok(bool_result(false));
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::BeforeSideTurnEnd => {
+                if let HookArgs::SideTurn { participants, .. } = args {
+                    if participants.contains(&creature) {
+                        set_bool_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "ChainsOfBindingPower._boundCardPlayedThisTurn",
+                            false,
+                        );
+                        if creature == state.player.creature_handle {
+                            let card_start = if !state.deck_dirty.0 {
+                                state.static_ctx.root_deck_prefix_len.min(state.cards.len())
+                            } else {
+                                0
+                            };
+                            #[cfg(debug_assertions)]
+                            debug_assert!(
+                                !state.cards[..card_start].iter().any(|c| {
+                                    c.affliction.is_some_and(|a| a.id == AfflictionId::Bound)
+                                        && !c.removed_from_state
+                                        && !matches!(c.pile, PileType::None | PileType::Deck)
+                                }),
+                                "ChainsOfBindingPower found bound combat card inside root deck prefix"
+                            );
+                            let bound_cards: SmallVec<[CardHandle; 16]> = state.cards[card_start..]
+                                .iter()
+                                .filter(|c| {
+                                    c.affliction.is_some_and(|a| a.id == AfflictionId::Bound)
+                                        && !c.removed_from_state
+                                        && !matches!(c.pile, PileType::None | PileType::Deck)
+                                })
+                                .map(|c| c.handle)
+                                .collect();
+                            for ch in bound_cards {
+                                card::clear_affliction(state, ch);
+                            }
+                        }
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::CorruptionPower => match slot {
+            HookSlot::TryModifyEnergyCostInCombatLate => {
+                if let HookArgs::CardCost { card, .. } = args {
+                    if creature == state.player.creature_handle
+                        && is_card_type(state, content, *card, CardType::Skill)?
+                    {
+                        return Ok(HookResult {
+                            dec_val: Some(Dec::ZERO),
+                            modified: true,
+                            ..Default::default()
+                        });
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::ModifyCardPlayResultLocation => {
+                if let HookArgs::CardPlayResultLocation { card, position, .. } = args {
+                    if creature == state.player.creature_handle
+                        && is_card_type(state, content, *card, CardType::Skill)?
+                    {
+                        return Ok(HookResult {
+                            location_val: Some((PileType::Exhaust, *position)),
+                            ..Default::default()
+                        });
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::HellraiserPower => match slot {
+            HookSlot::AfterCardDrawnEarly => {
+                if let HookArgs::CardDrawn { card: card_h, .. } = args {
+                    if creature == state.player.creature_handle
+                        && is_card_with_tag(state, content, Some(*card_h), CardTags::STRIKE)?
+                    {
+                        let enemies = hittable_enemies(state, content)?;
+                        let infinite_enemies =
+                            enemies.iter().all(|&eh| has_infinite_hp_display(state, eh));
+                        if infinite_enemies {
+                            let count = get_int_field(
+                                state,
+                                creature,
+                                power_idx,
+                                "HellraiserPower._infiniteAutoPlaysThisTurn",
+                                0,
+                            );
+                            set_int_field(
+                                state,
+                                creature,
+                                power_idx,
+                                "HellraiserPower._infiniteAutoPlaysThisTurn",
+                                count + 1,
+                            );
+                            if count >= 9 {
+                                return Ok(HookResult::default());
+                            }
+                        } else {
+                            set_int_field(
+                                state,
+                                creature,
+                                power_idx,
+                                "HellraiserPower._infiniteAutoPlaysThisTurn",
+                                0,
+                            );
+                        }
+                        let _ = autoplay::from_cards(state, content, &[*card_h], None, false)?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterSideTurnEnd => {
+                if let HookArgs::SideTurn { participants, .. } = args {
+                    if participants.contains(&creature) {
+                        set_int_field(
+                            state,
+                            creature,
+                            power_idx,
+                            "HellraiserPower._infiniteAutoPlaysThisTurn",
+                            0,
+                        );
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
+
+        PowerId::JuggernautPower => {
+            if slot == HookSlot::AfterBlockGained {
+                if let HookArgs::ModifyBlock { target, amount, .. } = args {
+                    if *amount > Dec::ZERO && *target == creature {
+                        let enemies = hittable_enemies(state, content)?;
+                        if let Some(&enemy) = state
+                            .run_rngs
+                            .get_mut(RunRngType::CombatTargets)
+                            .next_item(&enemies)
+                        {
+                            sts2_kernel::commands::damage::damage_targets(
+                                state,
+                                content,
+                                &[enemy],
+                                Dec::from_i32(p.amount),
+                                ValueProp::UNPOWERED,
+                                Some(creature),
+                                None,
+                                None,
+                            )?;
+                        }
+                    }
+                }
+            }
+            Ok(HookResult::default())
+        },
+
         _ => dispatch_hook_cold(content, state, creature, power_idx, p, owner_side, slot, args),
     }
 }
@@ -700,6 +914,9 @@ fn dispatch_hook_cold(
             }
             HookSlot::ShouldAllowHitting => {
                 if let HookArgs::Creature(target) = args {
+                    if *target != creature {
+                        return Ok(bool_result(true));
+                    }
                     let is_reviving = get_bool_field(
                         state,
                         creature,
@@ -707,7 +924,7 @@ fn dispatch_hook_cold(
                         "AdaptablePower._isReviving",
                         false,
                     );
-                    return Ok(bool_result(*target != creature || !is_reviving));
+                    return Ok(bool_result(!is_reviving));
                 }
                 Ok(HookResult::default())
             }
@@ -1392,85 +1609,6 @@ fn dispatch_hook_cold(
             Ok(HookResult::default())
         }
 
-        PowerId::ChainsOfBindingPower => match slot {
-            HookSlot::AfterCardDrawn => {
-                if let HookArgs::CardDrawn { card: card_h, .. } = args {
-                    if chains_of_binding_can_afflict_on_draw(state, creature, p.amount, *card_h) {
-                        let _ = card::afflict(state, *card_h, AfflictionId::Bound, p.amount);
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::BeforeCardPlayed => {
-                if let HookArgs::CardPlay(ctx) = args {
-                    let is_bound_non_dupe = creature == state.player.creature_handle
-                        && state.card(ctx.card).is_some_and(|c| {
-                            !c.temp_flags.contains(CardTempFlags::IS_DUPE)
-                                && c.affliction.is_some_and(|a| a.id == AfflictionId::Bound)
-                        });
-                    if is_bound_non_dupe {
-                        set_bool_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "ChainsOfBindingPower._boundCardPlayedThisTurn",
-                            true,
-                        );
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::ShouldPlay => {
-                if let HookArgs::CardOnly(card_h) = args {
-                    let bound_played = get_bool_field(
-                        state,
-                        creature,
-                        power_idx,
-                        "ChainsOfBindingPower._boundCardPlayedThisTurn",
-                        false,
-                    );
-                    let is_bound = creature == state.player.creature_handle
-                        && state
-                            .card(*card_h)
-                            .is_some_and(|c| c.affliction.is_some_and(|a| a.id == AfflictionId::Bound));
-                    if is_bound && bound_played {
-                        return Ok(bool_result(false));
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::BeforeSideTurnEnd => {
-                if let HookArgs::SideTurn { participants, .. } = args {
-                    if participants.contains(&creature) {
-                        set_bool_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "ChainsOfBindingPower._boundCardPlayedThisTurn",
-                            false,
-                        );
-                        if creature == state.player.creature_handle {
-                            let bound_cards: SmallVec<[CardHandle; 16]> = state
-                                .cards
-                                .iter()
-                                .filter(|c| {
-                                    !c.removed_from_state
-                                        && !matches!(c.pile, PileType::None | PileType::Deck)
-                                        && c.affliction.is_some_and(|a| a.id == AfflictionId::Bound)
-                                })
-                                .map(|c| c.handle)
-                                .collect();
-                            for ch in bound_cards {
-                                card::clear_affliction(state, ch);
-                            }
-                        }
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
         PowerId::ChildOfTheStarsPower => {
             if slot == HookSlot::AfterStarsSpent {
                 if let HookArgs::ModifyHandDraw { original_count } = args {
@@ -1639,10 +1777,11 @@ fn dispatch_hook_cold(
                                 .next_int(4)?;
                             if !is_x {
                                 if let Some(c) = state.card_mut(*card_h) {
-                                    c.temp_cost_override_this_combat = Some(randomized);
+                                    c.temp_cost_override_this_combat =
+                                        sts2_kernel::OptI16::some_clamped(randomized);
                                 }
                                 if let Some(ext) = state.card_ext_mut(*card_h) {
-                                    ext.local_energy_modifiers.push(
+                                    ext.push_local_energy_modifier(
                                         sts2_kernel::LocalEnergyModifier {
                                             kind: sts2_types::LocalEnergyModifierKind::SetThisCombat,
                                             amount: randomized,
@@ -1816,37 +1955,6 @@ fn dispatch_hook_cold(
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&creature) {
                         let _ = power::remove_by_handle(state, content, creature, p.handle)?;
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
-        PowerId::CorruptionPower => match slot {
-            HookSlot::TryModifyEnergyCostInCombatLate => {
-                if let HookArgs::CardCost { card, .. } = args {
-                    if creature == state.player.creature_handle
-                        && is_card_type(state, content, *card, CardType::Skill)?
-                    {
-                        return Ok(HookResult {
-                            dec_val: Some(Dec::ZERO),
-                            modified: true,
-                            ..Default::default()
-                        });
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::ModifyCardPlayResultLocation => {
-                if let HookArgs::CardPlayResultLocation { card, position, .. } = args {
-                    if creature == state.player.creature_handle
-                        && is_card_type(state, content, *card, CardType::Skill)?
-                    {
-                        return Ok(HookResult {
-                            location_val: Some((PileType::Exhaust, *position)),
-                            ..Default::default()
-                        });
                     }
                 }
                 Ok(HookResult::default())
@@ -3395,64 +3503,6 @@ fn dispatch_hook_cold(
             Ok(HookResult::default())
         }
 
-        PowerId::HellraiserPower => match slot {
-            HookSlot::AfterCardDrawnEarly => {
-                if let HookArgs::CardDrawn { card: card_h, .. } = args {
-                    if creature == state.player.creature_handle
-                        && is_card_with_tag(state, content, Some(*card_h), CardTags::STRIKE)?
-                    {
-                        let enemies = hittable_enemies(state, content)?;
-                        let infinite_enemies =
-                            enemies.iter().all(|&eh| has_infinite_hp_display(state, eh));
-                        if infinite_enemies {
-                            let count = get_int_field(
-                                state,
-                                creature,
-                                power_idx,
-                                "HellraiserPower._infiniteAutoPlaysThisTurn",
-                                0,
-                            );
-                            set_int_field(
-                                state,
-                                creature,
-                                power_idx,
-                                "HellraiserPower._infiniteAutoPlaysThisTurn",
-                                count + 1,
-                            );
-                            if count >= 9 {
-                                return Ok(HookResult::default());
-                            }
-                        } else {
-                            set_int_field(
-                                state,
-                                creature,
-                                power_idx,
-                                "HellraiserPower._infiniteAutoPlaysThisTurn",
-                                0,
-                            );
-                        }
-                        let _ = autoplay::from_cards(state, content, &[*card_h], None, false)?;
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            HookSlot::AfterSideTurnEnd => {
-                if let HookArgs::SideTurn { participants, .. } = args {
-                    if participants.contains(&creature) {
-                        set_int_field(
-                            state,
-                            creature,
-                            power_idx,
-                            "HellraiserPower._infiniteAutoPlaysThisTurn",
-                            0,
-                        );
-                    }
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
-
         PowerId::HexPower => match slot {
             HookSlot::AfterApplied => {
                 if creature == state.player.creature_handle {
@@ -3620,6 +3670,9 @@ fn dispatch_hook_cold(
             }
             HookSlot::ShouldAllowHitting => {
                 if let HookArgs::Creature(target) = args {
+                    if *target != creature {
+                        return Ok(bool_result(true));
+                    }
                     let is_reviving = get_bool_field(
                         state,
                         creature,
@@ -3627,7 +3680,7 @@ fn dispatch_hook_cold(
                         "IllusionPower._isReviving",
                         false,
                     );
-                    return Ok(bool_result(*target != creature || !is_reviving));
+                    return Ok(bool_result(!is_reviving));
                 }
                 Ok(HookResult::default())
             }
@@ -3955,33 +4008,6 @@ fn dispatch_hook_cold(
                             .count();
                         if drawn_statuses <= 1 {
                             let _ = card_pile::draw(state, content, p.amount, false)?;
-                        }
-                    }
-                }
-            }
-            Ok(HookResult::default())
-        }
-
-        PowerId::JuggernautPower => {
-            if slot == HookSlot::AfterBlockGained {
-                if let HookArgs::ModifyBlock { target, amount, .. } = args {
-                    if *amount > Dec::ZERO && *target == creature {
-                        let enemies = hittable_enemies(state, content)?;
-                        if let Some(&enemy) = state
-                            .run_rngs
-                            .get_mut(RunRngType::CombatTargets)
-                            .next_item(&enemies)
-                        {
-                            sts2_kernel::commands::damage::damage_targets(
-                                state,
-                                content,
-                                &[enemy],
-                                Dec::from_i32(p.amount),
-                                ValueProp::UNPOWERED,
-                                Some(creature),
-                                None,
-                                None,
-                            )?;
                         }
                     }
                 }
@@ -4931,9 +4957,9 @@ fn clone_card_in_combat(
     temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
     state.cards.push(CardInst {
         handle: new_handle,
-        deck_card_handle: None,
-        clone_of_handle: Some(source_handle),
-        floor_added_to_deck: None,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
+        clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
         ext_index,
         temp_flags,
         pile: PileType::None,
@@ -4944,7 +4970,7 @@ fn clone_card_in_combat(
     Ok(new_handle)
 }
 
-fn is_card_type(
+pub(crate) fn is_card_type(
     state: &BattleState,
     content: &dyn ContentDispatcher,
     card: CardHandle,
@@ -4975,6 +5001,26 @@ fn hittable_enemies(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
+    if state.hook_cache.dirty_mask == 0
+        && state.hook_cache.cached_tables.is_some()
+        && !state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::ShouldAllowHitting)
+    {
+        let mut out = SmallVec::new();
+        for &eh in &state.enemy_handles {
+            if state.creature(eh).is_some_and(|c| c.is_alive()) {
+                out.push(eh);
+            }
+        }
+        #[cfg(debug_assertions)]
+        for &eh in &out {
+            debug_assert!(hooks::should_allow_hitting(state, content, eh)?);
+        }
+        return Ok(out);
+    }
     let candidates: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
     let mut out = SmallVec::new();
     for eh in candidates {
@@ -5198,7 +5244,7 @@ fn set_decimal_field(
         .insert(Cow::Borrowed(key), FieldValue::Decimal(val));
 }
 
-fn get_bool_field(
+pub(crate) fn get_bool_field(
     state: &BattleState,
     creature: CreatureHandle,
     power_idx: usize,
@@ -5940,29 +5986,31 @@ pub fn arsenal_on_card_generated(
     Ok(())
 }
 
+#[inline]
 pub fn chains_of_binding_can_afflict_on_draw(
     state: &BattleState,
     creature: CreatureHandle,
+    owner_side: CombatSide,
     amount: i32,
     card_h: CardHandle,
 ) -> bool {
-    let owner_side = state
-        .creature(creature)
-        .map_or(CombatSide::Player, |c| c.side);
-    if state.current_side != owner_side || creature != state.player.creature_handle {
+    if amount <= 0 || creature != state.player.creature_handle || state.current_side != owner_side {
         return false;
     }
     if state.card(card_h).is_none_or(|c| c.affliction.is_some()) {
         return false;
     }
     let tk = state.current_turn_key();
-    let count = state
-        .semantic_history
-        .actor_events
-        .iter()
-        .filter(|(kind, turn, _)| kind == "BoundAfflicted" && *turn == tk)
-        .count() as i32;
-    count < amount
+    let mut count = 0i32;
+    for (kind, turn, _) in &state.semantic_history.actor_events {
+        if kind.as_ref() == "BoundAfflicted" && *turn == tk {
+            count += 1;
+            if count >= amount {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 pub fn adaptable_do_revive(state: &mut BattleState, creature: CreatureHandle, power_handle: u32) {

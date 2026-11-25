@@ -28,9 +28,9 @@ impl StateHash {
 
 #[inline(always)]
 fn read_u64_le(bytes: &[u8], offset: usize) -> u64 {
-    let mut buf = [0u8; 8];
-    buf.copy_from_slice(&bytes[offset..offset + 8]);
-    u64::from_le_bytes(buf)
+    debug_assert!(offset + 8 <= bytes.len());
+    // SAFETY: Caller ensures `offset + 8 <= bytes.len()`.
+    unsafe { u64::from_le(std::ptr::read_unaligned(bytes.as_ptr().add(offset).cast::<u64>())) }
 }
 
 #[inline(always)]
@@ -320,13 +320,13 @@ impl StreamingHasher128 {
     }
 }
 
-/// Direct word-accumulator 128-bit hasher eliminating intermediate `[u8; 32]` staging buffers.
+/// Direct word-accumulator 128-bit hasher using folded 128-bit multiplications.
 #[derive(Clone, Copy)]
 pub struct WordHasher128 {
-    v0: u64,
-    v1: u64,
-    v2: u64,
-    v3: u64,
+    a0: u64,
+    a1: u64,
+    b0: u64,
+    b1: u64,
     len: u64,
 }
 
@@ -340,41 +340,53 @@ impl WordHasher128 {
     #[inline(always)]
     pub const fn new() -> Self {
         Self {
-            v0: PRIME64_1.wrapping_add(PRIME64_2),
-            v1: PRIME64_2,
-            v2: 0,
-            v3: 0u64.wrapping_sub(PRIME64_1),
+            a0: PRIME64_1.wrapping_add(PRIME64_2),
+            a1: PRIME64_2,
+            b0: PRIME64_3,
+            b1: 0u64.wrapping_sub(PRIME64_1),
             len: 0,
         }
     }
 
     #[inline(always)]
+    fn absorb_u64(&mut self, w: u64) {
+        let p = ((self.a0 ^ w) as u128).wrapping_mul(PRIME64_1 as u128);
+        self.a0 = self.a1.wrapping_add(p as u64);
+        self.a1 = ((p >> 64) as u64) ^ w;
+    }
+
+    #[inline(always)]
+    fn absorb_u64x2(&mut self, x: u64, y: u64) {
+        let p = ((self.a0 ^ x) as u128).wrapping_mul((self.a1 ^ y) as u128);
+        self.a0 = self.a0.rotate_left(29).wrapping_add(p as u64) ^ y;
+        self.a1 = self.a1.rotate_left(37).wrapping_add((p >> 64) as u64) ^ x;
+    }
+
+    #[inline(always)]
+    fn absorb_u64x4(&mut self, x0: u64, x1: u64, x2: u64, x3: u64) {
+        let p0 = ((self.a0 ^ x0) as u128).wrapping_mul((self.a1 ^ x1) as u128);
+        let p1 = ((self.b0 ^ x2) as u128).wrapping_mul((self.b1 ^ x3) as u128);
+        self.a0 = self.a0.rotate_left(29).wrapping_add(p0 as u64) ^ x1;
+        self.a1 = self.a1.rotate_left(37).wrapping_add((p0 >> 64) as u64) ^ x0;
+        self.b0 = self.b0.rotate_left(29).wrapping_add(p1 as u64) ^ x3;
+        self.b1 = self.b1.rotate_left(37).wrapping_add((p1 >> 64) as u64) ^ x2;
+    }
+
+    #[inline(always)]
     pub fn mix_u64(&mut self, w: u64) {
-        let next = round64(self.v0, w);
-        self.v0 = self.v1;
-        self.v1 = self.v2;
-        self.v2 = self.v3;
-        self.v3 = next;
+        self.absorb_u64(w);
         self.len = self.len.wrapping_add(8);
     }
 
     #[inline(always)]
     pub fn mix_u64x2(&mut self, a: u64, b: u64) {
-        let n0 = round64(self.v0, a);
-        let n1 = round64(self.v1, b);
-        self.v0 = self.v2;
-        self.v1 = self.v3;
-        self.v2 = n0;
-        self.v3 = n1;
+        self.absorb_u64x2(a, b);
         self.len = self.len.wrapping_add(16);
     }
 
     #[inline(always)]
     pub fn mix_u64x4(&mut self, a: u64, b: u64, c: u64, d: u64) {
-        self.v0 = round64(self.v0, a);
-        self.v1 = round64(self.v1, b);
-        self.v2 = round64(self.v2, c);
-        self.v3 = round64(self.v3, d);
+        self.absorb_u64x4(a, b, c, d);
         self.len = self.len.wrapping_add(32);
     }
 
@@ -393,50 +405,63 @@ impl WordHasher128 {
         self.mix_u64(u64::from(v));
     }
 
-    #[inline(always)]
-    pub fn mix_bytes(&mut self, mut data: &[u8]) {
-        self.len = self.len.wrapping_add(data.len() as u64);
+    #[cold]
+    #[inline(never)]
+    fn mix_bytes_chunks32<'a>(&mut self, mut data: &'a [u8]) -> &'a [u8] {
         while data.len() >= 32 {
             let x0 = read_u64_le(data, 0);
             let x1 = read_u64_le(data, 8);
             let x2 = read_u64_le(data, 16);
             let x3 = read_u64_le(data, 24);
-            self.v0 = round64(self.v0, x0);
-            self.v1 = round64(self.v1, x1);
-            self.v2 = round64(self.v2, x2);
-            self.v3 = round64(self.v3, x3);
+            self.absorb_u64x4(x0, x1, x2, x3);
             data = &data[32..];
         }
-        while data.len() >= 8 {
-            let w = read_u64_le(data, 0);
-            let next = round64(self.v0, w);
-            self.v0 = self.v1;
-            self.v1 = self.v2;
-            self.v2 = self.v3;
-            self.v3 = next;
-            data = &data[8..];
+        data
+    }
+
+    #[inline(always)]
+    pub fn mix_bytes(&mut self, mut data: &[u8]) {
+        self.len = self.len.wrapping_add(data.len() as u64);
+        if data.len() >= 8 {
+            if data.len() >= 32 {
+                data = self.mix_bytes_chunks32(data);
+            }
+            if data.len() >= 16 {
+                let x0 = read_u64_le(data, 0);
+                let x1 = read_u64_le(data, 8);
+                self.absorb_u64x2(x0, x1);
+                data = &data[16..];
+            }
+            if data.len() >= 8 {
+                let w = read_u64_le(data, 0);
+                self.absorb_u64(w);
+                data = &data[8..];
+            }
         }
         if !data.is_empty() {
             let len = data.len();
+            let ptr = data.as_ptr();
             let mut tail = 0u64;
             let mut off = 0usize;
             if (len & 4) != 0 {
-                tail = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as u64;
+                // SAFETY: `len < 8` and `(len & 4) != 0` guarantee 4 readable bytes at `ptr`.
+                tail = unsafe { u32::from_le(std::ptr::read_unaligned(ptr.cast::<u32>())) } as u64;
                 off = 4;
             }
             if (len & 2) != 0 {
-                tail |= (u16::from_le_bytes([data[off], data[off + 1]]) as u64) << (off * 8);
+                // SAFETY: `off + 2 <= len` when `(len & 2) != 0`.
+                tail |= (unsafe {
+                    u16::from_le(std::ptr::read_unaligned(ptr.add(off).cast::<u16>()))
+                } as u64)
+                    << (off * 8);
                 off += 2;
             }
             if (len & 1) != 0 {
-                tail |= (data[off] as u64) << (off * 8);
+                // SAFETY: `off < len` when `(len & 1) != 0`.
+                tail |= (unsafe { *ptr.add(off) } as u64) << (off * 8);
             }
             let tagged = tail ^ ((len as u64) << 56) ^ PRIME64_5;
-            let next = round64(self.v0, tagged);
-            self.v0 = self.v1;
-            self.v1 = self.v2;
-            self.v2 = self.v3;
-            self.v3 = next;
+            self.absorb_u64(tagged);
         }
     }
 
@@ -447,22 +472,17 @@ impl WordHasher128 {
 
     #[inline(always)]
     pub fn finish(self) -> StateHash {
-        let lo = self
-            .v0
-            .rotate_left(1)
-            .wrapping_add(self.v1.rotate_left(7))
-            .wrapping_add(self.v2.rotate_left(12))
-            .wrapping_add(self.v3.rotate_left(18))
-            .wrapping_add(self.len.wrapping_mul(PRIME64_5));
-        let hi = (self.v0 ^ PRIME64_3)
-            .rotate_left(13)
-            .wrapping_add((self.v1 ^ PRIME64_4).rotate_left(29))
-            .wrapping_add(self.v2.wrapping_add(PRIME64_1).rotate_left(37))
-            .wrapping_add(self.v3.wrapping_add(PRIME64_2).rotate_left(47))
-            .wrapping_add(self.len ^ PRIME64_4);
-        let f0 = avalanche64(lo ^ hi);
-        let f1 = avalanche64(hi ^ f0.rotate_left(23));
-        StateHash::from_parts(f1, f0)
+        let lo_p = ((self.a0 ^ self.b0 ^ self.len) as u128)
+            .wrapping_mul((self.a1 ^ self.b1 ^ PRIME64_5) as u128);
+        let hi_p = ((self.a0.wrapping_add(self.b1) ^ PRIME64_3) as u128)
+            .wrapping_mul(
+                (self.a1.wrapping_add(self.b0) ^ self.len.wrapping_mul(PRIME64_2)) as u128,
+            );
+        let lo = avalanche64((lo_p as u64) ^ ((lo_p >> 64) as u64) ^ self.a0 ^ self.b1);
+        let hi = avalanche64(
+            (hi_p as u64) ^ ((hi_p >> 64) as u64) ^ self.a1 ^ self.b0 ^ lo.rotate_left(23),
+        );
+        StateHash::from_parts(hi, lo)
     }
 }
 
@@ -499,6 +519,46 @@ mod tests {
                 i = end;
             }
             assert_eq!(h.finish(), hash_bytes_128(slice), "mismatch at len={len}");
+        }
+    }
+
+    #[test]
+    fn word_hasher_mix_bytes_tail_matches_reference_byte_loop() {
+        let data: Vec<u8> = (0..96u8).map(|i| i.wrapping_mul(29).wrapping_add(3)).collect();
+        for len in 0..=64 {
+            let slice = &data[..len];
+            let mut fast = WordHasher128::new();
+            fast.mix_bytes(slice);
+
+            let mut reference = WordHasher128::new();
+            reference.len = reference.len.wrapping_add(len as u64);
+            let mut rem = slice;
+            while rem.len() >= 32 {
+                reference.absorb_u64x4(
+                    read_u64_le(rem, 0),
+                    read_u64_le(rem, 8),
+                    read_u64_le(rem, 16),
+                    read_u64_le(rem, 24),
+                );
+                rem = &rem[32..];
+            }
+            if rem.len() >= 16 {
+                reference.absorb_u64x2(read_u64_le(rem, 0), read_u64_le(rem, 8));
+                rem = &rem[16..];
+            }
+            if rem.len() >= 8 {
+                reference.absorb_u64(read_u64_le(rem, 0));
+                rem = &rem[8..];
+            }
+            if !rem.is_empty() {
+                let mut tail = 0u64;
+                for (i, &b) in rem.iter().enumerate() {
+                    tail |= (b as u64) << (i * 8);
+                }
+                let tagged = tail ^ ((rem.len() as u64) << 56) ^ PRIME64_5;
+                reference.absorb_u64(tagged);
+            }
+            assert_eq!(fast.finish(), reference.finish(), "mismatch at len={len}");
         }
     }
 }

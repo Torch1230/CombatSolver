@@ -4,7 +4,9 @@ use crate::continuation::{ContinuationFrame, PendingContinuation};
 use crate::error::KernelError;
 use crate::hooks;
 use crate::ordering;
-use crate::state::{BattleState, CardHandle, CardInst, CardTempFlags, CreatureHandle};
+use crate::state::{
+    BattleState, CardHandle, CardInst, CardTempFlags, CreatureHandle, OptCardHandle, OptI16,
+};
 use smallvec::SmallVec;
 use sts2_types::{CardId, CardKeywords, CardPilePosition, CardStaticFlags, PileType};
 
@@ -31,18 +33,88 @@ fn get_insertion_index(state: &mut BattleState, pile: PileType, pos: CardPilePos
     }
 }
 
+fn move_card_in_combat_piles_sync(
+    state: &mut BattleState,
+    card: CardHandle,
+    card_idx: usize,
+    old_pile: PileType,
+    dest_pile: PileType,
+    pos: CardPilePosition,
+    tables: &crate::content_dispatch::HookMaskTableView,
+) {
+    let rem_pos = state.remove_card_from_pile_vec_only(card, old_pile);
+    let idx = get_insertion_index(state, dest_pile, pos);
+    let (insert_idx, old_len) = state.insert_card_into_pile_vec_only(card, dest_pile, Some(idx));
+    if card_idx < state.static_ctx.root_deck_prefix_len {
+        state.deck_dirty.0 = true;
+    }
+    state.cards[card_idx].pile = dest_pile;
+    if !state.try_update_hook_cache_for_combat_pile_move(
+        card,
+        card_idx,
+        old_pile,
+        rem_pos,
+        dest_pile,
+        insert_idx,
+        old_len,
+        tables,
+    ) {
+        state.invalidate_pile_hooks(
+            crate::state::pile_dirty_bit(old_pile) | crate::state::pile_dirty_bit(dest_pile),
+        );
+    }
+}
+
 pub fn add_sync(
     state: &mut BattleState,
     card: CardHandle,
     mut pile: PileType,
     pos: CardPilePosition,
 ) {
-    state.remove_card_from_current_pile(card);
+    let tables = state.hook_cache.cached_tables;
+    if let (Some(t), Some(card_idx)) = (tables, state.card_index(card)) {
+        if state.hook_cache.dirty_mask == 0 {
+            let old = state.cards[card_idx].pile;
+            if crate::state::pile_dirty_bit(old) != 0
+                && old != PileType::Deck
+                && crate::state::pile_dirty_bit(pile) != 0
+                && pile != PileType::Deck
+            {
+                let rem_pos = state.remove_card_from_pile_vec_only(card, old);
+                if pile == PileType::Hand && state.player.hand.len() >= MAX_CARDS_IN_HAND {
+                    pile = PileType::Discard;
+                }
+                let idx = get_insertion_index(state, pile, pos);
+                let (insert_idx, old_len) =
+                    state.insert_card_into_pile_vec_only(card, pile, Some(idx));
+                if card_idx < state.static_ctx.root_deck_prefix_len {
+                    state.deck_dirty.0 = true;
+                }
+                state.cards[card_idx].pile = pile;
+                if !state.try_update_hook_cache_for_combat_pile_move(
+                    card,
+                    card_idx,
+                    old,
+                    rem_pos,
+                    pile,
+                    insert_idx,
+                    old_len,
+                    t,
+                ) {
+                    state.invalidate_pile_hooks(
+                        crate::state::pile_dirty_bit(old) | crate::state::pile_dirty_bit(pile),
+                    );
+                }
+                return;
+            }
+        }
+    }
+    state.remove_card_from_current_pile_with_tables(card, tables);
     if pile == PileType::Hand && state.player.hand.len() >= MAX_CARDS_IN_HAND {
         pile = PileType::Discard;
     }
     let idx = get_insertion_index(state, pile, pos);
-    state.add_card_to_pile_at(card, pile, Some(idx));
+    state.add_card_to_pile_at_with_tables(card, pile, Some(idx), tables);
 }
 
 pub fn add_and_notify(
@@ -55,7 +127,40 @@ pub fn add_and_notify(
     if cards.is_empty() || hooks::is_ending_checked(state, content)? || !state.is_live_combat() {
         return Ok(());
     }
-    let tables = content.hook_mask_tables();
+    let tables = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables());
+    let dest_is_combat = crate::state::pile_dirty_bit(pile) != 0 && pile != PileType::Deck;
+    if cards.len() == 1 {
+        let c = cards[0];
+        let old = state.card(c).map_or(PileType::None, |ci| ci.pile);
+        if matches!(old, PileType::None | PileType::Deck)
+            || state.player_creature().is_none_or(|cr| cr.is_dead())
+        {
+            return Ok(());
+        }
+        let mut dest = pile;
+        if dest == PileType::Hand && state.player.hand.len() >= MAX_CARDS_IN_HAND {
+            dest = PileType::Discard;
+        }
+        if dest_is_combat && state.hook_cache.dirty_mask == 0 {
+            if let (Some(t), Some(card_idx)) = (tables, state.card_index(c)) {
+                move_card_in_combat_piles_sync(state, c, card_idx, old, dest, pos, t);
+                if old != dest && state.card(c).is_some() {
+                    hooks::after_card_changed_piles(state, content, c, old)?;
+                }
+                return Ok(());
+            }
+        }
+        state.remove_card_from_current_pile_with_tables(c, tables);
+        let idx = get_insertion_index(state, dest, pos);
+        state.add_card_to_pile_at_with_tables(c, dest, Some(idx), tables);
+        if old != dest && state.card(c).is_some() {
+            hooks::after_card_changed_piles(state, content, c, old)?;
+        }
+        return Ok(());
+    }
     let mut moved: SmallVec<[(CardHandle, PileType); 16]> = SmallVec::new();
     for &c in cards {
         let old = state.card(c).map_or(PileType::None, |ci| ci.pile);
@@ -65,6 +170,15 @@ pub fn add_and_notify(
         let mut dest = pile;
         if dest == PileType::Hand && state.player.hand.len() >= MAX_CARDS_IN_HAND {
             dest = PileType::Discard;
+        }
+        if dest_is_combat && state.hook_cache.dirty_mask == 0 {
+            if let (Some(t), Some(card_idx)) = (tables, state.card_index(c)) {
+                move_card_in_combat_piles_sync(state, c, card_idx, old, dest, pos, t);
+                if old != dest && state.card(c).is_some() {
+                    moved.push((c, old));
+                }
+                continue;
+            }
         }
         state.remove_card_from_current_pile_with_tables(c, tables);
         let idx = get_insertion_index(state, dest, pos);
@@ -171,17 +285,21 @@ pub fn create_card_in_combat(
         handle,
         id: card_id,
         upgrade_level: 0,
-        canonical_base_energy_cost: meta.canonical_energy_cost,
-        base_energy_cost: meta.canonical_energy_cost,
+        canonical_base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+        base_energy_cost: meta
+            .canonical_energy_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32) as i16,
         captured_energy_x_value: 0,
         base_replay_count: 0,
-        floor_added_to_deck: None,
-        deck_card_handle: None,
-        clone_of_handle: None,
-        temp_star_cost_override_this_turn: None,
-        temp_cost_override_this_turn: None,
-        temp_cost_override_this_turn_or_until_played: None,
-        temp_cost_override_this_combat: None,
+        floor_added_to_deck: OptI16::NONE,
+        deck_card_handle: OptCardHandle::NONE,
+        clone_of_handle: OptCardHandle::NONE,
+        temp_star_cost_override_this_turn: OptI16::NONE,
+        temp_cost_override_this_turn: OptI16::NONE,
+        temp_cost_override_this_turn_or_until_played: OptI16::NONE,
+        temp_cost_override_this_combat: OptI16::NONE,
         local_keywords: meta.base_keywords,
         keywords_added_from_outside: CardKeywords::empty(),
         keywords_removed_from_outside: CardKeywords::empty(),
@@ -375,6 +493,10 @@ pub fn draw(
     if !hooks::should_draw(state, content, from_hand_draw)? {
         return Ok(SmallVec::new());
     }
+    let tables = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables());
     let mut drawn = SmallVec::new();
     for i in 0..count {
         if state.player.hand.len() >= MAX_CARDS_IN_HAND
@@ -401,18 +523,19 @@ pub fn draw(
         if state.player.hand.len() >= MAX_CARDS_IN_HAND {
             break;
         }
-        let tables = content.hook_mask_tables();
-        let has_hook = tables.is_none_or(|t| state.card_has_any_hook(t, card));
+        let card_idx_opt = state.card_index(card);
         state.player.draw.remove(0);
         state.player.hand.push(card);
-        if let Some(ci) = state.card_mut(card) {
+        if let Some(ci_idx) = card_idx_opt {
+            let ci = &mut state.cards[ci_idx];
+            if ci_idx < state.static_ctx.root_deck_prefix_len || ci.pile == PileType::Deck {
+                state.deck_dirty.0 = true;
+            }
+            ci.pile = PileType::Hand;
+        } else if let Some(ci) = state.card_mut(card) {
             ci.pile = PileType::Hand;
         }
-        if has_hook {
-            state.invalidate_pile_hooks(
-                crate::state::HOOK_DIRTY_DRAW | crate::state::HOOK_DIRTY_HAND,
-            );
-        }
+        state.update_drawn_card_hook_cache(card, card_idx_opt, tables);
         state.player.counters.cards_drawn_this_combat += 1;
         if state.is_live_combat() {
             let card_type = content.card_resolved_type(state, card)?;
@@ -445,8 +568,7 @@ pub fn card_has_keyword(
         return Ok(true);
     }
     #[cfg(not(debug_assertions))]
-    if state.hook_cache.dirty_mask == 0
-        && state.hook_cache.cached_tables.is_some()
+    if state.hook_cache.masks_are_valid()
         && !state
             .hook_cache
             .masks

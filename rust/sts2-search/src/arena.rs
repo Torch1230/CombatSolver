@@ -70,16 +70,22 @@ impl LocalStateSlab {
         let len = bytes.len();
         while self.active_slab < self.slabs.len() {
             let cur = &mut self.slabs[self.active_slab];
-            if cur.len() + len <= cur.capacity() {
-                let offset = cur.len() as u32;
-                cur.extend_from_slice(bytes);
-                return (self.active_slab as u32, offset, len as u32);
+            let cur_len = cur.len();
+            if cur_len + len <= cur.capacity() {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), cur.as_mut_ptr().add(cur_len), len);
+                    cur.set_len(cur_len + len);
+                }
+                return (self.active_slab as u32, cur_len as u32, len as u32);
             }
             self.active_slab += 1;
         }
         let alloc_cap = len.max(self.slab_size);
         let mut new_slab = Vec::with_capacity(alloc_cap);
-        new_slab.extend_from_slice(bytes);
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), new_slab.as_mut_ptr(), len);
+            new_slab.set_len(len);
+        }
         let slab = self.slabs.len();
         self.slabs.push(new_slab);
         self.active_slab = slab;
@@ -126,12 +132,15 @@ impl MainStateArena {
         self.total_bytes_committed += len as u64;
         while self.active_slab < self.slabs.len() {
             let cur = &mut self.slabs[self.active_slab];
-            if cur.len() + len <= cur.capacity() {
-                let offset = cur.len() as u32;
-                cur.extend_from_slice(bytes);
+            let cur_len = cur.len();
+            if cur_len + len <= cur.capacity() {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), cur.as_mut_ptr().add(cur_len), len);
+                    cur.set_len(cur_len + len);
+                }
                 return PackedHandle {
                     slab: self.active_slab as u32,
-                    offset,
+                    offset: cur_len as u32,
                     len: len as u32,
                 };
             }
@@ -139,7 +148,10 @@ impl MainStateArena {
         }
         let alloc_cap = len.max(self.slab_size);
         let mut new_slab = Vec::with_capacity(alloc_cap);
-        new_slab.extend_from_slice(bytes);
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), new_slab.as_mut_ptr(), len);
+            new_slab.set_len(len);
+        }
         let slab = self.slabs.len();
         self.slabs.push(new_slab);
         self.active_slab = slab;
@@ -401,6 +413,23 @@ impl ChoiceArena {
             cur_off += idx_len as u32;
         }
         (dst_step_offset, clamped_len as u8)
+    }
+
+    #[inline]
+    pub fn copy_step_indices(
+        &self,
+        offset: u32,
+        step_idx: usize,
+        out: &mut smallvec::SmallVec<[usize; 16]>,
+    ) {
+        let (idx_off, idx_len) = self.steps_meta[offset as usize + step_idx];
+        let o = idx_off as usize;
+        let l = idx_len as usize;
+        out.clear();
+        out.reserve(l);
+        for &v in &self.indices[o..o + l] {
+            out.push(v as usize);
+        }
     }
 
     pub fn materialize(&self, offset: u32, len: u8) -> Option<Vec<Vec<usize>>> {
@@ -713,14 +742,28 @@ impl NodeArena {
         }
     }
 
+    #[cold]
+    #[inline(never)]
+    fn push_chunk(&mut self) {
+        self.node_chunks.push(Vec::with_capacity(NODE_CHUNK_SIZE));
+    }
+
     #[inline]
     pub fn push_node(&mut self, node: SearchNode) -> NodeId {
         let id = self.node_len;
         let chunk_idx = id >> NODE_CHUNK_SHIFT;
+        let local_idx = id & NODE_CHUNK_MASK;
         if chunk_idx >= self.node_chunks.len() {
-            self.node_chunks.push(Vec::with_capacity(NODE_CHUNK_SIZE));
+            self.push_chunk();
         }
-        self.node_chunks[chunk_idx].push(node);
+        let chunk = &mut self.node_chunks[chunk_idx];
+        debug_assert_eq!(chunk.len(), local_idx);
+        debug_assert!(local_idx < chunk.capacity());
+        // SAFETY: Every chunk is created with `NODE_CHUNK_SIZE` capacity and `local_idx == chunk.len() < NODE_CHUNK_SIZE`.
+        unsafe {
+            chunk.as_mut_ptr().add(local_idx).write(node);
+            chunk.set_len(local_idx + 1);
+        }
         self.node_len = id + 1;
         NodeId(id as u32)
     }
