@@ -117,6 +117,7 @@ impl PruneKey {
         reviving_enemy_count: u8,
         death_save_use_count: u8,
         strategy_goal_count: u8,
+        feed_count: u8,
         energy: i16,
         stars: i16,
         forced_used_mask: u64,
@@ -137,7 +138,8 @@ impl PruneKey {
         let effective_hp_loss = (cumulative_hp_lost as i32)
             - (recovered_hp as i32)
             + if max_hp_delta < 0 {
-                max_hp_delta * 2
+                let non_feed = ((-max_hp_delta) - i32::from(feed_count) * root.feed_max_hp_per_kill).max(0);
+                -(non_feed * 2)
             } else {
                 max_hp_delta
             };
@@ -297,6 +299,7 @@ impl PruneKey {
             f.reviving_enemy_count,
             f.death_save_use_count,
             f.strategy_goal_count,
+            f.feed_count,
             f.energy,
             f.stars,
             n.forced_used_mask,
@@ -711,6 +714,7 @@ impl FrozenIncumbentBound {
         player_max_hp: i32,
         death_save_hp_restored: i32,
         death_save_use_count: i32,
+        feed_count: u8,
         won: bool,
         player_dead: bool,
         turn: i32,
@@ -744,6 +748,7 @@ impl FrozenIncumbentBound {
             0,
             root.boss_hp_relief,
             root.ignore_long_term_rewards,
+            i32::from(feed_count) * root.feed_max_hp_per_kill,
         );
 
         if optional_paid_count == 0

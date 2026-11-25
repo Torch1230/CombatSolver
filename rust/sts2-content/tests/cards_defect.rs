@@ -228,6 +228,8 @@ fn build_defect_battle_with(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy_handle],
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -312,6 +314,11 @@ fn all_91_defect_cards_have_complete_metadata_and_no_unsupported() {
     }
     let ga_meta = content.card_meta(CardId::GeneticAlgorithm).unwrap();
     assert!(ga_meta.flags.contains(CardStaticFlags::HAS_GROWTH));
+    let (mut ig_state, _) = build_defect_battle(&[CardId::Ignition], &[], 100);
+    let ig_h = ig_state.player.hand[0];
+    assert!(ig_state.card(ig_h).unwrap().effective_keywords_base().contains(CardKeywords::EXHAUST));
+    upgrade_card(&mut ig_state, &content, ig_h);
+    assert!(!ig_state.card(ig_h).unwrap().effective_keywords_base().contains(CardKeywords::EXHAUST));
     assert!(content
         .card_meta(CardId::Chaos)
         .unwrap()

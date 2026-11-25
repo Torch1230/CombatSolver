@@ -139,7 +139,7 @@ pub fn orb_passive(
                     "Plasma orbs cannot target creatures.".to_owned(),
                 ));
             }
-            gold::gain_energy(state, Dec::ONE)?;
+            gold::gain_energy(state, content, Dec::ONE)?;
             Ok(SmallVec::new())
         }
         OrbId::GlassOrb => {
@@ -235,7 +235,7 @@ pub fn orb_evoke(
             Ok(smallvec::smallvec![weakest])
         }
         OrbId::PlasmaOrb => {
-            gold::gain_energy(state, Dec::TWO)?;
+            gold::gain_energy(state, content, Dec::TWO)?;
             Ok(smallvec::smallvec![state.player.creature_handle])
         }
         OrbId::GlassOrb => {
@@ -363,6 +363,7 @@ pub fn enchantment_hook_mask(id: EnchantmentId) -> Result<HookMask, KernelError>
         }
         EnchantmentId::Imbued => Ok(HookMask::EMPTY.with(HookSlot::AfterAutoPrePlayPhaseEntered)),
         EnchantmentId::Slither => Ok(HookMask::EMPTY.with(HookSlot::AfterCardDrawn)),
+        EnchantmentId::SlumberingEssence => Ok(HookMask::EMPTY.with(HookSlot::BeforeFlush)),
     }
 }
 
@@ -403,6 +404,7 @@ pub fn enchantment_modify_shuffle_order(
         | EnchantmentId::RoyallyApproved
         | EnchantmentId::Sharp
         | EnchantmentId::Slither
+        | EnchantmentId::SlumberingEssence
         | EnchantmentId::SoulsPower
         | EnchantmentId::Sown
         | EnchantmentId::Spiral
@@ -443,6 +445,7 @@ pub fn enchantment_play_count(
         | EnchantmentId::RoyallyApproved
         | EnchantmentId::Sharp
         | EnchantmentId::Slither
+        | EnchantmentId::SlumberingEssence
         | EnchantmentId::SoulsPower
         | EnchantmentId::Sown
         | EnchantmentId::Steady
@@ -493,6 +496,7 @@ pub fn enchantment_damage_additive(
         | EnchantmentId::PerfectFit
         | EnchantmentId::RoyallyApproved
         | EnchantmentId::Slither
+        | EnchantmentId::SlumberingEssence
         | EnchantmentId::SoulsPower
         | EnchantmentId::Sown
         | EnchantmentId::Spiral
@@ -530,6 +534,7 @@ pub fn enchantment_damage_multiplicative(
         | EnchantmentId::RoyallyApproved
         | EnchantmentId::Sharp
         | EnchantmentId::Slither
+        | EnchantmentId::SlumberingEssence
         | EnchantmentId::SoulsPower
         | EnchantmentId::Sown
         | EnchantmentId::Spiral
@@ -669,7 +674,7 @@ pub fn enchantment_on_play(
                     ench.status = EnchantmentStatus::Disabled;
                 }
             }
-            gold::gain_energy(state, Dec::from_i32(amount))
+            gold::gain_energy(state, content, Dec::from_i32(amount))
         }
         EnchantmentId::Swift => {
             if status != EnchantmentStatus::Normal {
@@ -692,6 +697,7 @@ pub fn enchantment_on_play(
         | EnchantmentId::RoyallyApproved
         | EnchantmentId::Sharp
         | EnchantmentId::Slither
+        | EnchantmentId::SlumberingEssence
         | EnchantmentId::SoulsPower
         | EnchantmentId::Spiral
         | EnchantmentId::Steady
@@ -787,6 +793,20 @@ pub fn dispatch_enchantment_hook(
                             });
                         }
                     }
+                }
+            }
+            Ok(HookResult::default())
+        }
+        EnchantmentId::SlumberingEssence => {
+            if slot == HookSlot::BeforeFlush
+                && state.card(card).is_some_and(|c| c.pile == PileType::Hand)
+            {
+                if let Some(ext) = state.card_ext_mut(card) {
+                    ext.push_local_energy_modifier(LocalEnergyModifier {
+                        kind: LocalEnergyModifierKind::AddUntilPlayed,
+                        amount: -1,
+                        is_reduce_only: false,
+                    });
                 }
             }
             Ok(HookResult::default())

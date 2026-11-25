@@ -89,8 +89,7 @@ const fn monster_partition(id: MonsterId) -> MonsterPartition {
         | MonsterId::ThievingHopper
         | MonsterId::Tunneler => MonsterPartition::Act2,
 
-        MonsterId::ActOneGuardian
-        | MonsterId::Aeonglass
+        MonsterId::Aeonglass
         | MonsterId::Axebot
         | MonsterId::BattleFriendV1
         | MonsterId::BattleFriendV2
@@ -107,7 +106,6 @@ const fn monster_partition(id: MonsterId) -> MonsterPartition {
         | MonsterId::GasBomb
         | MonsterId::GlobeHead
         | MonsterId::Guardbot
-        | MonsterId::HardyBrute
         | MonsterId::LivingShield
         | MonsterId::MagiKnight
         | MonsterId::MechaKnight
@@ -129,9 +127,7 @@ const fn monster_partition(id: MonsterId) -> MonsterPartition {
         | MonsterId::TheLost
         | MonsterId::TorchHeadAmalgam
         | MonsterId::ToughEgg
-        | MonsterId::TrainingDummy
         | MonsterId::TurretOperator
-        | MonsterId::WanderingGrunt
         | MonsterId::Wriggler
         | MonsterId::Wuppy
         | MonsterId::Zapbot => MonsterPartition::Act3Shared,

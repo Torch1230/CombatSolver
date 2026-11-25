@@ -642,6 +642,8 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy],
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -900,7 +902,7 @@ impl ContentDispatcher for PartBTestContent {
     fn power_meta(&self, id: PowerId) -> Result<&'static PowerMeta, KernelError> {
         match id {
             PowerId::MinionPower => Ok(&MINION_META),
-            PowerId::TemporaryStrengthPower => Ok(&LIFECYCLE_TEMP_POWER_META),
+            PowerId::FlexPotionPower => Ok(&LIFECYCLE_TEMP_POWER_META),
             _ => Ok(&NORMAL_DEBUFF_META),
         }
     }
@@ -1521,7 +1523,7 @@ fn secondary_enemy_power_lifecycle_and_multiplier_hooks() {
     power::apply(
         &mut state,
         &content,
-        PowerId::TemporaryStrengthPower,
+        PowerId::FlexPotionPower,
         pc,
         Dec::from_i32(3),
         Some(pc),
@@ -1531,7 +1533,7 @@ fn secondary_enemy_power_lifecycle_and_multiplier_hooks() {
     let temp_h = state.player_creature().unwrap().powers[0].handle;
 
     // Apply both temporary + normal powers on enemy2 to check per-power ShouldPowerBeRemovedOnDeath
-    power::apply(&mut state, &content, PowerId::TemporaryStrengthPower, enemy2, Dec::TWO, None, None).unwrap();
+    power::apply(&mut state, &content, PowerId::FlexPotionPower, enemy2, Dec::TWO, None, None).unwrap();
     power::apply(&mut state, &content, PowerId::VulnerablePower, enemy2, Dec::TWO, None, None).unwrap();
 
     // Check Vulnerable and Weak multiplier hooks
@@ -1561,20 +1563,20 @@ fn secondary_enemy_power_lifecycle_and_multiplier_hooks() {
         Dec::from_i32(60).checked_div(Dec::from_i32(100)).unwrap()
     );
 
-    // Killing primary enemy2 keeps TemporaryStrengthPower on enemy2, removes VulnerablePower, and auto-kills minion `enemy`
+    // Killing primary enemy2 keeps FlexPotionPower on enemy2, removes VulnerablePower, and auto-kills minion `enemy`
     creature::kill(&mut state, &content, enemy2, None).unwrap();
     let e2 = state.creature(enemy2).unwrap();
-    assert!(e2.powers.iter().any(|p| p.id == PowerId::TemporaryStrengthPower));
+    assert!(e2.powers.iter().any(|p| p.id == PowerId::FlexPotionPower));
     assert!(!e2.powers.iter().any(|p| p.id == PowerId::VulnerablePower));
     assert!(state.creature(enemy).unwrap().is_dead());
 
     let removed = power::remove_by_handle(&mut state, &content, pc, temp_h).unwrap();
     assert!(removed.is_some());
     let evs = content.events.borrow();
-    assert!(evs.iter().any(|e| e.starts_with("before_applied:TemporaryStrengthPower:attached=false")));
-    assert!(evs.iter().any(|e| e.starts_with("after_applied:TemporaryStrengthPower:attached=true")));
-    assert!(evs.iter().any(|e| e.starts_with("power_changed:TemporaryStrengthPower:h=")));
-    assert!(evs.iter().any(|e| e.starts_with("after_removed:TemporaryStrengthPower:attached=false:amt=3")));
+    assert!(evs.iter().any(|e| e.starts_with("before_applied:FlexPotionPower:attached=false")));
+    assert!(evs.iter().any(|e| e.starts_with("after_applied:FlexPotionPower:attached=true")));
+    assert!(evs.iter().any(|e| e.starts_with("power_changed:FlexPotionPower:h=")));
+    assert!(evs.iter().any(|e| e.starts_with("after_removed:FlexPotionPower:attached=false:amt=3")));
 }
 
 #[test]
@@ -2401,6 +2403,8 @@ fn stable_shuffle_matches_insertion_compare_cards_order() {
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::new(),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,

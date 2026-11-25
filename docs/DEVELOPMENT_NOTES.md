@@ -10,6 +10,7 @@
 - 新增纯 Rust 战斗内主机桥接与准入链（`InCombatRustKernelBridge` / `Eligibility` / `PolicyMapper` / `InCombatLiveStateCapturer` / `InCombatSolverBackendState`），完整捕获已解锁角色/无色/诅咒/跨角色/塔罗卡牌池与药水池，覆盖 `SolverSettings.UseRustCombatKernel`（默认开启）、全部 1.0.0–1.0.3 搜索/药水/成长/遗物/首领血量政策映射，并在 FFI 边界输出结构化诊断结果与失败码。
 - 新增 `InCombatRustKernelResultMaterializer`（回传 `ChoiceBranchesEvaluated`）与 `HotPlanMaterializer.MaterializeFromSteps`，在采纳前于 `HotRootBundle` 上逐动作与终局状态回放校验 Rust 最优路线；任一排除、损坏、超时或失配自动回退至 `HotKernel`。
 - 性能设置页新增“战斗内优先使用 Rust 内核”开关，主界面摘要栏新增引擎状态徽章与双语本地化。
+- 完成 STS2 v0.114.0 与上游 1.0.3 行为同步：重新生成全实体元数据（717 张卡牌、303 个 Power、315 个遗物、67 瓶药水、112 种怪物、22 个附魔、7 个灾厄、12 个领域与 3 个跑局模型，FFI 支持版本更新为 `v0.114.0`），补齐 `AfterPlayerTurnStartEarly` / `ModifyEnergyGain` / `AfterModifyingEnergyGain` 钩子槽位、箭矢移除销毁状态与能源、Osty、旋律、`HistoryCourse`、`MinionPower`、`GrandFinale`、`SovereignBlade` 等实体语义，并更新 `ActEndingBossPolicy`、`Feed` 剪枝与估值、`BloodPotion` 成本及 POR 零效果药水规则。
 
 1.0.3 的 STS2 v0.114.0 全量适配、发布安全加固与 30s/600s 求解时长调整见[历史卷 36](archive/development/volume-36.md)，玩家说明见[1.0.3 更新日志](releases/1.0.3-RELEASE_NOTES.md)。
 

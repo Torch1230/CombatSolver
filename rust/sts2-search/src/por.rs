@@ -463,6 +463,15 @@ pub fn is_provable_no_op_potion_use(
         PotionId::DropletOfPrecognition => state.player.draw.is_empty(),
         PotionId::LiquidMemories => state.player.discard.is_empty(),
         PotionId::TouchOfInsanity => state.player.hand.is_empty(),
+        PotionId::GamblersBrew | PotionId::Ashwater => state.player.hand.is_empty(),
+        PotionId::SwiftPotion | PotionId::DistilledChaos => {
+            state.player.draw.is_empty() && state.player.discard.is_empty()
+        }
+        PotionId::BlessingOfTheForge => state.player.hand.iter().all(|&ch| {
+            state.card(ch).is_none_or(|c| {
+                c.upgrade_level >= sts2_types::generated_card_meta(c.id).max_upgrade_level
+            })
+        }),
         PotionId::EntropicBrew => has_sozu,
         _ => false,
     }

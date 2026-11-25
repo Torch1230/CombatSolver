@@ -2293,7 +2293,30 @@ pub fn after_combat_end(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
-    dispatch_void_run_combat_slot(state, content, HookSlot::AfterCombatEnd, &HookArgs::None)
+    dispatch_void_run_combat_slot(state, content, HookSlot::AfterCombatEnd, &HookArgs::None)?;
+    for idx in 0..state.player.relics.len() {
+        let r = &mut state.player.relics[idx];
+        if !r.is_melted && r.id == sts2_types::RelicId::HistoryCourse {
+            r.private_fields.insert(
+                std::borrow::Cow::Borrowed("HistoryCourse._lastAttack"),
+                crate::state::FieldValue::NullableInt(None),
+            );
+            r.private_fields.insert(
+                std::borrow::Cow::Borrowed("HistoryCourse._lastAttackTurn"),
+                crate::state::FieldValue::Int(0),
+            );
+            r.private_fields.insert(
+                std::borrow::Cow::Borrowed("HistoryCourse._previousAttack"),
+                crate::state::FieldValue::NullableInt(None),
+            );
+            r.private_fields.insert(
+                std::borrow::Cow::Borrowed("HistoryCourse._previousAttackTurn"),
+                crate::state::FieldValue::Int(0),
+            );
+            state.mark_relic_dirty(idx);
+        }
+    }
+    Ok(())
 }
 
 pub fn before_side_turn_start(
@@ -2307,6 +2330,19 @@ pub fn before_side_turn_start(
         content,
         HookSlot::BeforeSideTurnStart,
         &HookArgs::SideTurn { side, participants },
+        true,
+    )
+}
+
+pub fn after_player_turn_start_early(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+) -> Result<(), KernelError> {
+    dispatch_void_combat_slot(
+        state,
+        content,
+        HookSlot::AfterPlayerTurnStartEarly,
+        &HookArgs::Player,
         true,
     )
 }
@@ -4437,6 +4473,14 @@ pub fn should_owner_death_trigger_fatal(
     content: &dyn ContentDispatcher,
     owner: CreatureHandle,
 ) -> Result<bool, KernelError> {
+    if state.creature(owner).is_some_and(|c| {
+        c.is_secondary_enemy()
+            || c.powers
+                .iter()
+                .any(|p| p.id == sts2_types::PowerId::MinionPower)
+    }) {
+        return Ok(false);
+    }
     const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ShouldOwnerDeathTriggerFatal);
     if skip_run_combat_hook_mask(state, content, MASK)? {
         return Ok(true);
@@ -6005,6 +6049,53 @@ pub fn after_gold_gained(
     content: &dyn ContentDispatcher,
 ) -> Result<(), KernelError> {
     dispatch_void_run_combat_slot(state, content, HookSlot::AfterGoldGained, &HookArgs::Player)
+}
+
+pub fn modify_energy_gain(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    amount: Dec,
+) -> Result<Dec, KernelError> {
+    const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyEnergyGain);
+    let mut result = amount;
+    if skip_combat_hook_mask_checked(state, content, MASK)? {
+        return Ok(result);
+    }
+    let mut modifiers: SmallVec<[HookListener; 8]> = SmallVec::new();
+    dispatch_cached_query_listeners_slot(
+        state,
+        content,
+        HookSlot::ModifyEnergyGain,
+        |s, c, listener| {
+            let prev = result;
+            let res = dispatch_query_known_slot_cached(
+                s,
+                c,
+                listener,
+                HookSlot::ModifyEnergyGain,
+                &HookArgs::ModifySummonAmount { amount: result },
+            )?;
+            if let Some(v) = res.dec_val {
+                result = v;
+                if res.modified || prev != result {
+                    modifiers.push(listener.to_hook_listener());
+                }
+            }
+            Ok(true)
+        },
+    )?;
+    if !modifiers.is_empty() {
+        for listener in modifiers {
+            let _ = dispatch_if_eligible_known_slot(
+                state,
+                content,
+                listener,
+                HookSlot::AfterModifyingEnergyGain,
+                &HookArgs::None,
+            )?;
+        }
+    }
+    Ok(result)
 }
 
 pub fn should_procure_potion(

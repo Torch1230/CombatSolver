@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 use std::borrow::Cow;
 use sts2_kernel::commands::{
     autoplay, block, card as card_cmd, card_factory, card_pile, card_select,
-    creature as creature_cmd, damage, gold, melody, orb, osty, power,
+    creature as creature_cmd, damage, gold, orb, osty, power,
 };
 use sts2_kernel::continuation::{ChoiceRequest, ChoiceTiming};
 use sts2_kernel::hooks;
@@ -99,6 +99,16 @@ static NO_DRAW_META: PowerMeta = meta_with(
         .with(HookSlot::ShouldDraw)
         .with(HookSlot::AfterSideTurnEnd),
 );
+static NO_ENERGY_GAIN_META: PowerMeta = meta_with(
+    PowerType::Debuff,
+    PowerStackType::Single,
+    PowerInstanceType::None,
+    REMOVE_ON_DEATH,
+    HookMask::EMPTY
+        .with(HookSlot::ModifyEnergyGain)
+        .with(HookSlot::AfterModifyingEnergyGain)
+        .with(HookSlot::AfterSideTurnEnd),
+);
 static OBLIVION_META: PowerMeta = meta_with(
     PowerType::Debuff,
     PowerStackType::Counter,
@@ -144,10 +154,8 @@ static PAINFUL_STABS_META: PowerMeta = meta_with(
     PowerType::Buff,
     PowerStackType::Counter,
     PowerInstanceType::None,
-    PowerStaticFlags::empty(),
-    HookMask::EMPTY
-        .with(HookSlot::AfterAttack)
-        .with(HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath),
+    REMOVE_ON_DEATH,
+    HookMask::EMPTY.with(HookSlot::AfterAttack),
 );
 static PALE_BLUE_DOT_META: PowerMeta = meta_with(
     PowerType::Buff,
@@ -165,7 +173,7 @@ static PANACHE_META: PowerMeta = meta_with(
     REMOVE_ON_DEATH,
     HookMask::EMPTY
         .with(HookSlot::AfterCardPlayed)
-        .with(HookSlot::BeforeSideTurnEnd),
+        .with(HookSlot::AfterSideTurnEnd),
 );
 static PAPER_CUTS_META: PowerMeta = meta_with(
     PowerType::Buff,
@@ -277,7 +285,6 @@ static QUIETUS_META: PowerMeta = meta_with(
     PowerInstanceType::None,
     REMOVE_ON_DEATH,
     HookMask::EMPTY
-        .with(HookSlot::AfterArrowShot)
         .with(HookSlot::BeforeAttack)
         .with(HookSlot::ModifyDamageMultiplicative)
         .with(HookSlot::AfterAttack)
@@ -433,7 +440,7 @@ static SANDPIT_META: PowerMeta = meta_with(
 );
 static SEEKING_EDGE_META: PowerMeta = meta_with(
     PowerType::Buff,
-    PowerStackType::Counter,
+    PowerStackType::Single,
     PowerInstanceType::None,
     REMOVE_ON_DEATH,
     HookMask::EMPTY,
@@ -540,7 +547,7 @@ static SHROUD_META: PowerMeta = meta_with(
 static SIC_EM_META: PowerMeta = meta_with(
     PowerType::Debuff,
     PowerStackType::Counter,
-    PowerInstanceType::None,
+    PowerInstanceType::InstancedPerApplier,
     REMOVE_ON_DEATH,
     HookMask::EMPTY
         .with(HookSlot::AfterDamageGiven)
@@ -887,26 +894,6 @@ static TANK_META: PowerMeta = meta_with(
         .with(HookSlot::AfterApplied)
         .with(HookSlot::ModifyDamageMultiplicative),
 );
-static TEMPORARY_DEXTERITY_META: PowerMeta = meta_with(
-    PowerType::Buff,
-    PowerStackType::Counter,
-    PowerInstanceType::None,
-    TEMP_REMOVE_ON_DEATH,
-    HookMask::EMPTY
-        .with(HookSlot::BeforeApplied)
-        .with(HookSlot::AfterPowerAmountChanged)
-        .with(HookSlot::AfterSideTurnEnd),
-);
-static TEMPORARY_STRENGTH_META: PowerMeta = meta_with(
-    PowerType::Buff,
-    PowerStackType::Counter,
-    PowerInstanceType::None,
-    TEMP_REMOVE_ON_DEATH,
-    HookMask::EMPTY
-        .with(HookSlot::BeforeApplied)
-        .with(HookSlot::AfterPowerAmountChanged)
-        .with(HookSlot::AfterSideTurnEnd),
-);
 static TENDER_META: PowerMeta = meta_with(
     PowerType::Debuff,
     PowerStackType::Counter,
@@ -1007,7 +994,7 @@ static TUNE_META: PowerMeta = meta_with(
     PowerStackType::Counter,
     PowerInstanceType::None,
     REMOVE_ON_DEATH,
-    HookMask::EMPTY.with(HookSlot::AfterSideTurnEnd),
+    HookMask::EMPTY.with(HookSlot::AfterCardPlayed),
 );
 static TYRANNY_META: PowerMeta = meta_with(
     PowerType::Buff,
@@ -1175,6 +1162,7 @@ pub fn power_meta(id: PowerId) -> Result<&'static PowerMeta, KernelError> {
         PowerId::NoxiousFumesPower => Ok(&NOXIOUS_FUMES_META),
         PowerId::NoBlockPower => Ok(&NO_BLOCK_META),
         PowerId::NoDrawPower => Ok(&NO_DRAW_META),
+        PowerId::NoEnergyGainPower => Ok(&NO_ENERGY_GAIN_META),
         PowerId::OblivionPower => Ok(&OBLIVION_META),
         PowerId::OneForAllPower => Ok(&ONE_FOR_ALL_META),
         PowerId::OneTwoPunchPower => Ok(&ONE_TWO_PUNCH_META),
@@ -1268,8 +1256,6 @@ pub fn power_meta(id: PowerId) -> Result<&'static PowerMeta, KernelError> {
         PowerId::TaintedPower => Ok(&TAINTED_META),
         PowerId::TangledPower => Ok(&TANGLED_META),
         PowerId::TankPower => Ok(&TANK_META),
-        PowerId::TemporaryDexterityPower => Ok(&TEMPORARY_DEXTERITY_META),
-        PowerId::TemporaryStrengthPower => Ok(&TEMPORARY_STRENGTH_META),
         PowerId::TenderPower => Ok(&TENDER_META),
         PowerId::TerritorialPower => Ok(&TERRITORIAL_META),
         PowerId::TheBombPower => Ok(&THE_BOMB_META),
@@ -1672,6 +1658,10 @@ fn card_gains_block(state: &BattleState, card: CardHandle) -> bool {
     generated_card_meta(c.id)
         .flags
         .contains(sts2_types::CardStaticFlags::GAINS_BLOCK)
+        || state
+            .card_ext(c.ext_index)
+            .and_then(|e| e.enchantment.as_ref())
+            .is_some_and(|ench| ench.id == sts2_types::EnchantmentId::Adroit)
 }
 
 fn clear_card_affliction(state: &mut BattleState, card: CardHandle, target_affliction: Option<AfflictionId>) {
@@ -1820,8 +1810,7 @@ fn are_all_other_segments_dead(state: &BattleState, owner: CreatureHandle) -> bo
 pub const fn is_temporary_strength_power(id: PowerId) -> bool {
     matches!(
         id,
-        PowerId::TemporaryStrengthPower
-            | PowerId::CoordinatePower
+        PowerId::CoordinatePower
             | PowerId::CrushUnderPower
             | PowerId::DarkShacklesPower
             | PowerId::DyingStarPower
@@ -1841,8 +1830,7 @@ pub const fn is_temporary_power(id: PowerId) -> bool {
     is_temporary_strength_power(id)
         || matches!(
             id,
-            PowerId::TemporaryDexterityPower
-                | PowerId::AnticipatePower
+            PowerId::AnticipatePower
                 | PowerId::FadePower
                 | PowerId::HelicalDartPower
                 | PowerId::SpeedPotionPower
@@ -1856,15 +1844,11 @@ pub const fn is_temporary_power(id: PowerId) -> bool {
 
 fn temporary_power_spec(id: PowerId) -> Option<(PowerId, i32)> {
     match id {
-        PowerId::TemporaryStrengthPower
-        | PowerId::ReptileTrinketPower
-        | PowerId::SetupStrikePower => Some((PowerId::StrengthPower, 1)),
+        PowerId::ReptileTrinketPower | PowerId::SetupStrikePower => Some((PowerId::StrengthPower, 1)),
         PowerId::PiercingWailPower | PowerId::ShacklingPotionPower => {
             Some((PowerId::StrengthPower, -1))
         }
-        PowerId::TemporaryDexterityPower | PowerId::SpeedPotionPower => {
-            Some((PowerId::DexterityPower, 1))
-        }
+        PowerId::SpeedPotionPower => Some((PowerId::DexterityPower, 1)),
         PowerId::SynchronizePower => Some((PowerId::FocusPower, 1)),
         _ => None,
     }
@@ -2516,22 +2500,6 @@ pub fn apply_thunder_after_orb_evoked(
         )?;
     }
     Ok(())
-}
-
-/// W0-B helper for `QuietusPower.AfterArrowShot` (awaits `arrow_idx` on `HookArgs`).
-pub fn apply_quietus_after_arrow_shot(
-    state: &mut BattleState,
-    creature: CreatureHandle,
-    arrow_idx: Option<usize>,
-    has_source: bool,
-) {
-    if creature == state.player.creature_handle && has_source {
-        if let Some(idx) = arrow_idx {
-            if let Some(slot) = state.player.arrows.get_mut(idx) {
-                slot.destroy_after_impaled = true;
-            }
-        }
-    }
 }
 
 /// W0-B helper for `SurroundedPower.BeforePotionUsed` (awaits `HookSlot::BeforePotionUsed` dispatch).
@@ -3512,9 +3480,7 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-        PowerId::TemporaryDexterityPower
-        | PowerId::TemporaryStrengthPower
-        | PowerId::PiercingWailPower
+        PowerId::PiercingWailPower
         | PowerId::ReptileTrinketPower
         | PowerId::SetupStrikePower
         | PowerId::ShacklingPotionPower
@@ -4400,6 +4366,27 @@ fn dispatch_hook_cold(
             }
             Ok(HookResult::default())
         }
+        PowerId::NoEnergyGainPower => match slot {
+            HookSlot::ModifyEnergyGain => {
+                if creature == state.player.creature_handle {
+                    return Ok(HookResult {
+                        dec_val: Some(Dec::ZERO),
+                        modified: true,
+                        ..Default::default()
+                    });
+                }
+                Ok(HookResult::default())
+            }
+            HookSlot::AfterSideTurnEnd => {
+                if let HookArgs::SideTurn { participants, .. } = args {
+                    if participants.contains(&creature) {
+                        let _ = power::remove_by_handle(state, content, creature, p.handle)?;
+                    }
+                }
+                Ok(HookResult::default())
+            }
+            _ => Ok(HookResult::default()),
+        },
         PowerId::NostalgiaPower => {
             if slot == HookSlot::ModifyCardPlayResultLocation {
                 if let HookArgs::CardPlayResultLocation {
@@ -4558,7 +4545,7 @@ fn dispatch_hook_cold(
                         let mut energy_spent =
                             get_int_field(state, &p, "OrbitPower._energySpent", 0) + spent_amt;
                         while energy_spent >= 4 {
-                            gold::gain_energy(state, Dec::from_i32(p.amount))?;
+                            gold::gain_energy(state, content, Dec::from_i32(p.amount))?;
                             energy_spent -= 4;
                         }
                         set_int_field(
@@ -4573,8 +4560,8 @@ fn dispatch_hook_cold(
             }
             Ok(HookResult::default())
         }
-        PowerId::PainfulStabsPower => match slot {
-            HookSlot::AfterAttack => {
+        PowerId::PainfulStabsPower => {
+            if slot == HookSlot::AfterAttack {
                 if let HookArgs::Attack { info, results } = args {
                     apply_painful_stabs_after_attack(
                         content,
@@ -4587,19 +4574,9 @@ fn dispatch_hook_cold(
                         results,
                     )?;
                 }
-                Ok(HookResult::default())
             }
-            HookSlot::ShouldCreatureBeRemovedFromCombatAfterDeath => {
-                if let HookArgs::Creature(c) = args {
-                    return Ok(HookResult {
-                        bool_val: Some(*c != creature),
-                        ..Default::default()
-                    });
-                }
-                Ok(HookResult::default())
-            }
-            _ => Ok(HookResult::default()),
-        },
+            Ok(HookResult::default())
+        }
         PowerId::PaleBlueDotPower => match slot {
             HookSlot::AfterCardPlayed => {
                 if creature == state.player.creature_handle
@@ -4691,7 +4668,7 @@ fn dispatch_hook_cold(
                 }
                 Ok(HookResult::default())
             }
-            HookSlot::BeforeSideTurnEnd => {
+            HookSlot::AfterSideTurnEnd => {
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&creature) {
                         set_int_field(state, creature, p.handle, "PanachePower._cardsLeft", 5);
@@ -4951,21 +4928,6 @@ fn dispatch_hook_cold(
             Ok(HookResult::default())
         }
         PowerId::QuietusPower => match slot {
-            HookSlot::AfterArrowShot => {
-                if let HookArgs::ArrowShot {
-                    arrow_idx,
-                    card_source,
-                } = args
-                {
-                    apply_quietus_after_arrow_shot(
-                        state,
-                        creature,
-                        *arrow_idx,
-                        card_source.is_some(),
-                    );
-                }
-                Ok(HookResult::default())
-            }
             HookSlot::BeforeAttack => {
                 if let HookArgs::Attack { info, .. } = args {
                     if info.attacker == creature
@@ -5042,7 +5004,7 @@ fn dispatch_hook_cold(
         },
         PowerId::RadiancePower => {
             if slot == HookSlot::AfterEnergyReset && creature == state.player.creature_handle {
-                gold::gain_energy(state, Dec::ONE)?;
+                gold::gain_energy(state, content, Dec::ONE)?;
                 power::tick_down_duration_by_handle(state, content, creature, p.handle)?;
             }
             Ok(HookResult::default())
@@ -6181,6 +6143,8 @@ fn dispatch_hook_cold(
                     if !in_flight {
                         return Ok(HookResult::default());
                     }
+                    let started_amt =
+                        get_int_field(state, &p, "StretchPower._amountWhenCardStarted", p.amount);
                     set_bool_field(
                         state,
                         creature,
@@ -6189,7 +6153,7 @@ fn dispatch_hook_cold(
                         true,
                     );
                     return Ok(HookResult {
-                        dec_val: Some(Dec::from_i32(p.amount)),
+                        dec_val: Some(Dec::from_i32(started_amt)),
                         ..Default::default()
                     });
                 }
@@ -6260,7 +6224,7 @@ fn dispatch_hook_cold(
                             true,
                         ) {
                             for _ in 0..energy {
-                                gold::gain_energy(state, Dec::ONE)?;
+                                gold::gain_energy(state, content, Dec::ONE)?;
                             }
                         }
                     }
@@ -6826,21 +6790,34 @@ fn dispatch_hook_cold(
             Ok(HookResult::default())
         }
         PowerId::TunePower => {
-            if slot == HookSlot::AfterSideTurnEnd {
-                if let HookArgs::SideTurn { side, .. } = args {
-                    if *side != CombatSide::Enemy
-                        && creature == state.player.creature_handle
-                        && melody::played_this_turn(state, CardTags::KI)
+            if slot == HookSlot::AfterCardPlayed {
+                if let HookArgs::CardPlay(cp) = args {
+                    if creature == state.player.creature_handle
+                        && card_tags_of(state, cp.card).contains(CardTags::KI)
+                        && state.player.counters.first_ki_play_ordinal_this_turn == cp.play_ordinal
+                        && cp.play_index == 0
                     {
-                        let _ = power::apply(
-                            state,
-                            content,
-                            PowerId::FreeCardPower,
-                            creature,
-                            Dec::from_i32(p.amount),
-                            Some(creature),
-                            None,
-                        )?;
+                        let mut upgradable: Vec<CardHandle> = state
+                            .player
+                            .hand
+                            .iter()
+                            .copied()
+                            .filter(|&h| {
+                                state.card(h).is_some_and(|c| {
+                                    content
+                                        .card_meta(c.id)
+                                        .is_ok_and(|m| c.upgrade_level < m.max_upgrade_level)
+                                })
+                            })
+                            .collect();
+                        state
+                            .run_rngs
+                            .get_mut(RunRngType::CombatCardSelection)
+                            .unstable_shuffle(&mut upgradable);
+                        let take_n = p.amount.max(0) as usize;
+                        for h in upgradable.into_iter().take(take_n) {
+                            card_cmd::upgrade(state, content, h)?;
+                        }
                     }
                 }
             }
@@ -6892,19 +6869,20 @@ fn dispatch_hook_cold(
                         return Ok(HookResult::default());
                     }
                     let previous = if creature == state.player.creature_handle {
-                        state
-                            .semantic_history
-                            .card_block_gains
-                            .iter()
-                            .filter(|(tk, actor_idx, ord)| {
-                                *actor_idx == 0
-                                    && tk.round_number == state.round_number
-                                    && tk.side == state.current_side
-                                    && tk.player_turn_numbers.first().flatten()
-                                        == Some(state.player.turn_number)
-                                    && card_play.is_none_or(|cp| *ord != cp.play_ordinal)
-                            })
-                            .count() as i32
+                        let cur_turn = state.player.turn_number;
+                        let mut seen_ords: SmallVec<[i32; 8]> = SmallVec::new();
+                        for (tk, actor_idx, ord) in &state.semantic_history.card_block_gains {
+                            if *actor_idx == 0
+                                && tk.round_number == state.round_number
+                                && tk.side == state.current_side
+                                && tk.player_turn_numbers.first().flatten() == Some(cur_turn)
+                                && card_play.is_none_or(|cp| *ord != cp.play_ordinal)
+                                && !seen_ords.contains(ord)
+                            {
+                                seen_ords.push(*ord);
+                            }
+                        }
+                        seen_ords.len() as i32
                     } else {
                         0
                     };
@@ -7062,7 +7040,7 @@ fn dispatch_hook_cold(
                     && !get_bool_field(state, &p, "YahPower._triggeredThisTurn", false)
                 {
                     set_bool_field(state, creature, p.handle, "YahPower._triggeredThisTurn", true);
-                    gold::gain_energy(state, Dec::from_i32(p.amount))?;
+                    gold::gain_energy(state, content, Dec::from_i32(p.amount))?;
                 }
                 Ok(HookResult::default())
             }

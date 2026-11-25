@@ -331,6 +331,10 @@ impl CombatEngine {
         content: &dyn ContentDispatcher,
         is_extra_turn: bool,
     ) -> Result<StepOutcome, KernelError> {
+        hooks::after_player_turn_start_early(state, content)?;
+        if hooks::is_over_or_ending_checked(state, content)? {
+            return Self::finish_action_boundary(state, content);
+        }
         if let Some((req, paused_listener, remaining_listeners)) =
             hooks::after_player_turn_start(state, content)?
         {
@@ -1309,6 +1313,43 @@ impl CombatEngine {
         if has_wah || has_cho || has_ki {
             ctr.melody_cards_finished_this_turn += 1;
         }
+        if card_type == CardType::Attack
+            && state
+                .card(card_handle)
+                .is_some_and(|c| !c.temp_flags.contains(CardTempFlags::IS_DUPE))
+        {
+            let turn = state.player.turn_number;
+            for idx in 0..state.player.relics.len() {
+                let r = &mut state.player.relics[idx];
+                if !r.is_melted && r.id == sts2_types::RelicId::HistoryCourse {
+                    let last_turn = match r.private_fields.get("HistoryCourse._lastAttackTurn") {
+                        Some(crate::state::FieldValue::Int(v)) => *v,
+                        _ => 0,
+                    };
+                    if last_turn != turn {
+                        let last_attack =
+                            r.private_fields.get("HistoryCourse._lastAttack").cloned();
+                        r.private_fields.insert(
+                            std::borrow::Cow::Borrowed("HistoryCourse._previousAttack"),
+                            last_attack.unwrap_or(crate::state::FieldValue::NullableInt(None)),
+                        );
+                        r.private_fields.insert(
+                            std::borrow::Cow::Borrowed("HistoryCourse._previousAttackTurn"),
+                            crate::state::FieldValue::Int(last_turn),
+                        );
+                    }
+                    r.private_fields.insert(
+                        std::borrow::Cow::Borrowed("HistoryCourse._lastAttack"),
+                        crate::state::FieldValue::CardHandle(card_handle.0 as i32),
+                    );
+                    r.private_fields.insert(
+                        std::borrow::Cow::Borrowed("HistoryCourse._lastAttackTurn"),
+                        crate::state::FieldValue::Int(turn),
+                    );
+                    state.mark_relic_dirty(idx);
+                }
+            }
+        }
         Ok(())
     }
 
@@ -1745,6 +1786,17 @@ impl CombatEngine {
                 if Self::check_win_condition(state, content)? {
                     return Ok(StepOutcome::CombatEnded { won: state.won });
                 }
+                if let Some(c) = state.creature_mut(current_enemy) {
+                    if let Some(m) = &mut c.monster {
+                        m.is_performing_move = false;
+                    }
+                }
+                crate::commands::creature::flush_all_eligible_deferred_death_cleanups(
+                    state, content,
+                )?;
+                if Self::check_win_condition(state, content)? {
+                    return Ok(StepOutcome::CombatEnded { won: state.won });
+                }
                 Self::execute_enemy_turn_from(state, content, remaining_enemies)
             }
             _ => Err(KernelError::Unsupported {
@@ -2156,6 +2208,12 @@ impl CombatEngine {
                     }
                 }
             }
+            if let Some(c) = state.creature_mut(eh) {
+                if let Some(m) = &mut c.monster {
+                    m.is_performing_move = false;
+                }
+            }
+            crate::commands::creature::flush_all_eligible_deferred_death_cleanups(state, content)?;
             if Self::check_win_condition(state, content)? {
                 return Ok(StepOutcome::CombatEnded { won: state.won });
             }

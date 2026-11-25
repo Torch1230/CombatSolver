@@ -259,7 +259,7 @@ pub extern "C" fn sts2_rs_capabilities(out_ptr: *mut *mut u8, out_len: *mut usiz
         let caps = CapabilitiesJson {
             abi_version: ABI_VERSION,
             engine_id: "sts2-combat-rs",
-            supported_game_version: "v0.113.1",
+            supported_game_version: "v0.114.0",
             starter_characters: vec![
                 "IRONCLAD",
                 "SILENT",

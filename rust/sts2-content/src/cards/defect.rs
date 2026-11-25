@@ -747,7 +747,7 @@ pub fn on_play(
         }
 
         CardId::DoubleEnergy => {
-            gold::gain_energy(state, Dec::from_i32(state.player.energy))?;
+            gold::gain_energy(state, content, Dec::from_i32(state.player.energy))?;
             Ok(CardPlayOutcome::default())
         }
 
@@ -779,7 +779,7 @@ pub fn on_play(
                 .iter()
                 .any(|&h| state.creature(h).is_some_and(|c| c.is_alive() && c.is_player));
             if has_living_player {
-                gold::gain_energy(state, amt)?;
+                gold::gain_energy(state, content, amt)?;
             }
             Ok(CardPlayOutcome::default())
         }
@@ -1580,13 +1580,13 @@ pub fn on_play(
                 AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
                     .execute(state, content)?;
             if results.iter().any(|r| r.was_target_killed) {
-                gold::gain_energy(state, Dec::from_i32(3))?;
+                gold::gain_energy(state, content, Dec::from_i32(3))?;
             }
             Ok(CardPlayOutcome::default())
         }
 
         CardId::Supercritical => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 6 } else { 4 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 6 } else { 4 }))?;
             Ok(CardPlayOutcome::default())
         }
 
@@ -1689,7 +1689,7 @@ pub fn on_play(
         }
 
         CardId::Turbo => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 3 } else { 2 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 3 } else { 2 }))?;
             generate_cards_in_discard(state, content, CardId::Void, 1, owner)?;
             Ok(CardPlayOutcome::default())
         }
@@ -1856,6 +1856,7 @@ pub fn on_upgrade(state: &mut BattleState, card_handle: CardHandle) -> Result<()
         | CardId::Fusion
         | CardId::Hologram
         | CardId::Hotfix
+        | CardId::Ignition
         | CardId::Rainbow
         | CardId::Voltaic => {
             if let Some(c) = state.card_mut(card_handle) {

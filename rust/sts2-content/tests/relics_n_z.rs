@@ -187,6 +187,8 @@ fn make_state(relics: Vec<RelicInst>, deck_cards: Vec<CardId>) -> BattleState {
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::new(),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -785,7 +787,7 @@ fn turn_room_and_combat_relics_n_z() {
     );
     s.player.turn_number = 1;
     sts2_kernel::hooks::after_energy_reset(&mut s, &Sts2Content).unwrap();
-    assert_eq!(s.player.energy, 7); // +2 from PaelsTears
+    assert_eq!(s.player.energy, 5);
     sts2_kernel::hooks::after_side_turn_start(
         &mut s,
         &Sts2Content,
@@ -793,7 +795,7 @@ fn turn_room_and_combat_relics_n_z() {
         &[CreatureHandle(1)],
     )
     .unwrap();
-    assert_eq!(s.player.energy, 12); // +1 SealOfGold + 4 VeryHotCocoa
+    assert_eq!(s.player.energy, 12); // +2 PaelsTears + 1 SealOfGold + 4 VeryHotCocoa
     assert_eq!(s.player.gold, 97);
     sts2_kernel::hooks::after_combat_end(&mut s, &Sts2Content).unwrap();
     assert_eq!(
@@ -1150,7 +1152,6 @@ fn damage_block_power_and_card_modifiers_n_z() {
     // Twine on arrow dislodge
     s.player.arrows.push(ArrowSlotInst {
         status: ArrowStatus::Away,
-        destroy_after_impaled: false,
     });
     power::apply_new_with_extension(
         &mut s,
@@ -1496,8 +1497,9 @@ fn card_gen_choices_extra_turn_and_merge_ready_helpers_n_z() {
         Some(&FieldValue::Int(2))
     );
 
-    // VitruvianMinion: under vanilla Sts2Content, MinionStrike (no CardTags::MINION) deals 6 (1x) and StrikeIronclad deals 6 (1x);
-    // when card_meta has CardTags::MINION, both ModifyDamageMultiplicative and ModifyBlockMultiplicative return 2x.
+    // VitruvianMinion: under vanilla Sts2Content in v0.114.0, MinionStrike carries CardTags::MINION (2x -> 12),
+    // while StrikeIronclad has no MINION tag (1x -> 6); when card_meta has CardTags::MINION, both ModifyDamageMultiplicative
+    // and ModifyBlockMultiplicative return 2x.
     let mut s_vit = make_state(
         vec![make_relic(RelicId::VitruvianMinion)],
         vec![CardId::MinionStrike, CardId::StrikeIronclad],
@@ -1507,9 +1509,9 @@ fn card_gen_choices_extra_turn_and_merge_ready_helpers_n_z() {
     let strike_h = *s_vit.player.hand.iter().find(|&&h| s_vit.card(h).unwrap().id == CardId::StrikeIronclad).unwrap();
     let enemy_h = s_vit.enemy_handles[0];
     CombatEngine::play_card(&mut s_vit, &Sts2Content, minion_h, Some(enemy_h), &mut empty_q).unwrap();
-    assert_eq!(s_vit.creature(enemy_h).unwrap().current_hp, 100 - 6);
+    assert_eq!(s_vit.creature(enemy_h).unwrap().current_hp, 100 - 12);
     CombatEngine::play_card(&mut s_vit, &Sts2Content, strike_h, Some(enemy_h), &mut empty_q).unwrap();
-    assert_eq!(s_vit.creature(enemy_h).unwrap().current_hp, 100 - 6 - 6);
+    assert_eq!(s_vit.creature(enemy_h).unwrap().current_hp, 100 - 12 - 6);
 
     static MINION_TAG_CARD_META: CardMeta = CardMeta {
         card_type: CardType::Attack,

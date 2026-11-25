@@ -2501,7 +2501,6 @@ pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
         w.var_u32_unchecked(p.arrows.len() as u32);
         for arrow in &p.arrows {
             w.u8_unchecked(arrow.status as u8);
-            w.u8_unchecked(u8::from(arrow.destroy_after_impaled));
         }
     }
 
@@ -3193,6 +3192,8 @@ fn unpack_state_inner(
     out: &mut BattleState,
 ) -> Result<(), ()> {
     let same_root = Arc::ptr_eq(&out.static_ctx, static_ctx);
+    out.attacking_creatures.clear();
+    out.deferred_death_cleanup.clear();
     let prev_deck_dirty = out.deck_dirty.0;
     let prev_dirty = out.hook_cache.dirty_mask;
     if !same_root {
@@ -3435,7 +3436,6 @@ fn unpack_state_inner(
         for _ in 0..arrow_len {
             p.arrows.push(ArrowSlotInst {
                 status: decode_arrow_status(r.u8()?)?,
-                destroy_after_impaled: r.bool()?,
             });
         }
     }
@@ -4767,6 +4767,8 @@ pub fn empty_scratch_state(static_ctx: Arc<RootStaticContext>) -> BattleState {
         semantic_history: SemanticHistory::default(),
         pending: None,
         vakuu_auto_select_depth: 0,
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         hook_cache: Default::default(),
         deck_dirty: DeckDirtyFlag(true),
         relic_dirty_mask: RelicDirtyMask(u64::MAX),
@@ -4992,7 +4994,6 @@ pub fn pack_canonical_key(state: &BattleState, out: &mut Vec<u8>) {
     w.var_u32(p.arrows.len() as u32);
     for arrow in &p.arrows {
         w.u8(arrow.status as u8);
-        w.bool(arrow.destroy_after_impaled);
     }
 
     w.var_u32(p.relics.len() as u32);
@@ -5629,7 +5630,7 @@ pub fn hash_canonical_key(state: &BattleState) -> crate::hash::StateHash {
 
     h.mix_u32(p.arrows.len() as u32);
     for arrow in &p.arrows {
-        h.mix_u64((arrow.status as u64) | (u64::from(arrow.destroy_after_impaled) << 8));
+        h.mix_u64(arrow.status as u64);
     }
 
     h.mix_u32(p.relics.len() as u32);

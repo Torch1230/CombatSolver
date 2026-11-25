@@ -79,7 +79,7 @@ static PAELS_TEARS_META: RelicMeta = meta(
     ORDER_FLAGS,
     HookMask::EMPTY
         .with(HookSlot::BeforeSideTurnEnd)
-        .with(HookSlot::AfterEnergyReset)
+        .with(HookSlot::AfterSideTurnStart)
         .with(HookSlot::AfterCombatEnd),
 );
 static PAELS_TOOTH_META: RelicMeta = meta(GROWTH_RNG, HookMask::EMPTY.with(HookSlot::AfterCombatEnd));
@@ -578,8 +578,7 @@ fn power_type_for_amount(
 
 const fn temporary_internal_power(power_id: PowerId) -> Option<PowerId> {
     match power_id {
-        PowerId::TemporaryStrengthPower
-        | PowerId::MonarchsGazeStrengthDownPower
+        PowerId::MonarchsGazeStrengthDownPower
         | PowerId::DarkShacklesPower
         | PowerId::ShacklingPotionPower
         | PowerId::EnfeeblingTouchPower
@@ -592,8 +591,7 @@ const fn temporary_internal_power(power_id: PowerId) -> Option<PowerId> {
         | PowerId::ManglePower
         | PowerId::FeedingFrenzyPower
         | PowerId::SetupStrikePower => Some(PowerId::StrengthPower),
-        PowerId::TemporaryDexterityPower
-        | PowerId::HelicalDartPower
+        PowerId::HelicalDartPower
         | PowerId::FadePower
         | PowerId::SpeedPotionPower
         | PowerId::AnticipatePower => Some(PowerId::DexterityPower),
@@ -1034,7 +1032,7 @@ pub(crate) fn dispatch_hook_at(
                                 get_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", 0) + 1;
                             set_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", next);
                             if next % 10 == 0 {
-                                gold::gain_energy(state, Dec::ONE)?;
+                                gold::gain_energy(state, content, Dec::ONE)?;
                             }
                         }
                     }
@@ -1443,9 +1441,13 @@ pub(crate) fn dispatch_hook_at(
                         }
                     }
                 }
-                HookSlot::AfterEnergyReset => {
-                    if get_bool(state, id, "PaelsTears._gainNextTurn", false) {
-                        gold::gain_energy(state, Dec::TWO)?;
+                HookSlot::AfterSideTurnStart => {
+                    if let HookArgs::SideTurn { participants, .. } = args {
+                        if participants.contains(&pc)
+                            && get_bool(state, id, "PaelsTears._gainNextTurn", false)
+                        {
+                            gold::gain_energy(state, content, Dec::TWO)?;
+                        }
                     }
                 }
                 HookSlot::AfterCombatEnd => {
@@ -2394,7 +2396,7 @@ pub(crate) fn dispatch_hook_at(
             if slot == HookSlot::AfterSideTurnStart {
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&pc) && state.player.gold >= 3 {
-                        gold::gain_energy(state, Dec::ONE)?;
+                        gold::gain_energy(state, content, Dec::ONE)?;
                         gold::lose_gold(state, Dec::from_i32(3))?;
                     }
                 }
@@ -3502,7 +3504,7 @@ pub(crate) fn dispatch_hook_at(
                 HookSlot::AfterEnergyReset => {
                     if get_bool(state, id, "VenerableTeaSet._isArmed", false) {
                         set_bool(state, id, "VenerableTeaSet._isArmed", false);
-                        gold::gain_energy(state, Dec::TWO)?;
+                        gold::gain_energy(state, content, Dec::TWO)?;
                     }
                 }
                 _ => {}
@@ -3514,7 +3516,7 @@ pub(crate) fn dispatch_hook_at(
             if slot == HookSlot::AfterSideTurnStart {
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&pc) && state.player.turn_number == 1 {
-                        gold::gain_energy(state, Dec::from_i32(4))?;
+                        gold::gain_energy(state, content, Dec::from_i32(4))?;
                     }
                 }
             }
@@ -3691,7 +3693,9 @@ pub(crate) fn dispatch_hook_at(
                         None,
                     )?;
                     creature_cmd::set_max_hp(state, h, Dec::from_i32(max_hp))?;
-                    creature_cmd::set_current_hp(state, content, h, Dec::from_i32(cur_hp))?;
+                    if let Some(c) = state.creature_mut(h) {
+                        c.current_hp = cur_hp.clamp(0, max_hp);
+                    }
                 }
                 HookSlot::AfterCurrentHpChanged => {
                     if let HookArgs::ModifyHpLost { target, .. } = args {

@@ -1096,7 +1096,7 @@ pub fn potion_on_use(
         }
         PotionId::CureAll => {
             let _ = require_player_target(state, target, potion_id)?;
-            gold::gain_energy(state, Dec::ONE)?;
+            gold::gain_energy(state, content, Dec::ONE)?;
             let _ = card_pile::draw(state, content, 2, false)?;
             Ok(CardPlayOutcome::default())
         }
@@ -1163,7 +1163,7 @@ pub fn potion_on_use(
         }
         PotionId::EnergyPotion => {
             let _ = require_player_target(state, target, potion_id)?;
-            gold::gain_energy(state, Dec::TWO)?;
+            gold::gain_energy(state, content, Dec::TWO)?;
             Ok(CardPlayOutcome::default())
         }
         PotionId::EntropicBrew => {
@@ -1614,7 +1614,7 @@ pub fn potion_on_use(
         }
         PotionId::RadiantTincture => {
             let t = require_player_target(state, target, potion_id)?;
-            gold::gain_energy(state, Dec::ONE)?;
+            gold::gain_energy(state, content, Dec::ONE)?;
             power::apply(
                 state,
                 content,

@@ -1074,7 +1074,6 @@ pub struct OrbInst {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ArrowSlotInst {
     pub status: ArrowStatus,
-    pub destroy_after_impaled: bool,
 }
 
 impl ArrowSlotInst {
@@ -2163,7 +2162,7 @@ const fn mask_at(table: &[HookMask], idx: usize) -> HookMask {
     }
 }
 
-pub const HOOK_SLOT_TABLE_LEN: usize = 136;
+pub const HOOK_SLOT_TABLE_LEN: usize = 138;
 
 pub const ENEMY_POWER_FLAG_GOLD_THEFT: u8 = 1 << 0;
 pub const ENEMY_POWER_FLAG_REVIVING: u8 = 1 << 1;
@@ -2582,6 +2581,8 @@ pub struct BattleState {
     pub semantic_history: SemanticHistory,
     pub pending: Option<PendingContinuation>,
     pub vakuu_auto_select_depth: u8,
+    pub attacking_creatures: SmallVec<[(CreatureHandle, u16); 4]>,
+    pub deferred_death_cleanup: SmallVec<[CreatureHandle; 4]>,
     pub hook_cache: ActiveHookCache,
     pub deck_dirty: DeckDirtyFlag,
     pub relic_dirty_mask: RelicDirtyMask,
@@ -4571,6 +4572,48 @@ impl BattleState {
         let res = f(self);
         self.vakuu_auto_select_depth = self.vakuu_auto_select_depth.saturating_sub(1);
         res
+    }
+
+    #[inline]
+    pub fn enter_attacking(&mut self, creature: CreatureHandle) {
+        if let Some((_, depth)) = self
+            .attacking_creatures
+            .iter_mut()
+            .find(|(h, _)| *h == creature)
+        {
+            *depth = depth.saturating_add(1);
+        } else {
+            self.attacking_creatures.push((creature, 1));
+        }
+    }
+
+    #[inline]
+    pub fn exit_attacking(&mut self, creature: CreatureHandle) {
+        if let Some(pos) = self
+            .attacking_creatures
+            .iter()
+            .position(|(h, _)| *h == creature)
+        {
+            if self.attacking_creatures[pos].1 <= 1 {
+                self.attacking_creatures.swap_remove(pos);
+            } else {
+                self.attacking_creatures[pos].1 -= 1;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn is_creature_attacking(&self, creature: CreatureHandle) -> bool {
+        self.attacking_creatures
+            .iter()
+            .any(|(h, depth)| *h == creature && *depth > 0)
+    }
+
+    #[inline]
+    pub fn mark_deferred_death_cleanup(&mut self, creature: CreatureHandle) {
+        if !self.deferred_death_cleanup.contains(&creature) {
+            self.deferred_death_cleanup.push(creature);
+        }
     }
 
     #[inline]

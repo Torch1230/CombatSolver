@@ -3,9 +3,9 @@ use sts2_types::CardTags;
 
 pub fn played_this_turn(state: &BattleState, tag: CardTags) -> bool {
     match tag {
-        CardTags::WAH => state.player.counters.wah_finished_this_turn > 0,
-        CardTags::CHO => state.player.counters.cho_finished_this_turn > 0,
-        CardTags::KI => state.player.counters.ki_finished_this_turn > 0,
+        CardTags::WAH => state.player.counters.wah_started_this_turn > 0,
+        CardTags::CHO => state.player.counters.cho_started_this_turn > 0,
+        CardTags::KI => state.player.counters.ki_started_this_turn > 0,
         _ => false,
     }
 }

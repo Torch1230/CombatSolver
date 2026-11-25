@@ -1534,7 +1534,6 @@ fn collect_rollout_playable_cards(
         FreeAttack,
         FreeSkill,
         FreePower,
-        FreeCard,
         Fallback,
     }
 
@@ -1597,7 +1596,6 @@ fn collect_rollout_playable_cards(
                                     PowerId::FreeAttackPower => FastLateEnergyHook::FreeAttack,
                                     PowerId::FreeSkillPower => FastLateEnergyHook::FreeSkill,
                                     PowerId::FreePowerPower => FastLateEnergyHook::FreePower,
-                                    PowerId::FreeCardPower => FastLateEnergyHook::FreeCard,
                                     _ => FastLateEnergyHook::Fallback,
                                 }
                             } else {
@@ -1811,23 +1809,6 @@ fn collect_rollout_playable_cards(
                                 debug_assert_eq!(cost, expected);
                             }
                             cost
-                        }
-                        FastLateEnergyHook::FreeCard => {
-                            #[cfg(debug_assertions)]
-                            {
-                                let expected = match sts2_kernel::hooks::modify_energy_cost_in_combat_cached_ready(
-                                    state,
-                                    content,
-                                    ch,
-                                    Dec::from_i32(local_e),
-                                    comb,
-                                ) {
-                                    Ok((m, true)) => m.max(Dec::ZERO).to_i32_trunc().unwrap_or(0),
-                                    _ => local_e,
-                                };
-                                debug_assert_eq!(0, expected);
-                            }
-                            0
                         }
                         FastLateEnergyHook::Fallback => unreachable!(),
                     }

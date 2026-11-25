@@ -6,7 +6,7 @@ use sts2_kernel::commands::{arrow, card as card_cmd, card_pile, power};
 use sts2_kernel::content_dispatch::CardPlayContext;
 use sts2_kernel::{
     ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine,
-    ContentDispatcher, CreatureHandle, CreatureInst, FieldValue, MonsterInst, PlayerCounters,
+    ContentDispatcher, CreatureHandle, CreatureInst, MonsterInst, PlayerCounters,
     PlayerInst, RootStaticContext, SemanticHistory, StepOutcome,
 };
 use sts2_types::{
@@ -154,7 +154,6 @@ fn build_fool_battle(
         orbs: Vec::new(),
         arrows: vec![ArrowSlotInst {
             status: ArrowStatus::Retrieved,
-            destroy_after_impaled: false,
         }],
         relics: Vec::new(),
         card_or_potion_effect_depth: 0,
@@ -213,6 +212,8 @@ fn build_fool_battle(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -259,8 +260,8 @@ fn power_amount(state: &BattleState, creature: CreatureHandle, id: PowerId) -> i
 }
 
 #[test]
-fn all_90_fool_cards_meta_playable_upgrade_and_comparison_complete() {
-    assert_eq!(CARD_POOL_FOOL.len(), 90);
+fn all_91_fool_cards_meta_playable_upgrade_and_comparison_complete() {
+    assert_eq!(CARD_POOL_FOOL.len(), 91);
     let (mut state, _) = build_fool_battle(&[100], &[], &[], &[]);
 
     let cost_upgrades = [
@@ -269,11 +270,7 @@ fn all_90_fool_cards_meta_playable_upgrade_and_comparison_complete() {
         CardId::Honing,
         CardId::LockedIn,
         CardId::LostLute,
-        CardId::MelodicShot,
         CardId::Motif,
-        CardId::Recall,
-        CardId::Simpleton,
-        CardId::Tune,
     ];
 
     for &cid in CARD_POOL_FOOL {
@@ -296,8 +293,14 @@ fn all_90_fool_cards_meta_playable_upgrade_and_comparison_complete() {
         } else {
             assert_eq!(after.base_energy_cost, before_cost, "{cid:?} cost unchanged");
         }
-        if cid == CardId::Lullaby {
+        if cid == CardId::Quiver {
             assert!(after.has_local_keyword(CardKeywords::INNATE));
+        }
+        if matches!(cid, CardId::Optimism | CardId::Recall) {
+            assert!(!after.has_local_keyword(CardKeywords::EXHAUST));
+        }
+        if cid == CardId::MythicForm {
+            assert!(!after.has_local_keyword(CardKeywords::ETHEREAL));
         }
         assert_eq!(
             i32::from(after.canonical_base_energy_cost),
@@ -313,10 +316,10 @@ fn arrow_shooting_heavy_aim_blossom_rapid_repeat_rain_trick_whistling() {
     let enemy = enemies[0];
     let pc = state.player.creature_handle;
 
-    // Quiver + Nock + HeavyShot (2x AimPower!)
+    // Quiver (+1 slot) + Nock + HeavyShot (3x AimPower!)
     let quiver = add_card_to_hand(&mut state, &content, CardId::Quiver, 1);
     play_hand_card(&mut state, &content, quiver, None);
-    assert_eq!(state.player.arrows.len(), 3);
+    assert_eq!(state.player.arrows.len(), 2);
 
     let nock = add_card_to_hand(&mut state, &content, CardId::Nock, 0);
     play_hand_card(&mut state, &content, nock, None);
@@ -324,8 +327,8 @@ fn arrow_shooting_heavy_aim_blossom_rapid_repeat_rain_trick_whistling() {
 
     let heavy = add_card_to_hand(&mut state, &content, CardId::HeavyShot, 0);
     play_hand_card(&mut state, &content, heavy, Some(enemy));
-    // 20 + 2 * 5 = 30 damage, Aim consumed to 0, 1 arrow impaled
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 170);
+    // 16 + 3 * 5 = 31 damage (Aim adds 1x + HeavyShot adds 2x), Aim consumed to 0, 1 arrow impaled
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 169);
     assert_eq!(power_amount(&state, pc, PowerId::AimPower), 0);
     assert_eq!(power_amount(&state, enemy, PowerId::ImpaledPower), 1);
 
@@ -338,21 +341,23 @@ fn arrow_shooting_heavy_aim_blossom_rapid_repeat_rain_trick_whistling() {
     // BlossomShot shoots arrow, deals 11, grants 11 StretchPower, impales, returns WhistlingArrows
     let blossom = add_card_to_hand(&mut state, &content, CardId::BlossomShot, 0);
     play_hand_card(&mut state, &content, blossom, Some(enemy));
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 159);
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 158);
     assert_eq!(power_amount(&state, pc, PowerId::StretchPower), 11);
     assert_eq!(state.card(whistling).unwrap().pile, PileType::Hand);
 
-    // RapidShot shoots 3rd arrow for 3x3=9 (Stretch doesn't affect attack, 3 hits dislodge an arrow!)
-    let rapid = add_card_to_hand(&mut state, &content, CardId::RapidShot, 0);
-    play_hand_card(&mut state, &content, rapid, Some(enemy));
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 150);
+    // Gain a 3rd arrow slot, then TwinShot shoots it for 7x2=14 (3 total hits/attacks dislodges an arrow!)
+    let quiver_twin = add_card_to_hand(&mut state, &content, CardId::Quiver, 1);
+    play_hand_card(&mut state, &content, quiver_twin, None);
+    let twin = add_card_to_hand(&mut state, &content, CardId::TwinShot, 0);
+    play_hand_card(&mut state, &content, twin, Some(enemy));
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 144);
     assert!(arrow::player_has_any_arrows(&state));
 
-    // RepeatShot with 2 energy -> 2 hits * 15 = 30
+    // RepeatShot with 2 energy -> 2 hits * 13 = 26
     state.player.energy = 2;
     let repeat = add_card_to_hand(&mut state, &content, CardId::RepeatShot, 0);
     play_hand_card(&mut state, &content, repeat, Some(enemy));
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 120);
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 118);
     assert_eq!(state.player.energy, 0);
 
     // QuickShot + DivineShot + SkyShot + RainShot (add 2 more arrow slots so arrows remain available)
@@ -361,24 +366,28 @@ fn arrow_shooting_heavy_aim_blossom_rapid_repeat_rain_trick_whistling() {
     play_hand_card(&mut state, &content, quiver2, None);
     let quick = add_card_to_hand(&mut state, &content, CardId::QuickShot, 1);
     play_hand_card(&mut state, &content, quick, Some(enemy));
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 107);
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 105);
 
     let divine = add_card_to_hand(&mut state, &content, CardId::DivineShot, 0);
     play_hand_card(&mut state, &content, divine, Some(enemy));
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 67);
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 65);
 
+    let quiver3 = add_card_to_hand(&mut state, &content, CardId::Quiver, 1);
+    play_hand_card(&mut state, &content, quiver3, None);
     let sky = add_card_to_hand(&mut state, &content, CardId::SkyShot, 1);
     play_hand_card(&mut state, &content, sky, Some(enemy));
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 27);
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 25);
     assert_eq!(state.card(sky).unwrap().pile, PileType::Exhaust);
 
     // RainShot on 1 enemy removes AimPower & QuietusPower and deals 12
+    let quiver4 = add_card_to_hand(&mut state, &content, CardId::Quiver, 1);
+    play_hand_card(&mut state, &content, quiver4, None);
     let quietus = add_card_to_hand(&mut state, &content, CardId::Quietus, 0);
     play_hand_card(&mut state, &content, quietus, None);
     let rain = add_card_to_hand(&mut state, &content, CardId::RainShot, 0);
     play_hand_card(&mut state, &content, rain, Some(enemy));
     // 12 * 2 (Quietus 2) = 24
-    assert_eq!(state.creature(enemy).unwrap().current_hp, 3);
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 1);
     assert_eq!(power_amount(&state, pc, PowerId::QuietusPower), 0);
 }
 
@@ -412,25 +421,23 @@ fn rain_shot_multi_enemy_capped_splash_and_trick_shot_result_loc() {
             .any(|p| p.id == PowerId::ImpaledPower)
     );
 
-    // TrickShot default_result_location check
+    // TrickShot default_result_location is None and draws 2 on play
     state.player.arrows[0].status = ArrowStatus::Retrieved;
     let trick = add_card_to_hand(&mut state, &content, CardId::TrickShot, 0);
-    assert_eq!(
-        fool::default_result_location(&state, trick, false).unwrap(),
-        Some((PileType::Hand, CardPilePosition::Bottom))
-    );
-    state.player.arrows[0].status = ArrowStatus::Away;
-    assert_eq!(
-        fool::default_result_location(&state, trick, false).unwrap(),
-        None
-    );
+    assert_eq!(fool::default_result_location(&state, trick, false).unwrap(), None);
+    let trick_draw = add_card_to_hand(&mut state, &content, CardId::StrikeFool, 0);
+    card_pile::add_sync(&mut state, trick_draw, PileType::Draw, CardPilePosition::Top);
+    let hand_before_trick = state.player.hand.len();
+    play_hand_card(&mut state, &content, trick, Some(enemies[0]));
+    assert_eq!(state.card(trick).unwrap().pile, PileType::Discard);
+    assert_eq!(state.player.hand.len(), hand_before_trick + 1); // -1 TrickShot +2 drawn (trick_draw + RainShot from Discard)
 }
 
 #[test]
 fn impale_dislodge_cards_and_pile_selection_contracts() {
     let content = Sts2Content;
     let (mut state, enemies) = build_fool_battle(
-        &[200],
+        &[300],
         &[],
         &[CardId::StrikeFool, CardId::MelodicShot, CardId::QuickShot],
         &[CardId::FoolishShot, CardId::QuickShot, CardId::DefendFool],
@@ -497,28 +504,20 @@ fn impale_dislodge_cards_and_pile_selection_contracts() {
     assert_eq!(power_amount(&state, enemy, PowerId::ImpaledPower), 0);
     assert!(power_amount(&state, enemy, PowerId::VulnerablePower) >= 3);
 
-    // Recall dislodges & puts chosen discard card on top of draw
+    // Recall dislodges without discard choice
     let quick4 = add_card_to_hand(&mut state, &content, CardId::QuickShot, 0);
     play_hand_card(&mut state, &content, quick4, Some(enemy));
     let recall = add_card_to_hand(&mut state, &content, CardId::Recall, 0);
-    let outcome = play_hand_card(&mut state, &content, recall, Some(enemy));
-    let StepOutcome::NeedsChoice(req) = outcome else {
-        panic!("expected Recall discard choice");
-    };
-    let chosen_card = req.candidates[0];
-    assert_eq!(CombatEngine::resume_choice(&mut state, &content, &[0]).unwrap(), StepOutcome::Completed);
-    assert_eq!(state.player.draw.first().copied(), Some(chosen_card));
+    assert_eq!(play_hand_card(&mut state, &content, recall, Some(enemy)), StepOutcome::Completed);
+    assert_eq!(power_amount(&state, enemy, PowerId::ImpaledPower), 0);
 
-    // ArrowStab chooses Shoot card from discard when arrow is available (keep hand < 10)
+    // ArrowStab deals damage + grants AimPower directly without discard choice
     clear_hand(&mut state);
+    let pc = state.player.creature_handle;
+    let aim_before_stab = power_amount(&state, pc, PowerId::AimPower);
     let arrow_stab = add_card_to_hand(&mut state, &content, CardId::ArrowStab, 0);
-    let outcome = play_hand_card(&mut state, &content, arrow_stab, Some(enemy));
-    if let StepOutcome::NeedsChoice(req) = outcome {
-        for &c in &req.candidates {
-            assert!(generated_card_meta(state.card(c).unwrap().id).base_tags.contains(sts2_types::CardTags::SHOOT));
-        }
-        assert_eq!(CombatEngine::resume_choice(&mut state, &content, &[0]).unwrap(), StepOutcome::Completed);
-    }
+    assert_eq!(play_hand_card(&mut state, &content, arrow_stab, Some(enemy)), StepOutcome::Completed);
+    assert_eq!(power_amount(&state, pc, PowerId::AimPower), aim_before_stab + 6);
 
     // EpicRetrieval: impale, hit twice to set counter=1, then EpicRetrieval triggers AfterArrowDislodged +3 energy
     clear_hand(&mut state);
@@ -576,12 +575,12 @@ fn melodies_coda_cholimbs_kichant_chochorus_and_powers() {
     assert!(req.candidates.contains(&top_two_before[1]));
     assert_eq!(CombatEngine::resume_choice(&mut state, &content, &[0]).unwrap(), StepOutcome::Completed);
 
-    // Now Wah and Ki played; play ChoFirm -> completes 3 melodies -> Lullaby (+20 block) triggers!
+    // Now Wah and Ki played; play ChoFirm -> completes 3 melodies -> Lullaby (+12 block) triggers!
     let e_before = state.player.energy;
     let cho_firm = add_card_to_hand(&mut state, &content, CardId::ChoFirm, 0);
     play_hand_card(&mut state, &content, cho_firm, None);
-    // ChoFirm gives 6*2=12 block + Lullaby 20 block = 32; ChoFirm costs 1 energy
-    assert!(state.player.block >= 32);
+    // ChoFirm gives 5*2=10 block + Lullaby 12 block = 22; ChoFirm costs 1 energy
+    assert!(state.player.block >= 22);
     assert_eq!(state.player.energy, e_before - 1);
     assert_eq!(sts2_kernel::ordering::resolve_energy_cost(&mut state, &content, coda).unwrap(), 0);
 
@@ -631,7 +630,19 @@ fn melodies_coda_cholimbs_kichant_chochorus_and_powers() {
         clear_hand(&mut state);
         state.player.energy = 10;
         let h = add_card_to_hand(&mut state, &content, cid, 0);
-        play_hand_card(&mut state, &content, h, Some(enemy));
+        let outcome = play_hand_card(&mut state, &content, h, Some(enemy));
+        if cid == CardId::WahKi {
+            if let StepOutcome::NeedsChoice(req) = outcome {
+                let top_cand = req.candidates[0];
+                assert_eq!(
+                    CombatEngine::resume_choice(&mut state, &content, &[0]).unwrap(),
+                    StepOutcome::Completed
+                );
+                assert_eq!(state.player.draw.first().copied(), Some(top_cand));
+            }
+        } else {
+            assert_eq!(outcome, StepOutcome::Completed);
+        }
     }
 
     for cid in [CardId::WahBlast, CardId::WahSweep, CardId::WahSymphony] {
@@ -676,7 +687,7 @@ fn tarot_growth_showoff_bounce_florescence_mourning_and_all_remaining_cards() {
     // Bounce returns to hand before hand draw on turn 2
     let bounce = add_card_to_hand(&mut state, &content, CardId::Bounce, 0);
     play_hand_card(&mut state, &content, bounce, None);
-    assert_eq!(power_amount(&state, pc, PowerId::StretchPower), 10);
+    assert_eq!(power_amount(&state, pc, PowerId::StretchPower), 8);
     assert_eq!(state.card(bounce).unwrap().pile, PileType::Discard);
     CombatEngine::end_player_turn(&mut state, &content).unwrap();
     assert_eq!(state.card(bounce).unwrap().pile, PileType::Hand);
@@ -708,10 +719,19 @@ fn tarot_growth_showoff_bounce_florescence_mourning_and_all_remaining_cards() {
     state.invalidate_pile_hooks(sts2_kernel::state::HOOK_DIRTY_HAND);
     let brighten = add_card_to_hand(&mut state, &content, CardId::BrightenUp, 0);
     play_hand_card(&mut state, &content, brighten, None);
+    // Growth gains block and transforms a random Sadness into a clone of Growth
+    let blk_before_growth = state.player.block;
     let growth = add_card_to_hand(&mut state, &content, CardId::Growth, 0);
-    let stretch_before = power_amount(&state, pc, PowerId::StretchPower);
     play_hand_card(&mut state, &content, growth, None);
-    assert!(power_amount(&state, pc, PowerId::StretchPower) > stretch_before);
+    assert!(state.player.block >= blk_before_growth + 8);
+    assert!(state.cards.iter().any(|c| c.id == CardId::Growth && c.clone_of_handle.is_some()));
+
+    // Optimism exhausts Sadness in hand and draws 1 card per Sadness
+    let draw_filler = card_pile::create_card_in_combat(&mut state, &content, CardId::StrikeFool, 0).unwrap();
+    card_pile::add_sync(&mut state, draw_filler, PileType::Draw, CardPilePosition::Top);
+    let optimism = add_card_to_hand(&mut state, &content, CardId::Optimism, 0);
+    play_hand_card(&mut state, &content, optimism, None);
+    assert!(state.player.hand.contains(&draw_filler));
 
     // BlotOutTheSky generates a Shoot card set to free this turn
     clear_hand(&mut state);
@@ -725,22 +745,29 @@ fn tarot_growth_showoff_bounce_florescence_mourning_and_all_remaining_cards() {
         0
     );
 
-    // Florescence exhausts all Shoot cards and buffs TheShot
+    // Florescence selects a hand card and transforms it into TheShot
+    let target_to_transform = generated_h;
+    let _fl_extra = add_card_to_hand(&mut state, &content, CardId::StrikeFool, 0);
     let florescence = add_card_to_hand(&mut state, &content, CardId::Florescence, 0);
-    play_hand_card(&mut state, &content, florescence, None);
-    let the_shot = *state
+    let fl_out = play_hand_card(&mut state, &content, florescence, None);
+    let StepOutcome::NeedsChoice(fl_req) = fl_out else {
+        panic!("expected Florescence Hand selection choice");
+    };
+    assert!(fl_req.candidates.contains(&target_to_transform));
+    let fl_idx = fl_req
+        .candidates
+        .iter()
+        .position(|&h| h == target_to_transform)
+        .unwrap();
+    assert_eq!(
+        CombatEngine::resume_choice(&mut state, &content, &[fl_idx]).unwrap(),
+        StepOutcome::Completed
+    );
+    assert!(state
         .player
         .hand
         .iter()
-        .find(|&&h| state.card(h).unwrap().id == CardId::TheShot)
-        .unwrap();
-    let count_field = state
-        .card_ext(state.card(the_shot).unwrap().ext_index)
-        .unwrap()
-        .private_fields
-        .get("TheShot._cardsExhaustedByFlorescence")
-        .cloned();
-    assert_eq!(count_field, Some(FieldValue::Decimal(Dec::ONE)));
+        .any(|&h| state.card(h).is_some_and(|c| c.id == CardId::TheShot)));
 
     // MourningBlow sets transform_into_after_play + returns transformed Sadness to Hand via default_result_location
     let mourning = add_card_to_hand(&mut state, &content, CardId::MourningBlow, 0);

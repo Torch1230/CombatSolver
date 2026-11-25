@@ -216,6 +216,8 @@ fn build_combat(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: Default::default(),
         pending: None,
@@ -297,11 +299,17 @@ fn all_91_silent_cards_have_metadata_upgrade_and_zero_unsupported() {
         .unwrap()
         .flags
         .contains(CardStaticFlags::IS_X_ENERGY_COST));
-    assert!(Sts2Content
+    assert!(!Sts2Content
         .card_meta(CardId::GrandFinale)
         .unwrap()
         .hook_mask
         .contains(HookSlot::ShouldPlay));
+    let (mut gf_state, gf_hand, _) = build_combat(&[CardId::GrandFinale, CardId::StrikeSilent], &[], &[50], 10);
+    let gf_h = gf_hand[0];
+    let filler_h = gf_hand[1];
+    assert!(Sts2Content.card_is_playable(&gf_state, gf_h).unwrap());
+    gf_state.player.draw.push(filler_h);
+    assert!(!Sts2Content.card_is_playable(&gf_state, gf_h).unwrap());
     assert!(Sts2Content
         .card_meta(CardId::Pinpoint)
         .unwrap()

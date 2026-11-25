@@ -341,7 +341,7 @@ impl ContentDispatcher for NzTestDispatcher {
     }
 }
 
-const ALL_NZ_POWERS: [PowerId; 135] = [
+const ALL_NZ_POWERS: [PowerId; 134] = [
     PowerId::NecroMasteryPower,
     PowerId::NemesisPower,
     PowerId::NeurosurgePower,
@@ -350,6 +350,7 @@ const ALL_NZ_POWERS: [PowerId; 135] = [
     PowerId::NoxiousFumesPower,
     PowerId::NoBlockPower,
     PowerId::NoDrawPower,
+    PowerId::NoEnergyGainPower,
     PowerId::OblivionPower,
     PowerId::OneForAllPower,
     PowerId::OneTwoPunchPower,
@@ -443,8 +444,6 @@ const ALL_NZ_POWERS: [PowerId; 135] = [
     PowerId::TaintedPower,
     PowerId::TangledPower,
     PowerId::TankPower,
-    PowerId::TemporaryDexterityPower,
-    PowerId::TemporaryStrengthPower,
     PowerId::TenderPower,
     PowerId::TerritorialPower,
     PowerId::TheBombPower,
@@ -533,7 +532,6 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
-            destroy_after_impaled: false,
         });
     }
 
@@ -669,6 +667,8 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy_handle],
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -719,7 +719,7 @@ fn push_power(
 }
 
 #[test]
-fn all_135_nz_powers_have_exact_metadata() {
+fn all_134_nz_powers_have_exact_metadata() {
     let content = Sts2Content;
     let mut prev = "";
     for &id in &ALL_NZ_POWERS {
@@ -739,7 +739,7 @@ fn all_135_nz_powers_have_exact_metadata() {
 
         let expect_keep = matches!(
             id,
-            PowerId::PainfulStabsPower | PowerId::SteamEruptionPower | PowerId::WuppysLoyaltyPower
+            PowerId::SteamEruptionPower | PowerId::WuppysLoyaltyPower
         );
         assert_eq!(
             !meta.flags.contains(PowerStaticFlags::REMOVE_AFTER_OWNER_DEATH),
@@ -765,8 +765,6 @@ fn all_135_nz_powers_have_exact_metadata() {
                 | PowerId::ShacklingPotionPower
                 | PowerId::SpeedPotionPower
                 | PowerId::SynchronizePower
-                | PowerId::TemporaryDexterityPower
-                | PowerId::TemporaryStrengthPower
         );
         assert_eq!(
             meta.flags.contains(PowerStaticFlags::IS_TEMPORARY),
@@ -814,10 +812,9 @@ fn all_135_nz_powers_have_exact_metadata() {
             "ShouldOwnerDeathTriggerFatal hook mismatch on {entry}"
         );
 
-        // Verify PowerId::from_model_id_str round-trips and stays in N-Z
         assert_eq!(PowerId::from_model_id_str(id.model_id_str()), Some(id));
     }
-    assert_eq!(ALL_NZ_POWERS.len(), 135);
+    assert_eq!(ALL_NZ_POWERS.len(), 134);
 }
 
 #[test]
@@ -1093,9 +1090,9 @@ fn temporary_powers_and_stat_interactions() {
     let (mut state, enemy) = build_battle(CharacterId::Ironclad, &[], 50);
     let pc = state.player.creature_handle;
 
-    // TemporaryStrengthPower / PiercingWailPower / SpeedPotionPower / SynchronizePower
+    // FlexPotionPower / PiercingWailPower / SpeedPotionPower / SynchronizePower
     for &(pid, target_stat, expected_delta) in &[
-        (PowerId::TemporaryStrengthPower, PowerId::StrengthPower, 4),
+        (PowerId::FlexPotionPower, PowerId::StrengthPower, 4),
         (PowerId::PiercingWailPower, PowerId::StrengthPower, -4),
         (PowerId::SpeedPotionPower, PowerId::DexterityPower, 4),
         (PowerId::SynchronizePower, PowerId::FocusPower, 4),
@@ -1401,11 +1398,11 @@ fn remaining_nz_powers_and_wired_kernel_hooks() {
     // Lightning evoke (8) + Thunder (6) = 14
     assert_eq!(state.creature(enemy).unwrap().current_hp, hp_before_thunder - 14);
 
-    // QuietusPower wired via arrow::try_shoot_arrow
+    // QuietusPower boosts attack damage on arrow cards without destroying arrows.
     power::apply(&mut state, &content, PowerId::QuietusPower, pc, Dec::TWO, Some(pc), None).unwrap();
     let shot = arrow::try_shoot_arrow(&mut state, &content, Some(CardHandle(1))).unwrap();
     assert_eq!(shot, Some(0));
-    assert!(state.player.arrows[0].destroy_after_impaled);
+    assert_eq!(state.player.arrows[0].status, ArrowStatus::Away);
 
     // SurroundedPower wired via hooks::before_potion_used
     let surr_h = push_power(&mut state, pc, PowerId::SurroundedPower, 1, Some(enemy), Vec::new());
@@ -1572,4 +1569,143 @@ fn cruelty_debilitate_and_vulnerable_weak_cross_batch() {
     )
     .unwrap();
     assert_eq!(dmg_both, Dec::from_i32(15));
+}
+
+#[test]
+fn v0114_nz_powers_no_energy_gain_tune_stretch_unmovable_panache_and_deferred_painful_stabs() {
+    let content = Sts2Content;
+
+    // 1. NoEnergyGainPower zeroes non-reset energy gain and expires at AfterSideTurnEnd.
+    let (mut s_neg, _) = build_battle(CharacterId::Ironclad, &[CardId::StrikeIronclad], 50);
+    let pc_neg = s_neg.player.creature_handle;
+    power::apply(&mut s_neg, &content, PowerId::NoEnergyGainPower, pc_neg, Dec::ONE, Some(pc_neg), None).unwrap();
+    sts2_kernel::commands::gold::gain_energy(&mut s_neg, &content, Dec::from_i32(3)).unwrap();
+    assert_eq!(s_neg.player.energy, 3);
+    sts2_kernel::hooks::after_side_turn_end(&mut s_neg, &content, CombatSide::Player, &[pc_neg]).unwrap();
+    assert!(s_neg.creature(pc_neg).unwrap().powers.iter().all(|p| p.id != PowerId::NoEnergyGainPower));
+    sts2_kernel::commands::gold::gain_energy(&mut s_neg, &content, Dec::from_i32(2)).unwrap();
+    assert_eq!(s_neg.player.energy, 5);
+
+    // 2. TunePower upgrades on first Ki card play in a turn.
+    let (mut s_tune, _) = build_battle(
+        CharacterId::Fool,
+        &[CardId::KiRest, CardId::StrikeFool, CardId::KiRest],
+        50,
+    );
+    s_tune.player.energy = 10;
+    let pc_tune = s_tune.player.creature_handle;
+    power::apply(&mut s_tune, &content, PowerId::TunePower, pc_tune, Dec::ONE, Some(pc_tune), None).unwrap();
+    let mut c_tune = SmallVec::new();
+    CombatEngine::play_card(&mut s_tune, &content, CardHandle(1), None, &mut c_tune).unwrap();
+    assert_eq!(
+        s_tune.cards.iter().filter(|c| c.upgrade_level > 0).count(),
+        1
+    );
+    // Second Ki play in the same turn must not trigger TunePower again.
+    CombatEngine::play_card(&mut s_tune, &content, CardHandle(3), None, &mut c_tune).unwrap();
+    assert_eq!(
+        s_tune.cards.iter().filter(|c| c.upgrade_level > 0).count(),
+        1
+    );
+
+    // 3. StretchPower snapshots _amountWhenCardStarted and applies to Adroit-enchanted non-block card,
+    //    plus UnmovablePower counts distinct play_ordinal across multi-hit/replayed block gains.
+    let (mut s_blk, _) = build_battle(
+        CharacterId::Fool,
+        &[CardId::StrikeFool, CardId::DefendFool, CardId::DefendFool],
+        50,
+    );
+    let pc_blk = s_blk.player.creature_handle;
+    s_blk.card_extensions.push(sts2_kernel::CardExtension {
+        enchantment: Some(sts2_kernel::EnchantmentInst {
+            id: EnchantmentId::Adroit,
+            amount: 3,
+            status: sts2_types::EnchantmentStatus::Normal,
+            private_fields: Default::default(),
+        }),
+        local_energy_modifiers: SmallVec::new(),
+        private_fields: Default::default(),
+    });
+    s_blk.cards[0].ext_index = Some(0);
+    s_blk.invalidate_hook_cache();
+    power::apply(&mut s_blk, &content, PowerId::StretchPower, pc_blk, Dec::from_i32(4), Some(pc_blk), None).unwrap();
+    let mut c_blk = SmallVec::new();
+    let e_blk = s_blk.enemy_handles[0];
+    CombatEngine::play_card(&mut s_blk, &content, CardHandle(1), Some(e_blk), &mut c_blk).unwrap();
+    // Adroit (3) + StretchPower (4) = 7 block, Stretch consumed.
+    assert_eq!(s_blk.player.block, 7);
+    assert!(s_blk.creature(pc_blk).unwrap().powers.iter().all(|p| p.id != PowerId::StretchPower));
+
+    let (mut s_unmov, _) = build_battle(
+        CharacterId::Fool,
+        &[CardId::DefendFool, CardId::DefendFool],
+        50,
+    );
+    let pc_unmov = s_unmov.player.creature_handle;
+    s_unmov.card_extensions.push(sts2_kernel::CardExtension {
+        enchantment: Some(sts2_kernel::EnchantmentInst {
+            id: EnchantmentId::Adroit,
+            amount: 3,
+            status: sts2_types::EnchantmentStatus::Normal,
+            private_fields: Default::default(),
+        }),
+        local_energy_modifiers: SmallVec::new(),
+        private_fields: Default::default(),
+    });
+    s_unmov.cards[0].ext_index = Some(0);
+    s_unmov.invalidate_hook_cache();
+    power::apply(&mut s_unmov, &content, PowerId::UnmovablePower, pc_unmov, Dec::ONE, Some(pc_unmov), None).unwrap();
+    let mut c_unmov = SmallVec::new();
+    CombatEngine::play_card(&mut s_unmov, &content, CardHandle(1), None, &mut c_unmov).unwrap();
+    // Both block gains inside the same CardPlay (DefendFool 5 + Adroit 3) share one play_ordinal: 5*2 + 3*2 = 16.
+    assert_eq!(s_unmov.player.block, 16);
+    // Second distinct DefendFool play in the same turn is not doubled: +5 -> 21 block.
+    CombatEngine::play_card(&mut s_unmov, &content, CardHandle(2), None, &mut c_unmov).unwrap();
+    assert_eq!(s_unmov.player.block, 21);
+
+    // Replay loop starts a fresh CardPlay ordinal per iteration (matching HotCombatEngine & STS2).
+    let (mut s_replay, _) = build_battle(CharacterId::Fool, &[CardId::DefendFool], 50);
+    let pc_replay = s_replay.player.creature_handle;
+    power::apply(&mut s_replay, &content, PowerId::UnmovablePower, pc_replay, Dec::ONE, Some(pc_replay), None).unwrap();
+    s_replay.card_mut(CardHandle(1)).unwrap().base_replay_count = 1;
+    let mut c_replay = SmallVec::new();
+    CombatEngine::play_card(&mut s_replay, &content, CardHandle(1), None, &mut c_replay).unwrap();
+    assert_eq!(s_replay.player.block, 15);
+
+    // 4. PanachePower tracks _cardsLeft and resets to 5 at AfterSideTurnEnd.
+    power::apply(&mut s_blk, &content, PowerId::PanachePower, pc_blk, Dec::from_i32(10), Some(pc_blk), None).unwrap();
+    CombatEngine::play_card(&mut s_blk, &content, CardHandle(2), None, &mut c_blk).unwrap();
+    CombatEngine::play_card(&mut s_blk, &content, CardHandle(3), None, &mut c_blk).unwrap();
+    let panache_p = s_blk.creature(pc_blk).unwrap().powers.iter().find(|p| p.id == PowerId::PanachePower).unwrap().clone();
+    assert!(panache_p.ext_index.is_some());
+    assert_eq!(
+        s_blk.power_extensions[panache_p.ext_index.unwrap() as usize].private_fields.get("PanachePower._cardsLeft"),
+        Some(&FieldValue::Int(4))
+    );
+    sts2_kernel::hooks::after_side_turn_end(&mut s_blk, &content, CombatSide::Player, &[pc_blk]).unwrap();
+    let reset_left = s_blk
+        .power_extensions
+        .get(panache_p.ext_index.unwrap() as usize)
+        .and_then(|pe| pe.private_fields.get("PanachePower._cardsLeft").cloned());
+    assert_eq!(reset_left, Some(FieldValue::Int(5)));
+
+    // 5. Deferred death cleanup during enemy attack keeps PainfulStabsPower alive until attack finishes.
+    let (mut s_ps, e_ps) = build_battle(CharacterId::Ironclad, &[CardId::StrikeIronclad], 4);
+    let pc_ps = s_ps.player.creature_handle;
+    let teammate = CreatureHandle(3);
+    let mut e2 = s_ps.creature(e_ps).unwrap().clone();
+    e2.handle = teammate;
+    e2.combat_id = Some(2);
+    e2.current_hp = 50;
+    e2.max_hp = 50;
+    s_ps.creatures.push(e2);
+    s_ps.enemy_handles.push(teammate);
+    s_ps.invalidate_creature_hooks();
+    power::apply(&mut s_ps, &content, PowerId::PainfulStabsPower, e_ps, Dec::ONE, Some(e_ps), None).unwrap();
+    power::apply(&mut s_ps, &content, PowerId::ThornsPower, pc_ps, Dec::from_i32(10), Some(pc_ps), None).unwrap();
+    AttackBuilder::from_monster(e_ps, Dec::from_i32(5))
+        .execute(&mut s_ps, &content)
+        .unwrap();
+    assert!(s_ps.creature(e_ps).unwrap().is_dead());
+    assert!(s_ps.player.discard.iter().any(|&h| s_ps.card(h).unwrap().id == CardId::Wound));
 }

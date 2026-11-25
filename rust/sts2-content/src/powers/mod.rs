@@ -14,13 +14,13 @@ use sts2_types::{
 };
 
 const _: () = {
-    assert!(PowerId::MythicFormPower as usize == 165);
-    assert!(PowerId::NecroMasteryPower as usize == 166);
+    assert!(PowerId::MythicFormPower as usize == 168);
+    assert!(PowerId::NecroMasteryPower as usize == 169);
 };
 
 #[inline(always)]
 const fn is_batch_a_m(id: PowerId) -> bool {
-    (id as usize) < 166
+    (id as usize) < 169
 }
 
 #[inline(always)]
@@ -90,7 +90,6 @@ pub fn dispatch_should_creature_removed_after_death(
             PowerId::AdaptablePower
                 | PowerId::DieForYouPower
                 | PowerId::IllusionPower
-                | PowerId::PainfulStabsPower
                 | PowerId::ReattachPower
                 | PowerId::SteamEruptionPower
                 | PowerId::WuppysLoyaltyPower
@@ -238,7 +237,6 @@ fn dispatch_try_modify_energy_cost_late(
                 }
             }
             PowerId::FreeAttackPower
-            | PowerId::FreeCardPower
             | PowerId::FreePowerPower
             | PowerId::FreeSkillPower => {
                 if creature == state.player.creature_handle

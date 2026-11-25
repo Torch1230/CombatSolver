@@ -81,7 +81,6 @@ fn build_combat(
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
-            destroy_after_impaled: false,
         });
     }
 
@@ -242,6 +241,8 @@ fn build_combat(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -2450,10 +2451,58 @@ fn frozen_incumbent_bound_prunes_strictly_worse_and_preserves_v_tie_higher_hp() 
     assert!(inc.tighten(&rb, true, 0, -1000, 0, 0, 0, 3, 0, false, false));
 
     // Strictly worse V (-1100 centi-HP at turn 2) must be pruned.
-    assert!(inc.is_pruned(&cert, &rb, 59, 80, 0, 0, false, false, 2, 0, 0, 0, false));
+    assert!(inc.is_pruned(&cert, &rb, 59, 80, 0, 0, 0, false, false, 2, 0, 0, 0, false));
 
     // Tying V = -1000 centi-HP with HIGHER ending HP (-100 HP delta - 900 potion cost = -1000, -100 > -1000) must NOT be pruned.
-    assert!(!inc.is_pruned(&cert, &rb, 69, 80, 0, 0, false, false, 4, 1, 1, 900, false));
+    assert!(!inc.is_pruned(&cert, &rb, 69, 80, 0, 0, 0, false, false, 4, 1, 1, 900, false));
+
+    // v0.114 / hot search parity checks: persistent_hp_scale (35/20), BloodPotion root cost, Feed exclusion, no-op potions.
+    assert_eq!(sts2_search::eval::ActEndingBossPolicy::persistent_hp_scale(BossHpRelief::ActClearHeal), 35);
+    assert_eq!(sts2_search::eval::ActEndingBossPolicy::persistent_hp_scale(BossHpRelief::RunEnding), 20);
+    assert_eq!(
+        sts2_search::eval::PotionValuationRegistry::strategic_hp_cost_for_root(
+            PotionId::BloodPotion,
+            false,
+            80,
+            &Default::default(),
+        ),
+        17
+    );
+    let feed_delta = sts2_search::eval::ActEndingBossPolicy::compute_net_persistent_hp_delta_centi(
+        70,
+        0,
+        70,
+        83,
+        80,
+        0,
+        0,
+        BossHpRelief::None,
+        false,
+        3,
+    );
+    assert_eq!(feed_delta, 0);
+
+    let mut forge_root = build_combat(
+        CharacterId::Ironclad,
+        &[CardId::StrikeIronclad],
+        &[],
+        &[PotionId::BlessingOfTheForge, PotionId::GamblersBrew, PotionId::SwiftPotion],
+        &[(MonsterId::Nibbit, 15)],
+        RoomType::Monster,
+        "NOOP_POTIONS_V0114",
+    );
+    for c in &mut forge_root.cards {
+        c.upgrade_level = 1;
+    }
+    use sts2_search::por::is_provable_no_op_potion_use;
+    assert!(is_provable_no_op_potion_use(&forge_root, PotionId::BlessingOfTheForge, false, false, false, false));
+    forge_root.player.draw.clear();
+    forge_root.player.discard.clear();
+    assert!(is_provable_no_op_potion_use(&forge_root, PotionId::SwiftPotion, false, false, false, false));
+    assert!(is_provable_no_op_potion_use(&forge_root, PotionId::DistilledChaos, false, false, false, false));
+    forge_root.player.hand.clear();
+    assert!(is_provable_no_op_potion_use(&forge_root, PotionId::GamblersBrew, false, false, false, false));
+    assert!(is_provable_no_op_potion_use(&forge_root, PotionId::Ashwater, false, false, false, false));
 }
 
 #[test]

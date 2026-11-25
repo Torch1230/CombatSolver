@@ -14,8 +14,7 @@ use sts2_types::{
     ValueProp,
 };
 
-const ALL_46_ACT3_SHARED: [MonsterId; 46] = [
-    MonsterId::ActOneGuardian,
+const ALL_42_ACT3_SHARED: [MonsterId; 42] = [
     MonsterId::Aeonglass,
     MonsterId::Axebot,
     MonsterId::BattleFriendV1,
@@ -33,7 +32,6 @@ const ALL_46_ACT3_SHARED: [MonsterId; 46] = [
     MonsterId::GasBomb,
     MonsterId::GlobeHead,
     MonsterId::Guardbot,
-    MonsterId::HardyBrute,
     MonsterId::LivingShield,
     MonsterId::MagiKnight,
     MonsterId::MechaKnight,
@@ -55,9 +53,7 @@ const ALL_46_ACT3_SHARED: [MonsterId; 46] = [
     MonsterId::TheLost,
     MonsterId::TorchHeadAmalgam,
     MonsterId::ToughEgg,
-    MonsterId::TrainingDummy,
     MonsterId::TurretOperator,
-    MonsterId::WanderingGrunt,
     MonsterId::Wriggler,
     MonsterId::Wuppy,
     MonsterId::Zapbot,
@@ -226,6 +222,8 @@ fn build_battle(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::new(),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -281,11 +279,11 @@ fn build_battle(
 }
 
 #[test]
-fn all_46_act3_shared_monsters_meta_hp_setup_roll_and_intent_work() {
+fn all_42_act3_shared_monsters_meta_hp_setup_roll_and_intent_work() {
     let content = Sts2Content;
-    assert_eq!(ALL_46_ACT3_SHARED.len(), 46);
+    assert_eq!(ALL_42_ACT3_SHARED.len(), 42);
 
-    for &mid in &ALL_46_ACT3_SHARED {
+    for &mid in &ALL_42_ACT3_SHARED {
         let meta = content.monster_meta(mid).unwrap();
         match mid {
             MonsterId::Aeonglass => {
@@ -317,7 +315,7 @@ fn all_46_act3_shared_monsters_meta_hp_setup_roll_and_intent_work() {
         );
         let (mut state_a0, enemies_a0) = if is_secondary {
             build_battle(
-                &[(mid, slot), (MonsterId::TrainingDummy, Some("slot_1"))],
+                &[(mid, slot), (MonsterId::FuzzyWurmCrawler, Some("slot_1"))],
                 0,
                 GameMode::Standard,
                 &[],
@@ -370,7 +368,7 @@ fn osty_and_all_pet_monsters_parity() {
 
     // Also verify Osty summoned as player pet via Necrobinder starter flow.
     let (mut state, _) = build_battle(
-        &[(MonsterId::TrainingDummy, None)],
+        &[(MonsterId::FuzzyWurmCrawler, None)],
         0,
         GameMode::Standard,
         &[RelicId::BoundPhylactery],
@@ -743,7 +741,7 @@ fn axebot_stock_respawn_and_battle_friend_escape_and_gas_bomb() {
     // GasBomb self-destructs and removes itself on EXPLODE_MOVE
     let (mut gb_state, gb_enemies) = build_battle(
         &[
-            (MonsterId::TrainingDummy, Some("slot_0")),
+            (MonsterId::ToughEgg, Some("slot_0")),
             (MonsterId::GasBomb, Some("slot_1")),
         ],
         0,
@@ -754,7 +752,7 @@ fn axebot_stock_respawn_and_battle_friend_escape_and_gas_bomb() {
     let gas = gb_enemies[1];
     CombatEngine::start_combat(&mut gb_state, &content).unwrap();
     CombatEngine::end_player_turn(&mut gb_state, &content).unwrap();
-    assert_eq!(gb_state.player.current_hp, 999 - 8 - 8);
+    assert_eq!(gb_state.player.current_hp, 999 - 8);
     assert!(gb_state.removed_handles.contains(&gas));
     assert!(!gb_state.enemy_handles.contains(&gas));
 }
@@ -891,7 +889,7 @@ fn remaining_special_mechanics_knights_lost_forgotten_egg_owl_frog_shield_wriggl
     // EyeWithTeeth IllusionPower revive cycle
     let (mut eye_state, eye_enemies) = build_battle(
         &[
-            (MonsterId::TrainingDummy, Some("slot_0")),
+            (MonsterId::FuzzyWurmCrawler, Some("slot_0")),
             (MonsterId::EyeWithTeeth, Some("slot_1")),
         ],
         0,

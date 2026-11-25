@@ -917,6 +917,15 @@ internal static partial class InCombatLiveStateCapturer
                     && e.CardPlay.Card.Type == CardType.Skill);
                 fields["SmoggyPower._skillCardPlayStartedThisTurn"] = BoolVal(skillStarted);
                 break;
+            case StretchPower stretch:
+                if (stretch.GetInternalData<StretchPower.Data>().cardPlay is not null)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_private_state_unmapped",
+                        "powers.StretchPower._cardPlay",
+                        "StretchPower has an active in-flight cardPlay reference.");
+                }
+                break;
             case SurroundedPower surrounded:
                 fields["SurroundedPower.<Facing>k__BackingField"] = IntVal((int)surrounded.Facing);
                 break;

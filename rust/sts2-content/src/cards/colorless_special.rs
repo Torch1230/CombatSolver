@@ -418,7 +418,7 @@ fn resolved_card_type(state: &BattleState, card: &CardInst) -> CardType {
 
 /// Pure `TheTower` damage helper (awaiting `RootStaticContext.total_floor`).
 pub const fn the_tower_damage(upg: bool, total_floor: i32) -> Dec {
-    let per_floor = if upg { 3 } else { 2 };
+    let per_floor = if upg { 2 } else { 1 };
     Dec::from_i32(per_floor * total_floor)
 }
 
@@ -792,7 +792,7 @@ pub fn on_play(
         CardId::BelieveInYou => {
             let target = ctx.target.unwrap_or(owner);
             if state.creature(target).is_some_and(|c| c.is_player) {
-                gold::gain_energy(state, Dec::from_i32(if upg { 3 } else { 2 }))?;
+                gold::gain_energy(state, content, Dec::from_i32(if upg { 3 } else { 2 }))?;
             }
             Ok(CardPlayOutcome::default())
         }
@@ -817,7 +817,7 @@ pub fn on_play(
         }
         CardId::BrightestFlame => {
             let amt = if upg { 3 } else { 2 };
-            gold::gain_energy(state, Dec::from_i32(amt))?;
+            gold::gain_energy(state, content, Dec::from_i32(amt))?;
             let _ = card_pile::draw(state, content, amt, false)?;
             lose_max_hp(state, content, owner, Dec::from_i32(2))?;
             state.semantic_history.record_brightest_flame_max_hp_loss(2);
@@ -927,7 +927,7 @@ pub fn on_play(
                 content,
                 PowerId::DoomPower,
                 target,
-                Dec::from_i32(if upg { 99 } else { 75 }),
+                Dec::from_i32(if upg { 81 } else { 66 }),
                 Some(owner),
                 Some(ctx.card),
             )?;
@@ -1227,7 +1227,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Fuel => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 2 } else { 1 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 2 } else { 1 }))?;
             Ok(CardPlayOutcome::default())
         }
         CardId::GangUp => {
@@ -1466,7 +1466,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Joy => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 2 } else { 1 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 2 } else { 1 }))?;
             let _ = card_pile::draw(state, content, 1, false)?;
             Ok(CardPlayOutcome::default())
         }
@@ -1519,7 +1519,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Luminesce => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 3 } else { 2 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 3 } else { 2 }))?;
             Ok(CardPlayOutcome::default())
         }
         CardId::MadScience => {
@@ -1714,17 +1714,11 @@ pub fn on_play(
         }
         CardId::MyShinies => {
             let target = require_target(ctx, "MyShinies")?;
-            let gold_per_hit = if upg { 10 } else { 20 };
-            let hits = state.player.gold / gold_per_hit;
-            AttackBuilder::from_card(
-                owner,
-                ctx.card,
-                *ctx,
-                Dec::ONE,
-                AttackTargetSpec::Single(target),
-            )
-            .with_hit_count(hits)
-            .execute(state, content)?;
+            let hits = 1 + state.player.gold / 25;
+            let dmg = Dec::from_i32(if upg { 3 } else { 2 });
+            AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
+                .with_hit_count(hits)
+                .execute(state, content)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::NeowsFury => {
@@ -1911,7 +1905,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Production => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 3 } else { 2 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 3 } else { 2 }))?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Prolong => {
@@ -2067,7 +2061,7 @@ pub fn on_play(
                 for _ in 0..draw_count {
                     let _ = card_pile::draw(state, content, 1, false)?;
                 }
-                gold::gain_energy(state, Dec::from_i32(if upg { 3 } else { 2 }))?;
+                gold::gain_energy(state, content, Dec::from_i32(if upg { 3 } else { 2 }))?;
             }
             Ok(CardPlayOutcome::default())
         }
@@ -2404,7 +2398,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Temperance => {
-            let blk = Dec::from_i32(if upg { 35 } else { 30 });
+            let blk = Dec::from_i32(if upg { 25 } else { 20 });
             block::gain_block(
                 state,
                 content,
@@ -2466,7 +2460,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::TheEmperor => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 9 } else { 7 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 4 } else { 3 }))?;
             Ok(CardPlayOutcome::default())
         }
         CardId::TheEmpress => {
@@ -2504,15 +2498,8 @@ pub fn on_play(
                 }
                 let mut sel_rng = *state.run_rngs.get(RunRngType::CombatCardSelection);
                 ordering::stable_shuffle_cards(state, content, &mut candidates, &mut sel_rng)?;
-                let picked = if let Some(&first) = candidates.first() {
-                    Some(first)
-                } else {
-                    let mut fallback = state.player.hand.to_vec();
-                    ordering::stable_shuffle_cards(state, content, &mut fallback, &mut sel_rng)?;
-                    fallback.first().copied()
-                };
                 *state.run_rngs.get_mut(RunRngType::CombatCardSelection) = sel_rng;
-                if let Some(picked_h) = picked {
+                if let Some(&picked_h) = candidates.first() {
                     if !hooks::is_over_or_ending(state)
                         && state.player_creature().is_some_and(|c| c.is_alive())
                     {
@@ -2590,15 +2577,15 @@ pub fn on_play(
                 |_| true,
             );
             for cid in chosen {
-                let h = card_pile::create_card_in_combat(state, content, cid, 0)?;
-                if let Some(ext) = state.card_ext_mut(h) {
-                    ext.push_local_energy_modifier(LocalEnergyModifier {
-                        kind: LocalEnergyModifierKind::AddThisTurnOrUntilPlayed,
-                        amount: -1,
-                        is_reduce_only: false,
-                    });
-                }
-                generate_existing_card_into_hand(content, state, h)?;
+                let _ = card_pile::add_generated_card_to_combat(
+                    state,
+                    content,
+                    cid,
+                    PileType::Hand,
+                    CardPilePosition::Bottom,
+                    0,
+                    Some(owner),
+                )?;
             }
             Ok(CardPlayOutcome::default())
         }
@@ -2668,19 +2655,7 @@ pub fn on_play(
         }
         CardId::TheShot => {
             let target = require_target(ctx, "TheShot")?;
-            let extra = get_card_dec_field(
-                state,
-                ctx.card,
-                "TheShot._extraDamage",
-                Dec::from_i32(if upg { 13 } else { 10 }),
-            );
-            let exhausted = get_card_dec_field(
-                state,
-                ctx.card,
-                "TheShot._cardsExhaustedByFlorescence",
-                Dec::ZERO,
-            );
-            let dmg = extra.checked_mul(exhausted)?;
+            let dmg = Dec::from_i32(if upg { 25 } else { 20 });
             let cmd =
                 AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
                     .from_arrow();
@@ -2712,16 +2687,21 @@ pub fn on_play(
         CardId::TheSun => {
             let amt = if upg { 3 } else { 2 };
             let _ = card_pile::draw(state, content, amt, false)?;
-            gold::gain_energy(state, Dec::from_i32(amt))?;
-            let _ = card_pile::add_generated_card_to_combat(
-                state,
-                content,
-                CardId::Soot,
-                PileType::Discard,
-                CardPilePosition::Bottom,
-                0,
-                Some(owner),
-            )?;
+            gold::gain_energy(state, content, Dec::from_i32(amt))?;
+            for _ in 0..2 {
+                if hooks::is_over_or_ending(state) {
+                    break;
+                }
+                let _ = card_pile::add_generated_card_to_combat(
+                    state,
+                    content,
+                    CardId::Soot,
+                    PileType::Draw,
+                    CardPilePosition::Random,
+                    0,
+                    Some(owner),
+                )?;
+            }
             Ok(CardPlayOutcome::default())
         }
         CardId::TheTower => {
@@ -3217,7 +3197,7 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-        CardId::SpoilsMap => Ok(HookResult::default()),
+        CardId::SovereignBlade | CardId::SpoilsMap => Ok(HookResult::default()),
         CardId::Void => {
             if slot == HookSlot::AfterCardDrawn {
                 if let HookArgs::CardDrawn { card: drawn, .. } = args {
@@ -3309,7 +3289,7 @@ pub fn mad_science_on_play(
                 Some(*ctx),
             )?;
             match rider {
-                MadScienceRider::Energized => gold::gain_energy(state, Dec::from_i32(2))?,
+                MadScienceRider::Energized => gold::gain_energy(state, content, Dec::from_i32(2))?,
                 MadScienceRider::Wisdom => {
                     let _ = card_pile::draw(state, content, 3, false)?;
                 }
@@ -3816,7 +3796,7 @@ fn apply_the_hermit(
             card_cmd::discard_single(state, content, h)?;
         }
     }
-    let _ = card_pile::draw(state, content, if upg { 3 } else { 2 }, false)?;
+    let _ = card_pile::draw(state, content, if upg { 4 } else { 3 }, false)?;
     Ok(())
 }
 

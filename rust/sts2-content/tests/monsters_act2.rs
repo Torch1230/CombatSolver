@@ -94,7 +94,6 @@ fn build_battle_with(
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
-            destroy_after_impaled: false,
         });
     }
 
@@ -240,6 +239,8 @@ fn build_battle_with(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,

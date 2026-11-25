@@ -674,7 +674,7 @@ pub fn on_play(
         CardId::Bloodletting => {
             self_damage(state, content, owner, ctx, 3)?;
             let energy = Dec::from_i32(if upg { 3 } else { 2 });
-            gold::gain_energy(state, energy)?;
+            gold::gain_energy(state, content, energy)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Bludgeon => {
@@ -955,7 +955,7 @@ pub fn on_play(
         CardId::ForgottenRitual => {
             if count_cards_exhausted_this_turn(state) > 0 {
                 let energy = Dec::from_i32(if upg { 4 } else { 3 });
-                gold::gain_energy(state, energy)?;
+                gold::gain_energy(state, content, energy)?;
             }
             Ok(CardPlayOutcome::default())
         }
@@ -1109,7 +1109,7 @@ pub fn on_play(
         }
         CardId::Offering => {
             self_damage(state, content, owner, ctx, 6)?;
-            gold::gain_energy(state, Dec::TWO)?;
+            gold::gain_energy(state, content, Dec::TWO)?;
             let cards = if upg { 5 } else { 3 };
             let _ = card_pile::draw(state, content, cards, false)?;
             Ok(CardPlayOutcome::default())
@@ -1622,7 +1622,7 @@ pub fn dispatch_hook(
                         )?;
                         let energy = Dec::from_i32(if ci.upgrade_level > 0 { 3 } else { 2 });
                         for _ in 0..play_count {
-                            gold::gain_energy(state, energy)?;
+                            gold::gain_energy(state, content, energy)?;
                         }
                     }
                 }

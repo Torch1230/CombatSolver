@@ -94,7 +94,10 @@ pub fn is_playable(state: &BattleState, card: CardHandle) -> Result<bool, Kernel
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?
         .id;
     let _ = card_meta(id)?;
-    Ok(true)
+    match id {
+        CardId::GrandFinale => Ok(state.player.draw.is_empty()),
+        _ => Ok(true),
+    }
 }
 
 #[inline]
@@ -337,7 +340,7 @@ pub fn on_play(
         }
         CardId::Adrenaline => {
             let energy = Dec::from_i32(if upg { 2 } else { 1 });
-            gold::gain_energy(state, energy)?;
+            gold::gain_energy(state, content, energy)?;
             let _ = card_pile::draw(state, content, 2, false)?;
             Ok(CardPlayOutcome::default())
         }
@@ -1061,7 +1064,7 @@ pub fn on_play(
         }
         CardId::Tactician => {
             let energy = Dec::from_i32(if upg { 2 } else { 1 });
-            gold::gain_energy(state, energy)?;
+            gold::gain_energy(state, content, energy)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::TheHunt => {
@@ -1235,18 +1238,6 @@ pub fn dispatch_hook(
         .id;
     let _ = card_meta(id)?;
     match id {
-        CardId::GrandFinale => {
-            if slot == HookSlot::ShouldPlay {
-                if let HookArgs::CardOnly(target_card) = args {
-                    let allow = *target_card != card || state.player.draw.is_empty();
-                    return Ok(HookResult {
-                        bool_val: Some(allow),
-                        ..Default::default()
-                    });
-                }
-            }
-            Ok(HookResult::default())
-        }
         CardId::Pinpoint => {
             match slot {
                 HookSlot::AfterCardEnteredCombat => {

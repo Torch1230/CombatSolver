@@ -150,6 +150,7 @@ pub struct OrbDto {
 #[serde(rename_all = "camelCase")]
 pub struct ArrowSlotDto {
     pub status: String,
+    #[serde(default, skip_serializing)]
     pub destroy_after_impaled: bool,
 }
 
@@ -1158,10 +1159,7 @@ pub fn import_live_state(
                 });
             }
         };
-        arrows.push(ArrowSlotInst {
-            status,
-            destroy_after_impaled: a.destroy_after_impaled,
-        });
+        arrows.push(ArrowSlotInst { status });
     }
 
     let mut creatures = Vec::with_capacity(dto.creatures.len());
@@ -1523,6 +1521,8 @@ pub fn import_live_state(
         semantic_history,
         pending: None,
         vakuu_auto_select_depth: 0,
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         hook_cache: Default::default(),
         deck_dirty: DeckDirtyFlag(false),
         relic_dirty_mask: RelicDirtyMask(0),
@@ -1827,7 +1827,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
                         ArrowStatus::Away => "Away".to_owned(),
                         ArrowStatus::Destroyed => "Destroyed".to_owned(),
                     },
-                    destroy_after_impaled: a.destroy_after_impaled,
+                    destroy_after_impaled: false,
                 })
                 .collect(),
         },

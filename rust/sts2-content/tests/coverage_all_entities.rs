@@ -148,6 +148,8 @@ fn build_probe_state() -> BattleState {
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![ec],
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -159,11 +161,11 @@ fn build_probe_state() -> BattleState {
 }
 
 #[test]
-fn exhaustive_1562_vanilla_entities_zero_unsupported() {
+fn exhaustive_1563_vanilla_entities_zero_unsupported() {
     let content = Sts2Content;
     let mut total = 0usize;
 
-    assert_eq!(CardId::COUNT, 716);
+    assert_eq!(CardId::COUNT, 717);
     for idx in 0..CardId::COUNT {
         let id: CardId = unsafe { std::mem::transmute(idx as u16) };
         let meta = content
@@ -209,7 +211,7 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
         total += 1;
     }
 
-    assert_eq!(PowerId::COUNT, 301);
+    assert_eq!(PowerId::COUNT, 303);
     for idx in 0..PowerId::COUNT {
         let id: PowerId = unsafe { std::mem::transmute(idx as u16) };
         let _ = content
@@ -259,7 +261,7 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
         total += 1;
     }
 
-    assert_eq!(EnchantmentId::COUNT, 21);
+    assert_eq!(EnchantmentId::COUNT, 22);
     for idx in 0..EnchantmentId::COUNT {
         let id: EnchantmentId = unsafe { std::mem::transmute(idx as u16) };
         let _ = orbs_enchantments_afflictions::enchantment_hook_mask(id)
@@ -333,7 +335,7 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
         total += 1;
     }
 
-    assert_eq!(RunModelId::COUNT, 2);
+    assert_eq!(RunModelId::COUNT, 3);
     for idx in 0..RunModelId::COUNT {
         let id: RunModelId = unsafe { std::mem::transmute(idx as u8) };
         let _ = dread_blitz::run_model_hook_mask(id)
@@ -347,7 +349,7 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
         total += 1;
     }
 
-    assert_eq!(MonsterId::COUNT, 116);
+    assert_eq!(MonsterId::COUNT, 112);
     for idx in 0..MonsterId::COUNT {
         let id: MonsterId = unsafe { std::mem::transmute(idx as u16) };
         let _ = content
@@ -388,7 +390,7 @@ fn exhaustive_1562_vanilla_entities_zero_unsupported() {
         total += 1;
     }
 
-    assert_eq!(total, 1562);
+    assert_eq!(total, 1563);
 }
 
 #[test]
@@ -414,7 +416,7 @@ fn hook_mask_tables_and_rollout_profiles_match_per_entity_queries() {
         assert_eq!(tables.card_has_hook(id), !mask.is_empty());
         assert_eq!(
             tables.card_has_custom_playability(id),
-            matches!(id, CardId::Clash | CardId::HighFive)
+            matches!(id, CardId::Clash | CardId::GrandFinale | CardId::HighFive)
         );
         let meta = content.card_meta(id).unwrap();
         assert_eq!(
@@ -446,7 +448,6 @@ fn hook_mask_tables_and_rollout_profiles_match_per_entity_queries() {
                 PowerId::AdaptablePower
                     | PowerId::DieForYouPower
                     | PowerId::IllusionPower
-                    | PowerId::PainfulStabsPower
                     | PowerId::ReattachPower
                     | PowerId::SteamEruptionPower
                     | PowerId::WuppysLoyaltyPower
@@ -473,7 +474,6 @@ fn hook_mask_tables_and_rollout_profiles_match_per_entity_queries() {
                 PowerId::CorruptionPower
                     | PowerId::EnsemblePower
                     | PowerId::FreeAttackPower
-                    | PowerId::FreeCardPower
                     | PowerId::FreePowerPower
                     | PowerId::FreeSkillPower
                     | PowerId::VeilpiercerPower

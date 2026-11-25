@@ -720,8 +720,8 @@ impl ActEndingBossPolicy {
     #[inline]
     pub const fn persistent_hp_scale(relief: BossHpRelief) -> i32 {
         match relief {
-            BossHpRelief::ActClearHeal => 20,
-            BossHpRelief::RunEnding => 0,
+            BossHpRelief::ActClearHeal => 35,
+            BossHpRelief::RunEnding => 20,
             BossHpRelief::None => 100,
         }
     }
@@ -747,17 +747,19 @@ impl ActEndingBossPolicy {
         growth_hp_credit: i32,
         boss_hp_relief: BossHpRelief,
         ignore_long_term_rewards: bool,
+        feed_max_hp_excluded: i32,
     ) -> i32 {
         let hp_scale = Self::persistent_hp_scale(boss_hp_relief);
         let death_save_hp = death_save_hp_restored.max(0);
         let raw_hp_delta =
             (end_player_hp + post_combat_monotone_heal - death_save_hp) - initial_player_hp;
         let max_hp_gain = (end_player_max_hp - initial_player_max_hp).max(0);
+        let non_feed_max_hp_gain = (max_hp_gain - feed_max_hp_excluded.max(0)).max(0);
         let max_hp_loss = (initial_player_max_hp - end_player_max_hp).max(0);
 
         let max_hp_gain_credit_centi =
             if boss_hp_relief != BossHpRelief::RunEnding && !ignore_long_term_rewards {
-                max_hp_gain.saturating_mul(weights::MAX_HP_GAIN_WEIGHT_CENTI)
+                non_feed_max_hp_gain.saturating_mul(weights::MAX_HP_GAIN_WEIGHT_CENTI)
             } else {
                 0
             };
@@ -918,6 +920,12 @@ impl PotionValuationRegistry {
             let ceil_40 = (max_hp * 4 + 9) / 10;
             return weights::POTION_HIGH_VALUE_HP_SAVED.max(ceil_40);
         }
+        if id == PotionId::BloodPotion {
+            if initial_player_max_hp <= 0 {
+                return weights::POTION_MINIMUM_HP_SAVED;
+            }
+            return weights::POTION_MINIMUM_HP_SAVED.max((initial_player_max_hp * 20) / 100 + 1);
+        }
         Self::strategic_hp_cost(id, false)
     }
 
@@ -1009,9 +1017,6 @@ impl PotionUsePolicy {
         }
 
         let hp_scale = ActEndingBossPolicy::persistent_hp_scale(root.boss_hp_relief);
-        if root.encounter_boss_hp_relief == BossHpRelief::RunEnding && hp_scale == 0 {
-            return false;
-        }
 
         let min_alchemize_refill = i32::from(root.has_alchemize_in_deck && !root.has_sozu);
         let min_net_cost_centi = Self::compute_net_potion_opportunity_cost_centi(
@@ -1491,6 +1496,7 @@ pub struct StoredFastEval {
     pub strategy_goal_count: u8,
     pub alchemize_count: u8,
     pub empty_potion_slots: u8,
+    pub feed_count: u8,
     pub flags: u8,
 }
 
@@ -1521,6 +1527,7 @@ impl Default for StoredFastEval {
             strategy_goal_count: 0,
             alchemize_count: 0,
             empty_potion_slots: 0,
+            feed_count: 0,
             flags: 0,
         }
     }
@@ -1570,6 +1577,7 @@ impl From<&FastEvalSummary> for StoredFastEval {
             strategy_goal_count: f.strategy_goal_count.clamp(0, u8::MAX as i32) as u8,
             alchemize_count: f.alchemize_count,
             empty_potion_slots: f.empty_potion_slots,
+            feed_count: f.feed_count,
             flags,
         }
     }
@@ -1705,6 +1713,7 @@ pub struct FastEvalSummary {
     pub live_deck_clutter: i32,
     pub alchemize_count: u8,
     pub empty_potion_slots: u8,
+    pub feed_count: u8,
     pub outstanding_stolen: i32,
     pub forfeits_gold: bool,
     pub combat_ended_turn: Option<i32>,
@@ -1888,6 +1897,7 @@ pub struct RootEvalBaseline {
     pub growth_opportunity_targets: GrowthOpportunityTargets,
     pub effective_has_growth_targets: bool,
     pub mad_science_upgrade_capacity: i32,
+    pub feed_max_hp_per_kill: i32,
     pub initial_growth_rewards: GrowthCounters,
     pub initial_brightest_flame_max_hp_spent: i32,
     pub root_state_brightest_flame_spent: i32,
@@ -1944,6 +1954,7 @@ impl Default for RootEvalBaseline {
             growth_opportunity_targets: GrowthOpportunityTargets::default(),
             effective_has_growth_targets: false,
             mad_science_upgrade_capacity: 0,
+            feed_max_hp_per_kill: 3,
             initial_growth_rewards: GrowthCounters::default(),
             initial_brightest_flame_max_hp_spent: 0,
             root_state_brightest_flame_spent: 0,
@@ -2256,6 +2267,15 @@ impl RootEvalBaseline {
         };
         let can_stop_at_hp_target = policy.stop_at_acceptable_battle_hp_loss
             && (!effective_has_growth_targets || growth_opportunity_targets.is_bounded);
+        let feed_max_hp_per_kill = if state
+            .cards
+            .iter()
+            .any(|c| !c.removed_from_state && c.id == CardId::Feed && c.upgrade_level > 0)
+        {
+            4
+        } else {
+            3
+        };
 
         let mut baseline = Self {
             initial_player_hp,
@@ -2302,6 +2322,7 @@ impl RootEvalBaseline {
             growth_opportunity_targets,
             effective_has_growth_targets,
             mad_science_upgrade_capacity: mad_science_upgrade_capacity(state, content),
+            feed_max_hp_per_kill,
             initial_growth_rewards: state.semantic_history.growth_rewards,
             initial_brightest_flame_max_hp_spent: policy.initial_brightest_flame_max_hp_spent,
             root_state_brightest_flame_spent: state.semantic_history.brightest_flame_max_hp_spent,
@@ -2647,12 +2668,13 @@ pub fn evaluate_fast(
     let strategic_hp_credit = strategy_goal_hp_credit.saturating_add(relic_eval.healing_hp_credit);
     let strategy_goal_count = growth_reward_count.saturating_add(relic_eval.satisfied_priority);
     let brightest_flame_max_hp_spent = root.brightest_flame_spent(state);
+    let feed_count = state
+        .semantic_history
+        .growth_rewards
+        .feed
+        .clamp(0, u8::MAX as i32) as u8;
 
-    let hp_scale = match root.boss_hp_relief {
-        BossHpRelief::None => 1.0,
-        BossHpRelief::ActClearHeal => 0.20,
-        BossHpRelief::RunEnding => 0.0,
-    };
+    let hp_scale = ActEndingBossPolicy::persistent_hp_scale(root.boss_hp_relief) as f64 / 100.0;
     let base_score = if player_dead || projected_player_hp <= 0 {
         weights::DEATH_PENALTY
             + state.player.turn_number as f64 * 100_000.0
@@ -2661,10 +2683,12 @@ pub fn evaluate_fast(
     } else {
         let raw_hp_delta = projected_player_hp - root.initial_player_hp;
         let max_hp_gain = (player_max_hp - root.initial_player_max_hp).max(0);
+        let non_feed_max_hp_gain =
+            (max_hp_gain - i32::from(feed_count) * root.feed_max_hp_per_kill).max(0);
         let max_hp_loss = (root.initial_player_max_hp - player_max_hp).max(0);
         let max_hp_term = if root.boss_hp_relief != BossHpRelief::RunEnding {
             (if !root.ignore_long_term_rewards {
-                max_hp_gain as f64 * 2.0 * weights::HP
+                non_feed_max_hp_gain as f64 * 2.0 * weights::HP
             } else {
                 0.0
             }) - max_hp_loss as f64 * weights::HP
@@ -2727,6 +2751,7 @@ pub fn evaluate_fast(
         live_deck_clutter,
         alchemize_count,
         empty_potion_slots,
+        feed_count,
         outstanding_stolen,
         forfeits_gold,
         combat_ended_turn: if won {
@@ -2999,7 +3024,6 @@ fn compute_player_power_setup_weight(
         | PowerId::BurstPower
         | PowerId::SignalBoostPower
         | PowerId::OneTwoPunchPower
-        | PowerId::FreeCardPower
         | PowerId::FreePowerPower => pos_amt.min(4) * 6,
         PowerId::RetainHandPower => pos_amt.min(4) * 4,
         _ => 0,
@@ -3916,6 +3940,7 @@ pub fn compute_beam_rank_score_with_centi(
             fast.strategic_hp_credit,
             root.boss_hp_relief,
             root.ignore_long_term_rewards,
+            i32::from(fast.feed_count) * root.feed_max_hp_per_kill,
         );
         let v_centi = (net_hp_delta_centi as i64) - (net_potion_cost_centi as i64);
         let mut s = weights::VICTORY_BONUS
@@ -3961,6 +3986,7 @@ pub fn compute_beam_rank_score_with_centi(
         fast.strategic_hp_credit,
         root.boss_hp_relief,
         root.ignore_long_term_rewards,
+        i32::from(fast.feed_count) * root.feed_max_hp_per_kill,
     );
     let ongoing_hp_score = (ongoing_net_hp_delta_centi as f64) * 300.0
         - (net_potion_cost_centi as f64) * 300.0
@@ -4320,6 +4346,7 @@ pub fn select_final_plan(
             f.strategic_hp_credit as i32,
             root.boss_hp_relief,
             root.ignore_long_term_rewards,
+            i32::from(f.feed_count) * root.feed_max_hp_per_kill,
         );
         let net_potion_opportunity_cost_centi =
             PotionUsePolicy::compute_net_potion_opportunity_cost_centi(

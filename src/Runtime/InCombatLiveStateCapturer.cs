@@ -232,7 +232,7 @@ internal static partial class InCombatLiveStateCapturer
             .ToArray();
 
         var arrowsDto = pcs.Arrows
-            .Select(arrow => new RustKernelArrowSlotDto(arrow.Status.ToString(), false))
+            .Select(arrow => new RustKernelArrowSlotDto(arrow.Status.ToString()))
             .ToArray();
 
         var playerDto = new RustKernelPlayerDto(

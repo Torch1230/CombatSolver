@@ -9,7 +9,6 @@ use sts2_types::{ArrowStatus, Dec, PowerId};
 pub fn gain_arrow_slot(state: &mut BattleState) {
     state.player.arrows.push(ArrowSlotInst {
         status: ArrowStatus::Retrieved,
-        destroy_after_impaled: false,
     });
 }
 
@@ -73,6 +72,9 @@ where
     F: FnMut(&mut BattleState, &dyn ContentDispatcher, usize) -> Result<(), KernelError>,
 {
     if state.creature(target).is_none_or(|c| c.is_dead()) {
+        if let Some(slot) = state.player.arrows.get_mut(arrow_idx) {
+            slot.status = ArrowStatus::Retrieved;
+        }
         return Ok(());
     }
     action(state, content, arrow_idx)?;
@@ -112,14 +114,7 @@ where
 
     hooks::after_arrow_impaled(state, content, target, source_card)?;
 
-    if state
-        .player
-        .arrows
-        .get(arrow_idx)
-        .is_some_and(|a| a.destroy_after_impaled)
-    {
-        destroy_arrow(state, content, target, arrow_idx)?;
-    } else if state.creature(target).is_some_and(|c| c.is_dead()) {
+    if state.creature(target).is_some_and(|c| c.is_dead()) {
         let contains_arrow = state
             .creature(target)
             .and_then(|c| {
@@ -164,6 +159,9 @@ fn impale_target_with_attack(
     attack_cmd: AttackBuilder,
 ) -> Result<(), KernelError> {
     if state.creature(target).is_none_or(|c| c.is_dead()) {
+        if let Some(slot) = state.player.arrows.get_mut(arrow_idx) {
+            slot.status = ArrowStatus::Retrieved;
+        }
         return Ok(());
     }
     let source_card = attack_cmd.card_source;
@@ -204,14 +202,7 @@ fn impale_target_with_attack(
 
     hooks::after_arrow_impaled(state, content, target, None)?;
 
-    if state
-        .player
-        .arrows
-        .get(arrow_idx)
-        .is_some_and(|a| a.destroy_after_impaled)
-    {
-        destroy_arrow(state, content, target, arrow_idx)?;
-    } else if state.creature(target).is_some_and(|c| c.is_dead()) {
+    if state.creature(target).is_some_and(|c| c.is_dead()) {
         let contains_arrow = state
             .creature(target)
             .and_then(|c| {
@@ -266,16 +257,6 @@ pub fn dislodge_first_arrow(
     let arrow_idx = state.power_extensions[ext_idx].impaled_arrows.remove(0);
     let _ = power_idx;
 
-    if state
-        .player
-        .arrows
-        .get(arrow_idx)
-        .is_some_and(|a| a.destroy_after_impaled)
-    {
-        state.player.arrows[arrow_idx].status = ArrowStatus::Destroyed;
-        return Ok(());
-    }
-
     hooks::after_arrow_dislodged(state, content, target, source_card)?;
     if let Some(slot) = state.player.arrows.get_mut(arrow_idx) {
         if slot.status == ArrowStatus::Destroyed {
@@ -284,43 +265,6 @@ pub fn dislodge_first_arrow(
             ));
         }
         slot.status = ArrowStatus::Retrieved;
-        slot.destroy_after_impaled = false;
-    }
-    Ok(())
-}
-
-fn destroy_arrow(
-    state: &mut BattleState,
-    content: &dyn ContentDispatcher,
-    target: CreatureHandle,
-    arrow_idx: usize,
-) -> Result<(), KernelError> {
-    if state
-        .player
-        .arrows
-        .get(arrow_idx)
-        .is_some_and(|a| a.status != ArrowStatus::Destroyed)
-    {
-        if state.creature(target).is_some_and(|c| c.is_alive()) {
-            let player_creature = state.player.creature_handle;
-            let remove_power = state.creature(target).and_then(|c| {
-                c.powers
-                    .iter()
-                    .find(|p| {
-                        p.id == PowerId::ImpaledPower && p.applier_handle == Some(player_creature)
-                    })
-                    .and_then(|p| p.ext_index.map(|eidx| (p.handle, eidx as usize)))
-            });
-            if let Some((power_handle, eidx)) = remove_power {
-                state.power_extensions[eidx]
-                    .impaled_arrows
-                    .retain(|idx| *idx != arrow_idx);
-                if state.power_extensions[eidx].impaled_arrows.is_empty() {
-                    let _ = power::remove_by_handle(state, content, target, power_handle)?;
-                }
-            }
-        }
-        state.player.arrows[arrow_idx].status = ArrowStatus::Destroyed;
     }
     Ok(())
 }

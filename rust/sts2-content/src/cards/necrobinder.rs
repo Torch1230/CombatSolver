@@ -704,7 +704,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::BorrowedTime => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 6 } else { 4 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 6 } else { 4 }))?;
             apply_self_power(content, state, ctx, PowerId::BorrowedTimePower, 1)?;
             Ok(CardPlayOutcome::default())
         }
@@ -1403,7 +1403,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Neurosurge => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 4 } else { 3 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 4 } else { 3 }))?;
             let _ = card_pile::draw(state, content, 2, false)?;
             apply_self_power(content, state, ctx, PowerId::NeurosurgePower, 3)?;
             Ok(CardPlayOutcome::default())
@@ -1969,7 +1969,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Wisp => {
-            gold::gain_energy(state, Dec::ONE)?;
+            gold::gain_energy(state, content, Dec::ONE)?;
             Ok(CardPlayOutcome::default())
         }
         _ => Err(KernelError::Unsupported {

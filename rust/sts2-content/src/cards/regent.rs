@@ -550,7 +550,7 @@ pub fn on_play(
 
     match card.id {
         CardId::Alignment => {
-            gold::gain_energy(state, Dec::from_i32(if upg { 3 } else { 2 }))?;
+            gold::gain_energy(state, content, Dec::from_i32(if upg { 3 } else { 2 }))?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Arsenal => {
@@ -615,7 +615,7 @@ pub fn on_play(
         CardId::BigBang => {
             let _ = card_pile::draw(state, content, 1, false)?;
             gold::gain_stars(state, content, Dec::ONE)?;
-            gold::gain_energy(state, Dec::ONE)?;
+            gold::gain_energy(state, content, Dec::ONE)?;
             forge::forge(state, content, Dec::from_i32(5))?;
             Ok(CardPlayOutcome::default())
         }
@@ -767,7 +767,7 @@ pub fn on_play(
         CardId::Constellation => {
             let target = require_target(ctx, "Constellation")?;
             let _ = card_pile::draw(state, content, 1, false)?;
-            gold::gain_energy(state, Dec::ONE)?;
+            gold::gain_energy(state, content, Dec::ONE)?;
             let blk = Dec::from_i32(if upg { 12 } else { 9 });
             block::gain_block(
                 state,

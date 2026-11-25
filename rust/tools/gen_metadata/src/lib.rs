@@ -312,6 +312,7 @@ fn hook_mask_expr(hooks: &HookParticipationExport) -> String {
             "AfterCombatEnd" => Some("HookSlot::AfterCombatEnd"),
             "AfterRoomEntered" => Some("HookSlot::AfterRoomEntered"),
             "BeforeSideTurnStart" => Some("HookSlot::BeforeSideTurnStart"),
+            "AfterPlayerTurnStartEarly" => Some("HookSlot::AfterPlayerTurnStartEarly"),
             "AfterPlayerTurnStart" => Some("HookSlot::AfterPlayerTurnStart"),
             "AfterPlayerTurnStartLate" => Some("HookSlot::AfterPlayerTurnStartLate"),
             "AfterAutoPrePlayPhaseEntered" => Some("HookSlot::AfterAutoPrePlayPhaseEntered"),
@@ -365,6 +366,8 @@ fn hook_mask_expr(hooks: &HookParticipationExport) -> String {
             "AfterHandEmptied" => Some("HookSlot::AfterHandEmptied"),
             "AfterShuffle" => Some("HookSlot::AfterShuffle"),
             "AfterEnergySpent" => Some("HookSlot::AfterEnergySpent"),
+            "ModifyEnergyGain" => Some("HookSlot::ModifyEnergyGain"),
+            "AfterModifyingEnergyGain" => Some("HookSlot::AfterModifyingEnergyGain"),
             "ShouldGainStars" => Some("HookSlot::ShouldGainStars"),
             "AfterStarsGained" => Some("HookSlot::AfterStarsGained"),
             "AfterStarsSpent" => Some("HookSlot::AfterStarsSpent"),
@@ -440,7 +443,7 @@ pub fn render_generated_module(manifest: &OracleMetadataManifest) -> String {
     let mut out = String::with_capacity(256 * 1024);
     let _ = writeln!(
         out,
-        "// Generated deterministically by gen_metadata from v0.113.1.4 manifest (gameVersion={}).\n",
+        "// Generated deterministically by gen_metadata (gameVersion={}).\n",
         manifest.meta.game_version
     );
     let _ = writeln!(out, "use core::cmp::Ordering;");

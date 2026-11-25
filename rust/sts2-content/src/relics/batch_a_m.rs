@@ -1017,7 +1017,7 @@ pub(crate) fn dispatch_hook_at(
                     if state.player.turn_number > 1
                         && get_bool(state, id, "ArtOfWar._previousTurnHadNoAttack", false)
                     {
-                        gold::gain_energy(state, Dec::ONE)?;
+                        gold::gain_energy(state, content, Dec::ONE)?;
                     }
                 }
                 HookSlot::AfterCombatEnd => {
@@ -1436,7 +1436,7 @@ pub(crate) fn dispatch_hook_at(
                             && state.player.turn_number <= 1
                             && state.static_ctx.room_type == RoomType::Elite
                         {
-                            gold::gain_energy(state, Dec::ONE)?;
+                            gold::gain_energy(state, content, Dec::ONE)?;
                         }
                     }
                 }
@@ -1651,7 +1651,7 @@ pub(crate) fn dispatch_hook_at(
             if slot == HookSlot::AfterSideTurnStart {
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&pc) && state.player.turn_number == 2 {
-                        gold::gain_energy(state, Dec::TWO)?;
+                        gold::gain_energy(state, content, Dec::TWO)?;
                     }
                 }
             }
@@ -1707,7 +1707,7 @@ pub(crate) fn dispatch_hook_at(
             if slot == HookSlot::AfterSideTurnStart {
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&pc) && state.player.turn_number == 3 {
-                        gold::gain_energy(state, Dec::from_i32(3))?;
+                        gold::gain_energy(state, content, Dec::from_i32(3))?;
                     }
                 }
             }
@@ -2123,16 +2123,29 @@ pub(crate) fn dispatch_hook_at(
         }
 
         RelicId::FakeHappyFlower => {
-            if slot == HookSlot::AfterSideTurnStart {
-                if let HookArgs::SideTurn { participants, .. } = args {
-                    if participants.contains(&pc) {
-                        let turns = (get_i32(state, id, "FakeHappyFlower._turnsSeen", 0) + 1) % 5;
-                        set_i32(state, id, "FakeHappyFlower._turnsSeen", turns);
-                        if turns == 0 {
-                            gold::gain_energy(state, Dec::ONE)?;
+            match slot {
+                HookSlot::BeforeSideTurnStart => {
+                    if let HookArgs::SideTurn { participants, .. } = args {
+                        if participants.contains(&pc) {
+                            let turns =
+                                (get_i32(state, id, "FakeHappyFlower._turnsSeen", 0) + 1) % 5;
+                            set_i32(state, id, "FakeHappyFlower._turnsSeen", turns);
+                            set_bool(
+                                state,
+                                id,
+                                "FakeHappyFlower._grantEnergyThisTurn",
+                                turns == 0,
+                            );
                         }
                     }
                 }
+                HookSlot::AfterPlayerTurnStartEarly => {
+                    if get_bool(state, id, "FakeHappyFlower._grantEnergyThisTurn", false) {
+                        set_bool(state, id, "FakeHappyFlower._grantEnergyThisTurn", false);
+                        gold::gain_energy(state, content, Dec::ONE)?;
+                    }
+                }
+                _ => {}
             }
             Ok(HookResult::default())
         }
@@ -2222,7 +2235,7 @@ pub(crate) fn dispatch_hook_at(
                 HookSlot::AfterEnergyReset => {
                     if get_bool(state, id, "FakeVenerableTeaSet._isArmed", false) {
                         set_bool(state, id, "FakeVenerableTeaSet._isArmed", false);
-                        gold::gain_energy(state, Dec::ONE)?;
+                        gold::gain_energy(state, content, Dec::ONE)?;
                     }
                 }
                 _ => {}
@@ -2562,18 +2575,23 @@ pub(crate) fn dispatch_hook_at(
         }
 
         RelicId::HappyFlower => {
-            if slot == HookSlot::AfterSideTurnStart {
-                if let HookArgs::SideTurn { participants, .. } = args {
-                    if participants.contains(&pc) {
-                        let count = get_i32(state, id, "HappyFlower._turnCounter", 0) + 1;
-                        if count < 3 {
+            match slot {
+                HookSlot::BeforeSideTurnStart => {
+                    if let HookArgs::SideTurn { participants, .. } = args {
+                        if participants.contains(&pc) {
+                            let count = (get_i32(state, id, "HappyFlower._turnCounter", 0) + 1) % 3;
                             set_i32(state, id, "HappyFlower._turnCounter", count);
-                        } else {
-                            set_i32(state, id, "HappyFlower._turnCounter", 0);
-                            gold::gain_energy(state, Dec::ONE)?;
+                            set_bool(state, id, "HappyFlower._grantEnergyThisTurn", count == 0);
                         }
                     }
                 }
+                HookSlot::AfterPlayerTurnStartEarly => {
+                    if get_bool(state, id, "HappyFlower._grantEnergyThisTurn", false) {
+                        set_bool(state, id, "HappyFlower._grantEnergyThisTurn", false);
+                        gold::gain_energy(state, content, Dec::ONE)?;
+                    }
+                }
+                _ => {}
             }
             Ok(HookResult::default())
         }
@@ -2748,7 +2766,7 @@ pub(crate) fn dispatch_hook_at(
             if slot == HookSlot::AfterCardPlayed {
                 if let HookArgs::CardPlay(ctx) = args {
                     if ctx.energy_value >= 3 {
-                        gold::gain_energy(state, Dec::ONE)?;
+                        gold::gain_energy(state, content, Dec::ONE)?;
                     }
                 }
             }
@@ -2918,7 +2936,7 @@ pub(crate) fn dispatch_hook_at(
             if slot == HookSlot::AfterSideTurnStart {
                 if let HookArgs::SideTurn { participants, .. } = args {
                     if participants.contains(&pc) && state.player.turn_number == 1 {
-                        gold::gain_energy(state, Dec::ONE)?;
+                        gold::gain_energy(state, content, Dec::ONE)?;
                     }
                 }
             }

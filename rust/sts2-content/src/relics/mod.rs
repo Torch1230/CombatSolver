@@ -510,7 +510,7 @@ pub fn dispatch_hook(
                                 .private_fields
                                 .inc_int("Nunchaku._attacksPlayed");
                             if next % 10 == 0 {
-                                gold::gain_energy(state, Dec::ONE)?;
+                                gold::gain_energy(state, content, Dec::ONE)?;
                             }
                         }
                     }

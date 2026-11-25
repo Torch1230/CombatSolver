@@ -21,7 +21,7 @@ use sts2_types::{
 
 static HEAVY_SHOT_META: CardMeta = CardMeta {
     card_type: CardType::Attack,
-    rarity: CardRarity::Common,
+    rarity: CardRarity::Uncommon,
     target_type: TargetType::AnyEnemy,
     canonical_energy_cost: 2,
     canonical_star_cost: -1,
@@ -156,40 +156,7 @@ fn impale_target_after_action(
 
     hooks::after_arrow_impaled(state, content, target, Some(source_card))?;
 
-    if state
-        .player
-        .arrows
-        .get(arrow_idx)
-        .is_some_and(|a| a.destroy_after_impaled)
-    {
-        if state
-            .player
-            .arrows
-            .get(arrow_idx)
-            .is_some_and(|a| a.status != ArrowStatus::Destroyed)
-        {
-            if state.creature(target).is_some_and(|c| c.is_alive()) {
-                let remove_power = state.creature(target).and_then(|c| {
-                    c.powers
-                        .iter()
-                        .find(|p| {
-                            p.id == PowerId::ImpaledPower
-                                && p.applier_handle == Some(player_creature)
-                        })
-                        .and_then(|p| p.ext_index.map(|eidx| (p.handle, eidx as usize)))
-                });
-                if let Some((power_handle, eidx)) = remove_power {
-                    state.power_extensions[eidx]
-                        .impaled_arrows
-                        .retain(|idx| *idx != arrow_idx);
-                    if state.power_extensions[eidx].impaled_arrows.is_empty() {
-                        let _ = power::remove_by_handle(state, content, target, power_handle)?;
-                    }
-                }
-            }
-            state.player.arrows[arrow_idx].status = ArrowStatus::Destroyed;
-        }
-    } else if state.creature(target).is_some_and(|c| c.is_dead()) {
+    if state.creature(target).is_some_and(|c| c.is_dead()) {
         let contains_arrow = state
             .creature(target)
             .and_then(|c| {
@@ -455,7 +422,7 @@ pub fn on_play(
 
     match card.id {
         CardId::AllIsWell => {
-            apply_power_to(state, content, PowerId::AllIsWellPower, owner, if upg { 5 } else { 4 }, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::AllIsWellPower, owner, if upg { 6 } else { 4 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Anguish => {
@@ -467,46 +434,24 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Archery => {
-            apply_power_to(state, content, PowerId::ArcheryPower, owner, if upg { 5 } else { 4 }, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::ArcheryPower, owner, if upg { 8 } else { 6 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::ArrowStab => {
             let target = require_target(ctx, card.id)?;
-            let dmg = if upg { 12 } else { 9 };
+            let dmg = if upg { 15 } else { 13 };
             AttackBuilder::from_card(owner, ctx.card, *ctx, Dec::from_i32(dmg), AttackTargetSpec::Single(target))
                 .execute(state, content)?;
-            if arrow::player_has_any_arrows(state)
-                && state.player.hand.len() < card_pile::MAX_CARDS_IN_HAND
-            {
-                match from_combat_pile_select(
-                    state,
-                    content,
-                    PileType::Discard,
-                    1,
-                    1,
-                    card.id.model_id_str(),
-                    |st, h| {
-                        st.card(h).is_some_and(|c| {
-                            generated_card_meta(c.id).base_tags.contains(CardTags::SHOOT)
-                        })
-                    },
-                    false,
-                    choice_queue,
-                )? {
-                    SelectResult::Selected(selected) => {
-                        if let Some(&picked) = selected.first() {
-                            card_pile::add_sync(state, picked, PileType::Hand, CardPilePosition::Bottom);
-                        }
-                        Ok(CardPlayOutcome::default())
-                    }
-                    SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                        needs_choice: Some((req, 1)),
-                        transform_into: None,
-                    }),
-                }
-            } else {
-                Ok(CardPlayOutcome::default())
-            }
+            apply_power_to(
+                state,
+                content,
+                PowerId::AimPower,
+                owner,
+                if upg { 8 } else { 6 },
+                owner,
+                ctx.card,
+            )?;
+            Ok(CardPlayOutcome::default())
         }
         CardId::BlossomShot => {
             let target = require_target(ctx, card.id)?;
@@ -516,31 +461,34 @@ pub fn on_play(
             let Some(arrow_idx) = arrow::try_shoot_arrow(state, content, Some(ctx.card))? else {
                 return Ok(CardPlayOutcome::default());
             };
-            if state.creature(target).is_some_and(|c| c.is_alive()) {
-                let dmg = if upg { 14 } else { 11 };
-                let results = AttackBuilder::from_card(
-                    owner,
-                    ctx.card,
-                    *ctx,
-                    Dec::from_i32(dmg),
-                    AttackTargetSpec::Single(target),
-                )
-                .from_arrow()
-                .execute(state, content)?;
-                let total: i32 = results
-                    .iter()
-                    .map(|r| r.blocked_damage + r.unblocked_damage + r.overkill_damage)
-                    .sum();
-                apply_power_to(state, content, PowerId::StretchPower, owner, total, owner, ctx.card)?;
-                impale_target_after_action(state, content, target, arrow_idx, ctx.card)?;
+            if state.creature(target).is_none_or(|c| c.is_dead()) {
+                if let Some(slot) = state.player.arrows.get_mut(arrow_idx) {
+                    slot.status = ArrowStatus::Retrieved;
+                }
+                return Ok(CardPlayOutcome::default());
             }
+            let dmg = if upg { 14 } else { 11 };
+            let results = AttackBuilder::from_card(
+                owner,
+                ctx.card,
+                *ctx,
+                Dec::from_i32(dmg),
+                AttackTargetSpec::Single(target),
+            )
+            .from_arrow()
+            .execute(state, content)?;
+            let total: i32 = results
+                .iter()
+                .map(|r| r.blocked_damage + r.unblocked_damage + r.overkill_damage)
+                .sum();
+            apply_power_to(state, content, PowerId::StretchPower, owner, total, owner, ctx.card)?;
+            impale_target_after_action(state, content, target, arrow_idx, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::BlotOutTheSky => {
-            let pool = card_factory::character_combat_pool(state);
             let picked = card_factory::get_distinct_for_combat_filtered(
                 state,
-                &pool,
+                sts2_types::CARD_POOL_FOOL,
                 1,
                 RunRngType::CombatCardGeneration,
                 |id| generated_card_meta(id).base_tags.contains(CardTags::SHOOT),
@@ -562,7 +510,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Bounce => {
-            apply_power_to(state, content, PowerId::StretchPower, owner, if upg { 13 } else { 10 }, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::StretchPower, owner, if upg { 11 } else { 8 }, owner, ctx.card)?;
             let turn = state.player.turn_number;
             if let Some(ext) = state.card_ext_mut(ctx.card) {
                 ext.private_fields
@@ -577,7 +525,7 @@ pub fn on_play(
             AttackBuilder::from_card(owner, ctx.card, *ctx, Dec::from_i32(dmg), AttackTargetSpec::Single(target))
                 .execute(state, content)?;
             if was_impaled {
-                gold::gain_energy(state, Dec::ONE)?;
+                gold::gain_energy(state, content, Dec::ONE)?;
             }
             Ok(CardPlayOutcome::default())
         }
@@ -595,12 +543,12 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::ChoBarbs => {
-            gain_player_block(state, content, ctx, owner, if upg { 9 } else { 7 })?;
-            apply_power_to(state, content, PowerId::ChoBarbsPower, owner, if upg { 4 } else { 3 }, owner, ctx.card)?;
+            gain_player_block(state, content, ctx, owner, if upg { 10 } else { 8 })?;
+            apply_power_to(state, content, PowerId::ChoBarbsPower, owner, if upg { 3 } else { 2 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::ChoChorus => {
-            gain_player_block(state, content, ctx, owner, if upg { 15 } else { 12 })?;
+            gain_player_block(state, content, ctx, owner, if upg { 18 } else { 14 })?;
             let to_play: SmallVec<[CardHandle; 12]> = state
                 .player
                 .hand
@@ -623,7 +571,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::ChoFirm => {
-            let blk = if upg { 8 } else { 6 };
+            let blk = if upg { 7 } else { 5 };
             let gains = if arrow::player_has_any_arrows(state) { 2 } else { 1 };
             for _ in 0..gains {
                 gain_player_block(state, content, ctx, owner, blk)?;
@@ -649,8 +597,8 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::ChoReady => {
-            gain_player_block(state, content, ctx, owner, if upg { 11 } else { 8 })?;
-            apply_power_to(state, content, PowerId::AimPower, owner, if upg { 5 } else { 3 }, owner, ctx.card)?;
+            gain_player_block(state, content, ctx, owner, if upg { 9 } else { 7 })?;
+            apply_power_to(state, content, PowerId::AimPower, owner, if upg { 4 } else { 3 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Coda => {
@@ -695,7 +643,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Encore => {
-            gold::gain_energy(state, Dec::ONE)?;
+            gold::gain_energy(state, content, Dec::ONE)?;
             let _ = card_pile::draw(state, content, if upg { 3 } else { 2 }, false)?;
             apply_power_to(state, content, PowerId::EncorePower, owner, 1, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
@@ -735,52 +683,42 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::ExplosiveArrows => {
-            apply_power_to(state, content, PowerId::ExplosiveArrowsPower, owner, if upg { 8 } else { 6 }, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::ExplosiveArrowsPower, owner, if upg { 11 } else { 8 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Florescence => {
-            let mut shoot_cards: Vec<CardHandle> = Vec::new();
-            for pile in [
-                &state.player.hand[..],
-                &state.player.draw[..],
-                &state.player.discard[..],
-                &state.player.play[..],
-            ] {
-                for &ch in pile {
-                    if state.card(ch).is_some_and(|c| {
-                        generated_card_meta(c.id).base_tags.contains(CardTags::SHOOT)
-                    }) {
-                        shoot_cards.push(ch);
+            if !hooks::is_over_or_ending(state) && !state.player.hand.is_empty() {
+                match from_combat_pile_select(
+                    state,
+                    content,
+                    PileType::Hand,
+                    1,
+                    1,
+                    card.id.model_id_str(),
+                    |_, _| true,
+                    false,
+                    choice_queue,
+                )? {
+                    SelectResult::Selected(selected) => {
+                        if let Some(&picked) = selected.first() {
+                            let _ = card_cmd::transform_with_upgrade(
+                                state,
+                                content,
+                                picked,
+                                CardId::TheShot,
+                                if upg { 1 } else { 0 },
+                            )?;
+                        }
+                        Ok(CardPlayOutcome::default())
                     }
+                    SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
+                        needs_choice: Some((req, 1)),
+                        transform_into: None,
+                    }),
                 }
+            } else {
+                Ok(CardPlayOutcome::default())
             }
-            let count = shoot_cards.len() as i32;
-            for ch in shoot_cards {
-                card_pile::exhaust(state, content, ch, false)?;
-            }
-            let the_shot = card_pile::create_card_in_combat(
-                state,
-                content,
-                CardId::TheShot,
-                if upg { 1 } else { 0 },
-            )?;
-            if let Some(ext) = state.card_ext_mut(the_shot) {
-                ext.private_fields.insert(
-                    Cow::Borrowed("TheShot._cardsExhaustedByFlorescence"),
-                    FieldValue::Decimal(Dec::from_i32(count)),
-                );
-            }
-            card_pile::enter_combat(
-                state,
-                content,
-                the_shot,
-                PileType::Hand,
-                CardPilePosition::Bottom,
-                true,
-            )?;
-            hooks::after_card_generated(state, content, the_shot, None)?;
-            hooks::after_card_generated_for_combat(state, content, the_shot, None)?;
-            Ok(CardPlayOutcome::default())
         }
         CardId::FoolishShot => {
             let target = require_target(ctx, card.id)?;
@@ -788,30 +726,38 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Growth => {
-            let sadness_cards: SmallVec<[CardHandle; 12]> = state
-                .player
-                .hand
-                .iter()
-                .copied()
-                .filter(|&h| state.card(h).is_some_and(|c| c.id == CardId::Sadness))
-                .collect();
-            let count = sadness_cards.len() as i32;
-            for ch in sadness_cards {
-                card_pile::exhaust(state, content, ch, false)?;
+            gain_player_block(state, content, ctx, owner, if upg { 11 } else { 8 })?;
+            if !hooks::is_over_or_ending(state) {
+                let mut sadness_cards: Vec<CardHandle> = state
+                    .player
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&h| state.card(h).is_some_and(|c| c.id == CardId::Sadness))
+                    .collect();
+                if !sadness_cards.is_empty() {
+                    let mut sel_rng = *state.run_rngs.get(RunRngType::CombatCardSelection);
+                    sts2_kernel::ordering::stable_shuffle_cards(
+                        state,
+                        content,
+                        &mut sadness_cards,
+                        &mut sel_rng,
+                    )?;
+                    *state.run_rngs.get_mut(RunRngType::CombatCardSelection) = sel_rng;
+                    let _ = card_cmd::transform_with_clone(state, content, sadness_cards[0], ctx.card)?;
+                }
             }
-            let extra = if upg { 6 } else { 4 };
-            apply_power_to(state, content, PowerId::StretchPower, owner, extra * count, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::HarmonicShield => {
-            let per = if upg { 7 } else { 5 };
-            let blk = per * melody::melodies_this_turn(state);
+            let base = if upg { 6 } else { 4 };
+            let blk = base + base * melody::melodies_this_turn(state);
             gain_player_block(state, content, ctx, owner, blk)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::HeavyShot => {
             let target = require_target(ctx, card.id)?;
-            let _ = shoot_single_target_arrow(state, content, ctx, owner, target, if upg { 25 } else { 20 }, 1)?;
+            let _ = shoot_single_target_arrow(state, content, ctx, owner, target, if upg { 17 } else { 16 }, 1)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::HiddenRoots => {
@@ -828,11 +774,11 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Honing => {
-            apply_power_to(state, content, PowerId::HoningPower, owner, 50, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::HoningPower, owner, 100, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Jest => {
-            gain_player_block(state, content, ctx, owner, if upg { 18 } else { 14 })?;
+            gain_player_block(state, content, ctx, owner, if upg { 19 } else { 15 })?;
             generate_cards_into_hand(state, content, CardId::Sadness, 1, Some(owner))?;
             Ok(CardPlayOutcome::default())
         }
@@ -911,7 +857,7 @@ pub fn on_play(
                 content,
                 PowerId::EnergyNextTurnPower,
                 owner,
-                if upg { 6 } else { 5 },
+                if upg { 5 } else { 4 },
                 owner,
                 ctx.card,
             )?;
@@ -980,7 +926,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Lullaby => {
-            apply_power_to(state, content, PowerId::LullabyPower, owner, 20, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::LullabyPower, owner, if upg { 16 } else { 12 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::MelodicShot => {
@@ -992,7 +938,7 @@ pub fn on_play(
                 ctx,
                 owner,
                 target,
-                if upg { 13 } else { 12 },
+                if upg { 14 } else { 12 },
                 hits,
             )?;
             Ok(CardPlayOutcome::default())
@@ -1019,7 +965,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::MythicForm => {
-            if let Some(pidx) = apply_power_to(
+            apply_power_to(
                 state,
                 content,
                 PowerId::MythicFormPower,
@@ -1027,13 +973,7 @@ pub fn on_play(
                 1,
                 owner,
                 ctx.card,
-            )? {
-                if upg {
-                    if let Some(ph) = state.creature(owner).and_then(|c| c.powers.get(pidx).map(|p| p.handle)) {
-                        crate::powers::batch_a_m::mythic_form_increment_upgraded(state, owner, ph);
-                    }
-                }
-            }
+            )?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Nail => {
@@ -1052,33 +992,55 @@ pub fn on_play(
             apply_power_to(state, content, PowerId::AimPower, owner, if upg { 7 } else { 5 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
-        CardId::PunchOfJoy => {
-            let target = require_target(ctx, card.id)?;
-            AttackBuilder::from_card(
-                owner,
-                ctx.card,
-                *ctx,
-                Dec::from_i32(if upg { 17 } else { 13 }),
-                AttackTargetSpec::Single(target),
-            )
-            .execute(state, content)?;
-            let mut sadness_in_hand: Vec<CardHandle> = state
+        CardId::Optimism => {
+            let sadness_cards: SmallVec<[CardHandle; 12]> = state
                 .player
                 .hand
                 .iter()
                 .copied()
                 .filter(|&h| state.card(h).is_some_and(|c| c.id == CardId::Sadness))
                 .collect();
-            if !sadness_in_hand.is_empty() {
-                let mut sel_rng = *state.run_rngs.get(RunRngType::CombatCardSelection);
-                sts2_kernel::ordering::stable_shuffle_cards(
-                    state,
-                    content,
-                    &mut sadness_in_hand,
-                    &mut sel_rng,
-                )?;
-                *state.run_rngs.get_mut(RunRngType::CombatCardSelection) = sel_rng;
-                let _ = card_cmd::transform(state, content, sadness_in_hand[0], CardId::Joy)?;
+            let count = sadness_cards.len();
+            for ch in sadness_cards {
+                card_pile::exhaust(state, content, ch, false)?;
+            }
+            if count > 0 {
+                let _ = card_pile::draw(state, content, count as i32, false)?;
+            }
+            Ok(CardPlayOutcome::default())
+        }
+        CardId::PunchOfJoy => {
+            let target = require_target(ctx, card.id)?;
+            AttackBuilder::from_card(
+                owner,
+                ctx.card,
+                *ctx,
+                Dec::from_i32(if upg { 16 } else { 14 }),
+                AttackTargetSpec::Single(target),
+            )
+            .execute(state, content)?;
+            if !hooks::is_over_or_ending(state) {
+                let mut sadness_in_hand: Vec<CardHandle> = state
+                    .player
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&h| state.card(h).is_some_and(|c| c.id == CardId::Sadness))
+                    .collect();
+                if !sadness_in_hand.is_empty() {
+                    let mut sel_rng = *state.run_rngs.get(RunRngType::CombatCardSelection);
+                    sts2_kernel::ordering::stable_shuffle_cards(
+                        state,
+                        content,
+                        &mut sadness_in_hand,
+                        &mut sel_rng,
+                    )?;
+                    *state.run_rngs.get_mut(RunRngType::CombatCardSelection) = sel_rng;
+                    let take_n = if upg { 2 } else { 1 };
+                    for ch in sadness_in_hand.into_iter().take(take_n) {
+                        let _ = card_cmd::transform(state, content, ch, CardId::Joy)?;
+                    }
+                }
             }
             Ok(CardPlayOutcome::default())
         }
@@ -1092,10 +1054,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Quiver => {
-            let repeat = if upg { 2 } else { 1 };
-            for _ in 0..repeat {
-                arrow::gain_arrow_slot(state);
-            }
+            arrow::gain_arrow_slot(state);
             Ok(CardPlayOutcome::default())
         }
         CardId::RainShot => {
@@ -1106,6 +1065,12 @@ pub fn on_play(
             let Some(arrow_idx) = arrow::try_shoot_arrow(state, content, Some(ctx.card))? else {
                 return Ok(CardPlayOutcome::default());
             };
+            if state.creature(target).is_none_or(|c| c.is_dead()) {
+                if let Some(slot) = state.player.arrows.get_mut(arrow_idx) {
+                    slot.status = ArrowStatus::Retrieved;
+                }
+                return Ok(CardPlayOutcome::default());
+            }
             let attack_id = state.next_attack_id;
             state.next_attack_id += 1;
             let mut info = AttackContextInfo {
@@ -1185,40 +1150,17 @@ pub fn on_play(
             hooks::after_attack(state, content, info, &all_results)?;
             Ok(CardPlayOutcome::default())
         }
-        CardId::RapidShot => {
+        CardId::TwinShot => {
             let target = require_target(ctx, card.id)?;
-            let _ = shoot_single_target_arrow(state, content, ctx, owner, target, 3, if upg { 4 } else { 3 })?;
+            let _ = shoot_single_target_arrow(state, content, ctx, owner, target, if upg { 10 } else { 7 }, 2)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Recall => {
             let target = require_target(ctx, card.id)?;
             if creature_is_impaled_by_players_arrow(state, target) {
                 dislodge_all_player_arrows(state, content, target, ctx.card)?;
-                match from_combat_pile_select(
-                    state,
-                    content,
-                    PileType::Discard,
-                    1,
-                    1,
-                    card.id.model_id_str(),
-                    |_, _| true,
-                    false,
-                    choice_queue,
-                )? {
-                    SelectResult::Selected(selected) => {
-                        if let Some(&picked) = selected.first() {
-                            card_pile::add_sync(state, picked, PileType::Draw, CardPilePosition::Top);
-                        }
-                        Ok(CardPlayOutcome::default())
-                    }
-                    SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                        needs_choice: Some((req, 1)),
-                        transform_into: None,
-                    }),
-                }
-            } else {
-                Ok(CardPlayOutcome::default())
             }
+            Ok(CardPlayOutcome::default())
         }
         CardId::RepeatShot => {
             let target = require_target(ctx, card.id)?;
@@ -1230,7 +1172,7 @@ pub fn on_play(
                     ctx,
                     owner,
                     target,
-                    if upg { 20 } else { 15 },
+                    if upg { 16 } else { 13 },
                     x,
                 )?;
             }
@@ -1260,7 +1202,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::SerratedArrows => {
-            apply_power_to(state, content, PowerId::SerratedArrowsPower, owner, if upg { 50 } else { 25 }, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::SerratedArrowsPower, owner, if upg { 75 } else { 50 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::ShowOff => {
@@ -1286,7 +1228,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::Simpleton => {
-            apply_power_to(state, content, PowerId::SimpletonPower, owner, 1, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::SimpletonPower, owner, if upg { 2 } else { 1 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::SkyShot => {
@@ -1295,7 +1237,7 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::SongPath => {
-            apply_power_to(state, content, PowerId::SongPathPower, owner, if upg { 7 } else { 5 }, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::SongPathPower, owner, if upg { 6 } else { 4 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::SorrowfulStrike => {
@@ -1308,7 +1250,7 @@ pub fn on_play(
                 AttackTargetSpec::Single(target),
             )
             .execute(state, content)?;
-            generate_cards_into_hand(state, content, CardId::Sadness, 2, Some(owner))?;
+            generate_cards_into_hand(state, content, CardId::Sadness, 1, Some(owner))?;
             Ok(CardPlayOutcome::default())
         }
         CardId::SteadyCadence => {
@@ -1341,33 +1283,81 @@ pub fn on_play(
         }
         CardId::Timber => {
             let target = require_target(ctx, card.id)?;
-            let results = AttackBuilder::from_card(
-                owner,
-                ctx.card,
-                *ctx,
-                Dec::from_i32(if upg { 25 } else { 20 }),
-                AttackTargetSpec::Single(target),
-            )
-            .execute(state, content)?;
-            if results.iter().any(|r| r.was_target_killed) {
-                AttackBuilder::from_card(
-                    owner,
-                    ctx.card,
-                    *ctx,
-                    Dec::from_i32(if upg { 35 } else { 30 }),
-                    AttackTargetSpec::AllOpponents,
-                )
-                .execute(state, content)?;
+            let dead_or_ending = hooks::is_over_or_ending_checked(state, content)?
+                || state.creature(owner).is_none_or(|c| c.is_dead());
+            if !dead_or_ending {
+                let attack_id = state.next_attack_id;
+                state.next_attack_id += 1;
+                let mut info = AttackContextInfo {
+                    attack_id,
+                    attacker: owner,
+                    target_side: CombatSide::Enemy,
+                    card_source: Some(ctx.card),
+                    damage_props: ValueProp::MOVE,
+                    hit_count: 0,
+                };
+                hooks::before_attack(state, content, info)?;
+                let mut all_results: SmallVec<[DamageResult; 16]> = SmallVec::new();
+                if state.creature(target).is_some_and(|c| c.is_alive())
+                    && state.creature(owner).is_some_and(|c| c.is_alive())
+                    && !hooks::is_over_or_ending(state)
+                {
+                    let primary = damage::damage_targets(
+                        state,
+                        content,
+                        &[target],
+                        Dec::from_i32(if upg { 25 } else { 20 }),
+                        ValueProp::MOVE,
+                        Some(owner),
+                        Some(ctx.card),
+                        Some(*ctx),
+                    )?;
+                    info.hit_count += 1;
+                    let killed = primary.iter().any(|r| r.was_target_killed);
+                    all_results.extend(primary);
+                    if killed
+                        && state.creature(owner).is_some_and(|c| c.is_alive())
+                        && !hooks::is_over_or_ending(state)
+                    {
+                        let side_handles: SmallVec<[CreatureHandle; 8]> =
+                            SmallVec::from_slice(&state.enemy_handles);
+                        let mut targets: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
+                        for ch in side_handles {
+                            if state.creature(ch).is_some_and(|c| c.is_alive())
+                                && hooks::should_allow_hitting(state, content, ch)?
+                            {
+                                targets.push(ch);
+                            }
+                        }
+                        if !targets.is_empty() {
+                            let splash = damage::damage_targets(
+                                state,
+                                content,
+                                &targets,
+                                Dec::from_i32(if upg { 35 } else { 30 }),
+                                ValueProp::MOVE,
+                                Some(owner),
+                                Some(ctx.card),
+                                Some(*ctx),
+                            )?;
+                            info.hit_count += 1;
+                            all_results.extend(splash);
+                        }
+                    }
+                }
+                hooks::after_attack(state, content, info, &all_results)?;
             }
             Ok(CardPlayOutcome::default())
         }
         CardId::TrickShot => {
             let target = require_target(ctx, card.id)?;
-            let _ = shoot_single_target_arrow(state, content, ctx, owner, target, if upg { 15 } else { 12 }, 1)?;
+            if shoot_single_target_arrow(state, content, ctx, owner, target, if upg { 14 } else { 12 }, 1)? {
+                let _ = card_pile::draw(state, content, if upg { 3 } else { 2 }, false)?;
+            }
             Ok(CardPlayOutcome::default())
         }
         CardId::Tune => {
-            apply_power_to(state, content, PowerId::TunePower, owner, 1, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::TunePower, owner, if upg { 2 } else { 1 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Uproot => {
@@ -1387,13 +1377,13 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
         CardId::ViolentChord => {
-            apply_power_to(state, content, PowerId::ViolentChordPower, owner, if upg { 12 } else { 9 }, owner, ctx.card)?;
+            apply_power_to(state, content, PowerId::ViolentChordPower, owner, if upg { 9 } else { 7 }, owner, ctx.card)?;
             Ok(CardPlayOutcome::default())
         }
         CardId::Vitriol => {
             let target = require_target(ctx, card.id)?;
             apply_power_to(state, content, PowerId::WeakPower, target, if upg { 3 } else { 2 }, owner, ctx.card)?;
-            generate_cards_into_hand(state, content, CardId::Sadness, 1, Some(owner))?;
+            generate_cards_into_hand(state, content, CardId::Sadness, 2, Some(owner))?;
             Ok(CardPlayOutcome::default())
         }
         CardId::WahBlast => {
@@ -1425,10 +1415,10 @@ pub fn on_play(
         }
         CardId::WahChoKi => {
             let target = require_target(ctx, card.id)?;
-            let amt = if upg { 12 } else { 9 };
-            gain_player_block(state, content, ctx, owner, amt)?;
+            let amt = if upg { 10 } else { 8 };
             AttackBuilder::from_card(owner, ctx.card, *ctx, Dec::from_i32(amt), AttackTargetSpec::Single(target))
                 .execute(state, content)?;
+            gain_player_block(state, content, ctx, owner, amt)?;
             let _ = card_pile::draw(state, content, if upg { 2 } else { 1 }, false)?;
             Ok(CardPlayOutcome::default())
         }
@@ -1438,7 +1428,7 @@ pub fn on_play(
                 owner,
                 ctx.card,
                 *ctx,
-                Dec::from_i32(if upg { 12 } else { 9 }),
+                Dec::from_i32(if upg { 11 } else { 9 }),
                 AttackTargetSpec::Single(target),
             )
             .execute(state, content)?;
@@ -1450,14 +1440,37 @@ pub fn on_play(
                 owner,
                 ctx.card,
                 *ctx,
-                Dec::from_i32(if upg { 4 } else { 2 }),
+                Dec::from_i32(if upg { 4 } else { 3 }),
                 AttackTargetSpec::Single(target),
             )
             .with_hit_count(2)
             .execute(state, content)?;
-            apply_power_to(state, content, PowerId::EnergyNextTurnPower, owner, 1, owner, ctx.card)?;
-            apply_power_to(state, content, PowerId::DrawCardsNextTurnPower, owner, 1, owner, ctx.card)?;
-            Ok(CardPlayOutcome::default())
+            if !hooks::is_over_or_ending(state) {
+                match from_combat_pile_select(
+                    state,
+                    content,
+                    PileType::Discard,
+                    1,
+                    1,
+                    card.id.model_id_str(),
+                    |_, _| true,
+                    false,
+                    choice_queue,
+                )? {
+                    SelectResult::Selected(selected) => {
+                        if let Some(&picked) = selected.first() {
+                            card_pile::add_sync(state, picked, PileType::Draw, CardPilePosition::Top);
+                        }
+                        Ok(CardPlayOutcome::default())
+                    }
+                    SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
+                        needs_choice: Some((req, 1)),
+                        transform_into: None,
+                    }),
+                }
+            } else {
+                Ok(CardPlayOutcome::default())
+            }
         }
         CardId::WahSymphony => {
             let melody_count = [
@@ -1473,7 +1486,7 @@ pub fn on_play(
                 state.card(h).is_some_and(|c| {
                     generated_card_meta(c.id)
                         .base_tags
-                        .intersects(CardTags::WAH | CardTags::CHO | CardTags::KI)
+                        .intersects(CardTags::CHO | CardTags::KI)
                 })
             })
             .count() as i32;
@@ -1567,15 +1580,27 @@ pub fn on_play_resume(
         (ci.id, ci.upgrade_level > 0)
     };
     match id {
-        CardId::ArrowStab | CardId::LockedIn => {
+        CardId::LockedIn => {
             if let Some(&picked) = selected.first() {
                 card_pile::add_sync(state, picked, PileType::Hand, CardPilePosition::Bottom);
             }
             Ok(CardPlayOutcome::default())
         }
-        CardId::Recall => {
+        CardId::WahKi => {
             if let Some(&picked) = selected.first() {
                 card_pile::add_sync(state, picked, PileType::Draw, CardPilePosition::Top);
+            }
+            Ok(CardPlayOutcome::default())
+        }
+        CardId::Florescence => {
+            if let Some(&picked) = selected.first() {
+                let _ = card_cmd::transform_with_upgrade(
+                    state,
+                    content,
+                    picked,
+                    CardId::TheShot,
+                    if upg { 1 } else { 0 },
+                )?;
             }
             Ok(CardPlayOutcome::default())
         }
@@ -1618,18 +1643,24 @@ pub fn on_upgrade(state: &mut BattleState, card: CardHandle) -> Result<(), Kerne
         | CardId::Honing
         | CardId::LockedIn
         | CardId::LostLute
-        | CardId::MelodicShot
-        | CardId::Motif
-        | CardId::Recall
-        | CardId::Simpleton
-        | CardId::Tune => {
+        | CardId::Motif => {
             if let Some(c) = state.card_mut(card) {
                 c.base_energy_cost = (c.base_energy_cost - 1).max(0);
             }
         }
-        CardId::Lullaby => {
+        CardId::Quiver => {
             if let Some(c) = state.card_mut(card) {
                 c.local_keywords.insert(CardKeywords::INNATE);
+            }
+        }
+        CardId::Optimism | CardId::Recall => {
+            if let Some(c) = state.card_mut(card) {
+                c.local_keywords.remove(CardKeywords::EXHAUST);
+            }
+        }
+        CardId::MythicForm => {
+            if let Some(c) = state.card_mut(card) {
+                c.local_keywords.remove(CardKeywords::ETHEREAL);
             }
         }
         _ => {}
@@ -1656,7 +1687,7 @@ pub fn comparison_base_values(
 }
 
 pub fn dispatch_hook(
-    _content: &dyn ContentDispatcher,
+    content: &dyn ContentDispatcher,
     state: &mut BattleState,
     card: CardHandle,
     slot: HookSlot,
@@ -1728,17 +1759,10 @@ pub fn dispatch_hook(
         }
         CardId::EpicRetrieval => {
             if slot == HookSlot::AfterArrowDislodged {
-                if let HookArgs::AfterDeath {
-                    target,
-                    card_source,
-                    ..
-                } = args
-                {
-                    if *card_source == Some(card)
-                        && creature_is_impaled_by_players_arrow(state, *target)
-                    {
+                if let HookArgs::AfterDeath { card_source, .. } = args {
+                    if *card_source == Some(card) {
                         let energy = if upg { 4 } else { 3 };
-                        gold::gain_energy(state, Dec::from_i32(energy))?;
+                        gold::gain_energy(state, content, Dec::from_i32(energy))?;
                     }
                 }
             }
@@ -1763,8 +1787,9 @@ pub fn dispatch_hook(
                             .and_then(|c| c.powers.iter().find(|p| p.id == PowerId::AimPower))
                             .map_or(0, |p| p.amount);
                         if aim != 0 {
+                            let mult = if upg { 3 } else { 2 };
                             return Ok(HookResult {
-                                dec_val: Some(Dec::from_i32(aim)),
+                                dec_val: Some(Dec::from_i32(aim * mult)),
                                 ..Default::default()
                             });
                         }
@@ -1866,9 +1891,6 @@ pub fn default_result_location(
     let _ = card_meta(id)?;
     match id {
         CardId::MourningBlow => Ok(Some((PileType::Hand, CardPilePosition::Bottom))),
-        CardId::TrickShot if arrow::player_has_any_arrows(state) => {
-            Ok(Some((PileType::Hand, CardPilePosition::Bottom)))
-        }
         _ => Ok(None),
     }
 }

@@ -71,7 +71,7 @@ static CONTENT_TABLES: LazyLock<ContentMetaTables> = LazyLock::new(|| {
             card_has_hook_bits[idx >> 6] |= 1u64 << (idx & 63);
         }
         let id: CardId = unsafe { core::mem::transmute(idx as u16) };
-        if matches!(id, CardId::Clash | CardId::HighFive) {
+        if matches!(id, CardId::Clash | CardId::GrandFinale | CardId::HighFive) {
             card_has_custom_playability_bits[idx >> 6] |= 1u64 << (idx & 63);
         }
         let is_sc = matches!(meta.card_type, CardType::Status | CardType::Curse);
@@ -459,7 +459,7 @@ impl Sts2Content {
                             .private_fields
                             .inc_int("Nunchaku._attacksPlayed");
                         if next % 10 == 0 {
-                            gold::gain_energy(state, Dec::ONE)?;
+                            gold::gain_energy(state, self, Dec::ONE)?;
                         }
                     }
                     return Ok(());

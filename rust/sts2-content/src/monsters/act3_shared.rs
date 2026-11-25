@@ -39,8 +39,7 @@ pub fn monster_meta(id: MonsterId) -> Result<&'static MonsterMeta, KernelError> 
         }
         MonsterId::Queen => Ok(&QUEEN_META),
         MonsterId::TestSubject => Ok(&TEST_SUBJECT_META),
-        MonsterId::ActOneGuardian
-        | MonsterId::Axebot
+        MonsterId::Axebot
         | MonsterId::ByrdineMonster
         | MonsterId::Byrdpip
         | MonsterId::DevotedSculptor
@@ -53,7 +52,6 @@ pub fn monster_meta(id: MonsterId) -> Result<&'static MonsterMeta, KernelError> 
         | MonsterId::GasBomb
         | MonsterId::GlobeHead
         | MonsterId::Guardbot
-        | MonsterId::HardyBrute
         | MonsterId::LivingShield
         | MonsterId::MagiKnight
         | MonsterId::MechaKnight
@@ -73,9 +71,7 @@ pub fn monster_meta(id: MonsterId) -> Result<&'static MonsterMeta, KernelError> 
         | MonsterId::TheLost
         | MonsterId::TorchHeadAmalgam
         | MonsterId::ToughEgg
-        | MonsterId::TrainingDummy
         | MonsterId::TurretOperator
-        | MonsterId::WanderingGrunt
         | MonsterId::Wriggler
         | MonsterId::Wuppy
         | MonsterId::Zapbot => Ok(&EMPTY_MONSTER_META),
@@ -484,7 +480,6 @@ pub fn monster_initial_hp_range(
 ) -> Result<(i32, i32), KernelError> {
     let tough = |high: i32, low: i32| asc_val(state, AscensionLevel::ToughEnemies, high, low);
     match monster_id {
-        MonsterId::ActOneGuardian => Ok((230, 250)),
         MonsterId::Aeonglass => {
             let hp = tough(535, 512);
             Ok((hp, hp))
@@ -528,7 +523,6 @@ pub fn monster_initial_hp_range(
             Ok((hp, hp))
         }
         MonsterId::Guardbot => Ok((tough(17, 16), tough(21, 20))),
-        MonsterId::HardyBrute => Ok((130, 140)),
         MonsterId::LivingShield => {
             let hp = tough(65, 55);
             Ok((hp, hp))
@@ -585,12 +579,10 @@ pub fn monster_initial_hp_range(
             Ok((hp, hp))
         }
         MonsterId::ToughEgg => Ok((tough(15, 14), tough(19, 18))),
-        MonsterId::TrainingDummy => Ok((20, 20)),
         MonsterId::TurretOperator => {
             let hp = tough(51, 41);
             Ok((hp, hp))
         }
-        MonsterId::WanderingGrunt => Ok((42, 48)),
         MonsterId::Wriggler => Ok((tough(18, 17), tough(22, 21))),
         MonsterId::Wuppy => Ok((50, 50)),
         _ => Err(KernelError::Unsupported {
@@ -658,7 +650,6 @@ pub fn monster_setup_for_combat(
     }
 
     let initial_state = match mid {
-        MonsterId::ActOneGuardian => "CRUSH",
         MonsterId::Aeonglass => "EBB_MOVE",
         MonsterId::BattleFriendV1 | MonsterId::BattleFriendV2 | MonsterId::BattleFriendV3 => {
             "IDLE"
@@ -678,7 +669,6 @@ pub fn monster_setup_for_combat(
         MonsterId::GasBomb => "EXPLODE_MOVE",
         MonsterId::GlobeHead => "SHOCKING_SLAP",
         MonsterId::Guardbot => "GUARD_MOVE",
-        MonsterId::HardyBrute => "SLAM",
         MonsterId::LivingShield => "SHIELD_SLAM_MOVE",
         MonsterId::MagiKnight => "POWER_SHIELD_MOVE",
         MonsterId::MechaKnight => "CHARGE_MOVE",
@@ -719,9 +709,7 @@ pub fn monster_setup_for_combat(
             }
             "HATCH_MOVE"
         }
-        MonsterId::TrainingDummy => "POKE",
         MonsterId::TurretOperator => "UNLOAD_MOVE",
-        MonsterId::WanderingGrunt => "BITE",
         MonsterId::Wriggler => {
             if read_monster_bool(state, creature, "Wriggler._startStunned", false) {
                 "SPAWNED_MOVE"
@@ -1167,7 +1155,6 @@ pub fn monster_roll_move(
 
     let next_id: &'static str = loop {
         let next: &'static str = match mid {
-            MonsterId::ActOneGuardian => "CRUSH",
             MonsterId::Aeonglass => match cur.as_str() {
                 "EBB_MOVE" => "EYE_LASERS_MOVE",
                 "EYE_LASERS_MOVE" => "INCREASING_INTENSITY_MOVE",
@@ -1344,7 +1331,6 @@ pub fn monster_roll_move(
                 _ => "SHOCKING_SLAP",
             },
             MonsterId::Guardbot => "GUARD_MOVE",
-            MonsterId::HardyBrute => "SLAM",
             MonsterId::LivingShield => match cur.as_str() {
                 "SHIELD_SLAM_MOVE" => "SHIELD_SLAM_BRANCH",
                 "SHIELD_SLAM_BRANCH" => {
@@ -1523,13 +1509,11 @@ pub fn monster_roll_move(
                 _ => "BEAM_MOVE",
             },
             MonsterId::ToughEgg => "NIBBLE_MOVE",
-            MonsterId::TrainingDummy => "POKE",
             MonsterId::TurretOperator => match cur.as_str() {
                 "UNLOAD_MOVE" => "UNLOAD_MOVE_2",
                 "UNLOAD_MOVE_2" => "RELOAD_MOVE",
                 _ => "UNLOAD_MOVE",
             },
-            MonsterId::WanderingGrunt => "BITE",
             MonsterId::Wriggler => match cur.as_str() {
                 "SPAWNED_MOVE" => "INIT_MOVE",
                 "INIT_MOVE" => {
@@ -1723,9 +1707,6 @@ pub fn monster_perform_move(
 
     match (mid, move_id.as_ref()) {
         (_, "STUNNED") => {}
-        (MonsterId::ActOneGuardian, "CRUSH") => {
-            AttackBuilder::from_monster(creature, Dec::from_i32(20)).execute(state, content)?;
-        }
         (MonsterId::Aeonglass, "EBB_MOVE") => {
             let dmg = Dec::from_i32(deadly(26, 22));
             AttackBuilder::from_monster(creature, dmg).execute(state, content)?;
@@ -2075,9 +2056,6 @@ pub fn monster_perform_move(
                     None,
                 )?;
             }
-        }
-        (MonsterId::HardyBrute, "SLAM") => {
-            AttackBuilder::from_monster(creature, Dec::from_i32(14)).execute(state, content)?;
         }
         (MonsterId::LivingShield, "SHIELD_SLAM_MOVE") => {
             AttackBuilder::from_monster(creature, Dec::from_i32(6)).execute(state, content)?;
@@ -2742,9 +2720,6 @@ pub fn monster_perform_move(
             let dmg = Dec::from_i32(deadly(5, 4));
             AttackBuilder::from_monster(creature, dmg).execute(state, content)?;
         }
-        (MonsterId::TrainingDummy, "POKE") => {
-            AttackBuilder::from_monster(creature, Dec::from_i32(8)).execute(state, content)?;
-        }
         (MonsterId::TurretOperator, "UNLOAD_MOVE" | "UNLOAD_MOVE_2") => {
             let dmg = Dec::from_i32(deadly(4, 3));
             AttackBuilder::from_monster(creature, dmg)
@@ -2761,9 +2736,6 @@ pub fn monster_perform_move(
                 Some(creature),
                 None,
             )?;
-        }
-        (MonsterId::WanderingGrunt, "BITE") => {
-            AttackBuilder::from_monster(creature, Dec::from_i32(7)).execute(state, content)?;
         }
         (MonsterId::Wriggler, "NASTY_BITE_MOVE") => {
             let dmg = Dec::from_i32(deadly(7, 6));
@@ -2955,7 +2927,6 @@ pub fn monster_attack_intent_hits(
 
     match (mid, move_id) {
         (_, "REVIVE_MOVE") => Ok(SmallVec::new()),
-        (MonsterId::ActOneGuardian, "CRUSH") => Ok(smallvec![(Dec::from_i32(20), 1)]),
         (MonsterId::Aeonglass, "EBB_MOVE") => Ok(smallvec![(Dec::from_i32(deadly(26, 22)), 1)]),
         (MonsterId::Aeonglass, "EYE_LASERS_MOVE") => {
             Ok(smallvec![(Dec::from_i32(deadly(12, 11)), 2)])
@@ -3034,7 +3005,6 @@ pub fn monster_attack_intent_hits(
             Ok(smallvec![(Dec::from_i32(deadly(17, 16)), 1)])
         }
         (MonsterId::Guardbot, "GUARD_MOVE") => Ok(SmallVec::new()),
-        (MonsterId::HardyBrute, "SLAM") => Ok(smallvec![(Dec::from_i32(14), 1)]),
         (MonsterId::LivingShield, "SHIELD_SLAM_MOVE") => Ok(smallvec![(Dec::from_i32(6), 1)]),
         (MonsterId::LivingShield, "SMASH_MOVE") => {
             Ok(smallvec![(Dec::from_i32(deadly(18, 16)), 1)])
@@ -3149,12 +3119,10 @@ pub fn monster_attack_intent_hits(
         }
         (MonsterId::ToughEgg, "HATCH_MOVE") => Ok(SmallVec::new()),
         (MonsterId::ToughEgg, "NIBBLE_MOVE") => Ok(smallvec![(Dec::from_i32(deadly(5, 4)), 1)]),
-        (MonsterId::TrainingDummy, "POKE") => Ok(smallvec![(Dec::from_i32(8), 1)]),
         (MonsterId::TurretOperator, "UNLOAD_MOVE" | "UNLOAD_MOVE_2") => {
             Ok(smallvec![(Dec::from_i32(deadly(4, 3)), 5)])
         }
         (MonsterId::TurretOperator, "RELOAD_MOVE") => Ok(SmallVec::new()),
-        (MonsterId::WanderingGrunt, "BITE") => Ok(smallvec![(Dec::from_i32(7), 1)]),
         (MonsterId::Wriggler, "SPAWNED_MOVE" | "WRIGGLE_MOVE" | "INIT_MOVE") => {
             Ok(SmallVec::new())
         }

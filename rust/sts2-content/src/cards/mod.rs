@@ -42,6 +42,7 @@ pub fn card_is_playable(state: &BattleState, card: CardHandle) -> Result<bool, K
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?;
     match ci.id {
         CardId::Clash => colorless_special::is_playable(state, card),
+        CardId::GrandFinale => silent::is_playable(state, card),
         CardId::HighFive => necrobinder::is_playable(state, card),
         _ => Ok(true),
     }

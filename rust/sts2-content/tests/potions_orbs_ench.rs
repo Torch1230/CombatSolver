@@ -78,7 +78,6 @@ fn build_battle(
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
-            destroy_after_impaled: false,
         });
     }
 
@@ -234,6 +233,8 @@ fn build_battle(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::from_slice(&enemy_handles),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -246,7 +247,7 @@ fn build_battle(
 }
 
 #[test]
-fn all_67_potions_5_orbs_21_enchantments_7_afflictions_have_metadata() {
+fn all_67_potions_5_orbs_22_enchantments_7_afflictions_have_metadata() {
     for idx in 0..PotionId::COUNT {
         let pid: PotionId = unsafe { std::mem::transmute(idx as u16) };
         assert!(potion_meta(pid).is_ok(), "missing potion_meta for {pid:?}");
@@ -531,12 +532,11 @@ fn choice_potions_entropic_distilled_chaos_and_forge_end_to_end() {
     // Also test selecting an implemented card through card_choice_potion_resume
     let choice_cands = card_choice_potion_candidates(&mut state, PotionId::AttackPotion).unwrap();
     assert_eq!(choice_cands.len(), 3);
-    let bash_cand = state
-        .cards
-        .iter()
-        .find(|c| c.id == CardId::Bash)
-        .unwrap()
-        .handle;
+    let mut offer_bash = make_card(state.next_card_handle, CardId::Bash, PileType::None);
+    offer_bash.temp_flags.insert(CardTempFlags::POTION_OFFER);
+    state.next_card_handle += 1;
+    let bash_cand = offer_bash.handle;
+    state.cards.push(offer_bash);
     let offer = [choice_cands[0], bash_cand];
     card_choice_potion_resume(&content, &mut state, &offer, &[bash_cand]).unwrap();
     assert!(state.card(choice_cands[0]).unwrap().removed_from_state);
@@ -544,6 +544,7 @@ fn choice_potions_entropic_distilled_chaos_and_forge_end_to_end() {
     // 7. EntropicBrew fills empty potion slots via commands::potion::try_to_procure
     assert!(entropic_brew_roll_out_of_combat_potion(&mut state).is_some());
     state.player.potion_slots = smallvec::smallvec![Some(PotionId::EntropicBrew), None, None];
+    state.invalidate_potion_hooks();
     CombatEngine::use_potion(&mut state, &content, 0, Some(pc), &mut choices).unwrap();
     assert!(state.player.potion_slots.iter().all(|s| s.is_some()));
 
@@ -555,7 +556,11 @@ fn choice_potions_entropic_distilled_chaos_and_forge_end_to_end() {
     let strike_handle = strike_h.handle;
     state.cards.push(strike_h);
     state.player.draw.push(strike_handle);
+    state.invalidate_pile_hooks(
+        sts2_kernel::state::HOOK_DIRTY_DRAW | sts2_kernel::state::HOOK_DIRTY_DISCARD,
+    );
     state.player.potion_slots[0] = Some(PotionId::DistilledChaos);
+    state.invalidate_potion_hooks();
     let enemy_hp_before = state.creature(e0).unwrap().current_hp;
     CombatEngine::use_potion(&mut state, &content, 0, Some(pc), &mut choices).unwrap();
     assert_eq!(state.creature(e0).unwrap().current_hp, enemy_hp_before - 6);
@@ -567,6 +572,7 @@ fn choice_potions_entropic_distilled_chaos_and_forge_end_to_end() {
         .cards
         .push(make_card(blade_h.0, CardId::SovereignBlade, PileType::Hand));
     state.player.hand.push(blade_h);
+    state.invalidate_pile_hooks(sts2_kernel::state::HOOK_DIRTY_HAND);
     sts2_kernel::commands::forge::forge(&mut state, &content, Dec::from_i32(15)).unwrap();
     let dmg_val = state
         .card_ext(state.card(blade_h).unwrap().ext_index)
@@ -576,7 +582,12 @@ fn choice_potions_entropic_distilled_chaos_and_forge_end_to_end() {
         .cloned();
     assert_eq!(dmg_val, Some(FieldValue::Decimal(Dec::from_i32(25))));
     state.player.hand.retain(|h| *h != blade_h);
+    if let Some(bc) = state.card_mut(blade_h) {
+        bc.removed_from_state = true;
+    }
+    state.invalidate_pile_hooks(sts2_kernel::state::HOOK_DIRTY_HAND);
     state.player.potion_slots[0] = Some(PotionId::KingsCourage);
+    state.invalidate_potion_hooks();
     CombatEngine::use_potion(&mut state, &content, 0, Some(pc), &mut choices).unwrap();
     assert!(
         state
@@ -834,4 +845,29 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
             assert_eq!(m, HookMask::EMPTY);
         }
     }
+
+    // SlumberingEssence reduces cost by 1 at BeforeFlush until played while card is in Hand.
+    let se_h = CardHandle(state.next_card_handle);
+    state.next_card_handle += 1;
+    let mut se_card = make_card(se_h.0, CardId::StrikeIronclad, PileType::Hand);
+    let se_ext = state.card_extensions.len() as u32;
+    state.card_extensions.push(sts2_kernel::CardExtension {
+        enchantment: Some(EnchantmentInst {
+            id: EnchantmentId::SlumberingEssence,
+            amount: 1,
+            status: EnchantmentStatus::Normal,
+            private_fields: Default::default(),
+        }),
+        local_energy_modifiers: SmallVec::new(),
+        private_fields: Default::default(),
+    });
+    se_card.ext_index = Some(se_ext);
+    state.cards.push(se_card);
+    state.player.hand.push(se_h);
+    state.invalidate_hook_cache();
+    sts2_kernel::hooks::before_flush(&mut state, &content).unwrap();
+    assert_eq!(
+        sts2_kernel::ordering::resolve_energy_cost(&mut state, &content, se_h).unwrap(),
+        0
+    );
 }

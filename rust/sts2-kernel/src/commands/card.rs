@@ -151,6 +151,91 @@ pub fn transform_with_upgrade(
     let _ = old_pile;
 
     let rep = card_pile::create_card_in_combat(state, content, replacement_id, upgrade_levels)?;
+    finish_transform_in_place(state, content, original, rep, pile, original_index)?;
+    Ok(Some(rep))
+}
+
+pub fn transform_with_clone(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    original: CardHandle,
+    source_to_clone: CardHandle,
+) -> Result<Option<CardHandle>, KernelError> {
+    if state.is_live_combat() && hooks::is_over_or_ending_checked(state, content)? {
+        return Ok(None);
+    }
+    let Some(ci) = state.card(original) else {
+        return Ok(None);
+    };
+    let pile = ci.pile;
+    if pile == PileType::None {
+        return Ok(None);
+    }
+    if ci.has_local_keyword(CardKeywords::ETERNAL) {
+        return Err(KernelError::InvalidAction(
+            "Eternal cards cannot be transformed.".to_owned(),
+        ));
+    }
+    let original_index = match pile {
+        PileType::Hand => state.player.hand.iter().position(|&h| h == original),
+        PileType::Draw => state.player.draw.iter().position(|&h| h == original),
+        PileType::Discard => state.player.discard.iter().position(|&h| h == original),
+        PileType::Exhaust => state.player.exhaust.iter().position(|&h| h == original),
+        PileType::Play => state.player.play.iter().position(|&h| h == original),
+        PileType::Deck => state.player.deck.iter().position(|&h| h == original),
+        PileType::None => None,
+    }
+    .ok_or_else(|| {
+        KernelError::InvalidState("Original card not found in its assigned pile.".to_owned())
+    })?;
+
+    let tables = content.hook_mask_tables();
+    let _old_pile = state.remove_card_from_current_pile_with_tables(original, tables);
+    if let Some(c) = state.card_mut(original) {
+        c.removed_from_state = true;
+    }
+
+    let rep = clone_card_instance(state, source_to_clone)?;
+    finish_transform_in_place(state, content, original, rep, pile, original_index)?;
+    Ok(Some(rep))
+}
+
+fn clone_card_instance(
+    state: &mut BattleState,
+    source: CardHandle,
+) -> Result<CardHandle, KernelError> {
+    let mut cloned = *state
+        .card(source)
+        .ok_or_else(|| KernelError::InvalidState("Missing source card to clone.".to_owned()))?;
+    let src_ext = state.card_ext(cloned.ext_index).cloned();
+    let new_handle = CardHandle(state.next_card_handle);
+    state.next_card_handle += 1;
+    cloned.handle = new_handle;
+    cloned.deck_card_handle = crate::state::OptCardHandle::NONE;
+    cloned.clone_of_handle = crate::state::OptCardHandle::some(source);
+    cloned.temp_flags.remove(
+        CardTempFlags::IS_DUPE | CardTempFlags::EXHAUST_ON_NEXT_PLAY,
+    );
+    cloned.pile = PileType::None;
+    cloned.removed_from_state = false;
+    cloned.transform_into_after_play = None;
+    cloned.ext_index = src_ext.map(|ext| {
+        let idx = state.card_extensions.len();
+        state.card_extensions.push(ext);
+        idx as u32
+    });
+    state.cards.push(cloned);
+    Ok(new_handle)
+}
+
+fn finish_transform_in_place(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    _original: CardHandle,
+    rep: CardHandle,
+    pile: PileType,
+    original_index: usize,
+) -> Result<(), KernelError> {
     if pile != PileType::Deck && state.is_live_combat() {
         card_pile::enter_combat_at_index(state, content, rep, pile, original_index, true)?;
     } else {
@@ -178,7 +263,7 @@ pub fn transform_with_upgrade(
             Some(state.player.creature_handle),
         )?;
     }
-    Ok(Some(rep))
+    Ok(())
 }
 
 pub fn transform_to_random(
@@ -207,15 +292,49 @@ pub fn upgrade(
     if hooks::is_ending_checked(state, content)? {
         return Ok(());
     }
-    let Some(ci) = state.card(card) else {
+    let Some(ci) = state.card(card).copied() else {
         return Ok(());
     };
     let max_upgrade = content.card_meta(ci.id)?.max_upgrade_level;
     if ci.upgrade_level < max_upgrade {
+        let costs_x = ci.temp_flags.contains(CardTempFlags::COSTS_X_ENERGY);
+        let old_base = ci.base_energy_cost;
         if let Some(c) = state.card_mut(card) {
             c.upgrade_level += 1;
         }
         content.card_on_upgrade(state, card)?;
+        if !costs_x && old_base >= 0 {
+            if let Some(c_after) = state.card(card).copied() {
+                let new_base = c_after.base_energy_cost;
+                if new_base >= 0 && new_base < old_base {
+                    let nb_i32 = i32::from(new_base);
+                    if let Some(c_mut) = state.card_mut(card) {
+                        if let Some(v) = c_mut.temp_cost_override_this_turn.get() {
+                            if v > nb_i32 {
+                                c_mut.temp_cost_override_this_turn = crate::state::OptI16::some(nb_i32);
+                            }
+                        }
+                        if let Some(v) = c_mut.temp_cost_override_this_turn_or_until_played.get() {
+                            if v > nb_i32 {
+                                c_mut.temp_cost_override_this_turn_or_until_played = crate::state::OptI16::some(nb_i32);
+                            }
+                        }
+                        if let Some(v) = c_mut.temp_cost_override_this_combat.get() {
+                            if v > nb_i32 {
+                                c_mut.temp_cost_override_this_combat = crate::state::OptI16::some(nb_i32);
+                            }
+                        }
+                    }
+                    if let Some(ext) = state.card_ext_mut(card) {
+                        for m in &mut ext.local_energy_modifiers {
+                            if m.kind.is_absolute() && m.amount > nb_i32 {
+                                m.amount = nb_i32;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }

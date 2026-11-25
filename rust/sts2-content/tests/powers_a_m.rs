@@ -63,7 +63,6 @@ fn build_test_battle(
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
-            destroy_after_impaled: false,
         });
     }
 
@@ -199,6 +198,8 @@ fn build_test_battle(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: smallvec::smallvec![enemy_handle],
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -211,7 +212,7 @@ fn build_test_battle(
 }
 
 #[test]
-fn all_166_am_power_metas_registered_with_exact_flags() {
+fn all_169_am_power_metas_registered_with_exact_flags() {
     let content = Sts2Content;
     let mut am_count = 0usize;
     for i in 0..PowerId::COUNT {
@@ -244,7 +245,7 @@ fn all_166_am_power_metas_registered_with_exact_flags() {
             );
         }
     }
-    assert_eq!(am_count, 166);
+    assert_eq!(am_count, 169);
     assert_eq!(
         content
             .power_meta(PowerId::MinionPower)
@@ -1186,5 +1187,162 @@ fn w0b_wired_lifecycle_choices_and_commands_end_to_end() {
     let _ = orb::add_slots;
     let _ = batch_a_m::all_is_well_on_card_generated;
     let _ = batch_a_m::arsenal_on_card_generated;
+
+    // 14. v0.114.0 A-M powers: GravityPower, InterceptPower (+ AfterRemoved), LeadershipPower, MagicBombPower, HardToKillPower.
+    let (mut state14, pc14, enemy14) = build_test_battle(CharacterId::Ironclad, &deck, 100);
+    CombatEngine::start_combat(&mut state14, &content).unwrap();
+
+    // HardToKillPower caps HP loss via ModifyHpLostBeforeOstyLate.
+    power::apply(
+        &mut state14,
+        &content,
+        PowerId::HardToKillPower,
+        enemy14,
+        Dec::from_i32(10),
+        Some(enemy14),
+        None,
+    )
+    .unwrap();
+    let (capped, _) = hooks::modify_hp_lost(
+        &mut state14,
+        &content,
+        enemy14,
+        Dec::from_i32(25),
+        ValueProp::MOVE,
+        Some(pc14),
+        None,
+        hooks::HpLossPhase::BeforeOsty,
+    )
+    .unwrap();
+    assert_eq!(capped, Dec::from_i32(10));
+
+    // GravityPower deals its amount to all enemies after each card played.
+    power::apply(
+        &mut state14,
+        &content,
+        PowerId::GravityPower,
+        pc14,
+        Dec::from_i32(4),
+        Some(pc14),
+        None,
+    )
+    .unwrap();
+    let strike_h = state14.player.hand[0];
+    let mut c14 = SmallVec::new();
+    CombatEngine::play_card(&mut state14, &content, strike_h, Some(enemy14), &mut c14).unwrap();
+    assert_eq!(state14.creature(enemy14).unwrap().current_hp, 90);
+
+    // InterceptPower amplifies damage by covered count + 1 and clears CoveredPower on removal.
+    let covered_ally = CreatureHandle(state14.next_creature_handle);
+    state14.next_creature_handle += 1;
+    let mut ally_c = state14.creature(enemy14).unwrap().clone();
+    ally_c.handle = covered_ally;
+    ally_c.combat_id = Some(9);
+    ally_c.side = CombatSide::Player;
+    ally_c.monster = None;
+    ally_c.monster_id = None;
+    ally_c.powers.clear();
+    state14.creatures.push(ally_c);
+    state14.ally_handles.push(covered_ally);
+    state14.invalidate_creature_hooks();
+    power::apply(
+        &mut state14,
+        &content,
+        PowerId::CoveredPower,
+        covered_ally,
+        Dec::ONE,
+        Some(enemy14),
+        None,
+    )
+    .unwrap();
+    let ext_i = state14.power_extensions.len() as u32;
+    let mut i_pf = sts2_kernel::state::FieldMap::default();
+    i_pf.insert(
+        "InterceptPower._coveredCreatures",
+        FieldValue::CreatureHandleArray(vec![covered_ally.0 as i32]),
+    );
+    state14.power_extensions.push(sts2_kernel::PowerExtension {
+        private_fields: i_pf,
+        ..Default::default()
+    });
+    let intercept_h = state14.next_power_handle;
+    state14.next_power_handle += 1;
+    state14.creature_mut(enemy14).unwrap().powers.push(PowerInst {
+        handle: intercept_h,
+        id: PowerId::InterceptPower,
+        amount: 1,
+        amount_on_turn_start: 1,
+        skip_next_duration_tick: false,
+        applier_handle: Some(enemy14),
+        ext_index: Some(ext_i),
+    });
+    state14.invalidate_hook_cache();
+    let mult_dmg = hooks::modify_damage(
+        &mut state14,
+        &content,
+        Some(enemy14),
+        Some(pc14),
+        Dec::from_i32(10),
+        ValueProp::MOVE,
+        Some(strike_h),
+        None,
+    )
+    .unwrap();
+    assert_eq!(mult_dmg, Dec::from_i32(20));
+    power::remove_by_handle(&mut state14, &content, enemy14, intercept_h).unwrap();
+    assert!(state14
+        .creature(covered_ally)
+        .unwrap()
+        .powers
+        .iter()
+        .all(|p| p.id != PowerId::CoveredPower));
+
+    // LeadershipPower boosts allied powered attacks (excluding self).
+    power::apply(
+        &mut state14,
+        &content,
+        PowerId::LeadershipPower,
+        covered_ally,
+        Dec::from_i32(5),
+        Some(covered_ally),
+        None,
+    )
+    .unwrap();
+    let ally_boost = hooks::modify_damage(
+        &mut state14,
+        &content,
+        Some(enemy14),
+        Some(pc14),
+        Dec::from_i32(6),
+        ValueProp::MOVE,
+        Some(strike_h),
+        None,
+    )
+    .unwrap();
+    assert_eq!(ally_boost, Dec::from_i32(11));
+
+    // MagicBombPower deals its amount at owner's side turn end if applier is alive, then removes itself.
+    let hp_before_bomb = state14.creature(enemy14).unwrap().current_hp;
+    power::apply(
+        &mut state14,
+        &content,
+        PowerId::MagicBombPower,
+        enemy14,
+        Dec::from_i32(9),
+        Some(pc14),
+        None,
+    )
+    .unwrap();
+    hooks::after_side_turn_end(&mut state14, &content, CombatSide::Enemy, &[enemy14]).unwrap();
+    assert_eq!(
+        state14.creature(enemy14).unwrap().current_hp,
+        hp_before_bomb - 9
+    );
+    assert!(state14
+        .creature(enemy14)
+        .unwrap()
+        .powers
+        .iter()
+        .all(|p| p.id != PowerId::MagicBombPower));
 }
 

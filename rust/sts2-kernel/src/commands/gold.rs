@@ -22,12 +22,20 @@ pub fn lose_gold(state: &mut BattleState, amount: Dec) -> Result<(), KernelError
     Ok(())
 }
 
-pub fn gain_energy(state: &mut BattleState, amount: Dec) -> Result<(), KernelError> {
-    if amount <= Dec::ZERO || hooks::is_ending(state) {
+pub fn gain_energy(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    amount: Dec,
+) -> Result<(), KernelError> {
+    if amount <= Dec::ZERO || hooks::is_ending_checked(state, content)? {
+        return Ok(());
+    }
+    let modified = hooks::modify_energy_gain(state, content, amount)?;
+    if modified <= Dec::ZERO {
         return Ok(());
     }
     let next = Dec::from_i32(state.player.energy)
-        .checked_add(amount)?
+        .checked_add(modified)?
         .clamp(Dec::ZERO, Dec::CLAMP_MAX_999M)
         .to_i32_trunc()?;
     state.player.energy = next;

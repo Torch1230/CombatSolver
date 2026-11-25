@@ -125,8 +125,7 @@ internal sealed record RustKernelOrbDto(
     decimal? RawPassiveValue);
 
 internal sealed record RustKernelArrowSlotDto(
-    string Status,
-    bool DestroyAfterImpaled);
+    string Status);
 
 internal sealed record RustKernelPlayerCountersDto(
     decimal StarsGainedThisTurn,

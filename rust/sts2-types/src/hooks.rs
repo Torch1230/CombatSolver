@@ -155,6 +155,9 @@ pub enum HookSlot {
     ModifyXValue = 132,
     AfterPlayerTurnStartLate = 133,
     AfterAutoPrePlayPhaseEnteredLate = 134,
+    AfterPlayerTurnStartEarly = 135,
+    ModifyEnergyGain = 136,
+    AfterModifyingEnergyGain = 137,
 }
 
 /// 192-bit bitmask covering every combat hook slot for O(1) listener skipping.

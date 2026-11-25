@@ -125,108 +125,114 @@ impl AttackBuilder {
         hooks::before_attack(state, content, info)?;
         let attack_count = hooks::modify_attack_hit_count(state, content, info, self.hit_count)?;
 
-        let mut all_results: SmallVec<[DamageResult; 16]> =
-            SmallVec::with_capacity(attack_count.max(0) as usize);
-        match self.target_spec {
-            AttackTargetSpec::Single(t) => {
-                let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
-                for _ in 0..attack_count {
-                    if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
-                        break;
-                    }
-                    if !state.creature(t).is_some_and(|c| c.is_alive()) {
-                        break;
-                    }
-                    let targets_for_hit = [t];
-                    hit_results.clear();
-                    damage_targets_with_hook_mode_into(
-                        state,
-                        content,
-                        &targets_for_hit,
-                        self.damage_per_hit,
-                        self.props,
-                        Some(self.attacker),
-                        self.card_source,
-                        self.card_play,
-                        self.hook_type,
-                        &mut hit_results,
-                    )?;
-                    all_results.extend(hit_results.iter().map(|&(r, _)| r));
-                }
-            }
-            AttackTargetSpec::AllOpponents | AttackTargetSpec::RandomOpponents { .. } => {
-                let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
-                for _ in 0..attack_count {
-                    if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
-                        break;
-                    }
-                    let valid_targets = collect_valid_targets(state, self);
-                    if valid_targets.is_empty() {
-                        break;
-                    }
-                    let targets_for_hit: SmallVec<[CreatureHandle; 8]> = match self.target_spec {
-                        AttackTargetSpec::AllOpponents => valid_targets,
-                        AttackTargetSpec::RandomOpponents { allow_duplicates } => {
-                            let chosen = if allow_duplicates {
-                                state
-                                    .run_rngs
-                                    .get_mut(sts2_types::RunRngType::CombatTargets)
-                                    .next_item(&valid_targets)
-                                    .copied()
-                                    .ok_or_else(|| {
-                                        KernelError::InvalidState("empty target pool".to_owned())
-                                    })?
-                            } else {
-                                let pool: SmallVec<[CreatureHandle; 8]> = valid_targets
-                                    .into_iter()
-                                    .filter(|h| !all_results.iter().any(|r| r.receiver == *h))
-                                    .collect();
-                                if pool.is_empty() {
-                                    return Err(KernelError::InvalidState(
-                                        "No valid targets for attack with duplicates disallowed"
-                                            .to_owned(),
-                                    ));
-                                }
-                                state
-                                    .run_rngs
-                                    .get_mut(sts2_types::RunRngType::CombatTargets)
-                                    .next_item(&pool)
-                                    .copied()
-                                    .ok_or_else(|| {
-                                        KernelError::InvalidState("empty target pool".to_owned())
-                                    })?
-                            };
-                            smallvec::smallvec![chosen]
+        state.enter_attacking(self.attacker);
+        let res = (|| -> Result<SmallVec<[DamageResult; 16]>, KernelError> {
+            let mut all_results: SmallVec<[DamageResult; 16]> =
+                SmallVec::with_capacity(attack_count.max(0) as usize);
+            match self.target_spec {
+                AttackTargetSpec::Single(t) => {
+                    let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
+                    for _ in 0..attack_count {
+                        if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
+                            break;
                         }
-                        AttackTargetSpec::Single(_) => unreachable!(),
-                    };
-                    hit_results.clear();
-                    damage_targets_with_hook_mode_into(
-                        state,
-                        content,
-                        &targets_for_hit,
-                        self.damage_per_hit,
-                        self.props,
-                        Some(self.attacker),
-                        self.card_source,
-                        self.card_play,
-                        self.hook_type,
-                        &mut hit_results,
-                    )?;
-                    all_results.extend(hit_results.iter().map(|&(r, _)| r));
+                        if !state.creature(t).is_some_and(|c| c.is_alive()) {
+                            break;
+                        }
+                        let targets_for_hit = [t];
+                        hit_results.clear();
+                        damage_targets_with_hook_mode_into(
+                            state,
+                            content,
+                            &targets_for_hit,
+                            self.damage_per_hit,
+                            self.props,
+                            Some(self.attacker),
+                            self.card_source,
+                            self.card_play,
+                            self.hook_type,
+                            &mut hit_results,
+                        )?;
+                        all_results.extend(hit_results.iter().map(|&(r, _)| r));
+                    }
+                }
+                AttackTargetSpec::AllOpponents | AttackTargetSpec::RandomOpponents { .. } => {
+                    let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
+                    for _ in 0..attack_count {
+                        if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
+                            break;
+                        }
+                        let valid_targets = collect_valid_targets(state, self);
+                        if valid_targets.is_empty() {
+                            break;
+                        }
+                        let targets_for_hit: SmallVec<[CreatureHandle; 8]> = match self.target_spec {
+                            AttackTargetSpec::AllOpponents => valid_targets,
+                            AttackTargetSpec::RandomOpponents { allow_duplicates } => {
+                                let chosen = if allow_duplicates {
+                                    state
+                                        .run_rngs
+                                        .get_mut(sts2_types::RunRngType::CombatTargets)
+                                        .next_item(&valid_targets)
+                                        .copied()
+                                        .ok_or_else(|| {
+                                            KernelError::InvalidState("empty target pool".to_owned())
+                                        })?
+                                } else {
+                                    let pool: SmallVec<[CreatureHandle; 8]> = valid_targets
+                                        .into_iter()
+                                        .filter(|h| !all_results.iter().any(|r| r.receiver == *h))
+                                        .collect();
+                                    if pool.is_empty() {
+                                        return Err(KernelError::InvalidState(
+                                            "No valid targets for attack with duplicates disallowed"
+                                                .to_owned(),
+                                        ));
+                                    }
+                                    state
+                                        .run_rngs
+                                        .get_mut(sts2_types::RunRngType::CombatTargets)
+                                        .next_item(&pool)
+                                        .copied()
+                                        .ok_or_else(|| {
+                                            KernelError::InvalidState("empty target pool".to_owned())
+                                        })?
+                                };
+                                smallvec::smallvec![chosen]
+                            }
+                            AttackTargetSpec::Single(_) => unreachable!(),
+                        };
+                        hit_results.clear();
+                        damage_targets_with_hook_mode_into(
+                            state,
+                            content,
+                            &targets_for_hit,
+                            self.damage_per_hit,
+                            self.props,
+                            Some(self.attacker),
+                            self.card_source,
+                            self.card_play,
+                            self.hook_type,
+                            &mut hit_results,
+                        )?;
+                        all_results.extend(hit_results.iter().map(|&(r, _)| r));
+                    }
                 }
             }
-        }
 
-        if state
-            .creature(self.attacker)
-            .is_some_and(|c| c.monster_id == Some(sts2_types::MonsterId::Osty) && c.is_pet())
-        {
-            state.record_actor_event("OstyAttack");
-        }
+            if state
+                .creature(self.attacker)
+                .is_some_and(|c| c.monster_id == Some(sts2_types::MonsterId::Osty) && c.is_pet())
+            {
+                state.record_actor_event("OstyAttack");
+            }
 
-        hooks::after_attack(state, content, info, &all_results)?;
-        Ok(all_results)
+            hooks::after_attack(state, content, info, &all_results)?;
+            Ok(all_results)
+        })();
+        state.exit_attacking(self.attacker);
+        crate::commands::creature::flush_all_eligible_deferred_death_cleanups(state, content)?;
+        res
     }
 }
 

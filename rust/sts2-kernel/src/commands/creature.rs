@@ -380,6 +380,7 @@ fn resolve_confirmed_death(
             c.monster.as_ref().is_some_and(|m| m.is_performing_move),
         )
     };
+    let defer_cleanup = is_performing_move || state.is_creature_attacking(target);
 
     let should_remove = hooks::should_creature_be_removed_after_death(state, content, target)?;
     if state.creature(target).is_some_and(|c| c.is_pet()) && should_remove {
@@ -398,45 +399,10 @@ fn resolve_confirmed_death(
         .filter(|&h| h != target && state.creature(h).is_some_and(|c| c.is_alive()))
         .collect();
 
-    let powers_snapshot: SmallVec<[PowerInst; 16]> = state
-        .creature(target)
-        .map(|c| c.powers.iter().copied().collect())
-        .unwrap_or_default();
-    let mut powers_to_remove: SmallVec<[u32; 16]> = SmallVec::new();
-    for p in powers_snapshot {
-        let on_death = hooks::should_power_be_removed_on_death(state, content, target, p)?;
-        let remove_after_owner = content
-            .power_meta(p.id)?
-            .flags
-            .contains(sts2_types::PowerStaticFlags::REMOVE_AFTER_OWNER_DEATH);
-        if on_death && remove_after_owner {
-            powers_to_remove.push(p.handle);
-        }
-    }
-
-    if should_remove
-        && side == CombatSide::Enemy
-        && state.enemy_handles.contains(&target)
-        && !is_performing_move
-    {
-        state.enemy_handles.retain(|h| *h != target);
-        state.removed_handles.push(target);
-        if let Some(c) = state.creature_mut(target) {
-            c.is_detached = true;
-        }
-        state.invalidate_creature_hooks();
-    }
-
-    for ph in powers_to_remove {
-        let _ = power::remove_by_handle(state, content, target, ph)?;
-    }
-
-    if is_player {
-        state.player.orbs.clear();
-        state.player.orb_capacity = 0;
-        state.player.is_active_for_hooks = false;
-        state.invalidate_orb_hooks();
-        state.invalidate_creature_hooks();
+    if defer_cleanup {
+        state.mark_deferred_death_cleanup(target);
+    } else {
+        cleanup_confirmed_death_creature(state, content, target, should_remove, side, is_player)?;
     }
 
     if side == CombatSide::Enemy
@@ -477,6 +443,101 @@ fn resolve_confirmed_death(
     }
 
     let _ = power::remove_by_id;
+    Ok(())
+}
+
+fn cleanup_confirmed_death_creature(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    target: CreatureHandle,
+    should_remove: bool,
+    side: CombatSide,
+    is_player: bool,
+) -> Result<(), KernelError> {
+    let powers_snapshot: SmallVec<[PowerInst; 16]> = state
+        .creature(target)
+        .map(|c| c.powers.iter().copied().collect())
+        .unwrap_or_default();
+    let mut powers_to_remove: SmallVec<[u32; 16]> = SmallVec::new();
+    for p in powers_snapshot {
+        let on_death = hooks::should_power_be_removed_on_death(state, content, target, p)?;
+        let remove_after_owner = content
+            .power_meta(p.id)?
+            .flags
+            .contains(sts2_types::PowerStaticFlags::REMOVE_AFTER_OWNER_DEATH);
+        if on_death && remove_after_owner {
+            powers_to_remove.push(p.handle);
+        }
+    }
+
+    if should_remove && side == CombatSide::Enemy && state.enemy_handles.contains(&target) {
+        state.enemy_handles.retain(|h| *h != target);
+        state.removed_handles.push(target);
+        if let Some(c) = state.creature_mut(target) {
+            c.is_detached = true;
+        }
+        state.invalidate_creature_hooks();
+    }
+
+    for ph in powers_to_remove {
+        let _ = power::remove_by_handle(state, content, target, ph)?;
+    }
+
+    if is_player {
+        state.player.orbs.clear();
+        state.player.orb_capacity = 0;
+        state.player.is_active_for_hooks = false;
+        state.invalidate_orb_hooks();
+        state.invalidate_creature_hooks();
+    }
+    Ok(())
+}
+
+pub fn flush_deferred_death_cleanup(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    target: CreatureHandle,
+) -> Result<(), KernelError> {
+    let pos = state
+        .deferred_death_cleanup
+        .iter()
+        .position(|&h| h == target);
+    let Some(pos) = pos else {
+        return Ok(());
+    };
+    let Some((alive, is_performing_move, side, is_player)) = state.creature(target).map(|c| {
+        (
+            c.is_alive(),
+            c.monster.as_ref().is_some_and(|m| m.is_performing_move),
+            c.side,
+            c.is_player,
+        )
+    }) else {
+        state.deferred_death_cleanup.swap_remove(pos);
+        return Ok(());
+    };
+    if is_performing_move || state.is_creature_attacking(target) {
+        return Ok(());
+    }
+    state.deferred_death_cleanup.swap_remove(pos);
+    if alive {
+        return Ok(());
+    }
+    let should_remove = hooks::should_creature_be_removed_after_death(state, content, target)?;
+    cleanup_confirmed_death_creature(state, content, target, should_remove, side, is_player)
+}
+
+pub fn flush_all_eligible_deferred_death_cleanups(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+) -> Result<(), KernelError> {
+    if state.deferred_death_cleanup.is_empty() {
+        return Ok(());
+    }
+    let pending: SmallVec<[CreatureHandle; 4]> = state.deferred_death_cleanup.clone();
+    for h in pending {
+        flush_deferred_death_cleanup(state, content, h)?;
+    }
     Ok(())
 }
 

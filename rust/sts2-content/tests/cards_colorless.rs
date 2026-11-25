@@ -92,7 +92,6 @@ fn build_battle(
     for _ in 0..character.base_arrow_slot_count() {
         arrows.push(ArrowSlotInst {
             status: ArrowStatus::Retrieved,
-            destroy_after_impaled: false,
         });
     }
 
@@ -235,6 +234,8 @@ fn build_battle(
         removed_handles: SmallVec::new(),
         spawned_enemy_handles: SmallVec::new(),
         pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
         damage_history: Vec::new(),
         semantic_history: SemanticHistory::default(),
         pending: None,
@@ -512,8 +513,8 @@ fn kernel_wired_surfaces_and_helpers_work() {
     let content = Sts2Content;
 
     // 1. TheTower helper & on_play using RootStaticContext.total_floor
-    assert_eq!(the_tower_damage(false, 14), Dec::from_i32(28));
-    assert_eq!(the_tower_damage(true, 14), Dec::from_i32(42));
+    assert_eq!(the_tower_damage(false, 14), Dec::from_i32(14));
+    assert_eq!(the_tower_damage(true, 14), Dec::from_i32(28));
     let (mut state, enemies) = build_battle(
         CharacterId::Ironclad,
         &[CardId::TheTower],
@@ -525,7 +526,7 @@ fn kernel_wired_surfaces_and_helpers_work() {
     ctx.total_floor = 14;
     state.static_ctx = Arc::new(ctx);
     play_hand_card(&mut state, 0, Some(enemies[0]), vec![]).unwrap();
-    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, 50 - 28);
+    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, 50 - 14);
 
     // 2. TheDevil unupgraded vs upgraded (upgrading drawn card before autoplay)
     let (mut state, _) = build_battle(
@@ -721,7 +722,7 @@ fn selection_cards_and_resumes_work() {
         .exhaust
         .iter()
         .any(|&h| state.card(h).unwrap().id == CardId::Injury));
-    assert_eq!(state.player.hand.len(), hand_before - 2 + 2);
+    assert_eq!(state.player.hand.len(), hand_before - 2 + 3);
 
     // SecretTechnique + SecretWeapon + ThinkingAhead + Wish + NeowsFury + SeekerStrike
     let (mut state2, enemies2) = build_battle(
@@ -963,11 +964,15 @@ fn remaining_colorless_status_curse_and_token_cards_execute_cleanly() {
         .position(|&h| state2.card(h).unwrap().id == CardId::TheSun)
         .unwrap();
     play_hand_card(&mut state2, sun_idx, None, vec![]).unwrap();
-    assert!(state2
-        .player
-        .discard
-        .iter()
-        .any(|&h| state2.card(h).unwrap().id == CardId::Soot));
+    assert_eq!(
+        state2
+            .player
+            .draw
+            .iter()
+            .filter(|&&h| state2.card(h).unwrap().id == CardId::Soot)
+            .count(),
+        2
+    );
     let whistle_idx = state2
         .player
         .hand
@@ -1091,4 +1096,47 @@ fn frozen_pools_and_jackpot_roll_ordering_are_respected() {
         state.player.potion_slots[0],
         Some(sts2_types::PotionId::FirePotion)
     );
+
+    // v0.114.0 Colorless / Tarot numeric balance parity checks: MyShinies, TheEmperor, TheShot, Death, Temperance.
+    let (mut s_v114, e_v114) = build_battle(
+        CharacterId::Fool,
+        &[
+            CardId::MyShinies,
+            CardId::TheEmperor,
+            CardId::TheShot,
+            CardId::Death,
+            CardId::Temperance,
+        ],
+        &[],
+        &[],
+        &[(MonsterId::FuzzyWurmCrawler, 200)],
+    );
+    s_v114.player.gold = 75;
+    s_v114.player.energy = 10;
+    play_hand_card(&mut s_v114, 0, Some(e_v114[0]), vec![]).unwrap();
+    // MyShinies: 1 + 75/25 = 4 hits * 2 dmg = 8 dmg
+    assert_eq!(s_v114.creature(e_v114[0]).unwrap().current_hp, 200 - 8);
+    let e_before_emp = s_v114.player.energy;
+    play_hand_card(&mut s_v114, 0, None, vec![]).unwrap();
+    // TheEmperor: +3 energy unupgraded (cost 0)
+    assert_eq!(s_v114.player.energy, e_before_emp + 3);
+    play_hand_card(&mut s_v114, 0, Some(e_v114[0]), vec![]).unwrap();
+    // TheShot: flat 20 dmg
+    assert_eq!(s_v114.creature(e_v114[0]).unwrap().current_hp, 200 - 8 - 20);
+    play_hand_card(&mut s_v114, 0, Some(e_v114[0]), vec![]).unwrap();
+    // Death: 66 Doom
+    assert_eq!(
+        s_v114
+            .creature(e_v114[0])
+            .unwrap()
+            .powers
+            .iter()
+            .find(|p| p.id == PowerId::DoomPower)
+            .unwrap()
+            .amount,
+        66
+    );
+    play_hand_card(&mut s_v114, 0, None, vec![]).unwrap();
+    // Temperance: 20 block
+    assert_eq!(s_v114.player.block, 20);
 }

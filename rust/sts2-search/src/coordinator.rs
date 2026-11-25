@@ -477,6 +477,7 @@ impl PruneSource for WorkerCandidateSource<'_> {
             f.reviving_enemy_count,
             f.death_save_use_count,
             f.strategy_goal_count,
+            f.feed_count,
             f.energy,
             f.stars,
             cand.forced_used_mask,
@@ -1792,6 +1793,7 @@ fn prepare_staged_candidate(
             fast_eval.player_max_hp,
             fast_eval.death_save_hp_restored,
             fast_eval.death_save_use_count,
+            fast_eval.feed_count,
             fast_eval.won,
             fast_eval.player_dead,
             turn,
@@ -4411,6 +4413,7 @@ fn record_victory_and_tighten(
         fast_eval.strategic_hp_credit as i32,
         root_baseline.boss_hp_relief,
         root_baseline.ignore_long_term_rewards,
+        i32::from(fast_eval.feed_count) * root_baseline.feed_max_hp_per_kill,
     );
     let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
         optional_paid_potion_cost,

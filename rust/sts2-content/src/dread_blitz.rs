@@ -626,7 +626,9 @@ pub fn resume_dominion_hook_choice(
 
 pub fn run_model_hook_mask(id: RunModelId) -> Result<HookMask, KernelError> {
     match id {
-        RunModelId::BlitzRunModel | RunModelId::DreadRunModel => Ok(HookMask::EMPTY),
+        RunModelId::BlitzRunModel
+        | RunModelId::DreadRunModel
+        | RunModelId::MultiplayerScalingModel => Ok(HookMask::EMPTY),
     }
 }
 
@@ -638,6 +640,8 @@ pub fn dispatch_run_model_hook(
     _args: &HookArgs<'_>,
 ) -> Result<HookResult, KernelError> {
     match id {
-        RunModelId::BlitzRunModel | RunModelId::DreadRunModel => Ok(HookResult::default()),
+        RunModelId::BlitzRunModel
+        | RunModelId::DreadRunModel
+        | RunModelId::MultiplayerScalingModel => Ok(HookResult::default()),
     }
 }
