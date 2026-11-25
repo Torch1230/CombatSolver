@@ -1,158 +1,53 @@
 ---
 name: combat-semantic-change
-description: 修改 CombatSolver 的卡牌、Power、遗物、药水、球、怪物行动、死亡召唤、选择、RNG、Fork 或跨回合战斗状态时，选择正确语义层并验证根快照、分支状态和实际结算。
+description: Modify card, power, relic, potion, orb, monster, death/summon, choice, RNG, or turn-continuation semantics in CombatSolver's HotKernel v2 engine.
 ---
 
-# CombatSolver 战斗语义修改
+# Combat Semantic Change
 
-## 适用边界
+修改战斗数值、结算顺序、选牌、随机源或跨回合机制时使用本指南。**先查 `.local/decompiled/` 核对原版行为，再改 `HotKernel`，并用 `OfflineSearchHarness` 做定向语义验证。**
 
-本 skill 处理会改变合法动作或战斗结算的语义。纯 UI、职责移动、Beam/评分调优和发布工作分别使用对应 skill。
+## 1. 模块定位（HotKernel v2 + Runtime 交接）
 
-开始前读取 `docs/ARCHITECTURE.md` 的 Runtime、Search、模拟引擎与 Prediction 章节。若 actual/simulated、增量回放和续用均一致，问题才可能属于搜索质量，转用 `search-performance-optimization`。
+| 层级 | 核心文件 | 职责边界 |
+| --- | --- | --- |
+| **原版导入** | `src/HotKernel/Import/{HotRootBuilder,HotContinuationStamp,HotImportSupport,VanillaRootGate}.cs` | **唯一允许读取 `MegaCrit.Sts2.Core.Models` 的内核层**；主线程采集牌/遗物/药水/Power/怪物/RNG/队列并构造成 `HotRootBundle` |
+| **规则目录** | `src/HotKernel/Rules/{HotRules,HotDefinitions,HotEnums,HotHookMask,HotCombatRulesSnapshot}.cs`、`HotCatalog.{Cards,Monsters,Potions,Powers,Relics}.cs` | 静态 ID、枚举掩码、Hook 订阅与基础规则表（无游戏模型引用） |
+| **纯值状态** | `src/HotKernel/State/{CombatHotState,HotColdSidecar,HotStatePacker,HotStructs,HotLimits,HotHash,HotKeywords,PackedStateArena,HotExecScratch}.cs` | 非托管热状态、`HotColdSidecar` 辅助状态、`Pack`/`Unpack` 紧凑快照与状态哈希 |
+| **核心模拟** | `src/HotKernel/Sim/HotCombatEngine*.cs`、`HotCostModifiers.cs`、`HotPiles.cs`、`HotRng.cs` | 出牌、费用修改、伤害/格挡、抽弃消消耗、球、Power、回合切换、选牌、字节码与怪物 AI |
+| **特色机制** | `src/HotKernel/Sim/Content/{HotMonsters,HotRelics,HotPotions,HotRegentNecro,HotFoolTarot}.cs` | 怪物特定逻辑、遗物/药水、摄政王星辉与塔罗/死灵等专属机制 |
+| **计划物化与选牌** | `src/HotSearch/HotPlanMaterializer.cs`、`src/Runtime/{NativeChoiceRuntime,PlayerTurnSetupPatches,CombatRootSnapshot}.cs` | 最优动作序列物化与原版实机选牌/部署对账 |
 
-## 1. 沿当前调用链定位
+## 2. 状态扩展与失败边界
 
-玩家问题包先按 `issue-bundle-triage` 读取异常栈、状态差异和动作记录，再检查对应源码。已有证据能证明错误链时直接定位，原包重跑用于解决尚未确定的问题；修复的正确性另由下面的最小行为验证证明。
+- **热字段 vs 边车**：高频参与分支模拟与哈希去重的字段放 `CombatHotState`（纯值）；超限稀有/复杂长尾数据放 `HotColdSidecar`。
+- **同步清单**：改动 `CombatHotState` 或 `HotColdSidecar` 时，同步检查：
+  1. `HotStatePacker` 的 `Pack`/`Unpack` 往返一致；
+  2. `HotHash` 是否覆盖影响等价去重的关键状态；
+  3. `HotContinuationStamp`（以及 `Runtime/ContinuationStamp.cs`）跨回合对账字段是否一致。
+- **显式失败**：遇到尚未支持的原版牌/Power/Mod 钩子或异常状态时，明确抛出 `PredictionUnsupportedException` 或 `IncompatibleGameplayModException`，不用默认值或静默降级掩盖语义缺失；禁止在 `HotKernel` 中使用宽泛 `catch (Exception)`。
+- **未知选牌/动作**：确保 `NativeChoiceRuntime` 与 `HotPlanMaterializer` 的实例标识、选项顺序匹配与模拟一致，避免实机部署“找不到动作”触发整场重算。
 
-按实际路径追踪，不从最终战损倒推：
+## 3. 按需验证路径
 
-```text
-CombatRootSnapshot.Capture（主线程根）
-  -> CombatPredictionSimulator / Engine Mirrors
-  -> Prediction support / SimulatedCombatState partial
-  -> CombatBeamSolver.Expansion（动作入口）
-  -> CombatBeamSolver.Phases（跨回合推进）
-  -> StateEvaluation / Terminal
-  -> ContinuationStamp / actual-simulated 严格差分
+构建主工程与 `OfflineSearchHarness` 后，按改动影响从轻量到规模按需选用验证（详见 [OFFLINE_SEARCH_HARNESS.md](../../../docs/OFFLINE_SEARCH_HARNESS.md)）：
+
+```powershell
+# 1) 改过 State 结构或目录后：秒级检查紧凑布局与实体覆盖
+OfflineSearchHarness.exe --check-hot-layout
+OfflineSearchHarness.exe --audit-hot-coverage
+
+# 2) 内核自洽、多回合连续性与 DOP1/DOP8 确定性
+OfflineSearchHarness.exe --verify-hot-parity --dop 8
+
+# 3) 若手里有最小复现包或玩家问题包，优先定向复现（秒级）
+OfflineSearchHarness.exe --replay-fuzz <repro.json>
+OfflineSearchHarness.exe --replay-bundle <bundle.zip> --lockstep-actions --deploy
+
+# 4) 大范围机制改动时跑定向差分模糊与整场部署压测
+OfflineSearchHarness.exe --fuzz-combat --fights 500 --seed 4026 --phase high-risk
+OfflineSearchHarness.exe --soak-deploy --fights 200 --seed 4026 --pool high-risk --profile Medium --dop 8
 ```
 
-检查同一效果是否同时存在于：
-
-- `CardOnPlayMirrors` 与各 Hook registry；
-- `CardEffectSpecRegistry` / `CalculatedVarSpecRegistry`；
-- `CardOnPlaySupport*` / `CardPowerOnPlaySupport*`；
-- `CorePowerSupport` 与具体生命周期 support；
-- `MonsterMoveEffects` / `MonsterMoveSemantics` / `BranchMonsterAi`；
-- `SimulatedCombatState` 的对应 partial。
-
-确定唯一权威结算点后再改代码。不能靠执行顺序抵消双结算。
-
-攻击意图直接从分支当前怪物 AI 行动派生；死亡变形、眩晕和强制行动可在同一玩家回合内替换行动，回合开始的派生缓存不足以支持伤害后条件。准备阶段重搜与普通跨回合使用同一延迟资源消费语义，基础最大能量在根冻结，监听表不读取实机战斗是否结束。回合末自动出牌先于 BeforeSideTurnEndEarly 的手牌消耗，额外回合资格在该阶段结算后判断。
-
-动态目标类型的分支覆盖必须同时定义能力存在和不存在两侧。君王之剑/小刀在分支无群攻能力时不能回退到实机 owner 的原生 TargetType；最小合同交错改变实机能力与独立分支，验证后台目标枚举不读 live。
-
-## 2. 选择实现层
-
-- 通用命令时序、资源、集合、历史、RNG：`src/Engine/InCombat/Simulation`。
-- 某个原版 Hook / Model 方法的精确实现：`src/Engine/InCombat/Mirrors`。
-- 跨 Hook 生命周期、隐藏状态、怪物 AI、死亡/召唤、异步事务和第三方 subscriber：`src/Prediction` 或对应 `SimulatedCombatState.*.cs`。
-- 候选展开入口：`CombatBeamSolver.Expansion.cs`，这里只调用语义，不实现具体结算。
-- Beam 保路、最终排序与预算不是语义修复位置。
-- live 部署和 UI 不反向修正预测结果。
-- 补货在 `AfterDeath` 内、旧个体移出阵容前生成替补，使随机生命判重与原版使用相同候选集合。死亡清理继续处理生命周期，生成动作由该 Hook 镜像独占。
-- 死亡 Hook 内复活或转阶段的个体须在攻击尾部前恢复生命；Hook 结束后清理死亡 Power，再结算插箭等后续效果。SteamEruptionPower 采用该入口。手动选牌 Fork 先准备活动 CardPlay 的卡牌映射，再复制包含活动卡引用的 Power。
-- 温柔等逐次出牌完成效果在对应 `AfterCardPlayed` 镜像内结算；外层效果的历史范围包含内层自动牌，按范围扫描逐牌效果会重复处理内层事件。保留原有分支计数、Fork 与回合末恢复所有权。
-- 历史敏感倍率使用冻结的根历史与当前分支新增事件。验证应让实机在根捕获后推进同类事件，再检查父分支、Fork 与跨回合结果，覆盖回合准备根早于实机抽牌的时间窗口。
-- 出牌限制先对照原版事件口径：CardPlayStarted 包含仍在执行的外层卡牌及重放，不能换成已完成次数或手动动作数。凡庸的权威入口是 ShouldPlay mirror，手动与自动打牌共用分支手牌/开始计数；只在候选枚举入口拦截会漏掉倾泻等嵌套自动牌。
-- 终局回合由模拟器在原版安全检查点首次锁定，Snapshot 按值保留并供标注/排序共用；不从最后动作回合推断、不统一加一，也不在已经开始的 Hook 监听器序列中逐个插入胜利中断。
-- 单场永久成本上限按逐来源累计值判断，手动出牌历史在主线程冻结，预测增量由该来源结算点拥有，Fork/重算/跨回合保持；最大生命增长不返还已花额度。策略约束在候选产出前检查，覆盖自动出牌和重放，模拟器继续按原版效果结算。新政策同步设置、缓存键、导出与恢复。
-- 命令本身的终局门仍应在对应调用点核对。例如遗物 AfterCardPlayed 计数会在末击后递增，但 PowerCmd.Apply 在 IsEnding 拒绝加属性；不能省掉命令门，也不能把属性延后到整个监听器序列结束再统一补偿。
-- 生产选牌部署通过 `NativeChoiceRuntime` 驱动原版页面；`ICardSelector` 只用于无 UI 测试和原版明确自动选择。部署计划/页面失配时释放求解器输入锁、暂停自动执行并保留原生选择给玩家；只有退出场景才取消原生选择，不能取消未完成原生动作后直接排队重算。恢复测试必须等待具体 GameAction.CompletionTask，队列临时空闲不足以证明重放/选牌动作结束。
-- 计划卡牌按 ID、升级和影响后续结算的逐实例语义状态匹配；附魔、重放、费用、关键词、动态变量或临时标志不同时，不能仅凭同名卡牌的序号回放。
-- 首回合准备没有既有路线，原生页面可见后再搜索。全自动后续回合消费上一轮 `EndTurn.TurnStartChoices` 并以 continuation 核对结果，不能为了展示页面重复搜索；单步执行在上一回合路线结束后交还控制，下一回合原生页面默认等待玩家，玩家在该页面请求执行或全自动时接管既有选择并继续复用，仍不得从选择中间态重搜。
-
-- 原生准备会话与搜索 worker 分别持有取消源；停止只取消并排空 worker，保留原生选择任务。等待页面后以原子状态转换确定唯一搜索所有者，重算沿同一流程重新创建 worker。结果发布结束采用/应用标志。
-- 原生自动出牌阶段结束选牌后，后续可操作阶段等待由既有战斗延迟操作拥有；原生阶段先返回，以便解除队列暂停和释放上一部署。接管原生手牌选择时先退出窥视模式，再按原生输入入口勾选与确认。
-- 搜索期间保留原生页面输入；原生 Task 完成或页面序号推进后淘汰旧根，按真实阶段继续。实际部署独占输入锁，先清除未提交的手动勾选再驱动计划。后续回合没有既有选择路线时，在选择发生前捕获稳定准备根。
-
-新增或修改 mirror 注册时，由 `MethodMirrorRegistryDescriptor` 自动向 CoverageCatalog 描述支持状态；不要在工具侧复制 registry 私有布局或另建平行登记。
-
-`AfterSideTurnEndLate` 的扩展使用 `AfterSideTurnEndLateMirrors.Register<TModel>`，在根捕获前完成登记；玩家和敌方共用 Hook facade，DisintegrationPower 不得恢复到独立晚期补偿。新增其他阶段时逐一核对原版顺序、选择暂停和状态所有权，不能把晚期入口当作所有回合事件的通用回调。
-
-额外回合的 `ShouldTakeExtraTurnEarly` / `ShouldTakeExtraTurn` / `AfterTakingExtraTurn` 由 `ExtraTurnMirrors` 登记原版及第三方单项效果。先遍历 Early，再遍历普通判断，首个命中来源获得资格，后置仅消费该来源；选择暂停沿原动作重放。状态读写使用分支 Power 和遗物记录；原生顺序、完整状态和 Fork 隔离用 `EXTRA-TURN-MIRROR-ORDER` 验证。
-
-## 3. 状态所有权清单
-
-卡牌费用等价须核对 `CardCostStateSupport` 的能量/星能基础值、有序修改层和失效条件，不能只比较当前费用。该writer同时服务出牌指纹、选牌与续用；没有修改层时保留原键。费用规则变化须覆盖原版出牌/回合末清理、Fork隔离与续用诊断字段边界。
-
-- 历史六项累计值由 `CombatPredictionHistory.Record` 维护，普通、手动选牌与执行续接 Fork 均继承已有总数，复制尾段不重复入账。更改历史事件或续接路径时使用 `VerifyHistoryCounters=true` 核对独立扫描；Started/Finished 与原始/Resolved 事件的计数时点不能混用。
-
-新增分支状态必须回答：
-
-1. 根值从哪里、在哪个主线程时点捕获；
-2. 所有者是基础 shadow、`SimulatedCombatState`、克隆 Model 还是 `PredictionStateStore`；
-3. Fork 是深拷贝、COW 或不可变共享；
-4. 内部引用如何通过同一个 `PredictionForkContext` 重映射；
-5. 是否改变未来合法动作或结算，因而进入状态键；
-6. 是否跨回合存活，因而进入 `ContinuationStamp`；
-7. actual/simulated 严格状态如何捕获；
-8. 创建、叠加、归零、移除、清空和 Fork 稳定边界。
-
-第三方遗物／Modifier 的根内隐藏状态优先使用 `ModelPredictionStateMirrors`，同时登记 capture、
-writeLive 和 writePredicted，复用 store 的 Fork context。状态描述按有序实例绑定并进入续用核对；
-首次根或续用捕获后不可登记，不允许未捕获时读取 live 或默认初始化。状态登记不代表 Hook 或
-补丁语义已适配，仍需沿实际结算链验证。签名和范围见 `docs/third-party/model-state.md`。
-
-活动 roster 和已知怪物状态是不同生命周期。怪物死亡或离开可行动阵容后，其正在执行行动仍可能读取根 AI/静态参数；不要随 roster 移除提前删除这些数据。
-
-纯派生搜索启发式不属于战斗状态，不进入状态键或续用文本。
-
-## 4. 隔离与失败语义
-
-- worker 只消费 `CombatRootSnapshot`，不补做 live 捕获。
-- 真实 Model 只作稳定身份、类型或根阶段只读元数据。
-- 写卡牌前取得 `PredictedCard.MutablePreview`；不得写 `Original`。
-- 分支可变对象显式克隆或 `RequireRemap`。
-- 不在 worker 推进真实动作队列、牌堆、Power、Creature 或 run RNG。
-- 不新增宽泛 catch、静默默认值或“跳过该候选”。未支持行为让搜索明确失败或形成已定义边界。
-- gameplay mod subscriber 必须在根阶段识别所有权；未知来源显式拒绝，不做通用浅拷贝。
-- 根可达卡牌的第三方 OnPlay Harmony 补丁由 `PredictionModPatchAudit` 检查；跨根读取当前补丁表，避免缓存已卸载或后来安装的补丁。新增适配时明确其来源与语义，不能用未知来源放行代替适配；此入口不代表所有第三方方法已覆盖。
-- 已适配 OnPlay 必须登记完整组合，由根冻结唯一标准 registry 镜像；命中后直接返回，不能再运行 vanilla/spec。配置变更只在主线程 live stamp 检查，worker 消费根标记；适配状态机另有 MoveNext 补丁、Inner 补丁及未审计新类型明确失败。条件支持通过标准 descriptor 加组合签名描述，不增加无条件原版覆盖。见 `docs/third-party/onplay-patches.md`。
-
-## 5. 验证选择
-
-定位依据和修复验证分别取证。先在未改行为源码上建立最小失败基线，再停在能覆盖根因的最低层；包内日志已说明的异常可以直接转成最小夹具，无需先启动原包恢复来重复确认：
-
-1. 默认只跑目标效果的 actual/simulated 严格差分，比较有序牌堆、逐实例状态、Power、怪物 AI、球与相关 RNG；
-2. 新增 Fork 状态时，在同一最小夹具断言 Fork、指纹和重映射；新增跨回合历史或续用字段时，用两回合生命周期或最早 continuation 边界核对 live/predicted；
-3. `-VerifyIncrementalSearch` / `--verify-incremental-search` 只加在实际启动正式搜索并回放候选的 fixture 上，不能给纯一步差分增加无效成本；
-4. 覆盖根因直接相邻的生命周期，例如回合开始/结束、叠加/移除、死亡/复活或嵌套选择；不要自动扩成整场战斗和全部同类模型；
-5. 普通快速迭代的单个 unattended 请求总超时不超过 `120` 秒。搜索使用短预算并在首个目标动作或最早复用回合停止；超时后缩小 fixture 或明确写未验证，不在同一轮延长到 `180/360` 秒；
-6. 完整自动 headless 只在改动搜索/部署编排、较小边界无法覆盖、用户明确要求完整回归/门禁，或要声称整场零重算时运行；固定 `Instant / 0 秒`；
-7. 改 mirror 支持面、状态字段或 coverage 分类时运行对应 CoverageCatalog verify；只有改变目录覆盖面或明确完整门禁时跑全量；
-8. UI、动画或真实卡顿另做可见 Steam 验收。
-
-多敌已知路线的原版对照须在全部正式预测冻结后才推进live，使用固定原始Creature身份逐敌比较；末击在真实清理前取证并等待对应CombatEnded，不能以总敌HP代替死亡/阵容/完整状态。测试选择器未提供的原生来源或上下文参数应明确限定证明范围，不声称直接比对；累计伤害、原生洗牌事件与Search统计也应分别记账。
-
-性能数字不能来自 `-VerifyIncrementalSearch` / `--verify-incremental-search`。通用 helper 改动应覆盖其调用类型族，不只跑最初报告的一个模型。
-
-## 6. 记录与提交
-
-提交前同步受影响的 `docs/DEVELOPMENT_NOTES.md`、`docs/TEST_MATRIX.md` 和必要的结构化证据。职责边界有变化时同时更新 `docs/ARCHITECTURE.md` 与结构门禁。
-
-普通语义修复直接提交。是否随该项提升版本和打包，以 `AGENTS.md` 的活动发布批次和发布口令为准；不要由本 skill 另立发包规则。汇报应说明首个错误状态、权威实现层、状态所有权、实际运行的 fixture 和未执行项。
-
-- 预测卡牌/Power 克隆的免锁路径由 `NativeModelCloneConcurrency` 核对：仅隔离域、普通原版卡牌或默认内部初始化 Power、已物化原版变量、原生克隆阶段与精确 BaseLib/Ritsu 稀疏复制补丁组合。Power 还须核对默认 InitInternalData、AbstractModel.DeepCloneFields 与 Power.DynamicVars 物化保护补丁；自定义初始化、附魔/灾厄、第三方模型或变量、未知补丁均走原锁；不得为判定路径而物化共享源变量。证据限线程当前最外层隔离域，跨域刷新，不缓存模型或分支值；原版 `MutableClone` 的 BaseLib 锁保持。合同须真实加载 BaseLib，并持锁验证并行、变量独占与跨域补丁失效。
-
-- `PredictionStateStore` 的三槽计数表只保存 Type/条目数，不保存模型或 state；空 store 不创建计数对象，溢出仍使用独占字典，Fork 丢弃零计数。工厂可以重入并扩容，禁止跨工厂调用持有主字典 ref；计数更新的 ref 必须立即消费。验证覆盖溢出、清空后 Fork、父子隔离与工厂重入，不能只测常见一类状态。
-- 根生成池仅缓存逐项核对的原生过滤：无色、角色攻击、非Basic/Ancient、Power及Common；保留角色/规范池/AllCards引用身份、约束、原生只读模型与自定义池回退门禁。后三类由TurnStartPowerSupport每次Power触发准备一次；回退路径GetUnlockedCards仍只调用一次，原谓词与战斗过滤仍逐次抽取执行，不能把取N次一张改成一次取N张。不得混用有放回NextItem与distinct TakeRandom，即使只取一张。候选模型只读共享，RNG与生成卡始终属当前分支；其他过滤未经核对不能获得缓存资格，合同须覆盖可变池回退调用次数与枚举语义。
-
-- `RoundTransition` 只在无计划选择的EndTurn初探保存无挂起事务的前缀：普通抽牌与历史补偿后为原稳定点；抽牌准备及一次性抽牌修正消费完毕、Simulator.Draw之前为洗牌选择的更早稳定点。后者只在将发生洗牌、当前worker已观察到该处产生有效选择层、且对应SourceId的玩家Power当前仍有效时预留；提示只存字符串，不持有模型。未命中保留较晚稳定点，未知非Power来源完整回放。抽牌前checkpoint保存已消费的drawCount，续接重建BeforeNextTake回调且不重复消费修正或提前触发SideTurnStart。ToolsOfTheTradePower继续立即预留抽牌后前缀。学习提示仅属worker的运行上下文，不跨搜索、不进入战斗键/候选政策；未到稳定点的选牌不得启用。原Fork事务断言保持，复制前临时关闭空cursor并在finally恢复。前缀匹配父节点引用、EndTurn回合与PlayerTurnStart选择，Knowledge选择完整回放；frontier拥有checkpoint，同父gate串行Fork，排空后释放。新增捕获计数包含额外物理Fork，DOP等价比较扣除该项后的转移Fork；完整状态/续用/历史、连续洗牌与变牌选择、延迟抽牌修正及兄弟隔离须直接对账。
-
-- RNG 惰性物化只共享完整计数器/四段状态值的不可变快照；已有可变实例的流必须在 Fork 当时捕获，不能把原生 Rng 当成 COW 共享，因为调用方可能继续持有旧引用。只读状态键/续用/投影读取不物化源流，真正随机操作仍使用分支独占的原生实例。合同覆盖九条流的原生序列、保留引用、兄弟/多代 Fork、只读未物化与 live 不变；实际整搜分配和时间分别判断，不把未访问流比例当作整搜收益。
-
-- 卡牌首次进场检查由 `PredictedCard.HasCheckedPowerAfflictionEntry` 按 wrapper 保存，根牌也标记已经检查；Fork继承，Clone重新检查，根身份集合仅捕获一次、只读共享。不得改成按卡名判断或把新wrapper当作旧卡已经处理。污染清除及数量变化仍在每次归一化检查。
-- 跑局监听表仅在前缀与 `_rootRunHookListeners` 引用相同时省去重映射；该冻结前缀只含根牌组CardModel/Enchantment，State.Fork不会登记这些模型，StateStore.Fork仍在其后。其他前缀、战斗后缀与Power继续原重映射/失效逻辑。更改Fork顺序或模型登记范围时必须重新核对这条前提。
-
-- 正式手动自身选牌续执行支持当前清单中的41张原版单人卡，要求无附魔/污染、单次手动打出、空显式cursor、单层card scope、可重映射活动历史及无不透明/事务StateStore。Engine保存显式CardPlay/frame并复用唯一结算尾部；Prediction独占seed/frame/deaths和Fork锁，Search仅在同父同动作选择链或frontier内持有。普通Fork仍拒绝挂起种子；私有Fork临时移走所属pending request并运行原事务断言，全部模型/trace/play/history使用同一PredictionForkContext。再次挂起时退出全部子scope再完整回放，额外物理Fork单列fallback，不多扣逻辑transition/选择预算。旧路径不得运行捕获诊断或持有检查点；释放必须在生产者/消费者排空后完成。不保留Task/闭包，不跨父、搜索或战斗缓存。完整状态/历史/RNG、兄弟修改、原生结算、DOP、取消/异常排空与增量等价直接验证；各来源的命中和整搜收益分别报告。已生成的请求/spec必须一并捕获，不能在恢复时再次GetSpec（探寻打击会再次消耗RNG）；同一个Fork context复制请求候选、生成历史中的非牌堆wrapper、CardPlay及其格挡金额/事件计数。
-
-- 9种原版手动选牌药水共用 `PotionExecutionSupport.Prepare/Complete`；检查点在消费槽位和Use完成后、选择应用及AfterPotionUsed之前，种子仍须通过普通Fork断言。四种生成药水从检查点运行原空选择探测，使用后钩子执行完才读取候选；其他五种仍从父状态准备候选。Search的串行/并行准备共用入口，同父完整动作匹配且仅Choice可替换；frontier或串行枚举拥有检查点并在排空后释放。生成候选历史只读共享，Apply继续Clone选中牌；分支可变牌/RNG由普通Fork隔离。嵌套再次挂起从原父完整回放；额外前缀Fork与fallback分别记账，不改变transition/choice预算；worker合并和归零须包含四个药水计数。第三方药水或登记覆盖原版选择的药水不进入此特化。不保存Task或闭包。验证全部九种原生结算、完整状态/历史/RNG、消耗/后置钩子、兄弟修改及DOP/取消/异常/增量对账。
-
-- 嵌套执行检查点保存纯数据帧与明确程序阶段/下一循环序号。所有CLR作用域退出后，核对领域事务、StateStore、活动CardPlay及延迟抽牌/生成历史的精确配对；普通Fork继续拒绝捕获/挂起/已准备种子。一次PredictionForkContext重映射状态、帧、候选、历史、CardPlay、Power来源及共享死亡集合，保留trace来源身份和抽牌深度限制；外层列表所持但已离开所有牌堆的wrapper也必须显式Fork，不能假设State已登记。未知派发必须拒绝整次捕获，继续原完整回放，不能默认缺失尾部已执行。已确认的抽牌、弃牌、Hook、重复子出牌与回合来源循环复用唯一普通执行体，恢复可以再次挂起。Search匹配同父完整动作及已消费选择前缀，只追加下一选择；选择层/frontier排空后释放全部图引用。不保存Task/闭包，不跨搜索缓存；严格增量基线禁用捕获。ExecutionChoiceCaptures/Reuses不扣选择预算，reuse替代一次原转移Fork，不能作为额外物理Fork从比较器扣除。源循环、深层选牌、DOP/取消/异常、有限预算耗尽与原生完整状态分别验证。
-
-- 金币 Modify/AfterModify 使用带 combat child 的跑局监听表，AfterGoldGained 使用 null-child 跑局序列。只在主线程冻结根成员，资源与 HP 消费分支状态；未知 override 不能依 manifest 的 Ignored 分类放行。最大生命增加后只回复实际封顶差值，并经过通用 Heal 的 HP 回调；原生严格差分覆盖小数、金币修正顺序、owner、熔化、封顶和成长/长期资源记录。
-
-- Hook 参与位图的金币方法族共用一位时，只允许保守保留更多监听成员；精确 dispatch 仍按方法查表。不得用超过 ulong 位宽的移位产生别名，也不得借共用位跳过有回调的成员。
-
-- 箭、额外回合与新伤害回调共用 `AdditionalCallbacks` 参与位，精确派发分别由所属 registry 持有。新增 Hook 同步参与元数据；回合准备的纯原版快捷路径与扩展路径共用单项结算体，最小合同通过正式 Hook facade 验证。
+- 涉及原版 UI 交互或生命周期接线（如 `NativeChoiceRuntime`、`PlayerTurnSetupPatches`）时，可补跑一次定向无头实机场景验证（`tools/testing/run-unattended-test.ps1` 带 `-CleanupInstanceOnExit`）。
+- 遵循用户最新工程偏好：不必为每一处常规修复都强行补写重型回归夹具或固定日志台账；用最直接、可复现的验证确认修复生效即可。
