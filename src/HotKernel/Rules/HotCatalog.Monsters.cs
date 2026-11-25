@@ -11,7 +11,7 @@ internal readonly record struct HotMonsterCatalogEntry(
     HotMonsterStateKind StateKind);
 
 /// <summary>
-/// Static STS2 0.113.1 catalog covering all 121 vanilla monsters, spawn-closure graph,
+/// Static STS2 0.114.0 catalog covering all 121 vanilla monsters, spawn-closure graph,
 /// move-effect precompilation, and Orb / Enchantment / Affliction / Dominion ID resolvers.
 /// </summary>
 internal static class HotMonsterCatalog

@@ -12,6 +12,8 @@ public sealed class CombatSolverLog
     private void Write(string level, string message)
     {
         Journal.Write(level, message);
+#if ENABLE_PERFORMANCE_RECORDING
         PerformanceRecording.Log(level, message);
+#endif
     }
 }

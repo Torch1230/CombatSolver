@@ -442,7 +442,7 @@ internal static partial class HotCombatEngine
             HotCustomCardId.SculptingStrike => (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) == 0,
             HotCustomCardId.Snap => !HasEffectiveRetainKeyword(in s, in card, rules),
             HotCustomCardId.DecisionsDecisions => def.Type == CardType.Skill && (card.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0,
-            HotCustomCardId.LockedIn or HotCustomCardId.ArrowStab => def.IsShootTag,
+            HotCustomCardId.LockedIn => def.IsShootTag,
             _ => true,
         };
     }

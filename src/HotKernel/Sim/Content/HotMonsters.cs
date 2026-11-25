@@ -52,69 +52,148 @@ internal static class HotMonsters
         HotMonsterId monsterId = ResolveMonsterId(monsterDef);
         HotMonsterMachine? machine = rules.GetMonsterMachine(monsterDefId);
 
-        // Synthetic IllusionPower REVIVE_MOVE when machine has no precompiled REVIVE_MOVE node.
-        if (s.Enemies[slot].CurrentMoveNode == SyntheticReviveNodeSentinel)
+        // STS2 0.114.0 MonsterModel.PerformMove (MonsterModel.cs:447-469):
+        // mark IsPerformingMove across move execution and defer dead-monster roster/power removal until exit.
+        uint moveBit = slot < 32 ? (1u << slot) : 0u;
+        bool wasPerformingMove = (scratch.PerformingMoveEnemyMask & moveBit) != 0;
+        scratch.PerformingMoveEnemyMask |= moveBit;
+        try
         {
-            if (isReviving)
+            // Synthetic IllusionPower REVIVE_MOVE when machine has no precompiled REVIVE_MOVE node.
+            if (s.Enemies[slot].CurrentMoveNode == SyntheticReviveNodeSentinel)
             {
-                s.Enemies[slot].Vital.CurrentHp = s.Enemies[slot].Vital.MaxHp;
-                s.Enemies[slot].Vital.Flags |= HotCreatureFlags.Alive;
-                s.Enemies[slot].DeathPhase = HotDeathPhase.None;
-            }
-            return;
-        }
-
-        // Handle WaterfallGiant SteamEruption forced phase moves even if CurrentMoveNode lagged.
-        if (monsterId == HotMonsterId.WaterfallGiant && s.Enemies[slot].SteamPhase != 0)
-        {
-            if (s.Enemies[slot].SteamPhase == 1)
-            {
-                PrepareSteamEruption(ref s, rules, slot);
+                if (isReviving)
+                {
+                    s.Enemies[slot].Vital.CurrentHp = s.Enemies[slot].Vital.MaxHp;
+                    s.Enemies[slot].Vital.Flags |= HotCreatureFlags.Alive;
+                    s.Enemies[slot].DeathPhase = HotDeathPhase.None;
+                }
                 return;
             }
 
-            if (s.Enemies[slot].SteamPhase == 2)
+            // Handle WaterfallGiant SteamEruption forced phase moves even if CurrentMoveNode lagged.
+            if (monsterId == HotMonsterId.WaterfallGiant && s.Enemies[slot].SteamPhase != 0)
             {
-                int steamDmg = s.Enemies[slot].AiRegs[1];
-                s.Enemies[slot].SteamPhase = 0;
-                ExecuteWaterfallExplode(ref s, ref cold, rules, scratch, slot, dealerSlot, steamDmg);
-                return;
+                if (s.Enemies[slot].SteamPhase == 1)
+                {
+                    PrepareSteamEruption(ref s, rules, slot);
+                    return;
+                }
+
+                if (s.Enemies[slot].SteamPhase == 2)
+                {
+                    int steamDmg = s.Enemies[slot].AiRegs[1];
+                    s.Enemies[slot].SteamPhase = 0;
+                    ExecuteWaterfallExplode(ref s, ref cold, rules, scratch, slot, dealerSlot, steamDmg);
+                    return;
+                }
             }
-        }
 
-        short moveNodeId = s.Enemies[slot].CurrentMoveNode;
-        if (machine == null || moveNodeId < 0 || moveNodeId >= machine.Nodes.Length)
-            return;
-
-        HotMonsterNode node = machine.Nodes[moveNodeId];
-        string moveId = node.MoveId;
-
-        // 1. Pre-attack effects (LivingFog BLOAT_MOVE spawns GasBomb; ThievingHopper THIEVERY_MOVE steals card).
-        ApplyBeforeAttack(ref s, ref cold, rules, scratch, slot, dealerSlot, monsterDef, monsterId, moveId);
-        if (scratch.NeedsChoice || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
-            return;
-
-        // 2. Multi-hit attack loop (matches MonsterMoveSemantics.ApplyForecastMove).
-        bool hasAttack = HasAttackHits(node, monsterId, moveId);
-        bool fullyBlockedAnyHit = false;
-        int playerUnblockedHits = 0;
-        int suckTriggeredHits = 0;
-
-        if (hasAttack && (s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0)
-        {
-            HotHookArgs atkArgs = new()
-            {
-                ActorSlot = dealerSlot,
-                TargetSlot = 0,
-                IsPoweredAttack = true,
-                CardIdx = -1,
-            };
-            HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.BeforeAttack, ref atkArgs);
-            if (scratch.NeedsChoice)
+            short moveNodeId = s.Enemies[slot].CurrentMoveNode;
+            if (machine == null || moveNodeId < 0 || moveNodeId >= machine.Nodes.Length)
                 return;
 
-            scratch.AttackActive = true;
-            ExecuteAttackHits(
+            HotMonsterNode node = machine.Nodes[moveNodeId];
+            string moveId = node.MoveId;
+
+            // 1. Pre-attack effects (LivingFog BLOAT_MOVE spawns GasBomb; ThievingHopper THIEVERY_MOVE steals card).
+            ApplyBeforeAttack(ref s, ref cold, rules, scratch, slot, dealerSlot, monsterDef, monsterId, moveId);
+            if (scratch.NeedsChoice || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                return;
+
+            // 2. Multi-hit attack loop (matches MonsterMoveSemantics.ApplyForecastMove).
+            bool hasAttack = HasAttackHits(node, monsterId, moveId);
+            bool fullyBlockedAnyHit = false;
+            int playerUnblockedHits = 0;
+            int suckTriggeredHits = 0;
+
+            if (hasAttack && (s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0)
+            {
+                HotCombatEngine.HotAttackCommandScope atkScope = HotCombatEngine.EnterAttackCommand(scratch, dealerSlot);
+                try
+                {
+                    HotHookArgs atkArgs = new()
+                    {
+                        ActorSlot = dealerSlot,
+                        TargetSlot = 0,
+                        IsPoweredAttack = true,
+                        CardIdx = -1,
+                    };
+                    HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.BeforeAttack, ref atkArgs);
+                    if (scratch.NeedsChoice)
+                        return;
+
+                    scratch.AttackActive = true;
+                    ExecuteAttackHits(
+                        ref s,
+                        ref cold,
+                        rules,
+                        scratch,
+                        slot,
+                        dealerSlot,
+                        monsterDef,
+                        monsterId,
+                        node,
+                        ref fullyBlockedAnyHit,
+                        ref playerUnblockedHits,
+                        ref suckTriggeredHits);
+                    s.Enemies[slot].CreatureAttacksThisTurn++;
+                    scratch.AttackActive = false;
+
+                    if (scratch.NeedsChoice)
+                        return;
+
+                    HotHookArgs afterAtkArgs = new()
+                    {
+                        ActorSlot = dealerSlot,
+                        TargetSlot = 0,
+                        IsPoweredAttack = true,
+                        CardIdx = -1,
+                    };
+                    HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterAttack, ref afterAtkArgs);
+                    if (scratch.NeedsChoice)
+                        return;
+
+                    // PainfulStabsPower: add Wound to Discard for each unblocked hit received by player.
+                    // Runs before deferred dead-attacker power cleanup so dying mid-attack (e.g. Thorns) still applies Wounds.
+                    if (playerUnblockedHits > 0 && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
+                    {
+                        int painfulStabs = HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.PainfulStabsPower);
+                        if (painfulStabs > 0)
+                            AddMonsterStatusCards(ref s, ref cold, rules, scratch, HotCustomCardId.Wound, HotPileKind.Discard, painfulStabs * playerUnblockedHits, randomPos: false);
+                    }
+
+                    // SuckPower: gain Strength for each hit that dealt unblocked damage to player or pet.
+                    if (suckTriggeredHits > 0 && (s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0)
+                    {
+                        int suck = HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.SuckPower);
+                        if (suck > 0)
+                            HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, dealerSlot, dealerSlot, HotPowerId.StrengthPower, suck * suckTriggeredHits);
+                    }
+                }
+                finally
+                {
+                    HotCombatEngine.ExitAttackCommand(ref s, rules, scratch, in atkScope);
+                }
+
+                if (scratch.NeedsChoice || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                    return;
+            }
+
+            // ImbalancedPower stun when attack was fully blocked.
+            if (fullyBlockedAnyHit
+                && (s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                && HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.ImbalancedPower) > 0)
+            {
+                if (monsterId == HotMonsterId.BowlbugRock)
+                    ForceStunnedMove(ref s, rules, slot, "HEADBUTT_MOVE");
+                else
+                    ForceStunnedMove(ref s, rules, slot, null);
+                s.Enemies[slot].Flags |= HotEnemyFlags.SkipNextMove;
+            }
+
+            // 3. Post-attack move effects (all 99 explicit monsters / 179 explicit moves + compiled MoveEffects fallback).
+            bool handled = ApplyPostAttackMoveEffects(
                 ref s,
                 ref cold,
                 rules,
@@ -123,87 +202,32 @@ internal static class HotMonsters
                 dealerSlot,
                 monsterDef,
                 monsterId,
-                node,
-                ref fullyBlockedAnyHit,
-                ref playerUnblockedHits,
-                ref suckTriggeredHits);
-            s.Enemies[slot].CreatureAttacksThisTurn++;
-            scratch.AttackActive = false;
+                moveId);
 
             if (scratch.NeedsChoice)
                 return;
 
-            HotHookArgs afterAtkArgs = new()
+            if (!handled && node.MoveEffects.Length > 0)
             {
-                ActorSlot = dealerSlot,
-                TargetSlot = 0,
-                IsPoweredAttack = true,
-                CardIdx = -1,
-            };
-            HotCombatEngine.DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterAttack, ref afterAtkArgs);
-            if (scratch.NeedsChoice)
-                return;
-
-            // PainfulStabsPower: add Wound to Discard for each unblocked hit received by player.
-            if (playerUnblockedHits > 0 && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
-            {
-                int painfulStabs = HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.PainfulStabsPower);
-                if (painfulStabs > 0)
-                    AddMonsterStatusCards(ref s, ref cold, rules, scratch, HotCustomCardId.Wound, HotPileKind.Discard, painfulStabs * playerUnblockedHits, randomPos: false);
+                ExecuteCompiledMoveEffects(ref s, ref cold, rules, scratch, dealerSlot, node.MoveEffects);
+                if (scratch.NeedsChoice)
+                    return;
             }
 
-            // SuckPower: gain Strength for each hit that dealt unblocked damage to player or pet.
-            if (suckTriggeredHits > 0 && (s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0)
-            {
-                int suck = HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.SuckPower);
-                if (suck > 0)
-                    HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, dealerSlot, dealerSlot, HotPowerId.StrengthPower, suck * suckTriggeredHits);
-            }
+            // Keep Wither upgrades and card afflictions synchronized after monster actions.
+            if (monsterId == HotMonsterId.Aeonglass)
+                NormalizeAeonglassWithers(ref s, rules);
 
-            if (scratch.NeedsChoice || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
-                return;
+            if (monsterId is HotMonsterId.SpectralKnight or HotMonsterId.VineShambler or HotMonsterId.CeremonialBeast)
+                NormalizeCardAfflictions(ref s, rules);
         }
-
-        // ImbalancedPower stun when attack was fully blocked.
-        if (fullyBlockedAnyHit
-            && (s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0
-            && HotCombatEngine.GetPowerAmountById(in s, rules, dealerSlot, HotPowerId.ImbalancedPower) > 0)
+        finally
         {
-            if (monsterId == HotMonsterId.BowlbugRock)
-                ForceStunnedMove(ref s, rules, slot, "HEADBUTT_MOVE");
-            else
-                ForceStunnedMove(ref s, rules, slot, null);
-            s.Enemies[slot].Flags |= HotEnemyFlags.SkipNextMove;
+            if (!wasPerformingMove)
+                scratch.PerformingMoveEnemyMask &= ~moveBit;
+            if (!scratch.NeedsChoice)
+                HotCombatEngine.FlushDeferredDeathCleanup(ref s, rules, scratch, dealerSlot);
         }
-
-        // 3. Post-attack move effects (all 99 explicit monsters / 179 explicit moves + compiled MoveEffects fallback).
-        bool handled = ApplyPostAttackMoveEffects(
-            ref s,
-            ref cold,
-            rules,
-            scratch,
-            slot,
-            dealerSlot,
-            monsterDef,
-            monsterId,
-            moveId);
-
-        if (scratch.NeedsChoice)
-            return;
-
-        if (!handled && node.MoveEffects.Length > 0)
-        {
-            ExecuteCompiledMoveEffects(ref s, ref cold, rules, scratch, dealerSlot, node.MoveEffects);
-            if (scratch.NeedsChoice)
-                return;
-        }
-
-        // Keep Wither upgrades and card afflictions synchronized after monster actions.
-        if (monsterId == HotMonsterId.Aeonglass)
-            NormalizeAeonglassWithers(ref s, rules);
-
-        if (monsterId is HotMonsterId.SpectralKnight or HotMonsterId.VineShambler or HotMonsterId.CeremonialBeast)
-            NormalizeCardAfflictions(ref s, rules);
     }
 
     // -------------------------------------------------------------------------
@@ -588,9 +612,11 @@ internal static class HotMonsters
         // 13-14. Update roster and DeathPhase while leaving deadSlot's powers intact until
         // HotCombatEngine.KillCreature dispatches OnAnyCreatureDeath + HotHookMask.AfterDeath
         // (e.g. Melancholy, ShowOffPower, ImpaledPower, CompostPower) and removes dead powers.
+        // STS2 0.114.0 CreatureCmd.cs:753-761: defer combatState.RemoveCreature while IsPerformingMove or IsAttacking.
+        bool deferRosterRemoval = HotCombatEngine.IsDeferredDeathCleanupActive(scratch, deadSlot);
         bool removeFromRoster = shouldRemoveFromCombat && !isNowReviving;
 
-        if (removeFromRoster)
+        if (removeFromRoster && !deferRosterRemoval)
         {
             s.Enemies[slot].Vital.Flags &= ~(HotCreatureFlags.Alive | HotCreatureFlags.ActiveInRoster);
             RemoveFromActiveEnemyRoster(ref s, slot);
@@ -902,18 +928,26 @@ internal static class HotMonsters
         if ((s.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0
             && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
         {
-            scratch.AttackActive = true;
-            HotCombatEngine.DealDamage(
-                ref s,
-                ref cold,
-                rules,
-                scratch,
-                dealerSlot: dealerSlot,
-                targetSlot: 0,
-                baseDamage: steamDamage,
-                isPoweredAttack: true);
-            s.Enemies[slot].CreatureAttacksThisTurn++;
-            scratch.AttackActive = false;
+            HotCombatEngine.HotAttackCommandScope atkScope = HotCombatEngine.EnterAttackCommand(scratch, dealerSlot);
+            try
+            {
+                scratch.AttackActive = true;
+                HotCombatEngine.DealDamage(
+                    ref s,
+                    ref cold,
+                    rules,
+                    scratch,
+                    dealerSlot: dealerSlot,
+                    targetSlot: 0,
+                    baseDamage: steamDamage,
+                    isPoweredAttack: true);
+                s.Enemies[slot].CreatureAttacksThisTurn++;
+                scratch.AttackActive = false;
+            }
+            finally
+            {
+                HotCombatEngine.ExitAttackCommand(ref s, rules, scratch, in atkScope);
+            }
 
             if (scratch.NeedsChoice || (s.Player.Flags & HotCreatureFlags.Alive) == 0)
                 return;
@@ -2474,7 +2508,7 @@ internal static class HotMonsters
             card.UpgradeLevel = 0;
             if (card.CardDefId < rules.Cards.Length)
             {
-                // Match 0.113.1 CardModel.DowngradeInternal (CardModel.cs:2336-2358).
+                // Match 0.114.0 DampenPower.cs:35 -> CardCmd.RemoveAllUpgrades / CardModel.RemoveAllUpgradesInternal.
                 HotCardDef def = rules.Cards[card.CardDefId];
                 card.BaseEnergyCost = def.BaseCost;
                 card.BaseStarCost = def.BaseStarCost;
@@ -3442,14 +3476,16 @@ internal static class HotMonsters
         byte newEnemySlot,
         byte newOwnerSlot)
     {
-        if (rules.Dominion != HotDominionId.None)
-            HotFoolTarot.ApplyDominionOnEnemyAdded(ref s, ref cold, rules, scratch, newEnemySlot);
-
+        // STS2 0.114.0 Hook.AfterCreatureAddedToCombat -> CombatState.IterateHookListeners():
+        // Player relics (PhilosophersStone, FurCoat) run inside the _allies loop BEFORE Dominion (appended at end).
         if (rules.HasRelic(HotRelicId.PhilosophersStone))
             HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, newOwnerSlot, 0, HotPowerId.StrengthPower, 1);
 
         if (rules.IsFurCoatActiveInCurrentRoom && rules.HasRelic(HotRelicId.FurCoat) && s.Enemies[newEnemySlot].Vital.CurrentHp > 1)
             s.Enemies[newEnemySlot].Vital.CurrentHp = 1;
+
+        if (rules.Dominion != HotDominionId.None)
+            HotFoolTarot.ApplyDominionOnEnemyAdded(ref s, ref cold, rules, scratch, newEnemySlot);
     }
 
     private static int GetEnemyEncounterSlotOrder(in CombatHotState s, HotRules rules, byte enemySlot)
@@ -3997,7 +4033,7 @@ internal static class HotMonsters
             ClearCardAffliction(ref s, rules, HotAfflictionId.Hexed);
     }
 
-    private static bool ShouldEnemyBeRemovedFromCombatAfterDeath(in CombatHotState s, HotRules rules, byte ownerSlot)
+    internal static bool ShouldEnemyBeRemovedFromCombatAfterDeath(in CombatHotState s, HotRules rules, byte ownerSlot)
     {
         int count = s.PowerCount;
         for (int i = 0; i < count; i++)
@@ -4011,7 +4047,6 @@ internal static class HotMonsters
                 or HotPowerId.IllusionPower
                 or HotPowerId.ReattachPower
                 or HotPowerId.SteamEruptionPower
-                or HotPowerId.PainfulStabsPower
                 or HotPowerId.DieForYouPower)
             {
                 return false;
@@ -4075,7 +4110,6 @@ internal static class HotMonsters
             or HotPowerId.DieForYouPower
             or HotPowerId.IllusionPower
             or HotPowerId.MinionPower
-            or HotPowerId.PainfulStabsPower
             or HotPowerId.ReattachPower
             or HotPowerId.SteamEruptionPower);
 
@@ -4442,7 +4476,7 @@ internal static class HotMonsters
         return false;
     }
 
-    private static void RemoveFromActiveEnemyRoster(ref CombatHotState s, byte enemySlot)
+    internal static void RemoveFromActiveEnemyRoster(ref CombatHotState s, byte enemySlot)
     {
         int rosterCount = s.RosterCount;
         int write = 0;

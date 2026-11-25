@@ -434,29 +434,40 @@ internal static partial class HotCombatEngine
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
 
-        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
-        scratch.AttackActive = true;
         int totalUnblocked = 0;
         int totalPlusOverkill = 0;
-        for (int h = 0; h < hits; h++)
+        HotAttackCommandScope scope = EnterAttackCommand(scratch, dealerSlot: 0);
+        try
         {
-            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
-                || !IsValidEnemyTarget(in s, targetEnemySlot)
-                || scratch.NeedsChoice)
+            BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+            scratch.AttackActive = true;
+            for (int h = 0; h < hits; h++)
             {
-                break;
+                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
+                    || !IsValidEnemyTarget(in s, targetEnemySlot)
+                    || scratch.NeedsChoice)
+                {
+                    break;
+                }
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+                totalPlusOverkill += t_lastHitTotalPlusOverkill;
+                if (IsOverOrEnding(in s))
+                    break;
             }
-            cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-            totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
-            totalPlusOverkill += t_lastHitTotalPlusOverkill;
-            if (IsOverOrEnding(in s))
-                break;
+            scratch.AttackActive = false;
+            t_lastAttackUnblockedDamage = totalUnblocked;
+            t_lastAttackTotalPlusOverkill = totalPlusOverkill;
+            if (!scratch.NeedsChoice)
+            {
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+            }
         }
-        scratch.AttackActive = false;
-        t_lastAttackUnblockedDamage = totalUnblocked;
-        t_lastAttackTotalPlusOverkill = totalPlusOverkill;
-        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+        finally
+        {
+            ExitAttackCommand(ref s, rules, scratch, in scope);
+        }
         t_lastAttackUnblockedDamage = totalUnblocked;
         t_lastAttackTotalPlusOverkill = totalPlusOverkill;
     }
@@ -481,42 +492,53 @@ internal static partial class HotCombatEngine
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
 
-        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
-        scratch.AttackActive = true;
-        for (int h = 0; h < hits; h++)
+        HotAttackCommandScope scope = EnterAttackCommand(scratch, dealerSlot: 0);
+        try
         {
-            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s) || scratch.NeedsChoice)
-                break;
-
-            int targetCount = SnapshotLivingEnemies(in s, targets);
-            if (targetCount == 0)
-                break;
-
-            for (int t = 0; t < targetCount; t++)
+            BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+            scratch.AttackActive = true;
+            for (int h = 0; h < hits; h++)
             {
-                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s) || scratch.NeedsChoice)
                     break;
-                byte enemySlot = targets[t];
-                if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                    continue;
-                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId, deferKill: true);
-            }
-            for (int t = 0; t < targetCount; t++)
-            {
-                if (scratch.NeedsChoice)
+
+                int targetCount = SnapshotLivingEnemies(in s, targets);
+                if (targetCount == 0)
                     break;
-                byte enemySlot = targets[t];
-                if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
-                    && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
+
+                for (int t = 0; t < targetCount; t++)
                 {
-                    KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false);
+                    if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+                        break;
+                    byte enemySlot = targets[t];
+                    if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                        continue;
+                    cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                    DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId, deferKill: true);
+                }
+                for (int t = 0; t < targetCount; t++)
+                {
+                    if (scratch.NeedsChoice)
+                        break;
+                    byte enemySlot = targets[t];
+                    if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                        && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
+                    {
+                        KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false);
+                    }
                 }
             }
+            scratch.AttackActive = false;
+            if (!scratch.NeedsChoice)
+            {
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+            }
         }
-        scratch.AttackActive = false;
-        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+        finally
+        {
+            ExitAttackCommand(ref s, rules, scratch, in scope);
+        }
     }
 
     internal static void ExecuteRandomEnemiesAttack(
@@ -538,23 +560,34 @@ internal static partial class HotCombatEngine
         ushort cardDefId = (uint)cardIdx < (uint)s.TotalCardCount ? s.Cards[cardIdx].CardDefId : (ushort)0;
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
 
-        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
-        scratch.AttackActive = true;
-        for (int h = 0; h < hits; h++)
+        HotAttackCommandScope scope = EnterAttackCommand(scratch, dealerSlot: 0);
+        try
         {
-            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s) || scratch.NeedsChoice)
-                break;
+            BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+            scratch.AttackActive = true;
+            for (int h = 0; h < hits; h++)
+            {
+                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || IsOverOrEnding(in s) || scratch.NeedsChoice)
+                    break;
 
-            int enemySlot = PickRandomLivingEnemySlot(ref s);
-            if (enemySlot < 0)
-                break;
+                int enemySlot = PickRandomLivingEnemySlot(ref s);
+                if (enemySlot < 0)
+                    break;
 
-            cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-            DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+            }
+            scratch.AttackActive = false;
+            if (!scratch.NeedsChoice)
+            {
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+            }
         }
-        scratch.AttackActive = false;
-        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, cardIdx, cardDefId, powered);
+        finally
+        {
+            ExitAttackCommand(ref s, rules, scratch, in scope);
+        }
     }
 
     internal static void ExecuteOstyAttack(
@@ -583,26 +616,38 @@ internal static partial class HotCombatEngine
         hits = ApplyModifyAttackHitCount(rules, cardDefId, hits);
         byte targetCreatureSlot = (byte)(3 + targetEnemySlot);
 
-        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
-        scratch.AttackActive = true;
-        for (int h = 0; h < hits; h++)
+        HotAttackCommandScope scope = EnterAttackCommand(scratch, dealerSlot: 1);
+        try
         {
-            if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0
-                || !IsValidEnemyTarget(in s, targetEnemySlot)
-                || scratch.NeedsChoice)
+            BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
+            scratch.AttackActive = true;
+            for (int h = 0; h < hits; h++)
             {
-                break;
+                if ((s.Osty.Flags & HotCreatureFlags.Alive) == 0
+                    || !IsValidEnemyTarget(in s, targetEnemySlot)
+                    || scratch.NeedsChoice)
+                {
+                    break;
+                }
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 1, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
+                if (IsOverOrEnding(in s))
+                    break;
             }
-            cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-            DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 1, targetSlot: targetCreatureSlot, baseDamage: baseDamage, isPoweredAttack: powered, isUnblockable: false, cardIdx: cardIdx, cardDefId: cardDefId);
-            if (IsOverOrEnding(in s))
-                break;
+            s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
+            scratch.AttackActive = false;
+            if (!scratch.NeedsChoice)
+            {
+                cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
+                EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
+            }
         }
-        s.Counters[(int)HotCounterSlot.OstyAttacksThisTurn]++;
-        scratch.AttackActive = false;
-        cardIdx = RefreshCardIdxByUid(in s, cardIdx, cardUid);
-        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 1, cardIdx, cardDefId, powered);
-        HotRegentNecro.NotifyOstyAttacked(ref s, ref cold, rules);
+        finally
+        {
+            ExitAttackCommand(ref s, rules, scratch, in scope);
+        }
+        if (!scratch.NeedsChoice)
+            HotRegentNecro.NotifyOstyAttacked(ref s, ref cold, rules);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

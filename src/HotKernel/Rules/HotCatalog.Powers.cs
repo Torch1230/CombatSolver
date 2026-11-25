@@ -17,7 +17,7 @@ internal readonly record struct HotPowerCatalogEntry(
     PowerInstanceType InstanceType = PowerInstanceType.None);
 
 /// <summary>
-/// Static STS2 0.113.1 catalog covering all vanilla concrete powers with exact types, hook masks, and setup weights.
+/// Static STS2 0.114.0 catalog covering all vanilla concrete powers with exact types, hook masks, and setup weights.
 /// </summary>
 internal static class HotPowerCatalog
 {
@@ -153,7 +153,6 @@ internal static class HotPowerCatalog
         arr[(int)HotPowerId.ForegoneConclusionPower] = new(HotPowerId.ForegoneConclusionPower, "FOREGONE_CONCLUSION_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.BeforeHandDraw, false, false, false, 10);
         arr[(int)HotPowerId.FrailPower] = new(HotPowerId.FrailPower, "FRAIL_POWER", HotPowerDomain.Core, PowerType.Debuff, PowerStackType.Counter, HotHookMask.ModifyBlockMultiplicative | HotHookMask.AfterTurnEnd, false, false, true, 12);
         arr[(int)HotPowerId.FreeAttackPower] = new(HotPowerId.FreeAttackPower, "FREE_ATTACK_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyEnergyCost | HotHookMask.BeforeCardPlayed, false, false, false, 16);
-        arr[(int)HotPowerId.FreeCardPower] = new(HotPowerId.FreeCardPower, "FREE_CARD_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyEnergyCost | HotHookMask.BeforeCardPlayed, false, false, false, 16);
         arr[(int)HotPowerId.FreePowerPower] = new(HotPowerId.FreePowerPower, "FREE_POWER_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyEnergyCost | HotHookMask.BeforeCardPlayed, false, false, false, 16);
         arr[(int)HotPowerId.FreeSkillPower] = new(HotPowerId.FreeSkillPower, "FREE_SKILL_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyEnergyCost | HotHookMask.BeforeCardPlayed, false, false, false, 15);
         arr[(int)HotPowerId.FriendshipPower] = new(HotPowerId.FriendshipPower, "FRIENDSHIP_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyMaxEnergy, false, false, false, 20);
@@ -231,7 +230,7 @@ internal static class HotPowerCatalog
         arr[(int)HotPowerId.OneTwoPunchPower] = new(HotPowerId.OneTwoPunchPower, "ONE_TWO_PUNCH_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyCardPlayCount | HotHookMask.AfterTurnEnd, false, false, false, 12);
         arr[(int)HotPowerId.OrbitPower] = new(HotPowerId.OrbitPower, "ORBIT_POWER", HotPowerDomain.Regent, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterEnergySpent, false, false, false, 26);
         arr[(int)HotPowerId.PagestormPower] = new(HotPowerId.PagestormPower, "PAGESTORM_POWER", HotPowerDomain.Necrobinder, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterCardDrawn, false, false, false, 24);
-        arr[(int)HotPowerId.PainfulStabsPower] = new(HotPowerId.PainfulStabsPower, "PAINFUL_STABS_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterDeath | HotHookMask.AfterAttack, false, false, false, 0);
+        arr[(int)HotPowerId.PainfulStabsPower] = new(HotPowerId.PainfulStabsPower, "PAINFUL_STABS_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterAttack, false, false, false, 0);
         arr[(int)HotPowerId.PaleBlueDotPower] = new(HotPowerId.PaleBlueDotPower, "PALE_BLUE_DOT_POWER", HotPowerDomain.Regent, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterCardPlayed | HotHookMask.AfterTurnEnd | HotHookMask.AfterSideTurnStart, false, false, false, 24);
         arr[(int)HotPowerId.PanachePower] = new(HotPowerId.PanachePower, "PANACHE_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterCardPlayed | HotHookMask.AfterTurnEnd, false, false, false, 14);
         arr[(int)HotPowerId.PaperCutsPower] = new(HotPowerId.PaperCutsPower, "PAPER_CUTS_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterDamageGiven, false, false, false, 0);
@@ -332,7 +331,7 @@ internal static class HotPowerCatalog
         arr[(int)HotPowerId.ToricToughnessPower] = new(HotPowerId.ToricToughnessPower, "TORIC_TOUGHNESS_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ShouldClearBlock, false, false, false, 10);
         arr[(int)HotPowerId.TrackingPower] = new(HotPowerId.TrackingPower, "TRACKING_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyDamageMultiplicative, false, false, false, 16);
         arr[(int)HotPowerId.TrashToTreasurePower] = new(HotPowerId.TrashToTreasurePower, "TRASH_TO_TREASURE_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterCardGenerated, false, false, false, 16);
-        arr[(int)HotPowerId.TunePower] = new(HotPowerId.TunePower, "TUNE_POWER", HotPowerDomain.Fool, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterTurnEnd, false, false, false, 18);
+        arr[(int)HotPowerId.TunePower] = new(HotPowerId.TunePower, "TUNE_POWER", HotPowerDomain.Fool, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterCardPlayed, false, false, false, 18);
         arr[(int)HotPowerId.TyrannyPower] = new(HotPowerId.TyrannyPower, "TYRANNY_POWER", HotPowerDomain.Regent, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyHandDraw | HotHookMask.AfterSideTurnStart, false, false, false, 24);
         arr[(int)HotPowerId.UnderworldPower] = new(HotPowerId.UnderworldPower, "UNDERWORLD_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.AfterDamageGiven | HotHookMask.AfterTurnEnd, false, false, false, 0);
         arr[(int)HotPowerId.UnmovablePower] = new(HotPowerId.UnmovablePower, "UNMOVABLE_POWER", HotPowerDomain.Core, PowerType.Buff, PowerStackType.Counter, HotHookMask.ModifyBlockMultiplicative, false, false, false, 20);

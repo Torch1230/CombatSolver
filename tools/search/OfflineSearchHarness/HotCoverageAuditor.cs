@@ -16,7 +16,7 @@ namespace OfflineSearchHarness;
 
 /// <summary>
 /// Layer 1 静态完整性与反射审计器（<c>--audit-hot-coverage</c>）：
-/// 在纯 .NET 中加载 0.113.1 真实 ModelDb，枚举全部 9 类单人实体与非纯攻击怪物 MoveState，
+/// 在纯 .NET 中加载 0.114.0 真实 ModelDb，枚举全部 9 类单人实体与非纯攻击怪物 MoveState，
 /// 核对 HotCatalog 登记、Bytecode 编译、Sim 实现/明确分类，并预先触发 HotRootBuilder 与
 /// HotImportSupport 的全部反射字段解析。任何静默遗漏或反射失效都以非零退出码报错。
 /// </summary>
@@ -623,7 +623,7 @@ internal static class HotCoverageAuditor
         }
 
         // 2. 对 ModelDb 中全部非 Mock 怪物调用 HotImportSupport.CaptureStaticMonsterIntValues，
-        //    确保 StaticMonsterIntMembers 中每一个字段/属性表达式树在 0.113.1 中全部编译成功。
+        //    确保 StaticMonsterIntMembers 中每一个字段/属性表达式树在 0.114.0 中全部编译成功。
         Dictionary<string, MonsterModel> monsterByTypeName = new(StringComparer.Ordinal);
         foreach (MonsterModel canonical in ModelDb.All.OfType<MonsterModel>().DistinctBy(static m => m.Id))
         {
@@ -642,7 +642,7 @@ internal static class HotCoverageAuditor
             }
         }
 
-        // 2b. 确保 StaticMonsterIntMembers 里的每个键都对应真实 0.113.1 怪物类
+        // 2b. 确保 StaticMonsterIntMembers 里的每个键都对应真实 0.114.0 怪物类
         FieldInfo? staticIntMapField = typeof(HotImportSupport).GetField(
             "StaticMonsterIntMembers", BindingFlags.Static | BindingFlags.NonPublic);
         if (staticIntMapField?.GetValue(null) is IReadOnlyDictionary<string, string[]> staticIntMap)

@@ -219,7 +219,7 @@ internal sealed class HotRules
         => RelicDefIdByEntry.TryGetValue(entry, out ushort id) ? id : (ushort)0;
 
     /// <summary>
-    /// Resolves the exact STS2 0.113.1 <c>CardFactory.GetDefaultTransformationOptions</c>
+    /// Resolves the exact STS2 0.114.0 <c>CardFactory.GetDefaultTransformationOptions</c>
     /// (<c>CardFactory.cs:171-176</c>) source pool for <paramref name="origDef"/>.
     /// </summary>
     public ushort[] GetUnlockedTransformPool(HotCardDef origDef)
@@ -381,13 +381,13 @@ internal sealed class HotRules
     }
 
     /// <summary>
-    /// Computes <c>CardEnergyCost.GetWithModifiers(CostModifiers.Local)</c> matching STS2 0.113.1.
+    /// Computes <c>CardEnergyCost.GetWithModifiers(CostModifiers.Local)</c> matching STS2 0.114.0.
     /// </summary>
     public static int GetCardLocalEnergyCost(in HotCard card, HotColdSidecar? cold)
         => HotCostModifiers.GetLocalEnergyCost(in card, cold);
 
     /// <summary>
-    /// Computes <c>CardModel.CurrentStarCost</c> matching STS2 0.113.1.
+    /// Computes <c>CardModel.CurrentStarCost</c> matching STS2 0.114.0.
     /// </summary>
     public static int GetCardCurrentStarCost(in HotCard card, HotColdSidecar? cold)
         => HotCostModifiers.GetEffectiveStarCost(in card, cold);

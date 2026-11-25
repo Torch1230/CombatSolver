@@ -1942,7 +1942,7 @@ internal static class HotPlanMaterializer
             HotCustomCardId.SculptingStrike => (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) == 0,
             HotCustomCardId.Snap => !HotCombatEngine.HasEffectiveRetainKeyword(in s, in card, rules),
             HotCustomCardId.DecisionsDecisions => def.Type == CardType.Skill && (card.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0,
-            HotCustomCardId.LockedIn or HotCustomCardId.ArrowStab => def.IsShootTag,
+            HotCustomCardId.LockedIn => def.IsShootTag,
             _ => true,
         };
     }
@@ -2095,7 +2095,7 @@ internal static class HotPlanMaterializer
         return id switch
         {
             HotCustomCardId.Headbutt or HotCustomCardId.ThinkingAhead or HotCustomCardId.Glimmer
-                or HotCustomCardId.Recall or HotCustomCardId.CosmicIndifference or HotCustomCardId.PhotonCut
+                or HotCustomCardId.WahKi or HotCustomCardId.CosmicIndifference or HotCustomCardId.PhotonCut
                 => PlanChoiceEffect.MoveToDrawTop,
             HotCustomCardId.Survivor or HotCustomCardId.Acrobatics or HotCustomCardId.Prepared
                 or HotCustomCardId.DaggerThrow or HotCustomCardId.HiddenDaggers or HotCustomCardId.TheHermit
@@ -2107,6 +2107,7 @@ internal static class HotPlanMaterializer
             HotCustomCardId.Nightmare => PlanChoiceEffect.Nightmare,
             HotCustomCardId.DualWield or HotCustomCardId.HeirloomHammer => PlanChoiceEffect.Duplicate,
             HotCustomCardId.Begone or HotCustomCardId.Charge or HotCustomCardId.Guards or HotCustomCardId.Seance
+                or HotCustomCardId.Florescence
                 => PlanChoiceEffect.Transform,
             HotCustomCardId.Transfigure => PlanChoiceEffect.Modify,
             HotCustomCardId.HandTrick => PlanChoiceEffect.ApplySly,

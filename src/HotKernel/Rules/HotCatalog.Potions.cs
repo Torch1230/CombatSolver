@@ -14,7 +14,7 @@ internal readonly record struct HotPotionCatalogEntry(
     bool IsCombatUsable);
 
 /// <summary>
-/// Static STS2 0.113.1 catalog covering all 67 vanilla potions with bytecode compilation and valuation weights.
+/// Static STS2 0.114.0 catalog covering all 67 vanilla potions with bytecode compilation and valuation weights.
 /// </summary>
 internal static class HotPotionCatalog
 {

@@ -129,10 +129,10 @@ internal static class FuzzScenarioGenerator
         }
         else
         {
-            // all: 优先保证 Phase A 扫清全部单人实体（~70-80 场），其余分配给 Phase B 协同与容量压测（23 个专项场景）
+            // all: 优先保证 Phase A 扫清全部单人实体（~70-80 场），其余分配给 Phase B 协同与容量压测（29 个专项场景）
             int sweepCount = fights <= 30
                 ? Math.Max(1, (int)Math.Round(fights * 0.6))
-                : Math.Min(Math.Max(72, (int)Math.Round(fights * 0.67)), Math.Max(1, fights - 23));
+                : Math.Min(Math.Max(72, (int)Math.Round(fights * 0.67)), Math.Max(1, fights - 29));
             int synergyCount = Math.Max(0, fights - sweepCount);
             result.AddRange(BuildPhaseASweep(pools, sweepCount, seed, maxTurns, startIndex: 0));
             result.AddRange(BuildPhaseBSynergy(pools, synergyCount, seed ^ 0x5A5A_1337, maxTurns, startIndex: sweepCount));
@@ -554,6 +554,83 @@ internal static class FuzzScenarioGenerator
                 potions: Potions(pools, "FIRE_POTION", "VULNERABLE_POTION", "STRENGTH_POTION"),
                 powers: [new PowerInjectionSpec("STRENGTH_POWER", 25, OnPlayer: true)],
                 extraEnergy: 6),
+
+            // 24. v0.114.0 Fool Arrows / Melodies Rework (TwinShot, Recall, TrickShot, Quietus, Honing, SerratedArrows, WahKi, WahChoKi, Tune + Ki, Simpleton, ArrowStab)
+            i => MakeSynergy(pools, startIndex + i, seed, maxTurns, "v01140_fool_arrows_melodies_rework",
+                "FOOL", PickEncounter(pools, "TerrorEelElite", i), GameMode.Standard, null,
+                cards: Cards(pools, ("TWIN_SHOT", 1), ("RECALL", 0), ("TRICK_SHOT", 1), ("QUIETUS", 1),
+                    ("HONING", 0), ("SERRATED_ARROWS", 0), ("WAH_KI", 0), ("WAH_CHO_KI", 1),
+                    ("TUNE", 1), ("SIMPLETON", 1), ("ARROW_STAB", 0), ("KI_CHANT", 1)),
+                relics: Relics(pools, "CONDUCTORS_BATON", "METRONOME", "MUSIC_BOX"),
+                potions: Potions(pools, "PRECISION_POTION", "BOTTLED_SONG", "ENERGY_POTION"),
+                extraEnergy: 5),
+
+            // 25. v0.114.0 Fool Sadness / Florescence + TheShot / ChoChorus + WahBlast / MythicForm
+            i => MakeSynergy(pools, startIndex + i, seed, maxTurns, "v01140_fool_sadness_florescence_chorus",
+                "FOOL", PickEncounter(pools, "PhantasmalGardenersElite", i), GameMode.Standard, null,
+                cards: Cards(pools, ("OPTIMISM", 1), ("OPTIMISM", 0), ("GROWTH", 1),
+                    ("SADNESS", 0), ("SADNESS", 0), ("SADNESS", 0),
+                    ("FLORESCENCE", 1), ("CHO_CHORUS", 0), ("WAH_BLAST", 1),
+                    ("KI_CHANT", 1), ("MYTHIC_FORM", 0), ("MYTHIC_FORM", 1)),
+                relics: Relics(pools, "BAG_OF_PREPARATION", "CONDUCTORS_BATON"),
+                potions: Potions(pools, "ENERGY_POTION", "LIQUID_MEMORIES"),
+                extraEnergy: 5),
+
+            // 26. v0.114.0 Tarots (TheSun, TheHierophant, TheFool with unplayable hand, Death)
+            i => MakeSynergy(pools, startIndex + i, seed, maxTurns, "v01140_tarots_unplayable_fool",
+                "FOOL", PickEncounter(pools, "FuzzyWurmCrawlerWeak", i), GameMode.Standard, null,
+                cards: Cards(pools, ("THE_SUN", 0), ("THE_HIEROPHANT", 1), ("THE_FOOL", 0), ("DEATH", 1),
+                    ("SADNESS", 0), ("SADNESS", 0), ("SADNESS", 0), ("SOOT", 0), ("SOOT", 0)),
+                relics: Relics(pools, "RUNIC_PYRAMID", "BAG_OF_PREPARATION"),
+                potions: Potions(pools, "ENERGY_POTION", "COLORLESS_POTION")),
+
+            // 27. v0.114.0 MyShinies with Gold + HardToKill + Block + Osty
+            i => MakeSynergy(pools, startIndex + i, seed, maxTurns, "v01140_my_shinies_hard_to_kill_osty",
+                "NECROBINDER", PickEncounter(pools, "ExoskeletonsNormal", i), GameMode.Standard, null,
+                cards: Cards(pools, ("MY_SHINIES", 1), ("MY_SHINIES", 0), ("BODYGUARD", 1),
+                    ("UNLEASH", 1), ("AFTERLIFE", 1), ("BLIGHT_STRIKE", 1)),
+                relics: Relics(pools, "BOUND_PHYLACTERY", "BONE_FLUTE"),
+                potions: Potions(pools, "BLOCK_POTION", "BONE_BREW"),
+                powers:
+                [
+                    new PowerInjectionSpec("HARD_TO_KILL_POWER", 5, OnPlayer: true),
+                    new PowerInjectionSpec("PLATING_POWER", 6, OnPlayer: true),
+                    new PowerInjectionSpec("HARD_TO_KILL_POWER", 8, OnPlayer: false, EnemyIndex: 0),
+                ],
+                playerGold: 125),
+
+            // 28. v0.114.0 Adroit + Unmovable / Bounce + Ensemble with Replay
+            i => MakeSynergy(pools, startIndex + i, seed, maxTurns, "v01140_adroit_unmovable_bounce_ensemble",
+                "FOOL", PickEncounter(pools, "ExoskeletonsNormal", i), GameMode.Standard, null,
+                cards:
+                [
+                    new CardInjectionSpec("UNMOVABLE", 1),
+                    new CardInjectionSpec("BOUNCE", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 4),
+                    new CardInjectionSpec("CHO_READY", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 3),
+                    new CardInjectionSpec("TWIN_SHOT", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 3),
+                    new CardInjectionSpec("DEFEND_FOOL", 1, EnchantmentId: "SPIRAL", EnchantmentAmount: 1),
+                    new CardInjectionSpec("STRIKE_FOOL", 1, EnchantmentId: "SPIRAL", EnchantmentAmount: 1),
+                    new CardInjectionSpec("WAH_CHO", 0),
+                ],
+                relics: Relics(pools, "BAG_OF_PREPARATION", "THROWING_AXE", "THUMBSCREW"),
+                potions: Potions(pools, "DUPLICATOR", "BLOCK_POTION"),
+                powers:
+                [
+                    new PowerInjectionSpec("STRETCH_POWER", 5, OnPlayer: true),
+                    new PowerInjectionSpec("ENSEMBLE_POWER", 3, OnPlayer: false, EnemyIndex: 0),
+                ],
+                extraEnergy: 5),
+
+            // 29. v0.114.0 Timber + GigantificationPotion + Wuppy Dead + Melancholy
+            i => MakeSynergy(pools, startIndex + i, seed, maxTurns, "v01140_timber_gigantification_wuppy_dead_melancholy",
+                "NECROBINDER", PickEncounter(pools, "ExoskeletonsNormal", i), GameMode.Standard, null,
+                cards: Cards(pools, ("TIMBER", 1), ("TIMBER", 0), ("MELANCHOLY", 1), ("MELANCHOLY", 0),
+                    ("OFFERING", 1), ("SHOCKWAVE", 0)),
+                relics: Relics(pools, "WUPPY", "BAG_OF_PREPARATION", "PAPER_PHROG"),
+                potions: Potions(pools, "GIGANTIFICATION_POTION", "VULNERABLE_POTION", "ENERGY_POTION"),
+                extraEnergy: 5,
+                wuppyMaxHp: 30,
+                wuppyCurrentHp: 0),
         ];
 
         List<FuzzScenarioSpec> list = new(count);
@@ -989,8 +1066,8 @@ internal static class FuzzScenarioGenerator
                 powers: [new PowerInjectionSpec("STRENGTH_POWER", 35, OnPlayer: true)],
                 extraEnergy: 5),
 
-            // 14. v0.113.1 Adroit + StretchPower + Fool Blitz Stress
-            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01131_adroit_stretch_fool",
+            // 14. Adroit + StretchPower + Fool Blitz Stress (TwinShot replaces RapidShot in v0.114.0)
+            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01140_adroit_stretch_fool",
                 "FOOL", PickHighRiskEncounter(pools, "MytesNormal", i), GameMode.Blitz, null,
                 cards:
                 [
@@ -999,7 +1076,7 @@ internal static class FuzzScenarioGenerator
                     new CardInjectionSpec("FOOLISH_SHOT", 0, EnchantmentId: "ADROIT", EnchantmentAmount: 4),
                     new CardInjectionSpec("WAH_CHO", 0, EnchantmentId: "ADROIT", EnchantmentAmount: 3),
                     new CardInjectionSpec("ARCHERY", 0),
-                    new CardInjectionSpec("RAPID_SHOT", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 2),
+                    new CardInjectionSpec("TWIN_SHOT", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 2),
                     new CardInjectionSpec("LULLABY", 0),
                     new CardInjectionSpec("KI_CHANT", 1),
                     new CardInjectionSpec("YAH", 1),
@@ -1134,6 +1211,83 @@ internal static class FuzzScenarioGenerator
 
             // 24. High-Risk Capacity Stress B: 110 strictly high-risk cards
             i => BuildHighRiskCapacityCardsStress(pools, startIndex + i, seed, maxTurns),
+
+            // 25. v0.114.0 Fool Arrows / Melodies Rework
+            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01140_fool_arrows_melodies_rework",
+                "FOOL", PickHighRiskEncounter(pools, "TerrorEelElite", i), GameMode.Standard, null,
+                cards: HighRiskCards(pools, ("TWIN_SHOT", 1), ("RECALL", 0), ("TRICK_SHOT", 1), ("QUIETUS", 1),
+                    ("HONING", 0), ("SERRATED_ARROWS", 0), ("WAH_KI", 0), ("WAH_CHO_KI", 1),
+                    ("TUNE", 1), ("SIMPLETON", 1), ("ARROW_STAB", 0), ("KI_CHANT", 1)),
+                relics: HighRiskRelics(pools, "CONDUCTORS_BATON", "METRONOME", "MUSIC_BOX"),
+                potions: Potions(pools, "PRECISION_POTION", "BOTTLED_SONG", "ENERGY_POTION"),
+                extraEnergy: 5),
+
+            // 26. v0.114.0 Fool Sadness / Florescence + TheShot / ChoChorus + WahBlast / MythicForm
+            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01140_fool_sadness_florescence_chorus",
+                "FOOL", PickHighRiskEncounter(pools, "PhantasmalGardenersElite", i), GameMode.Standard, null,
+                cards: HighRiskCards(pools, ("OPTIMISM", 1), ("OPTIMISM", 0), ("GROWTH", 1),
+                    ("SADNESS", 0), ("SADNESS", 0), ("SADNESS", 0),
+                    ("FLORESCENCE", 1), ("CHO_CHORUS", 0), ("WAH_BLAST", 1),
+                    ("KI_CHANT", 1), ("MYTHIC_FORM", 0), ("MYTHIC_FORM", 1)),
+                relics: HighRiskRelics(pools, "BAG_OF_PREPARATION", "CONDUCTORS_BATON"),
+                potions: Potions(pools, "ENERGY_POTION", "LIQUID_MEMORIES"),
+                extraEnergy: 5),
+
+            // 27. v0.114.0 Tarots (TheSun, TheHierophant, TheFool with unplayable hand, Death)
+            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01140_tarots_unplayable_fool",
+                "FOOL", PickHighRiskEncounter(pools, "ExoskeletonsNormal", i), GameMode.Standard, null,
+                cards: HighRiskCards(pools, ("THE_SUN", 0), ("THE_HIEROPHANT", 1), ("THE_FOOL", 0), ("DEATH", 1),
+                    ("SADNESS", 0), ("SADNESS", 0), ("SADNESS", 0), ("SOOT", 0), ("SOOT", 0)),
+                relics: HighRiskRelics(pools, "RUNIC_PYRAMID", "BAG_OF_PREPARATION"),
+                potions: Potions(pools, "ENERGY_POTION", "COLORLESS_POTION")),
+
+            // 28. v0.114.0 MyShinies with Gold + HardToKill + Block + Osty
+            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01140_my_shinies_hard_to_kill_osty",
+                "NECROBINDER", PickHighRiskEncounter(pools, "ExoskeletonsNormal", i), GameMode.Standard, null,
+                cards: HighRiskCards(pools, ("MY_SHINIES", 1), ("MY_SHINIES", 0), ("BODYGUARD", 1),
+                    ("UNLEASH", 1), ("AFTERLIFE", 1), ("BLIGHT_STRIKE", 1)),
+                relics: HighRiskRelics(pools, "BOUND_PHYLACTERY", "BONE_FLUTE"),
+                potions: Potions(pools, "BLOCK_POTION", "BONE_BREW"),
+                powers:
+                [
+                    new PowerInjectionSpec("HARD_TO_KILL_POWER", 5, OnPlayer: true),
+                    new PowerInjectionSpec("PLATING_POWER", 6, OnPlayer: true),
+                    new PowerInjectionSpec("HARD_TO_KILL_POWER", 8, OnPlayer: false, EnemyIndex: 0),
+                ],
+                playerGold: 125),
+
+            // 29. v0.114.0 Adroit + Unmovable / Bounce + Ensemble with Replay
+            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01140_adroit_unmovable_bounce_ensemble",
+                "FOOL", PickHighRiskEncounter(pools, "ExoskeletonsNormal", i), GameMode.Standard, null,
+                cards:
+                [
+                    new CardInjectionSpec("UNMOVABLE", 1),
+                    new CardInjectionSpec("BOUNCE", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 4),
+                    new CardInjectionSpec("CHO_READY", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 3),
+                    new CardInjectionSpec("TWIN_SHOT", 1, EnchantmentId: "ADROIT", EnchantmentAmount: 3),
+                    new CardInjectionSpec("DEFEND_FOOL", 1, EnchantmentId: "SPIRAL", EnchantmentAmount: 1),
+                    new CardInjectionSpec("STRIKE_FOOL", 1, EnchantmentId: "SPIRAL", EnchantmentAmount: 1),
+                    new CardInjectionSpec("WAH_CHO", 0),
+                ],
+                relics: HighRiskRelics(pools, "BAG_OF_PREPARATION", "THROWING_AXE", "THUMBSCREW"),
+                potions: Potions(pools, "DUPLICATOR", "BLOCK_POTION"),
+                powers:
+                [
+                    new PowerInjectionSpec("STRETCH_POWER", 5, OnPlayer: true),
+                    new PowerInjectionSpec("ENSEMBLE_POWER", 3, OnPlayer: false, EnemyIndex: 0),
+                ],
+                extraEnergy: 5),
+
+            // 30. v0.114.0 Timber + GigantificationPotion + Wuppy Dead + Melancholy
+            i => MakeHighRiskSynergy(pools, startIndex + i, seed, maxTurns, "v01140_timber_gigantification_wuppy_dead_melancholy",
+                "NECROBINDER", PickHighRiskEncounter(pools, "ExoskeletonsNormal", i), GameMode.Standard, null,
+                cards: HighRiskCards(pools, ("TIMBER", 1), ("TIMBER", 0), ("MELANCHOLY", 1), ("MELANCHOLY", 0),
+                    ("OFFERING", 1), ("SHOCKWAVE", 0)),
+                relics: HighRiskRelics(pools, "WUPPY", "BAG_OF_PREPARATION", "PAPER_PHROG"),
+                potions: Potions(pools, "GIGANTIFICATION_POTION", "VULNERABLE_POTION", "ENERGY_POTION"),
+                extraEnergy: 5,
+                wuppyMaxHp: 30,
+                wuppyCurrentHp: 0),
         ];
 
         List<FuzzScenarioSpec> list = new(count);
@@ -1406,7 +1560,10 @@ internal static class FuzzScenarioGenerator
         int playerHp = 95,
         int playerMaxHp = 115,
         int extraEnergy = 3,
-        int extraStars = 0)
+        int extraStars = 0,
+        int? playerGold = null,
+        int? wuppyMaxHp = null,
+        int? wuppyCurrentHp = null)
     {
         return new FuzzScenarioSpec
         {
@@ -1426,6 +1583,9 @@ internal static class FuzzScenarioGenerator
                 ActIndex = index % 3,
                 PlayerMaxHp = playerMaxHp,
                 PlayerHp = playerHp,
+                PlayerGold = playerGold,
+                WuppyMaxHp = wuppyMaxHp,
+                WuppyCurrentHp = wuppyCurrentHp,
                 ClearStarterDeck = true,
                 ClearStarterRelics = false,
                 Cards = cards,
@@ -1589,7 +1749,10 @@ internal static class FuzzScenarioGenerator
         int playerHp = 95,
         int playerMaxHp = 110,
         int extraEnergy = 3,
-        int extraStars = 0)
+        int extraStars = 0,
+        int? playerGold = null,
+        int? wuppyMaxHp = null,
+        int? wuppyCurrentHp = null)
     {
         return new FuzzScenarioSpec
         {
@@ -1609,6 +1772,9 @@ internal static class FuzzScenarioGenerator
                 ActIndex = index % 3,
                 PlayerMaxHp = playerMaxHp,
                 PlayerHp = playerHp,
+                PlayerGold = playerGold,
+                WuppyMaxHp = wuppyMaxHp,
+                WuppyCurrentHp = wuppyCurrentHp,
                 ClearStarterDeck = false,
                 ClearStarterRelics = false,
                 Cards = cards,

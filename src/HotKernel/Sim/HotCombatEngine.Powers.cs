@@ -59,6 +59,14 @@ internal static partial class HotCombatEngine
                 BoolFlag = takingExtraTurn,
             };
 
+            // 0. Early pass: Hook.AfterPlayerTurnStartEarly (STS2 0.114.0 Hook.cs:947-953: HappyFlower, FakeHappyFlower)
+            if ((s.ActiveHookMask & (ulong)HotHookMask.AfterPlayerTurnStartEarly) != 0)
+            {
+                DispatchHooks(ref s, ref cold, rules, scratch, HotHookMask.AfterPlayerTurnStartEarly, ref args);
+                if (scratch.NeedsChoice || IsOverOrEnding(in s))
+                    return;
+            }
+
             // 1. Player Powers overriding AfterPlayerTurnStart
             if (s.PowerCount > 0 && (s.ActiveHookMask & (ulong)HotHookMask.AfterSideTurnStart) != 0)
             {
@@ -956,13 +964,14 @@ internal static partial class HotCombatEngine
                 break;
 
             case HotPowerId.HardToKillPower:
-                if (args.BoolFlag && args.DecimalValue > amount)
+                // 0.114.0 HardToKillPower.cs:15-26: ModifyHpLostBeforeOstyLate (!BoolFlag && Amount == 0).
+                if (!args.BoolFlag && args.Amount == 0 && args.DecimalValue > amount)
                     args.DecimalValue = amount;
                 break;
 
             case HotPowerId.HardenedShellPower:
-                // 0.113.1 HardenedShellPower.cs:37-48: ModifyHpLostBeforeOstyLate (Pass 1, before AfterOstyLate / TheBoot / Buffer).
-                if (!args.BoolFlag && args.Amount == 1)
+                // 0.114.0 HardenedShellPower.cs:32-43: ModifyHpLostBeforeOstyLate (!BoolFlag && Amount == 0).
+                if (!args.BoolFlag && args.Amount == 0)
                 {
                     int remainingCap = Math.Max(0, amount - s.Powers[powerIdx].Aux0);
                     if (args.DecimalValue > remainingCap)
@@ -1408,11 +1417,6 @@ internal static partial class HotCombatEngine
                     DecrementPowerAt(ref s, rules, powerIdx);
                 break;
 
-            case HotPowerId.FreeCardPower:
-                if (ownerSlot == 0 && amount > 0)
-                    DecrementPowerAt(ref s, rules, powerIdx);
-                break;
-
             case HotPowerId.VeilpiercerPower:
                 if (ownerSlot == 0 && amount > 0 && args.CardIdx >= 0
                     && IsCardEthereal(in s, in s.Cards[args.CardIdx], rules))
@@ -1608,6 +1612,12 @@ internal static partial class HotCombatEngine
             case HotPowerId.EnragePower:
                 if (cardDef.Type == CardType.Skill && amount > 0)
                     ApplyPowerById(ref s, ref cold, rules, scratch, ownerSlot, ownerSlot, HotPowerId.StrengthPower, amount);
+                break;
+
+            case HotPowerId.EnsemblePower:
+                // STS2 0.114.0 EnsemblePower.cs:26-32: multiplayer ally trigger only, and only on IsLastInSeries.
+                if (args.ActorSlot != ownerSlot && args.PlayIndex == args.PlayCount - 1 && amount > 0)
+                    DecrementPowerAt(ref s, rules, powerIdx);
                 break;
 
             case HotPowerId.CurlUpPower:
@@ -1989,6 +1999,12 @@ internal static partial class HotCombatEngine
 
     internal static int LastHitTotalPlusOverkill => t_lastHitTotalPlusOverkill;
 
+    [ThreadStatic]
+    private static int[]? t_attackContextPrevSeq;
+
+    [ThreadStatic]
+    private static int t_attackContextDepth;
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void BeginAttackContext(
         ref CombatHotState s,
@@ -1999,7 +2015,16 @@ internal static partial class HotCombatEngine
         int cardIdx,
         ushort cardDefId,
         bool powered)
-        => BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+    {
+        if (scratch.NextAttackCommandSeq == 0)
+            t_attackContextDepth = 0;
+        int[] stack = t_attackContextPrevSeq ??= new int[16];
+        if (t_attackContextDepth < stack.Length)
+            stack[t_attackContextDepth] = scratch.ActiveAttackCommandSeq;
+        t_attackContextDepth++;
+        scratch.ActiveAttackCommandSeq = ++scratch.NextAttackCommandSeq;
+        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void EndAttackContext(
@@ -2011,7 +2036,27 @@ internal static partial class HotCombatEngine
         int cardIdx,
         ushort cardDefId,
         bool powered)
-        => EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+    {
+        try
+        {
+            EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot, cardIdx, cardDefId, powered);
+        }
+        finally
+        {
+            if (t_attackContextDepth > 0)
+            {
+                t_attackContextDepth--;
+                int[]? stack = t_attackContextPrevSeq;
+                scratch.ActiveAttackCommandSeq = stack != null && t_attackContextDepth < stack.Length
+                    ? stack[t_attackContextDepth]
+                    : 0;
+            }
+            else
+            {
+                scratch.ActiveAttackCommandSeq = 0;
+            }
+        }
+    }
 
     private static void HandleModifyCardPlayCount(
         ref CombatHotState s,
@@ -2137,7 +2182,17 @@ internal static partial class HotCombatEngine
         int amount,
         ref HotHookArgs args)
     {
-        if (ownerSlot != 0 || amount <= 0 || args.CardDefId == 0 || args.CardDefId >= rules.Cards.Length)
+        if (amount <= 0 || args.CardDefId == 0 || args.CardDefId >= rules.Cards.Length)
+            return;
+
+        if (powerId == HotPowerId.EnsemblePower)
+        {
+            if (ownerSlot != 0)
+                args.IntValue = 0;
+            return;
+        }
+
+        if (ownerSlot != 0)
             return;
 
         HotCardDef cardDef = rules.Cards[args.CardDefId];
@@ -2161,10 +2216,6 @@ internal static partial class HotCombatEngine
             case HotPowerId.FreePowerPower:
                 if (cardDef.Type == CardType.Power)
                     args.IntValue = 0;
-                break;
-
-            case HotPowerId.FreeCardPower:
-                args.IntValue = 0;
                 break;
 
             case HotPowerId.VeilpiercerPower:

@@ -1,6 +1,6 @@
 namespace CombatSolver;
 
-// Route-cache and showcase file/protocol failures cost only those optional features.
+// Route-cache and other ancillary file/protocol failures cost only those optional features.
 // Programming errors, resource exhaustion and cancellation retain their original failure path.
 internal static class AncillaryWork
 {

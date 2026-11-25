@@ -493,7 +493,6 @@ internal static partial class SolverController
         LastReusedTurnForTesting = null;
         LastReusedProjectedBattleHpLostForTesting = null;
         BattleDamageTracker.Begin(state);
-        CombatShowcaseCollector.BeginCombat();
         CombatBugReportExporter.BeginCombat(state);
         _combat.TheftPolicy = state is CombatState combat && TheftEncounterStrategy.IsApplicable(combat)
             ? SolverTheftPolicy.PreserveResources
@@ -953,7 +952,6 @@ internal static partial class SolverController
             Entry.Logger.Info($"[CombatSolver/Test] SEARCH_REJECT reason={rejection}");
             return;
         }
-        CombatShowcaseCollector.TryCaptureInitialRoot(state, reason);
         bool checkpointRecorded = false;
 
         string setupStage = "hot_root";
@@ -2661,9 +2659,6 @@ internal static partial class SolverController
             StartDeployment(host, searchedState, result);
         else if (_combat.FullAutoEnabled)
             StartFullAutoDeployment(host, searchedState, result);
-        // 录像打包放在路线显示和自动执行启动之后，打包慢或失败都不耽误路线。
-        if (!currentTurnAdopted && !routeAdopted)
-            CombatShowcaseCollector.TryQueueCompletedRoute(searchedState, result);
     }
 
     private static void ApplyProjectionBaselines(SolverResult result)

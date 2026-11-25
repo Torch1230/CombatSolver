@@ -246,10 +246,8 @@ internal static class HotContinuationStamp
         text.Append(";arrows=");
         for (int i = 0; i < state.ArrowCount; i++)
         {
-            ushort packed = state.Fool.Arrows[i];
-            int status = packed & 0xF;
-            int destroy = (packed & 0x10) != 0 ? 1 : 0;
-            text.Append(status).Append(':').Append(destroy).Append(',');
+            int status = state.Fool.Arrows[i] & HotFoolState.ArrowStatusMask;
+            text.Append(status).Append(',');
         }
 
         text.Append(";impaled=");
@@ -591,9 +589,7 @@ internal static class HotContinuationStamp
         text.Append("|keywordsRemoved=");
         AppendKeywordMask(text, card.KeywordsRemovedOutsideMask);
 
-        if (def.PrivateKind == HotCardPrivateKind.TheShot)
-            text.Append("|florescence=").Append(card.CardPrivate);
-        else if (def.PrivateKind == HotCardPrivateKind.ShowOff)
+        if (def.PrivateKind == HotCardPrivateKind.ShowOff)
         {
             short currentAim = (short)(card.CardPrivate & 0xFFFF);
             short increasedAim = (short)((card.CardPrivate >> 16) & 0xFFFF);
@@ -905,11 +901,6 @@ internal static class HotContinuationStamp
             case HotPowerId.MonologuePower:
                 if (string.Equals(varName, "StrengthApplied", StringComparison.Ordinal))
                     return p.Aux1;
-                break;
-
-            case HotPowerId.MythicFormPower:
-                if (string.Equals(varName, "Upgraded", StringComparison.Ordinal))
-                    return p.Aux0;
                 break;
 
             case HotPowerId.EncorePower:
@@ -1315,7 +1306,7 @@ internal static class HotContinuationStamp
                 int targetTag = (ownerSlot - 3) + 1;
                 for (int a = 0; a < state.ArrowCount; a++)
                 {
-                    int impaledTag = (state.Fool.Arrows[a] >> 5) & 0x1F;
+                    int impaledTag = (state.Fool.Arrows[a] >> HotFoolState.ArrowEnemyShift) & HotFoolState.ArrowEnemyMask;
                     if (impaledTag == targetTag)
                         text.Append(a).Append(',');
                 }

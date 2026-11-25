@@ -185,7 +185,6 @@ require_text src/Api/PreCombatForecastApi.cs 'public static class PreCombatForec
 require_text src/Api/PreCombatForecastWorker.cs 'COMBATSOLVER_PRECOMBAT_WORKER' 'pre-combat worker boundary'
 require_text src/Api/CombatShowcaseApi.cs 'public static class CombatShowcaseApi' 'showcase API boundary'
 require_text src/Runtime/CombatShowcaseRuntime.cs 'SolverController.AcceptShowcaseRoute' 'showcase runtime boundary'
-require_text src/Runtime/CombatShowcaseModEligibility.cs 'FindGameplayModificationNames' 'showcase mod eligibility boundary'
 while IFS= read -r api_file; do
     base="$(basename "$api_file")"
     for forbidden_call in 'SolverController.RequestSearch' 'CombatManager.Instance.SetUpCombat' 'RunManager.Instance.EnterRoomDebug'; do

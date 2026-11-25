@@ -277,7 +277,8 @@ internal static class HotKernelChecks
 
         s.Fool.Arrows[0] = 0x0021;
         s.Fool.Arrows[1] = 0x0002;
-        s.Fool.Arrows[2] = 0x0013;
+        // 0x0041 = Away on enemySlot 2; dirtyPadding sets retired bit 4 (0x0010) to verify ZeroExplicitPadding masks it off.
+        s.Fool.Arrows[2] = dirtyPadding ? (ushort)0x0051 : (ushort)0x0041;
         s.Fool.MelodyStarted[0] = 1;
         s.Fool.MelodyFinished[1] = 2;
         s.Fool.MelodyCardsFinished = 3;

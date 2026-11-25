@@ -379,7 +379,7 @@ internal sealed record HarnessOptions
           --check-hot-layout     校验 HotKernel 布局、Pack/Unpack、全字节翻转突变、RNG 与牌堆操作
           --verify-hot-parity    校验 Gate A(19根捕获)、Gate B(多回合自洽+DOP1/8确定性)、Gate C(微基准)
           --verify-strategy-policies  校验全部 11 项局外成长、成长搜索/忽略开关、卡遗物/肉块及 BrightestFlame 上限端到端策略
-          --audit-hot-coverage   Layer 1：枚举 0.113.1 全部单人实体与 HotKernel 覆盖及反射字段审计
+          --audit-hot-coverage   Layer 1：枚举 0.114.0 全部单人实体与 HotKernel 覆盖及反射字段审计
           --dump-high-risk-pool  高风险池审计：打印三档分级（Tier 0 Excluded / Tier 1 Moderate / Tier 2 UltraHighRisk）统计、按角色分布、Tier 0 全清单及高风险遗物/遭遇统计
           --fuzz-combat [...]    Layer 2：覆盖引导单人差分模糊（--fights N --seed S --phase all|sweep|synergy|high-risk[0%T0/80%T2/20%T1] --max-turns T --dump-dir PATH）
           --replay-fuzz <json>   Layer 2：确定性回放单条差分/崩溃最小复现包

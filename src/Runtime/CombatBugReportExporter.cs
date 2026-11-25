@@ -325,9 +325,6 @@ internal static class CombatBugReportExporter
             continuation);
     }
 
-    internal static JsonElement CaptureShowcaseObjectState(object value)
-        => JsonSerializer.SerializeToElement(CaptureObjectFields(value), JsonOptions);
-
     public static Task CompleteCombat(string reason, SolverResult? result, string replanAudit)
     {
         if (!NGame.IsMainThread())
@@ -501,7 +498,7 @@ internal static class CombatBugReportExporter
             AddBytes(
                 archive,
                 $"{root}/checkpoints/{checkpoint.Name}",
-                checkpoint.MetadataJsonUtf8);
+                SanitizeUtf8UserProfilePaths(checkpoint.MetadataJsonUtf8));
             AddBytes(
                 archive,
                 $"{root}/replay-state/{checkpoint.Name}",
@@ -544,8 +541,8 @@ internal static class CombatBugReportExporter
             detailScope = "current_or_most_recent_combat", previousCombatScope = "summary_only",
         }, JsonOptions));
         AddText(archive, "diagnostics/logs/history.json", JsonSerializer.Serialize(logs.History, JsonOptions));
-        AddLogChunks(archive, "diagnostics/logs/combat", logs.Events.JsonLines);
-        AddLogChunks(archive, "diagnostics/logs/process", logs.Process.JsonLines);
+        AddLogChunks(archive, "diagnostics/logs/combat", SanitizeUtf8UserProfilePaths(logs.Events.JsonLines));
+        AddLogChunks(archive, "diagnostics/logs/process", SanitizeUtf8UserProfilePaths(logs.Process.JsonLines));
     }
 
     private static void AddLogChunks(ZipArchive archive, string root, byte[] bytes)
@@ -1755,12 +1752,69 @@ internal static class CombatBugReportExporter
         return completion.Task;
     }
 
+    private static readonly string[] UserProfileSanitizationPatterns = BuildUserProfileSanitizationPatterns();
+
+    private static string[] BuildUserProfileSanitizationPatterns()
+    {
+        string raw = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrWhiteSpace(raw))
+            return [];
+        string trimmed = raw.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string? root = Path.GetPathRoot(raw)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (string.IsNullOrEmpty(trimmed) || string.Equals(trimmed, root, StringComparison.OrdinalIgnoreCase))
+            return [];
+
+        HashSet<string> patterns = new(OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal);
+        void AddForms(string candidate)
+        {
+            if (string.IsNullOrEmpty(candidate))
+                return;
+            patterns.Add(candidate);
+            patterns.Add(JsonEncodedText.Encode(candidate).ToString());
+            patterns.Add(JsonEncodedText.Encode(
+                candidate,
+                System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping).ToString());
+        }
+
+        AddForms(trimmed);
+        AddForms(trimmed.Replace('\\', '/'));
+        AddForms(trimmed.Replace('/', '\\'));
+        return patterns
+            .OrderByDescending(static pattern => pattern.Length)
+            .ThenBy(static pattern => pattern, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    internal static string SanitizeUserProfilePaths(string text)
+    {
+        if (string.IsNullOrEmpty(text) || UserProfileSanitizationPatterns.Length == 0)
+            return text;
+        StringComparison comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        string sanitized = text;
+        foreach (string pattern in UserProfileSanitizationPatterns)
+            sanitized = sanitized.Replace(pattern, "%USERPROFILE%", comparison);
+        return sanitized;
+    }
+
+    private static byte[] SanitizeUtf8UserProfilePaths(byte[] utf8Bytes)
+    {
+        if (utf8Bytes.Length == 0 || UserProfileSanitizationPatterns.Length == 0)
+            return utf8Bytes;
+        string text = Encoding.UTF8.GetString(utf8Bytes);
+        string sanitized = SanitizeUserProfilePaths(text);
+        return ReferenceEquals(sanitized, text) ? utf8Bytes : Encoding.UTF8.GetBytes(sanitized);
+    }
+
     private static void AddText(ZipArchive archive, string name, string text)
     {
         ZipArchiveEntry entry = archive.CreateEntry(name, CompressionLevel.Fastest);
         using Stream output = entry.Open();
         using StreamWriter writer = new(output, new UTF8Encoding(false));
-        writer.Write(text);
+        writer.Write(SanitizeUserProfilePaths(text));
     }
 
     private static void AddFile(

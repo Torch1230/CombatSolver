@@ -72,6 +72,14 @@ internal static partial class HotRootBuilder
         typeof(UnsettlingLamp).GetField("_isFinishedTriggering", BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new MissingFieldException(typeof(UnsettlingLamp).FullName, "_isFinishedTriggering");
 
+    private static readonly FieldInfo HappyFlowerGrantEnergyField =
+        typeof(HappyFlower).GetField("_grantEnergyThisTurn", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new MissingFieldException(typeof(HappyFlower).FullName, "_grantEnergyThisTurn");
+
+    private static readonly FieldInfo FakeHappyFlowerGrantEnergyField =
+        typeof(FakeHappyFlower).GetField("_grantEnergyThisTurn", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new MissingFieldException(typeof(FakeHappyFlower).FullName, "_grantEnergyThisTurn");
+
     private static readonly ConcurrentDictionary<string, CanonicalCardTemplate> CanonicalCardCache =
         new(StringComparer.Ordinal);
 
@@ -387,7 +395,7 @@ internal static partial class HotRootBuilder
         for (int i = 0; i < arrows.Count; i++)
         {
             ArrowSlot arrow = arrows[i];
-            hot.Fool.Arrows[i] = (ushort)(((int)arrow.Status & 0xF) | (arrow.DestroyAfterImpaled ? 0x10 : 0));
+            hot.Fool.Arrows[i] = (ushort)((int)arrow.Status & HotFoolState.ArrowStatusMask);
         }
 
         // Powers across all creatures in exact CombatState.Creatures order
@@ -1465,11 +1473,6 @@ internal static partial class HotRootBuilder
                 aux1 = monologue.DynamicVars["StrengthApplied"].IntValue;
                 break;
 
-            case MythicFormPower mythicForm:
-                // 0.113.1 MythicFormPower.cs:23-54: preserve Upgraded Tarot count (Aux0).
-                aux0 = mythicForm.DynamicVars["Upgraded"].IntValue;
-                break;
-
             case InsatiableDominionPower insatiable:
                 // 0.113.1 InsatiableDominionPower.cs:22-55: preserve current Damage (2 + TurnNumber) in Aux0.
                 aux0 = insatiable.DynamicVars.Damage.IntValue;
@@ -1514,6 +1517,24 @@ internal static partial class HotRootBuilder
                 if (paleBlueDot.GetInternalData<PaleBlueDotPower.Data>().alreadyActivatedThisTurn)
                     pFlags |= HotPowerFlags.BoolAux;
                 break;
+
+            case StretchPower stretch:
+            {
+                // 0.114.0 StretchPower.cs:15-111: preserve latched CardPlay + amountWhenCardStarted (Aux0)
+                // and CardUid/gaveBonusBlock (Aux1, BoolAux) only while cardPlay != null (AfterCardPlayed clears
+                // cardPlay without resetting amountWhenCardStarted, whereas HotFoolTarot zeroes Aux0/Aux1).
+                StretchPower.Data data = stretch.GetInternalData<StretchPower.Data>();
+                if (data.cardPlay != null)
+                {
+                    pFlags |= HotPowerFlags.BoolAux;
+                    aux0 = data.amountWhenCardStarted;
+                    ushort latchedUid = data.cardPlay.Card != null && cardToUid.TryGetValue(data.cardPlay.Card, out ushort stretchUid)
+                        ? stretchUid
+                        : (ushort)0;
+                    aux1 = latchedUid | (data.gaveBonusBlock ? unchecked((int)0x8000_0000) : 0);
+                }
+                break;
+            }
         }
 
         return new HotPower
@@ -1557,7 +1578,7 @@ internal static partial class HotRootBuilder
             if (enemyIndex >= 0 && arrowIdx < HotLimits.MaxArrows)
             {
                 ushort existing = hot.Fool.Arrows[arrowIdx];
-                hot.Fool.Arrows[arrowIdx] = (ushort)((existing & 0x1F) | (((enemyIndex + 1) & 0x1F) << 5));
+                hot.Fool.Arrows[arrowIdx] = (ushort)((existing & HotFoolState.ArrowStatusMask) | (((enemyIndex + 1) & HotFoolState.ArrowEnemyMask) << HotFoolState.ArrowEnemyShift));
             }
         }
         aux1 = packedArrows | (packedCount << 25);
@@ -1572,7 +1593,6 @@ internal static partial class HotRootBuilder
             MadScience ms => ((int)ms.TinkerTimeType & 0xFFFF) | (((int)ms.TinkerTimeRider & 0xFFFF) << 16),
             Rampage rampage => (int)rampage.ExtraDamageFromPlays,
             TheScythe scythe => scythe.IncreasedDamage,
-            TheShot shot => (int)shot._cardsExhaustedByFlorescence,
             ShowOff showOff => ((short)showOff.CurrentAim & 0xFFFF) | (((short)showOff.IncreasedAim & 0xFFFF) << 16),
             Bounce or ThrummingHatchet or Bolas => CaptureReturnNextTurnLastPlayTurn(card),
             _ => 0,
@@ -1732,7 +1752,7 @@ internal static partial class HotRootBuilder
         int hasLostHpThisTurn = 0;
         int wasDoomAppliedThisTurn = 0;
         int ostyAttacks = 0;
-        int cardBlockGains = 0;
+        HashSet<CardPlay>? cardBlockGainPlays = null;
         int shivPlaysFinished = 0;
         int firstInSeriesCardPlayStarts = 0;
         int historyCardsExhausted = 0;
@@ -1858,7 +1878,7 @@ internal static partial class HotRootBuilder
                     && blk.CardPlay != null
                     && ReferenceEquals(blk.CardPlay.Player, player)
                     && blk.Props.IsCardOrMonsterMove():
-                    cardBlockGains++;
+                    (cardBlockGainPlays ??= new HashSet<CardPlay>(ReferenceEqualityComparer.Instance)).Add(blk.CardPlay);
                     break;
             }
         }
@@ -1882,7 +1902,7 @@ internal static partial class HotRootBuilder
         hot.Counters[(int)HotCounterSlot.CardsPlayedThisTurn] = cardPlayStarts;
         hot.Counters[(int)HotCounterSlot.OstyAttacksThisTurn] = ostyAttacks;
         hot.Counters[(int)HotCounterSlot.SadnessGeneratedBefore] = sadnessGenerated;
-        hot.Counters[(int)HotCounterSlot.CardBlockGainsThisTurn] = cardBlockGains;
+        hot.Counters[(int)HotCounterSlot.CardBlockGainsThisTurn] = cardBlockGainPlays?.Count ?? 0;
         hot.Counters[(int)HotCounterSlot.ShivPlaysFinishedThisTurn] = shivPlaysFinished;
         hot.Counters[(int)HotCounterSlot.FirstInSeriesCardPlayStartsThisTurn] = firstInSeriesCardPlayStarts;
         hot.Counters[(int)HotCounterSlot.HistoryCardsExhausted] = historyCardsExhausted;
@@ -1917,9 +1937,17 @@ internal static partial class HotRootBuilder
             BeltBuckle buckle => new HotRelicState { Current = (bool)BeltBuckleDexterityAppliedField.GetValue(buckle)! ? 1 : 0 },
             BoneTea tea => new HotRelicState { Current = tea.CombatsLeft },
             EmotionChip chip => CaptureEmotionChipState(chip),
-            FakeHappyFlower flower => new HotRelicState { Current = flower.TurnsSeen },
+            FakeHappyFlower flower => new HotRelicState
+            {
+                Current = flower.TurnsSeen,
+                PreviousOrAux = (bool)FakeHappyFlowerGrantEnergyField.GetValue(flower)! ? 1 : 0,
+            },
             FakeVenerableTeaSet tea => new HotRelicState { Current = tea.GainEnergyInNextCombat ? 1 : 0 },
-            HappyFlower flower => new HotRelicState { Current = flower.TurnsSeen },
+            HappyFlower flower => new HotRelicState
+            {
+                Current = flower.TurnsSeen,
+                PreviousOrAux = (bool)HappyFlowerGrantEnergyField.GetValue(flower)! ? 1 : 0,
+            },
             MiniRegent regent => new HotRelicState { Current = regent._usedThisTurn ? 1 : 0 },
             GalacticDust dust => new HotRelicState { Current = dust.StarsSpent },
             PaelsEye eye => CapturePaelsEyeState(eye),
@@ -3542,7 +3570,6 @@ internal static partial class HotRootBuilder
             MadScience => HotCardPrivateKind.MadScience,
             Rampage => HotCardPrivateKind.Rampage,
             TheScythe => HotCardPrivateKind.TheScythe,
-            TheShot => HotCardPrivateKind.TheShot,
             ShowOff => HotCardPrivateKind.ShowOff,
             SovereignBlade => HotCardPrivateKind.SovereignBlade,
             _ => HotCardPrivateKind.None,

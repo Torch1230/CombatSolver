@@ -76,18 +76,16 @@ internal static partial class HotCombatEngine
 
             case HotCalcVarKind.WahSymphony:
             {
+                // STS2 0.114.0 WahSymphony.cs:29: counts Cho (bit 1) and Ki (bit 2) melody cards only.
                 int count = 0;
                 int total = s.TotalCardCount;
                 for (int i = 0; i < total; i++)
                 {
-                    if (rules.Cards[s.Cards[i].CardDefId].MelodyTagMask != 0)
+                    if ((rules.Cards[s.Cards[i].CardDefId].MelodyTagMask & 0b110) != 0)
                         count++;
                 }
                 return count;
             }
-
-            case HotCalcVarKind.TheShot:
-                return card.CardPrivate;
 
             case HotCalcVarKind.Anguish:
                 return s.Counters[(int)HotCounterSlot.SadnessGeneratedBefore];
@@ -103,20 +101,9 @@ internal static partial class HotCombatEngine
                 return count;
             }
 
-            case HotCalcVarKind.Growth:
-            {
-                int count = 0;
-                for (int i = 0; i < s.HandCount; i++)
-                {
-                    if (rules.Cards[s.Cards[i].CardDefId].CardId == HotCustomCardId.Sadness)
-                        count++;
-                }
-                return count;
-            }
-
             case HotCalcVarKind.MyShinies:
             {
-                decimal goldDiv = GetNamedVarDecimal(in card, def, "Gold", card.UpgradeLevel > 0 ? 10m : 20m);
+                decimal goldDiv = GetNamedVarDecimal(in card, def, "Gold", 25m);
                 return goldDiv > 0m ? s.Gold / goldDiv : 0m;
             }
 
@@ -369,10 +356,11 @@ internal static partial class HotCombatEngine
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int CountMelodiesPlayedThisTurn(in CombatHotState s)
     {
+        // STS2 0.114.0 MelodyCmd.cs:39,58-64: PlayedThisTurn checks CardPlaysStarted.
         int count = 0;
         for (int m = 0; m < 3; m++)
         {
-            if (s.Fool.MelodyFinished[m] > 0)
+            if (s.Fool.MelodyStarted[m] > 0)
                 count++;
         }
         return count;
@@ -1176,57 +1164,68 @@ internal static partial class HotCombatEngine
                 ushort cardDefId = playedCard.CardDefId;
                 int curPlayIdx = livePlayIdx;
                 Span<byte> targets = stackalloc byte[HotLimits.MaxEnemies];
-                BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
-                scratch.AttackActive = true;
-                const int MaxWaves = 64;
-                int waves = 1;
-                int executedWaves = 0;
-                while (waves > 0 && executedWaves < MaxWaves && !IsOverOrEnding(in s) && (s.Player.Flags & HotCreatureFlags.Alive) != 0 && !scratch.NeedsChoice)
+                HotAttackCommandScope scope = EnterAttackCommand(scratch, dealerSlot: 0, setIsAttacking: false);
+                try
                 {
-                    waves--;
-                    executedWaves++;
-                    int targetCount = SnapshotLivingEnemies(in s, targets);
-                    if (targetCount == 0)
-                        break;
-                    curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
-                    int waveDmg = curPlayIdx >= 0
-                        ? def.GetDamage(s.Cards[curPlayIdx].UpgradeLevel, s.Cards[curPlayIdx].Var0Delta)
-                        : baseDmg;
-                    int waveKills = 0;
-                    for (int t = 0; t < targetCount; t++)
+                    BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
+                    scratch.AttackActive = true;
+                    const int MaxWaves = 64;
+                    int waves = 1;
+                    int executedWaves = 0;
+                    while (waves > 0 && executedWaves < MaxWaves && !IsOverOrEnding(in s) && (s.Player.Flags & HotCreatureFlags.Alive) != 0 && !scratch.NeedsChoice)
                     {
-                        if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+                        waves--;
+                        executedWaves++;
+                        int targetCount = SnapshotLivingEnemies(in s, targets);
+                        if (targetCount == 0)
                             break;
-                        byte enemySlot = targets[t];
-                        if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
-                            || s.Enemies[enemySlot].Vital.CurrentHp <= 0)
-                        {
-                            continue;
-                        }
-                        int hpBefore = s.Enemies[enemySlot].Vital.CurrentHp;
                         curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
-                        int unblocked = DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: waveDmg, isPoweredAttack: true, isUnblockable: false, cardIdx: curPlayIdx, cardDefId: cardDefId, deferKill: true);
-                        if (unblocked > 0 && (unblocked >= hpBefore || s.Enemies[enemySlot].Vital.CurrentHp <= 0))
-                            waveKills++;
-                    }
-                    for (int t = 0; t < targetCount; t++)
-                    {
-                        if (scratch.NeedsChoice)
-                            break;
-                        byte enemySlot = targets[t];
-                        if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
-                            && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
+                        int waveDmg = curPlayIdx >= 0
+                            ? def.GetDamage(s.Cards[curPlayIdx].UpgradeLevel, s.Cards[curPlayIdx].Var0Delta)
+                            : baseDmg;
+                        int waveKills = 0;
+                        for (int t = 0; t < targetCount; t++)
                         {
-                            KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
+                            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+                                break;
+                            byte enemySlot = targets[t];
+                            if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0
+                                || s.Enemies[enemySlot].Vital.CurrentHp <= 0)
+                            {
+                                continue;
+                            }
+                            int hpBefore = s.Enemies[enemySlot].Vital.CurrentHp;
+                            curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
+                            int unblocked = DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: waveDmg, isPoweredAttack: true, isUnblockable: false, cardIdx: curPlayIdx, cardDefId: cardDefId, deferKill: true);
+                            if (unblocked > 0 && (unblocked >= hpBefore || s.Enemies[enemySlot].Vital.CurrentHp <= 0))
+                                waveKills++;
                         }
+                        for (int t = 0; t < targetCount; t++)
+                        {
+                            if (scratch.NeedsChoice)
+                                break;
+                            byte enemySlot = targets[t];
+                            if ((s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                                && s.Enemies[enemySlot].Vital.CurrentHp <= 0)
+                            {
+                                KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + enemySlot), force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
+                            }
+                        }
+                        waves += waveKills;
                     }
-                    waves += waveKills;
+                    scratch.AttackActive = false;
+                    if (!scratch.NeedsChoice)
+                    {
+                        curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
+                        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
+                    }
                 }
-                scratch.AttackActive = false;
+                finally
+                {
+                    ExitAttackCommand(ref s, rules, scratch, in scope);
+                }
                 if (scratch.NeedsChoice)
                     return;
-                curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
-                EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
                 break;
             }
 
@@ -2491,7 +2490,7 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.MyShinies:
             {
                 int hitCount = EvaluateCalcVar(in s, rules, scratch, in playedCard, def, targetEnemySlot, energySpent);
-                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg > 0 ? baseDmg : 1, hitCount, powered: true);
+                ExecuteSingleTargetAttack(ref s, ref cold, rules, scratch, livePlayIdx, targetEnemySlot, baseDmg > 0 ? baseDmg : (upgrade > 0 ? 3 : 2), hitCount, powered: true);
                 break;
             }
 
@@ -2734,65 +2733,73 @@ internal static partial class HotCombatEngine
                     int curPlayIdx = livePlayIdx;
                     t_lastAttackUnblockedDamage = 0;
                     t_lastAttackTotalPlusOverkill = 0;
-                    BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
-                    scratch.AttackActive = true;
                     int totalUnblocked = 0;
                     int totalPlusOverkill = 0;
-                    bool primaryHitRan = false;
-                    int dealt = 0;
-                    if (!IsOverOrEnding(in s)
-                        && (s.Player.Flags & HotCreatureFlags.Alive) != 0
-                        && (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
-                        && !scratch.NeedsChoice)
+                    HotAttackCommandScope scope = EnterAttackCommand(scratch, dealerSlot: 0, setIsAttacking: false);
+                    try
                     {
-                        curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
-                        totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + targetEnemySlot), baseDamage: baseDmg, isPoweredAttack: true, isUnblockable: false, cardIdx: curPlayIdx, cardDefId: cardDefId);
-                        dealt = t_lastHitTotalPlusOverkill;
-                        totalPlusOverkill += dealt;
-                        primaryHitRan = true;
-                    }
-                    if (primaryHitRan
-                        && !scratch.NeedsChoice
-                        && !IsOverOrEnding(in s)
-                        && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
-                    {
-                        Span<byte> others = stackalloc byte[HotLimits.MaxEnemies];
-                        int cnt = SnapshotLivingEnemies(in s, others);
-                        for (int t = 0; t < cnt; t++)
+                        BeginAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
+                        scratch.AttackActive = true;
+                        bool primaryHitRan = false;
+                        int dealt = 0;
+                        if (!IsOverOrEnding(in s)
+                            && (s.Player.Flags & HotCreatureFlags.Alive) != 0
+                            && (s.Enemies[targetEnemySlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                            && !scratch.NeedsChoice)
                         {
-                            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
-                                break;
-                            byte otherSlot = others[t];
-                            if (otherSlot == targetEnemySlot || (s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                                continue;
                             curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
-                            totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + otherSlot), baseDamage: dealt, isPoweredAttack: true, isUnblockable: false, cardIdx: curPlayIdx, cardDefId: cardDefId, deferKill: true, capOnlyModifiers: true);
-                            totalPlusOverkill += t_lastHitTotalPlusOverkill;
+                            totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + targetEnemySlot), baseDamage: baseDmg, isPoweredAttack: true, isUnblockable: false, cardIdx: curPlayIdx, cardDefId: cardDefId);
+                            dealt = t_lastHitTotalPlusOverkill;
+                            totalPlusOverkill += dealt;
+                            primaryHitRan = true;
                         }
-                        for (int t = 0; t < cnt; t++)
+                        if (primaryHitRan
+                            && !scratch.NeedsChoice
+                            && !IsOverOrEnding(in s)
+                            && (s.Player.Flags & HotCreatureFlags.Alive) != 0)
                         {
-                            if (scratch.NeedsChoice)
-                                break;
-                            byte otherSlot = others[t];
-                            if (otherSlot == targetEnemySlot)
-                                continue;
-                            if ((s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) != 0
-                                && s.Enemies[otherSlot].Vital.CurrentHp <= 0)
+                            Span<byte> others = stackalloc byte[HotLimits.MaxEnemies];
+                            int cnt = SnapshotLivingEnemies(in s, others);
+                            for (int t = 0; t < cnt; t++)
                             {
-                                KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + otherSlot), force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
+                                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+                                    break;
+                                byte otherSlot = others[t];
+                                if (otherSlot == targetEnemySlot || (s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                                    continue;
+                                curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
+                                totalUnblocked += DealDamageInternal(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + otherSlot), baseDamage: dealt, isPoweredAttack: true, isUnblockable: false, cardIdx: curPlayIdx, cardDefId: cardDefId, deferKill: true, capOnlyModifiers: true);
+                                totalPlusOverkill += t_lastHitTotalPlusOverkill;
+                            }
+                            for (int t = 0; t < cnt; t++)
+                            {
+                                if (scratch.NeedsChoice)
+                                    break;
+                                byte otherSlot = others[t];
+                                if (otherSlot == targetEnemySlot)
+                                    continue;
+                                if ((s.Enemies[otherSlot].Vital.Flags & HotCreatureFlags.Alive) != 0
+                                    && s.Enemies[otherSlot].Vital.CurrentHp <= 0)
+                                {
+                                    KillCreature(ref s, ref cold, rules, scratch, (byte)(3 + otherSlot), force: false, sourceCardDefId: cardDefId, sourceCardUid: cardUid);
+                                }
                             }
                         }
-                    }
-                    scratch.AttackActive = false;
-                    t_lastAttackUnblockedDamage = totalUnblocked;
-                    t_lastAttackTotalPlusOverkill = totalPlusOverkill;
-                    if (!scratch.NeedsChoice)
-                    {
-                        curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
-                        EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
+                        scratch.AttackActive = false;
                         t_lastAttackUnblockedDamage = totalUnblocked;
                         t_lastAttackTotalPlusOverkill = totalPlusOverkill;
+                        if (!scratch.NeedsChoice)
+                        {
+                            curPlayIdx = RefreshCardIdxByUid(in s, curPlayIdx, cardUid);
+                            EndAttackHooks(ref s, ref cold, rules, scratch, dealerSlot: 0, curPlayIdx, cardDefId, powered: true);
+                        }
                     }
+                    finally
+                    {
+                        ExitAttackCommand(ref s, rules, scratch, in scope);
+                    }
+                    t_lastAttackUnblockedDamage = totalUnblocked;
+                    t_lastAttackTotalPlusOverkill = totalPlusOverkill;
                 }
                 break;
 
@@ -3640,7 +3647,6 @@ internal static partial class HotCombatEngine
             or HotCalcVarKind.SoulStorm
             or HotCalcVarKind.Squeeze
             or HotCalcVarKind.Supermassive
-            or HotCalcVarKind.TheShot
             or HotCalcVarKind.TheTower
             or HotCalcVarKind.TimesUp
             or HotCalcVarKind.Unleash

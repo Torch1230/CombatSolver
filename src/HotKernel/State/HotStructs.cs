@@ -229,11 +229,21 @@ internal struct HotOrb
 [StructLayout(LayoutKind.Sequential)]
 internal struct HotFoolState
 {
-    public HotUShort32 Arrows;              // 64 B (0..64)  low 4b=Status, b4=DestroyAfterImpaled, b5..9=ImpaledEnemySlot+1
-    public HotByte3 MelodyStarted;          // 3 B  (64..67)
-    public HotByte3 MelodyFinished;         // 3 B  (67..70)
-    public byte MelodyCardsFinished;        // 1 B  (70)
+    // STS2 0.114.0 ArrowSlot / ArrowStatus bit layout inside Arrows[i]:
+    //   bits 0..3   (0x000F): ArrowStatus (0 = Retrieved, 1 = Away; Destroyed removed in 0.114.0)
+    //   bit  4      (0x0010): retired (DestroyAfterImpaled removed in 0.114.0; always 0)
+    //   bits 5..9   (0x03E0): ImpaledEnemySlot + 1 (0 = not impaled, 1..16 = enemy slots 0..15)
+    //   bits 10..15 (0xFC00): unused (always 0)
+    public const ushort ArrowStatusMask = 0x000F;
+    public const int ArrowEnemyShift = 5;
+    public const ushort ArrowEnemyMask = 0x001F;
+    public const ushort ArrowValidMask = ArrowStatusMask | (ArrowEnemyMask << ArrowEnemyShift);
+
+    public HotUShort32 Arrows;              // 64 B (0..64)  low 4b=Status, b4=0 (retired), b5..9=ImpaledEnemySlot+1
+    public HotByte3 MelodyStarted;          // 3 B  (64..67) Wah/Cho/Ki plays started this turn (0.114.0 MelodyCmd.PlayedThisTurn)
+    public HotByte3 MelodyFinished;         // 3 B  (67..70) Wah/Cho/Ki plays finished this turn (history/stamp parity)
+    public byte MelodyCardsFinished;        // 1 B  (70)     Melody cards finished this turn (history/heuristic parity)
     public byte Pad0;                       // 1 B  (71)
-    public HotUShort3 FirstPlayCardUid;     // 6 B  (72..78)
+    public HotUShort3 FirstPlayCardUid;     // 6 B  (72..78) First Wah/Cho/Ki CardUid this turn (MelodyCmd.IsFirstPlayThisTurn)
     public ushort Pad1;                     // 2 B  (78..80)
 }

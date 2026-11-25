@@ -37,9 +37,9 @@ internal sealed record SearchPolicySnapshot(
     public int TranspositionEntryLimit { get; init; } = DefaultTranspositionEntryLimit;
 
     internal const int DefaultTranspositionEntryLimit = 1_000_000;
-    internal const double DefaultMaxCombatSolveSeconds = 4.0d;
+    internal const double DefaultMaxCombatSolveSeconds = 30.0d;
     internal const double MinMaxCombatSolveSeconds = 1.0d;
-    internal const double MaxMaxCombatSolveSeconds = 15.0d;
+    internal const double MaxMaxCombatSolveSeconds = 600.0d;
 
     /// <summary>
     /// Enables 3-stage outcome-driven Anytime Adaptive Escalation (Stage 1 W=96 -> Stage 2 W=220 -> Stage 3 W=400).
@@ -48,7 +48,7 @@ internal sealed record SearchPolicySnapshot(
 
     /// <summary>
     /// Live gameplay real-time wall-clock ceiling in seconds for multi-stage deepening (Stage 2/3),
-    /// default 4.0s (range 1..15s). Ignored for escalation gating when <see cref="FixedBudget"/> is true.
+    /// default 30.0s (range 1..600s). Ignored for escalation gating when <see cref="FixedBudget"/> is true.
     /// </summary>
     public double MaxCombatSolveSeconds { get; init; } = DefaultMaxCombatSolveSeconds;
 

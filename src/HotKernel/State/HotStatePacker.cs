@@ -76,7 +76,10 @@ internal static unsafe class HotStatePacker
         for (int i = Math.Min((int)s.OrbCount, HotLimits.MaxOrbs); i < HotLimits.MaxOrbs; i++)
             s.Orbs[i] = default;
 
-        for (int i = Math.Min((int)s.ArrowCount, HotLimits.MaxArrows); i < HotLimits.MaxArrows; i++)
+        int activeArrows = Math.Min((int)s.ArrowCount, HotLimits.MaxArrows);
+        for (int i = 0; i < activeArrows; i++)
+            s.Fool.Arrows[i] &= HotFoolState.ArrowValidMask;
+        for (int i = activeArrows; i < HotLimits.MaxArrows; i++)
             s.Fool.Arrows[i] = 0;
 
         if ((s.CombatFlags & HotCombatFlags.HasHistoryCourseCard) == 0)

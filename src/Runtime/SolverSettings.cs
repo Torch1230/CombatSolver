@@ -174,13 +174,13 @@ internal sealed record SolverSettingsSnapshot(
 internal static class SolverSettings
 {
     public const int MinimumMaxCombatSolveSeconds = 1;
-    public const int MaximumMaxCombatSolveSeconds = 15;
-    public const int DefaultMaxCombatSolveSeconds = 4;
+    public const int MaximumMaxCombatSolveSeconds = 600;
+    public const int DefaultMaxCombatSolveSeconds = 30;
     public const int MaximumAcceptableBattleHpLoss = 100_000;
     public const float MinimumOverlayWidth = 400f;
     public const float MinimumOverlayHeight = 300f;
     public const float MaximumOverlaySize = 100_000f;
-    internal const int CurrentPerformanceMigrationVersion = 247;
+    internal const int CurrentPerformanceMigrationVersion = 248;
     private static readonly SolverPerformanceValues LowPerformance = new(
         new SolverSearchProfile(
             BeamWidth: 45,
@@ -725,10 +725,13 @@ internal static class SolverSettings
         if (data.PerformanceMigrationVersion >= CurrentPerformanceMigrationVersion)
             return data;
 
-        int solveSeconds = data.MaxCombatSolveSeconds is >= MinimumMaxCombatSolveSeconds
-            and <= MaximumMaxCombatSolveSeconds
-                ? data.MaxCombatSolveSeconds
-                : DefaultMaxCombatSolveSeconds;
+        int solveSeconds = data.PerformanceMigrationVersion == 247
+            && data.MaxCombatSolveSeconds == 4
+                ? DefaultMaxCombatSolveSeconds
+                : data.MaxCombatSolveSeconds is >= MinimumMaxCombatSolveSeconds
+                  and <= MaximumMaxCombatSolveSeconds
+                    ? data.MaxCombatSolveSeconds
+                    : DefaultMaxCombatSolveSeconds;
         return data with
         {
             PerformanceMigrationVersion = CurrentPerformanceMigrationVersion,

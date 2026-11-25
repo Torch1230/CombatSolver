@@ -289,11 +289,10 @@ internal sealed partial class SolverSettingsPanel
             SolverSettings.Update(SolverSettings.Current with { OnlineStatisticsEnabled = enabled });
             OnlinePresence.SettingsChanged();
             RunStatistics.SettingsChanged();
-            CombatShowcaseCollector.SettingsChanged();
             SetStatus(enabled ? SolverText.Get("在线统计已开启") : SolverText.Get("在线统计已关闭"), SolverUiTokens.Palette.Success);
         };
         AddBasicRow(statisticsGrid, SolverText.Get("向作者发送在线状态（默认开启）"), statistics,
-            SolverText.Get("每 30 秒发送在线状态，并同步本档案的跑局统计；符合条件的进阶 10 第三幕 Boss 无伤路线会上传到私用录像库。关闭后停止上传、清除待上传录像包，并最迟 90 秒从在线列表移除。"));
+            SolverText.Get("每 30 秒发送在线状态，并同步本档案的跑局统计。关闭后停止上传，并最迟 90 秒从在线列表移除。"));
         AddSettingsSection(content, SolverText.Get("在线统计"),
             SolverText.Get("管理在线状态和跑局统计的自动上传。"), statisticsGrid);
         return CreatePageScroll(content);

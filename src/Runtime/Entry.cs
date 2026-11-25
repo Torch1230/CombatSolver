@@ -39,18 +39,17 @@ public static class Entry
             "1",
             StringComparison.Ordinal);
 
+    internal static bool IsHeadlessAutomationEnabled =>
+        OnlinePresence.IsHeadless()
+        && (IsPreCombatWorker
+            || string.Equals(
+                System.Environment.GetEnvironmentVariable("COMBATSOLVER_HEADLESS"),
+                "1",
+                StringComparison.Ordinal));
+
     public static void Initialize()
     {
         Logger = new CombatSolverLog(Path.Combine(OS.GetUserDataDir(), "logs", "CombatSolver"));
-        try
-        {
-            PreCombatForecastWorker.PinMainProcessModSources();
-        }
-        catch (Exception ex)
-        {
-            Logger.Warn(
-                $"[CombatSolver/PreCombatApi] MOD_SOURCE_PINNING_UNAVAILABLE error={ex}");
-        }
         SolverSettings.Load();
         SolverUiTokens.ConfigureTheme(SolverSettings.Current.OverlayTheme);
         SolverController.ApplyPersistentSettings(SolverSettings.Capture());
@@ -70,15 +69,18 @@ public static class Entry
         patcher.RegisterPatch<HandObservationPatch>();
         patcher.RegisterPatch<HandUpgradeObservationPatch>();
         patcher.RegisterPatch<CombatInstantModePatch>();
-        patcher.RegisterPatch<UnattendedTestIsolationPatch>();
-        patcher.RegisterPatch<UnattendedHeadlessFtuePatch>();
         patcher.RegisterPatch<CombatReplayRecordingPatch>();
         patcher.RegisterPatch<RunStatisticsNewRunPatch>();
         patcher.RegisterPatch<RunStatisticsLaunchPatch>();
         patcher.RegisterPatch<RunStatisticsEndPatch>();
-        patcher.RegisterPatch<UnattendedCombatStartReplayPatch>();
         patcher.RegisterPatch<CombatShowcaseSaveIsolationPatch>();
         patcher.RegisterPatch<CombatShowcaseCleanupPatch>();
+        if (IsHeadlessAutomationEnabled)
+        {
+            patcher.RegisterPatch<UnattendedTestIsolationPatch>();
+            patcher.RegisterPatch<UnattendedHeadlessFtuePatch>();
+            patcher.RegisterPatch<UnattendedCombatStartReplayPatch>();
+        }
         RitsuLibFramework.ApplyRequiredPatcher(patcher, DisableMod);
 
         if (Enabled)
@@ -99,11 +101,11 @@ public static class Entry
             if (host != null)
             {
                 SolverDispatcher.Ensure(host);
-                host.AddChild(new CombatShowcaseUploadNode());
                 host.TreeExiting += PreCombatForecastWorker.StopSessionAtProcessExit;
                 host.TreeExiting += Logger.Journal.Dispose;
             }
-            UnattendedTestRunner.TryStart(host);
+            if (IsHeadlessAutomationEnabled)
+                UnattendedTestRunner.TryStart(host);
             SolverWarmup.StartBackgroundWarmup();
         }
     }

@@ -120,7 +120,8 @@ internal static class HighRiskPoolFilter
         | HotHookMask.AfterHpLost
         | HotHookMask.AfterHeal
         | HotHookMask.ModifyHealAmount
-        | HotHookMask.AfterAutoPostPlay;
+        | HotHookMask.AfterAutoPostPlay
+        | HotHookMask.AfterPlayerTurnStartEarly;
 
     /// <summary>
     /// 目录 HookMask 仅标为 None/AfterSideTurnStart/AfterTurnEnd/ModifyDamage，但实际驱动选牌、变形、自动打出、锻造、充能球、星能、召唤、箭矢、旋律或跨回合特殊机制的 Tier 2 Power。
@@ -178,7 +179,7 @@ internal static class HighRiskPoolFilter
     ];
 
     /// <summary>
-    /// 经逐卡核实（对照 STS2 0.113.1 反编译源码）的 11 张纯静态数值自定义臂平凡卡：
+    /// 经逐卡核实（对照 STS2 0.114.0 反编译源码）的 11 张纯静态数值自定义臂平凡卡：
     /// 仅因多变量/VFX 循环未走字节码，但零选牌、零生成/复制/变形/弃牌/消耗触发、零变费、零关键字、零 X/星能/重放/球/锻造/Osty/Doom/箭矢/旋律/塔罗/Fatal、零掉血治疗、零钩子/私有状态/非平凡 Power。
     /// 实际分类时仍需通过 CardModel、反射与升级形态双重核验才归入 Tier 0。
     /// </summary>
@@ -780,7 +781,6 @@ internal static class HighRiskPoolFilter
             HotCustomCardId.MadScience => HotCardPrivateKind.MadScience,
             HotCustomCardId.Rampage => HotCardPrivateKind.Rampage,
             HotCustomCardId.TheScythe => HotCardPrivateKind.TheScythe,
-            HotCustomCardId.TheShot => HotCardPrivateKind.TheShot,
             HotCustomCardId.ShowOff => HotCardPrivateKind.ShowOff,
             HotCustomCardId.SovereignBlade => HotCardPrivateKind.SovereignBlade,
             _ => HotCardPrivateKind.None,

@@ -32,147 +32,176 @@ internal static partial class HotCombatEngine
         HotMonsterNode node = machine.Nodes[moveNodeId];
         byte dealerSlot = (byte)(3 + enemySlot);
 
-        // 1. Attack hits (matches MonsterMoveSemantics.ApplyForecastMove attack loop)
-        if (node.Attacks is { Length: > 0 } multiAttacks)
+        uint moveBit = enemySlot < 32 ? (1u << enemySlot) : 0u;
+        bool wasPerformingMove = (scratch.PerformingMoveEnemyMask & moveBit) != 0;
+        scratch.PerformingMoveEnemyMask |= moveBit;
+        try
         {
-            for (int a = 0; a < multiAttacks.Length; a++)
+            // 1. Attack hits (matches MonsterMoveSemantics.ApplyForecastMove attack loop)
+            if (node.Attacks is { Length: > 0 } multiAttacks)
             {
-                HotMonsterAttack atk = multiAttacks[a];
-                int hits = Math.Max(0, (int)atk.Repeats);
-                if (hits == 0)
-                    continue;
-
-                scratch.AttackActive = true;
-                for (int h = 0; h < hits; h++)
+                for (int a = 0; a < multiAttacks.Length; a++)
                 {
-                    if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
-                        || (s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                    HotMonsterAttack atk = multiAttacks[a];
+                    int hits = Math.Max(0, (int)atk.Repeats);
+                    if (hits == 0)
+                        continue;
+
+                    HotAttackCommandScope atkScope = EnterAttackCommand(scratch, dealerSlot);
+                    try
                     {
-                        break;
+                        scratch.AttackActive = true;
+                        for (int h = 0; h < hits; h++)
+                        {
+                            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
+                                || (s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                            {
+                                break;
+                            }
+
+                            DealDamage(
+                                ref s,
+                                ref cold,
+                                rules,
+                                scratch,
+                                dealerSlot: dealerSlot,
+                                targetSlot: 0,
+                                baseDamage: atk.BaseDamage,
+                                isPoweredAttack: true);
+                        }
+                        s.Enemies[enemySlot].CreatureAttacksThisTurn++;
+                        scratch.AttackActive = false;
+                    }
+                    finally
+                    {
+                        ExitAttackCommand(ref s, rules, scratch, in atkScope);
                     }
 
-                    DealDamage(
-                        ref s,
-                        ref cold,
-                        rules,
-                        scratch,
-                        dealerSlot: dealerSlot,
-                        targetSlot: 0,
-                        baseDamage: atk.BaseDamage,
-                        isPoweredAttack: true);
+                    if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                        return;
                 }
-                s.Enemies[enemySlot].CreatureAttacksThisTurn++;
-                scratch.AttackActive = false;
+            }
+            else if (node.Repeats > 0)
+            {
+                int hits = node.Repeats;
+                if (rules.Monsters[monsterDefId].StateKind == HotMonsterStateKind.TestSubject
+                    && string.Equals(node.MoveId, "MULTI_CLAW_MOVE", StringComparison.Ordinal))
+                {
+                    hits = Math.Max(1, rules.Monsters[monsterDefId].TestSubjectBaseMultiClawCount + s.Enemies[enemySlot].AiRegs[1]);
+                }
+
+                HotAttackCommandScope atkScope = EnterAttackCommand(scratch, dealerSlot);
+                try
+                {
+                    scratch.AttackActive = true;
+                    for (int h = 0; h < hits; h++)
+                    {
+                        if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
+                            || (s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
+                        {
+                            break;
+                        }
+
+                        DealDamage(
+                            ref s,
+                            ref cold,
+                            rules,
+                            scratch,
+                            dealerSlot: dealerSlot,
+                            targetSlot: 0,
+                            baseDamage: node.BaseDamage,
+                            isPoweredAttack: true);
+                    }
+                    s.Enemies[enemySlot].CreatureAttacksThisTurn++;
+                    scratch.AttackActive = false;
+                }
+                finally
+                {
+                    ExitAttackCommand(ref s, rules, scratch, in atkScope);
+                }
 
                 if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
                     return;
             }
+
+            // 2. Non-attack / post-attack move effects (block, powers, status cards)
+            HotMonsterMoveEffect[] effects = node.MoveEffects;
+            for (int i = 0; i < effects.Length; i++)
+            {
+                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
+                    break;
+
+                HotMonsterMoveEffect effect = effects[i];
+                switch (effect.Op)
+                {
+                    case HotCardOpKind.GainBlock:
+                    {
+                        // Vanilla monster move block uses ValueProp.Move (affected by Dexterity/Frail).
+                        bool isPoweredBlock = ((HotCardOpFlags)effect.Flags & HotCardOpFlags.Unpowered) == 0;
+                        GainBlock(ref s, rules, targetSlot: dealerSlot, baseAmount: effect.Amount, isCardBlock: isPoweredBlock);
+                        break;
+                    }
+
+                    case HotCardOpKind.ApplyPowerSelf:
+                    {
+                        ApplyPower(
+                            ref s,
+                            rules,
+                            ownerSlot: dealerSlot,
+                            applierSlot: dealerSlot,
+                            powerDefId: effect.TargetDefId,
+                            amount: effect.Amount);
+                        break;
+                    }
+
+                    case HotCardOpKind.ApplyPowerTarget:
+                    {
+                        ApplyPower(
+                            ref s,
+                            rules,
+                            ownerSlot: 0,
+                            applierSlot: dealerSlot,
+                            powerDefId: effect.TargetDefId,
+                            amount: effect.Amount);
+                        break;
+                    }
+
+                    case HotCardOpKind.Heal:
+                    {
+                        HealCreature(ref s, targetSlot: dealerSlot, amount: effect.Amount);
+                        break;
+                    }
+
+                    case HotCardOpKind.LoseHp:
+                    {
+                        DealDamage(
+                            ref s,
+                            ref cold,
+                            rules,
+                            scratch,
+                            dealerSlot: dealerSlot,
+                            targetSlot: 0,
+                            baseDamage: effect.Amount,
+                            isPoweredAttack: false,
+                            isUnblockable: true);
+                        break;
+                    }
+
+                    case HotCardOpKind.AddFixedCard:
+                    {
+                        for (int c = 0; c < effect.Amount; c++)
+                            AddGeneratedFixedCard(ref s, rules, effect.TargetDefId, HotPileKind.Discard, s.DiscardCount);
+                        break;
+                    }
+                }
+            }
         }
-        else if (node.Repeats > 0)
+        finally
         {
-            int hits = node.Repeats;
-            if (rules.Monsters[monsterDefId].StateKind == HotMonsterStateKind.TestSubject
-                && string.Equals(node.MoveId, "MULTI_CLAW_MOVE", StringComparison.Ordinal))
-            {
-                hits = Math.Max(1, rules.Monsters[monsterDefId].TestSubjectBaseMultiClawCount + s.Enemies[enemySlot].AiRegs[1]);
-            }
-
-            scratch.AttackActive = true;
-            for (int h = 0; h < hits; h++)
-            {
-                if ((s.Player.Flags & HotCreatureFlags.Alive) == 0
-                    || (s.Enemies[enemySlot].Vital.Flags & HotCreatureFlags.Alive) == 0)
-                {
-                    break;
-                }
-
-                DealDamage(
-                    ref s,
-                    ref cold,
-                    rules,
-                    scratch,
-                    dealerSlot: dealerSlot,
-                    targetSlot: 0,
-                    baseDamage: node.BaseDamage,
-                    isPoweredAttack: true);
-            }
-            s.Enemies[enemySlot].CreatureAttacksThisTurn++;
-            scratch.AttackActive = false;
-
-            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
-                return;
-        }
-
-        // 2. Non-attack / post-attack move effects (block, powers, status cards)
-        HotMonsterMoveEffect[] effects = node.MoveEffects;
-        for (int i = 0; i < effects.Length; i++)
-        {
-            if ((s.Player.Flags & HotCreatureFlags.Alive) == 0)
-                break;
-
-            HotMonsterMoveEffect effect = effects[i];
-            switch (effect.Op)
-            {
-                case HotCardOpKind.GainBlock:
-                {
-                    // Vanilla monster move block uses ValueProp.Move (affected by Dexterity/Frail).
-                    bool isPoweredBlock = ((HotCardOpFlags)effect.Flags & HotCardOpFlags.Unpowered) == 0;
-                    GainBlock(ref s, rules, targetSlot: dealerSlot, baseAmount: effect.Amount, isCardBlock: isPoweredBlock);
-                    break;
-                }
-
-                case HotCardOpKind.ApplyPowerSelf:
-                {
-                    ApplyPower(
-                        ref s,
-                        rules,
-                        ownerSlot: dealerSlot,
-                        applierSlot: dealerSlot,
-                        powerDefId: effect.TargetDefId,
-                        amount: effect.Amount);
-                    break;
-                }
-
-                case HotCardOpKind.ApplyPowerTarget:
-                {
-                    ApplyPower(
-                        ref s,
-                        rules,
-                        ownerSlot: 0,
-                        applierSlot: dealerSlot,
-                        powerDefId: effect.TargetDefId,
-                        amount: effect.Amount);
-                    break;
-                }
-
-                case HotCardOpKind.Heal:
-                {
-                    HealCreature(ref s, targetSlot: dealerSlot, amount: effect.Amount);
-                    break;
-                }
-
-                case HotCardOpKind.LoseHp:
-                {
-                    DealDamage(
-                        ref s,
-                        ref cold,
-                        rules,
-                        scratch,
-                        dealerSlot: dealerSlot,
-                        targetSlot: 0,
-                        baseDamage: effect.Amount,
-                        isPoweredAttack: false,
-                        isUnblockable: true);
-                    break;
-                }
-
-                case HotCardOpKind.AddFixedCard:
-                {
-                    for (int c = 0; c < effect.Amount; c++)
-                        AddGeneratedFixedCard(ref s, rules, effect.TargetDefId, HotPileKind.Discard, s.DiscardCount);
-                    break;
-                }
-            }
+            if (!wasPerformingMove)
+                scratch.PerformingMoveEnemyMask &= ~moveBit;
+            if (!scratch.NeedsChoice)
+                FlushDeferredDeathCleanup(ref s, rules, scratch, dealerSlot);
         }
     }
 

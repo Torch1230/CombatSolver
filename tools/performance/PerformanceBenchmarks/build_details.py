@@ -34,7 +34,8 @@ def main():
     try:
         writer.write_text(source.replace(anchor, anchor + injection))
         subprocess.run(["dotnet", "build", "CombatSolver.csproj", "-c", "Release",
-                        "-p:CopyModOnBuild=false", "-o", str(output)], cwd=checkout, check=True)
+                        "-p:CopyModOnBuild=false", "-p:EnablePerformanceRecording=true",
+                        "-o", str(output)], cwd=checkout, check=True)
         shutil.copy2(checkout / "CombatSolver.json", output / "CombatSolver.json")
     finally:
         writer.write_bytes(saved)

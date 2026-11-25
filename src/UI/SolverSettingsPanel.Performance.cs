@@ -84,7 +84,7 @@ internal sealed partial class SolverSettingsPanel
             performanceGrid,
             SolverText.Get("战斗最大求解时长（秒）"),
             _maxCombatSolveSeconds,
-            SolverText.Get("默认 4 秒（范围 1–15 秒）。简单战斗通常瞬间完成；复杂战斗自动逐级深化，最长不超过此设定。下次搜索生效。"));
+            SolverText.Get("默认 30 秒（范围 1–600 秒）。简单战斗通常瞬间完成；复杂战斗自动逐级深化，最长不超过此设定。下次搜索生效。"));
         _searchParallelism = CreateSearchParallelismInput();
         AddBasicRow(
             performanceGrid,

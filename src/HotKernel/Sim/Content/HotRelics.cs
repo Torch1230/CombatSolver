@@ -187,6 +187,10 @@ internal static class HotRelics
                 HandleBeforeSideTurnStart(ref s, ref cold, rules, scratch, relicId, stateSlot, hasState, ref args);
                 break;
 
+            case HotHookMask.AfterPlayerTurnStartEarly:
+                HandleAfterPlayerTurnStartEarly(ref s, rules, relicId, stateSlot, hasState);
+                break;
+
             case HotHookMask.AfterSideTurnStart:
                 HandleAfterSideTurnStart(ref s, ref cold, rules, scratch, relicId, stateSlot, hasState, ref args);
                 break;
@@ -2080,6 +2084,27 @@ internal static class HotRelics
                 }
                 break;
 
+            // STS2 0.114.0 HappyFlower.cs:97-107 & FakeHappyFlower.cs:97-107:
+            // increment TurnsSeen and latch GrantEnergyThisTurn in BeforeSideTurnStart;
+            // grant energy in AfterPlayerTurnStartEarly.
+            case HotRelicId.FakeHappyFlower:
+                if (hasState)
+                {
+                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
+                    rs.Current = (rs.Current + 1) % 5;
+                    rs.PreviousOrAux = rs.Current == 0 ? 1 : 0;
+                }
+                break;
+
+            case HotRelicId.HappyFlower:
+                if (hasState)
+                {
+                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
+                    rs.Current = (rs.Current + 1) % 3;
+                    rs.PreviousOrAux = rs.Current == 0 ? 1 : 0;
+                }
+                break;
+
             // Turn 1 / combat-start triggers
             case HotRelicId.Anchor:
                 if (s.PlayerTurnNumber <= 1)
@@ -2350,26 +2375,6 @@ internal static class HotRelics
                     HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StretchPower, 6);
                 break;
 
-            case HotRelicId.FakeHappyFlower:
-                if (hasState)
-                {
-                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
-                    rs.Current = (rs.Current + 1) % 5;
-                    if (rs.Current == 0)
-                        HotCombatEngine.GainEnergy(ref s, rules, 1);
-                }
-                break;
-
-            case HotRelicId.HappyFlower:
-                if (hasState)
-                {
-                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
-                    rs.Current = (rs.Current + 1) % 3;
-                    if (rs.Current == 0)
-                        HotCombatEngine.GainEnergy(ref s, rules, 1);
-                }
-                break;
-
             case HotRelicId.FencingManual:
                 if (s.PlayerTurnNumber <= 1)
                     HotRegentNecro.Forge(ref s, ref cold, rules, scratch, 10);
@@ -2530,6 +2535,27 @@ internal static class HotRelics
                         HotPotions.AddGeneratedFreeThisTurnToHand(ref s, ref cold, rules, scratch, picked[0]);
                 }
                 break;
+        }
+    }
+
+    private static void HandleAfterPlayerTurnStartEarly(
+        ref CombatHotState s,
+        HotRules rules,
+        HotRelicId relicId,
+        byte stateSlot,
+        bool hasState)
+    {
+        if (!hasState)
+            return;
+
+        if (relicId is HotRelicId.HappyFlower or HotRelicId.FakeHappyFlower)
+        {
+            ref HotRelicState rs = ref s.RelicStates[stateSlot];
+            if (rs.PreviousOrAux != 0)
+            {
+                rs.PreviousOrAux = 0;
+                HotCombatEngine.GainEnergy(ref s, rules, 1);
+            }
         }
     }
 

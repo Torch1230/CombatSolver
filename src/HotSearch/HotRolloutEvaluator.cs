@@ -1447,14 +1447,14 @@ internal sealed class HotRolloutEvaluator : IDisposable
         bool preferLowestQuality = (pendingKind == HotChoiceKind.HandCard && !isBeneficialHandChoice)
             || isDestructiveDrawChoice;
 
-        // Next-turn / future-pile choices (CosmicIndifference / Headbutt putting DiscardPile cards on Draw[0],
+        // Next-turn / future-pile choices (CosmicIndifference / Headbutt / WahKi putting DiscardPile cards on Draw[0],
         // destructive DrawPile thinning like Charge/Cleanse/Seance, and beneficial HandCard prompts) do not depend
         // on current-turn remaining energy.
         bool isNextTurnPileChoice = isDestructiveDrawChoice
             || (pendingKind == HotChoiceKind.DiscardPile
                 && sourceCardDefId != 0
                 && sourceCardDefId < rules.Cards.Length
-                && rules.Cards[sourceCardDefId].CardId is HotCustomCardId.CosmicIndifference or HotCustomCardId.Headbutt);
+                && rules.Cards[sourceCardDefId].CardId is HotCustomCardId.CosmicIndifference or HotCustomCardId.Headbutt or HotCustomCardId.WahKi);
 
         // Guards transforms low-value hand cards into 0-cost 9-Block MinionSacrifice, so basic Defends
         // remain eligible to upgrade when under attack instead of getting inflated above maxAllowedQuality.
@@ -1678,6 +1678,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
             or HotCustomCardId.Purity
             or HotCustomCardId.Begone
             or HotCustomCardId.Guards
+            or HotCustomCardId.Florescence
             or HotCustomCardId.TheHermit
             or HotCustomCardId.SculptingStrike
             or HotCustomCardId.ThinkingAhead

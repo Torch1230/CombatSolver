@@ -70,6 +70,9 @@ internal sealed record CombatSetupSpec
     public int ActIndex { get; init; }
     public int? PlayerMaxHp { get; init; }
     public int? PlayerHp { get; init; }
+    public int? PlayerGold { get; init; }
+    public int? WuppyMaxHp { get; init; }
+    public int? WuppyCurrentHp { get; init; }
     public bool ClearStarterDeck { get; init; }
     public bool ClearStarterRelics { get; init; }
     public CardInjectionSpec[] Cards { get; init; } = [];
@@ -382,6 +385,12 @@ internal static class RealCombatDriver
             if (!ownedRelicIds.Add(canonical.Id))
                 continue;
             RelicModel mutable = canonical.ToMutable();
+            if (mutable is MegaCrit.Sts2.Core.Models.Relics.Wuppy wuppyRelic)
+            {
+                int wuppyMaxHp = Math.Max(1, spec.WuppyMaxHp ?? MegaCrit.Sts2.Core.Models.Relics.Wuppy.weakHp);
+                wuppyRelic.MaxHp = wuppyMaxHp;
+                wuppyRelic.CurrentHp = Math.Clamp(spec.WuppyCurrentHp ?? wuppyMaxHp, 0, wuppyMaxHp);
+            }
             player.AddRelicInternal(mutable, -1, silent: true);
         }
 
@@ -435,11 +444,13 @@ internal static class RealCombatDriver
             player.AddPotionInternal(mutablePotion, i, silent: true);
         }
 
-        // HP / MaxHP 调整
+        // HP / MaxHP / Gold 调整
         if (spec.PlayerMaxHp is { } maxHp && maxHp > 0)
             player.Creature.SetMaxHpInternal(maxHp);
         if (spec.PlayerHp is { } hp && hp > 0)
             player.Creature.SetCurrentHpInternal(Math.Min(hp, player.Creature.MaxHp));
+        if (spec.PlayerGold is { } gold && gold >= 0)
+            player.Gold = gold;
 
         // 进战斗房：在 Dread 且指定了 Dominion 时避免触发 Boss 房自动卸载 Dominion
         EncounterModel mutableEncounter = encounter.ToMutable();

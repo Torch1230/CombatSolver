@@ -978,11 +978,12 @@ internal static partial class HotCombatEngine
             if (CheckWinCondition(ref s, rules))
                 return;
 
-            // STS2 0.113.1 CombatManager.SetupPlayerTurn (line 948) fires Hook.AfterPlayerTurnStart
-            // (13 player powers: Loop, CrimsonMantle, Ecstasy, Entropy, Inferno, RollingBoulder,
-            // ToolsOfTheTrade, Tyranny, YouAreMine, Amnesia, GodByrd, Hibernate, SummonNextTurn;
-            // 11 player relics: EmotionChip, Bellows, BoneTea, ChoicesParadox, FestivePopper,
-            // GamblingChip, MercuryHourglass, MrStruggles, RoyalPoison, ToastyMittens, VexingPuzzlebox)
+            // STS2 0.114.0 CombatManager.SetupPlayerTurn (line 948) fires Hook.AfterPlayerTurnStart:
+            //   Early pass: HappyFlower, FakeHappyFlower (AfterPlayerTurnStartEarly)
+            //   Main pass:  13 player powers (Loop, CrimsonMantle, Ecstasy, Entropy, Inferno, RollingBoulder,
+            //     ToolsOfTheTrade, Tyranny, YouAreMine, Amnesia, GodByrd, Hibernate, SummonNextTurn) and
+            //     11 player relics (EmotionChip, Bellows, BoneTea, ChoicesParadox, FestivePopper,
+            //     GamblingChip, MercuryHourglass, MrStruggles, RoyalPoison, ToastyMittens, VexingPuzzlebox)
             // BEFORE CombatManager.cs:805 fires Hook.AfterSideTurnStart (Plating decrement, Poison tick,
             // BiasedCognition Focus loss, Coolant, DemonForm, NoxiousFumes, WraithForm, Rampart, etc.).
             DispatchPlayerTurnStartHooks(ref s, ref cold, rules, scratch, takingExtraTurn);

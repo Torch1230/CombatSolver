@@ -18,14 +18,10 @@ if ($ForPublication) {
         $PrivateConfigDirectory
     }
     $presenceProps = Join-Path $configDirectory 'presence.props'
-    $showcaseProps = Join-Path $configDirectory 'showcase.props'
-    foreach ($path in @($presenceProps, $showcaseProps)) {
-        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-            throw "发布构建缺少私有连接配置：$path"
-        }
+    if (-not (Test-Path -LiteralPath $presenceProps -PathType Leaf)) {
+        throw "发布构建缺少私有连接配置：$presenceProps"
     }
     $buildArguments += "-p:PresencePropsPath=$((Resolve-Path -LiteralPath $presenceProps).Path)"
-    $buildArguments += "-p:ShowcasePropsPath=$((Resolve-Path -LiteralPath $showcaseProps).Path)"
 }
 
 & dotnet @buildArguments

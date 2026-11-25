@@ -464,7 +464,6 @@ internal static partial class HotCombatEngine
             {
                 HotCustomCardId.ParticleWall or HotCustomCardId.MourningBlow => (byte)HotPileKind.Hand,
                 HotCustomCardId.ShiningStrike => ResultPileDrawTop,
-                HotCustomCardId.TrickShot when HotFoolTarot.CountAvailableArrows(in s) > 0 => (byte)HotPileKind.Hand,
                 _ => (byte)HotPileKind.Discard,
             };
         }
@@ -1218,7 +1217,7 @@ internal static partial class HotCombatEngine
     }
 
     /// <summary>
-    /// Applies STS2 0.113.1 <c>CardModel.OnUpgrade()</c> keyword additions/removals
+    /// Applies STS2 0.114.0 <c>CardModel.OnUpgrade()</c> keyword additions/removals
     /// (updates <c>LocalKeywordsMask</c> only, matching <c>CardModel.AddKeyword/RemoveKeyword</c>
     /// when <c>_isUpgrading == true</c>).
     /// </summary>
@@ -1236,9 +1235,9 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.HelloWorld:
             case HotCustomCardId.InfiniteBlades:
             case HotCustomCardId.Juggling:
-            case HotCustomCardId.Lullaby:
             case HotCustomCardId.MachineLearning:
             case HotCustomCardId.MadScience:
+            case HotCustomCardId.Quiver:
             case HotCustomCardId.Soulbound:
             case HotCustomCardId.Speedster:
             case HotCustomCardId.Tyranny:
@@ -1271,8 +1270,10 @@ internal static partial class HotCombatEngine
             case HotCustomCardId.KnowThyPlace:
             case HotCustomCardId.Mimic:
             case HotCustomCardId.Mirage:
+            case HotCustomCardId.Optimism:
             case HotCustomCardId.Prolong:
             case HotCustomCardId.Rainbow:
+            case HotCustomCardId.Recall:
             case HotCustomCardId.SecretTechnique:
             case HotCustomCardId.SecretWeapon:
             case HotCustomCardId.ThinkingAhead:
@@ -1284,6 +1285,7 @@ internal static partial class HotCombatEngine
 
             case HotCustomCardId.Apparition:
             case HotCustomCardId.EchoForm:
+            case HotCustomCardId.MythicForm:
             case HotCustomCardId.VoidForm:
                 card.LocalKeywordsMask &= ~HotCardKeywordMask.Ethereal;
                 break;

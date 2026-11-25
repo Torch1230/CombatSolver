@@ -1697,8 +1697,8 @@ internal static class HotEvaluator
             int readyArrows = 0;
             for (int a = 0; a < s.ArrowCount; a++)
             {
-                int status = s.Fool.Arrows[a] & 0xF;
-                if (status != 0)
+                int status = s.Fool.Arrows[a] & HotFoolState.ArrowStatusMask;
+                if (status == 0)
                     readyArrows++;
             }
             runningScore += (long)readyArrows * 6_000L;
@@ -2683,7 +2683,6 @@ internal static class HotEvaluator
             HotPowerId.BurstPower => Math.Min(posAmt, 4) * 6,
             HotPowerId.SignalBoostPower => Math.Min(posAmt, 4) * 6,
             HotPowerId.OneTwoPunchPower => Math.Min(posAmt, 4) * 6,
-            HotPowerId.FreeCardPower => Math.Min(posAmt, 4) * 6,
             HotPowerId.FreeSkillPower => Math.Min(posAmt, 4) * 5,
             HotPowerId.FreePowerPower => Math.Min(posAmt, 4) * 6,
             HotPowerId.FreeAttackPower => Math.Min(posAmt, 4) * 5,

@@ -22,6 +22,7 @@ namespace CombatSolver;
 
 internal static class CombatShowcaseRuntime
 {
+    internal const int ProtocolVersion = 1;
     private const long MaxExpandedBundleBytes = 32L * 1024 * 1024;
     private static readonly Action TerminalRewardsOverride = OnTerminalRewardsProceed;
     private static int _importing;
@@ -31,7 +32,7 @@ internal static class CombatShowcaseRuntime
 
     internal static CombatShowcaseCompatibility GetCompatibility()
         => new(
-            CombatShowcaseCollector.ProtocolVersion,
+            ProtocolVersion,
             typeof(CombatState).Assembly.GetName().Version?.ToString()
                 ?? throw new InvalidDataException("游戏程序集缺少版本号。"),
             typeof(Entry).Assembly.GetName().Version?.ToString(3)

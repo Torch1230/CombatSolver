@@ -12,7 +12,7 @@ internal readonly record struct HotRelicCatalogEntry(
     bool CanGenerateUnknown);
 
 /// <summary>
-/// Static STS2 0.113.1 catalog covering all vanilla concrete relics with exact hook masks and capability flags.
+/// Static STS2 0.114.0 catalog covering all vanilla concrete relics with exact hook masks and capability flags.
 /// </summary>
 internal static class HotRelicCatalog
 {
@@ -128,7 +128,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.ExerciseMat] = new(HotRelicId.ExerciseMat, "EXERCISE_MAT", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.FakeAnchor] = new(HotRelicId.FakeAnchor, "FAKE_ANCHOR", HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.FakeBloodVial] = new(HotRelicId.FakeBloodVial, "FAKE_BLOOD_VIAL", HotHookMask.AfterSideTurnStart, false, false, true, false);
-        arr[(int)HotRelicId.FakeHappyFlower] = new(HotRelicId.FakeHappyFlower, "FAKE_HAPPY_FLOWER", HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
+        arr[(int)HotRelicId.FakeHappyFlower] = new(HotRelicId.FakeHappyFlower, "FAKE_HAPPY_FLOWER", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterPlayerTurnStartEarly | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.FakeLeesWaffle] = new(HotRelicId.FakeLeesWaffle, "FAKE_LEES_WAFFLE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.FakeMango] = new(HotRelicId.FakeMango, "FAKE_MANGO", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.FakeMerchantsRug] = new(HotRelicId.FakeMerchantsRug, "FAKE_MERCHANTS_RUG", HotHookMask.None, false, false, false, false);
@@ -162,7 +162,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.Gorget] = new(HotRelicId.Gorget, "GORGET", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.GremlinHorn] = new(HotRelicId.GremlinHorn, "GREMLIN_HORN", HotHookMask.AfterDeath, false, false, false, false);
         arr[(int)HotRelicId.HandDrill] = new(HotRelicId.HandDrill, "HAND_DRILL", HotHookMask.AfterBlockBroken, false, false, false, false);
-        arr[(int)HotRelicId.HappyFlower] = new(HotRelicId.HappyFlower, "HAPPY_FLOWER", HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
+        arr[(int)HotRelicId.HappyFlower] = new(HotRelicId.HappyFlower, "HAPPY_FLOWER", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterPlayerTurnStartEarly | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.HeftyTablet] = new(HotRelicId.HeftyTablet, "HEFTY_TABLET", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.HelicalDart] = new(HotRelicId.HelicalDart, "HELICAL_DART", HotHookMask.AfterCardPlayed, false, false, false, false);
         arr[(int)HotRelicId.HistoryCourse] = new(HotRelicId.HistoryCourse, "HISTORY_COURSE", HotHookMask.AfterSideTurnStart, false, false, false, false);

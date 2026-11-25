@@ -41,7 +41,7 @@ internal sealed partial class UnattendedTestRunner
 
         public void TryStart(NGame? host)
         {
-            if (_requestLoopStarted || host == null)
+            if (!Entry.IsHeadlessAutomationEnabled || _requestLoopStarted || host == null)
                 return;
 
             _requestLoopStarted = true;
@@ -116,6 +116,8 @@ internal sealed partial class UnattendedTestRunner
                         throw new InvalidOperationException(
                             "无人测试请求不能同时暂停初始搜索并在完成后退出。");
                     }
+                    if (Entry.IsPreCombatWorker)
+                        ValidatePreCombatWorkerRequest(request);
 
                     File.Move(requestPath, runningPath, true);
                     Activate(request);
@@ -292,6 +294,66 @@ internal sealed partial class UnattendedTestRunner
 
             throw new TimeoutException(
                 $"无人测试暂停进程在 {quiescenceTimeoutMilliseconds} ms 内没有完成异步活动。");
+        }
+
+        private static void ValidatePreCombatWorkerRequest(UnattendedTestRequest request)
+        {
+            if (!string.Equals(request.ScenarioId, "PRECOMBAT-API-V1", StringComparison.Ordinal)
+                && !string.Equals(request.ScenarioId, "PRECOMBAT-SIMULATION-V1", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"PreCombat worker 拒绝非预战场景请求：{request.ScenarioId}。");
+            }
+
+            RejectPreCombatForbiddenField(nameof(request.EvidenceDirectory), request.EvidenceDirectory);
+            RejectPreCombatForbiddenField(nameof(request.DevelopmentMonitorStatePath), request.DevelopmentMonitorStatePath);
+            RejectPreCombatForbiddenField(nameof(request.ShowcaseBundlePath), request.ShowcaseBundlePath);
+            RejectPreCombatForbiddenField(nameof(request.ShowcaseRoutePath), request.ShowcaseRoutePath);
+            RejectPreCombatForbiddenField(nameof(request.ReplayStatePath), request.ReplayStatePath);
+            RejectPreCombatForbiddenField(nameof(request.NativeStatePath), request.NativeStatePath);
+            RejectPreCombatForbiddenField(nameof(request.CheckpointArchivePath), request.CheckpointArchivePath);
+            RejectPreCombatForbiddenField(nameof(request.GeneratedScenarioPath), request.GeneratedScenarioPath);
+            RejectPreCombatForbiddenField(nameof(request.ReplayPolicyOverridePath), request.ReplayPolicyOverridePath);
+
+            if (request.ExportBugReportAfterSetup
+                || request.ExportBugReportAfterCombat
+                || request.VerifyPreCombatForecastApi)
+            {
+                throw new InvalidOperationException(
+                    "PreCombat worker 拒绝包含问题包导出或嵌套预战测试开关的请求。");
+            }
+
+            if (request.RunSnapshotPath is not null)
+            {
+                if (string.IsNullOrWhiteSpace(request.RunSnapshotPath))
+                {
+                    throw new InvalidOperationException(
+                        "PreCombat worker 请求的 RunSnapshotPath 不能为空白。");
+                }
+
+                string userDataRoot = Path.GetFullPath(OS.GetUserDataDir())
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                    + Path.DirectorySeparatorChar;
+                string resolvedSnapshotPath = Path.GetFullPath(request.RunSnapshotPath);
+                StringComparison comparison = OperatingSystem.IsWindows()
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal;
+                if (!resolvedSnapshotPath.StartsWith(userDataRoot, comparison)
+                    || resolvedSnapshotPath.Length <= userDataRoot.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"PreCombat worker 拒绝位于用户数据目录之外的 RunSnapshotPath：{request.RunSnapshotPath}");
+                }
+            }
+        }
+
+        private static void RejectPreCombatForbiddenField(string fieldName, string? value)
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                throw new InvalidOperationException(
+                    $"PreCombat worker 拒绝携带非预战路径字段 {fieldName}。");
+            }
         }
 
         private static void WriteReady(string runId, bool held)
