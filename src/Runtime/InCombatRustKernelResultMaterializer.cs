@@ -189,12 +189,15 @@ internal static class InCombatRustKernelResultMaterializer
             deathSaveHpRestored: summary.DeathSaveHpRestored,
             growthHpCredit: summary.GrowthHpCredit,
             bossHpRelief: hotPolicy.StrategicBossHpRelief,
-            ignoreLongTermRewards: hotPolicy.IgnoreLongTermRewards);
+            ignoreLongTermRewards: hotPolicy.IgnoreLongTermRewards,
+            relicHpCredit: summary.RelicHpCredit,
+            relicHealingHpCredit: summary.RelicHealingHpCredit,
+            feedMaxHpExcluded: summary.FeedCount * hotPolicy.FeedMaxHpPerKill);
 
         int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
             optionalPotionStrategicCost,
             optionalPaidPotionCount,
-            alchemizeCount: Math.Min((int)state.Growth[4], (int)byte.MaxValue),
+            alchemizeCount: summary.AlchemizeCount,
             endEmptyPotionSlots: summary.EmptyPotionSlots,
             in hotPolicy);
 
@@ -242,10 +245,17 @@ internal static class InCombatRustKernelResultMaterializer
             NetPotionOpportunityCostCenti = netPotionCostCenti,
             OptionalPaidPotionCount = (byte)Math.Clamp(optionalPaidPotionCount, 0, (int)byte.MaxValue),
             EndPlayerMaxHp = endMaxHp,
-            AlchemizeCount = (byte)Math.Clamp((int)state.Growth[4], 0, (int)byte.MaxValue),
+            AlchemizeCount = summary.AlchemizeCount,
             EmptyPotionSlots = summary.EmptyPotionSlots,
             RouteTurn = (byte)Math.Clamp((int)summary.Turn, 0, (int)byte.MaxValue),
             IsEventDefeat = summary.IsEventDefeat,
+            RelicHpCredit = summary.RelicHpCredit,
+            RelicHealingHpCredit = summary.RelicHealingHpCredit,
+            RelicSatisfiedMask = summary.RelicSatisfiedMask,
+            RelicSatisfiedPriority = summary.RelicSatisfiedPriority,
+            RelicDistance = summary.RelicDistance,
+            AllGrowthTargetsSatisfied = !hotPolicy.HasPureGrowthTargets || summary.AllGrowthTargetsSatisfied,
+            AllRelicTargetsSatisfied = !hotPolicy.HasRelicTargets || summary.AllRelicTargetsSatisfied,
         };
 
         SearchBoundaryReason boundary = ParseBoundaryReason(rustResult.Terminal.SearchBoundary);

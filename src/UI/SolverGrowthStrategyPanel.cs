@@ -236,6 +236,31 @@ internal sealed partial class SolverGrowthStrategyPanel : PanelContainer
         finally { _refreshing = false; }
     }
 
+    public bool CommitPending()
+    {
+        if (_refreshing || _disabled)
+            return true;
+        if (_brightestFlameLimit.Editable)
+            _brightestFlameLimit.Apply();
+        foreach (SpinBox input in _budgets.Values)
+        {
+            if (input.Editable)
+                input.Apply();
+        }
+        foreach ((_, SpinBox input) in _extraBudgets)
+        {
+            if (input.Editable)
+                input.Apply();
+        }
+        if (IsInsideTree()
+            && GetViewport()?.GuiGetFocusOwner() is LineEdit focused
+            && IsAncestorOf(focused))
+        {
+            focused.ReleaseFocus();
+        }
+        return true;
+    }
+
     public override void _Input(InputEvent inputEvent)
     {
         if (IsVisibleInTree() && inputEvent is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click

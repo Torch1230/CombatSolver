@@ -2,21 +2,27 @@
 
 ## 下一版本（开发中）：原生 Rust 战斗内核集成
 
-- Rust workspace（Linux 最新提交 `lto = "fat"` 与 Windows MSVC 先前提交基线，`RUSTFLAGS="-D warnings"`）：`CARGO_BUILD_JOBS=8 RUSTFLAGS="-D warnings" cargo test --workspace --release --manifest-path rust/Cargo.toml` 与 debug 全量测试全部通过且零编译器警告；`bench_throughput` 验证 `MAWLER`（Linux 展开 `1,228` / 转移 `3,781`：`14.70 / 5.33 / 6.62 ms`；Windows 先前基线 `1,100 / 3,678`：`34.65 / 15.64 / 12.54 ms`）、`BENCH`（Linux 展开 `3,191` / 转移 `13,092`：`46.22 / 17.03 / 16.13 ms`；Windows 先前基线 `4,151 / 18,714`：`154.91 / 50.32 / 38.71 ms`）与 `QUEEN`（Linux 展开 `4,087` / 转移 `23,462`：`114.36 / 36.25 / 26.76 ms`；Windows 先前基线 `3,792 / 24,046`：`299.46 / 96.71 / 64.70 ms`）在 `DOP 1 / 4 / 16` 下严格确定。
-- 离线 8 场景 Fat-LTO 基准对照与 DHAT 堆内存分析（Linux 同离线根、`DOP=1/4/8/16` 位级确定）：`DOP=16` 8 场景总耗时 `4,967.75 ms`（C# 上游离线基线 `9,910.1 ms`，整体加速 `1.99x`，全部 8 个场景均快于 C# 上游；其中 `queen-boss` `649.47 ms / 4.99x`、`silent-monster` `5.92 ms / 1.89x`、`necrobinder-elite` `1,294.01 ms / 1.79x`、`regent-elite` `152.53 ms / 1.63x`、`defect-elite` `249.19 ms / 1.48x`、`ironclad-elite` `2,285.09 ms / 1.47x`、`silent-boss` `316.63 ms / 1.15x`、`ironclad-monster` `14.91 ms / 1.05x`），`--mode replay-upstream` 8/8 `REPLAY_OK`；DHAT（`DOP=1`）总分配与峰值分别为 `ironclad-elite` `147.72 MiB` / `125.48 MiB`（`0.08 blks/trans`）、`queen-boss` `95.28 MiB` / `83.78 MiB`（`0.03 blks/trans`）、`necrobinder-elite` `45.53 MiB` / `39.98 MiB`（`0.01 blks/trans`）、`regent-elite` `39.29 MiB` / `34.45 MiB`（`0.03 blks/trans`）。
-- 战斗内 Rust 内核无头合同（Turn 1 DOP4、零重算部署、Turn 2 中途捕获、`UseRustCombatKernel=false` 回退 `HotKernel`、损坏库保护回退）：
-  - Linux runId `6bded7eb97954499afc117c60fc505ea` Passed（先前提交基线，`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）。
-  - Windows runId `a6a424c878774b8cbda8830cbd8a23cb` Passed（先前提交基线，`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）。
-- 8 场景 Linux 无头实机对照（先前提交基线，`Medium` 预设、`DOP=16`、`60s` 预算，上游 `1.0.0 HotKernel` 与 `rust-kernel`）：8/8 Passed，`rustFallback=0`，搜索期间托管 GC 暂停为 `0 ms`，8 场景总耗时由上游 `23,810.1 ms` 降至 `17,127.8 ms`。
-- Windows `queen-boss` 无头跨平台校验（先前提交基线）：runId `d5d22b2511304c699f36afe10491a76f` Passed（展开 `60,266`、转移 `419,731`、生命损失 `33`、药水 `3`、第 6 回合胜，与 Linux 路线结果一致，端到端 `3,234.0 ms` / 纯搜索 `3,103 ms`、`rustFallback=0`、`gcPauseMs=0`）。
+- Rust workspace（Linux `lto = "fat"` 与 Windows MSVC 先前基线，`RUSTFLAGS="-D warnings"`）：`CARGO_BUILD_JOBS=8 RUSTFLAGS="-D warnings" cargo test --workspace --release --manifest-path rust/Cargo.toml` 与 debug 全量测试全部通过且零编译器警告；`bench_throughput` 验证 `MAWLER`（`1,228` / `3,781`：`14.70 / 5.33 / 6.62 ms`）、`BENCH`（`3,191` / `13,092`：`46.22 / 17.03 / 16.13 ms`）与 `QUEEN`（`4,087` / `23,462`：`114.36 / 36.25 / 26.76 ms`）在 `DOP 1 / 4 / 16` 下严格确定。
+- 离线 8 场景 Fat-LTO 基准对照与 DHAT 堆内存分析（Linux 同离线根、`DOP=1/4/8/16` 位级确定）：`DOP=16` 总耗时 `4,967.75 ms`（C# 上游 `9,910.1 ms`，加速 `1.99x`；`queen-boss` `649.47 ms / 4.99x`、`silent-monster` `5.92 ms / 1.89x`、`necrobinder-elite` `1,294.01 ms / 1.79x`、`regent-elite` `152.53 ms / 1.63x`、`defect-elite` `249.19 ms / 1.48x`、`ironclad-elite` `2,285.09 ms / 1.47x`、`silent-boss` `316.63 ms / 1.15x`、`ironclad-monster` `14.91 ms / 1.05x`），`--mode replay-upstream` 8/8 `REPLAY_OK`；DHAT（`DOP=1`）：`ironclad-elite` `147.72 / 125.48 MiB`（`0.08 blks/trans`）、`queen-boss` `95.28 / 83.78 MiB`（`0.03`）、`necrobinder-elite` `45.53 / 39.98 MiB`（`0.01`）、`regent-elite` `39.29 / 34.45 MiB`（`0.03`）。
+- 战斗内 Rust 内核无头合同（Turn 1 DOP4、零重算部署、Turn 2 中途捕获、`UseRustCombatKernel=false` 回退、损坏库保护回退，先前基线）：Linux runId `6bded7eb97954499afc117c60fc505ea` 与 Windows runId `a6a424c878774b8cbda8830cbd8a23cb` 均 Passed（`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）。
+- 无头实机对照与跨平台校验（先前基线）：Linux 8 场景 `Medium / DOP=16 / 60s` 8/8 Passed（`rustFallback=0`，总耗时 `23,810.1 -> 17,127.8 ms`）；Windows `queen-boss` runId `d5d22b2511304c699f36afe10491a76f` Passed（`60,266 / 419,731`，胜第 6 回合，端到端 `3,234.0 ms`、`gcPauseMs=0`）。
 
-```bash
+```text
 ./tools/testing/run-unattended-test.sh --verify-in-combat-rust-kernel-contract --cleanup-instance-on-exit
-```
-
-```powershell
 pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -VerifyInCombatRustKernelContract -CleanupInstanceOnExit
 ```
+
+## 1.0.3 STS2 v0.114.0 适配与安全加固
+
+v0.114.0 全实体零缺口审计、800 场零差异差分模糊、200 场零重算实机部署压测、发布二进制安全扫描与全量门禁见[历史卷 36](archive/testing/volume-36.md)。
+
+## 1.0.2 搜索策略调优与高风险战斗重算清零
+
+2,600 场全绿差分模糊（4 种子零差异零崩溃）、400 场零重算实机部署模拟、170 局搜索质量与耗时对照及 4 项快速内核/策略门禁见[历史卷 35](archive/testing/volume-35.md)。
+
+## 1.0.1 策略通路恢复与高风险重算清零
+
+全部 25 项策略端到端合同、双 500 场差分模糊（`seed=4026` high-risk 与 `seed=3026` all）、`seed=4026` 高风险 300 场部署零重算与 `seed=9001` 120 场零重算验证见[历史卷 34](archive/testing/volume-34.md)。
 
 ## 1.0.0 新一代高速引擎与 0.113.1 适配
 

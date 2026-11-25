@@ -1,0 +1,15 @@
+# 开发历史卷 34
+
+## 1.0.1 策略通路恢复与高风险重算清零
+
+- **遗物计数与局外成长全链路恢复**：
+  - 将 11 项局外成长来源（`HandOfGreed`、`TheHunt`、`Feed`、`Royalties`、`Alchemize`、`GeneticAlgorithm`、`TheScythe`、`Goopy`、`ForbiddenGrimoire`、`MadScience`、`ShowOff`）、`GrowthOpportunityPolicy`、`IgnoreLongTermRewards` 与 `BrightestFlameMaxHpLossLimit` 完整接入 `HotKernel`、`HotRootBuilder` 与 `HotSearch`（`HotNodeArena`、`HotRouteQuality`、`HotEvaluator`、`HotPotionPolicy`、`HotPlanMaterializer`、`HotSearchCoordinator`、`HotBeamRetention`、`HotParallelExpander`、`HotRolloutEvaluator`）。
+  - 恢复 `RelicCounterPolicy`（`MaxTurnTickHorizon = 60`）与 `MeatOnTheBone` 战后回血独立 `HealingHpCredit` 记账，同时用零开销快路保持未启用相关策略时的搜索速度。
+  - 修复 `SolverGrowthStrategyPanel.CommitPending` 在 `SolverOverlay` 切换、隐藏或收起时未提交正在编辑的数字，以及非战斗状态下修改成长／遗物配置未持久化的问题，并修复 `SolverStrategyOutcomeText` 枚举到卡牌标题的映射。
+- **1.0.0 本地实机问题与高风险战斗语义清零（Wave B / Wave C）**：
+  - **状态／牌堆／伤害与临时属性**：修复多段攻击 `PersonalHive` 导致 `FiendFire` `cardIdx` 陈旧错位；修复 `EchoFormPower` `FirstInSeries`、`Osty` 宠物格挡、`SlowPower` 0 邮戳、`LoseMaxHp` 上限钳制、`GrandFinale` + `FlakCannon`、`DiscardCard` 仅手牌触发狡猾、`ShowOff` 初始计数与 `Hexed` 清理；将格挡后 `ModifyDamageCap` 按原版 `Hook.ModifyHpLost` 拆分为 Pass 1（`IntangiblePower`/`SlipperyPower`/`HardenedShellPower`/`BeatingRemnant`/`TungstenRod`）与 Pass 2（`BufferPower`/`TheBoot`），并要求 `decimal.Truncate > 0` 且排除 `BrightestFlame` 才消耗缓冲；为全部 21 个临时属性 Power 补齐 `HotHookMask.AfterTurnEnd` 与 `FadePower` 退场并对齐 `ApplyPowerCore`（先跑 `TempPower` 前置钩子/神器，再以 `isCardSource: false` 返还基础属性，消除 `UnsettlingLamp` 二次翻倍与 `STRENGTH_POWER=-8` 回归）。
+  - **遗物／生成／变换与特殊机制**：实现 `EMOTION_CHIP` 位打包状态解码（`DecodeEmotionChipThisTurn`）；将 `PaelsEye` 改为先快照手牌 UID 再消耗，避免误耗 `BurningSticks` 等新入手牌；实现 `TransformCardsBatch`（对齐 `Compact` 与 `EcstasyPower` 的移除再定位排序）；调整 `InfernalBlade`/`Discovery`/`Abundance`/`Splash` 与 `TransformCardToRandomInCombat`／`TransformCardInPlace` 的入战/升级/设零费顺序；统一抽离 `TriggerCardLevelAfterCardGenerated` 覆盖 `AddClonedCardToCombat`、`AddGeneratedCardInstance`、`TransformCardInPlace`、`TransformCardsBatch` 与 `TransformToSadness` 全部 5 处 `RocketPunch` 状态生成降费入口；修复 `HistoryCourse` 在回合前快照清空防止 `MayhemPower`/`Bombardment` 覆写；修复 `Thrash` 按 `CalculatedDamage > Damage > OstyDamage` 读取并覆盖 22 张 `CalculatedDamageVar` 卡牌；修复 `AutoPlayCard` 目标阵亡/`Enthralled` 豁免、`ArtOfWar` `AfterEnergyReset`、`ChannelOrb` 0 槽位、`MummifiedHand` 全局修改器、`WaterfallGiant` `EXPLODE_MOVE` 与复活前 `AfterDeath` 清理；修复愚者 `FirstPlayCardUid` 在 `AfterCardPlayed` 后未清零导致 `ViolentChordPower` 重复触发以及 `CompostPower` 错为抽牌的缺陷。
+  - **隐式全选、置顶顺序与实机兼容性**：对齐 `Powers.cs`、`Cards.Core.cs` 与 `HotRegentNecro.cs`（5 处 `BeginChoiceGroup` 多选位点）在 `eligibleCount <= MinSelect` 时按牌堆顺序直选，修正 `PutHandCardsOnDrawTop` 多张置顶正序循环；并在 `src/Runtime/NativeChoiceRuntime.cs` 透传 `SourcePile` 与改造 `!request.RequiresSurface` 为兼容式可选消费 + `ImplicitAuto`，确保实机部署与热核隐式跳过双向兼容。
+- **测试宿主增强（保持 `CombatHotState` `0 B` 增量）**：新增 `tools/search/OfflineSearchHarness/HighRiskPoolFilter.cs` 与 `StrategyPolicyVerifier.cs`（`--verify-strategy-policies` 25 项端到端策略合同），为 `DeploymentSoakRunner` 增加 `--only-fight <N>` 单场诊断，并对 `CombatDiffFuzzer` 与 `HotKernelChecks` 对齐原版锁步与内联成本修改器语义。
+
+测试证据见[测试卷 34](../testing/volume-34.md)。

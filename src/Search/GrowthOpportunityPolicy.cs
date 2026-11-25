@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Enchantments;
@@ -73,27 +74,56 @@ internal static class GrowthOpportunityPolicy
             .SelectMany(player => player.PlayerCombatState!.AllCards)
             .Where(IsAvailable)
             .ToArray();
+        int enemyCount = CountFatalEligibleEnemies(state);
+        bool alchemizeBlockedBySozu = state.Players
+            .SelectMany(player => player.Relics)
+            .Any(relic => !relic.IsMelted && relic is Sozu);
         int madScienceUpgradeCapacity = MadScienceGrowth.CaptureRemainingCapacity(state);
         bool hasAnyTargets = availableCards.Any(GrowthValues.HasTarget);
         string? dynamicRisk = null;
         if (hasAnyTargets)
             HasDynamicCardCountRisk(state, availableCards, out dynamicRisk);
-        GrowthOpportunityTargets targets = CaptureTargets(availableCards, state.Enemies.Count, dynamicRisk,
-            madScienceUpgradeCapacity);
-        int activeShowOff = state.Players.SelectMany(player => player.Creature.Powers)
-            .OfType<ShowOffPower>().Count(power => power.ShowOffInstance?.DeckVersion != null);
-        return activeShowOff == 0 ? targets : targets with
+        GrowthOpportunityTargets targets = CaptureTargets(availableCards, enemyCount, dynamicRisk,
+            madScienceUpgradeCapacity, alchemizeBlockedBySozu);
+        int activeShowOff = enemyCount == 0
+            ? 0
+            : state.Players.SelectMany(player => player.Creature.Powers)
+                .OfType<ShowOffPower>().Count(power => power.ShowOffInstance?.DeckVersion != null);
+        int cappedShowOff = Math.Min(enemyCount, checked(targets.RequiredRewards.ShowOff + activeShowOff));
+        return cappedShowOff == targets.RequiredRewards.ShowOff ? targets : targets with
         {
-            RequiredRewards = targets.RequiredRewards.With(GrowthSource.ShowOff,
-                checked(targets.RequiredRewards.ShowOff + activeShowOff)),
+            RequiredRewards = targets.RequiredRewards.With(GrowthSource.ShowOff, cappedShowOff),
         };
+    }
+
+    private static int CountFatalEligibleEnemies(CombatState state)
+    {
+        int count = 0;
+        bool hasLivingReattachSegment = false;
+        foreach (Creature enemy in state.Enemies)
+        {
+            if (enemy.HasPower<MinionPower>())
+                continue;
+            if (enemy.HasPower<ReattachPower>())
+            {
+                if (enemy.IsAlive)
+                    hasLivingReattachSegment = true;
+                continue;
+            }
+            if (enemy.IsAlive || enemy.HasPower<AdaptablePower>())
+                count++;
+        }
+        if (hasLivingReattachSegment)
+            count++;
+        return count;
     }
 
     private static GrowthOpportunityTargets CaptureTargets(
         IReadOnlyList<CardModel> availableCards,
         int enemyCount,
         string? dynamicRisk,
-        int madScienceUpgradeCapacity)
+        int madScienceUpgradeCapacity,
+        bool alchemizeBlockedBySozu = false)
     {
         GrowthValues required = default;
         List<GrowthOpportunityUnboundedSource> unbounded = [];
@@ -101,7 +131,7 @@ internal static class GrowthOpportunityPolicy
         if (dynamicRisk != null)
         {
             foreach (GrowthSource source in Enum.GetValues<GrowthSource>()
-                         .Where(source => (source != GrowthSource.MadScience || madScienceUpgradeCapacity > 0)
+                         .Where(source => IsSourceReachable(source, enemyCount, madScienceUpgradeCapacity, alchemizeBlockedBySozu)
                              && availableCards.Any(card => MatchesSource(card, source))))
             {
                 unbounded.Add(new GrowthOpportunityUnboundedSource(source.ToString(), dynamicRisk));
@@ -109,7 +139,7 @@ internal static class GrowthOpportunityPolicy
         }
         else
             CaptureBuiltInTargets(availableCards, enemyCount, madScienceUpgradeCapacity,
-                ref required, unbounded);
+                alchemizeBlockedBySozu, ref required, unbounded);
 
         foreach (GrowthSourceMirrors.Entry entry in GrowthSourceMirrors.All)
         {
@@ -159,7 +189,7 @@ internal static class GrowthOpportunityPolicy
         GrowthValues required = default;
         List<GrowthOpportunityUnboundedSource> unbounded = [];
         CaptureBuiltInTargets(availableCards, enemyCount, madScienceUpgradeCapacity,
-            ref required, unbounded);
+            alchemizeBlockedBySozu: false, ref required, unbounded);
         return required.Total == 0 && unbounded.Count == 0
             ? GrowthOpportunityTargets.Empty
             : new GrowthOpportunityTargets(required, Array.AsReadOnly(unbounded.ToArray()));
@@ -171,41 +201,60 @@ internal static class GrowthOpportunityPolicy
         int madScienceUpgradeCapacity)
         => CaptureTargets(availableCards, enemyCount, dynamicRisk: null, madScienceUpgradeCapacity);
 
+    private static bool IsSourceReachable(
+        GrowthSource source,
+        int enemyCount,
+        int madScienceUpgradeCapacity,
+        bool alchemizeBlockedBySozu)
+        => source switch
+        {
+            GrowthSource.HandOfGreed or GrowthSource.TheHunt or GrowthSource.Feed or GrowthSource.ShowOff => enemyCount > 0,
+            GrowthSource.Alchemize => !alchemizeBlockedBySozu,
+            GrowthSource.MadScience => madScienceUpgradeCapacity > 0,
+            _ => true,
+        };
+
     private static void CaptureBuiltInTargets(
         IReadOnlyList<CardModel> cards,
         int enemyCount,
         int madScienceUpgradeCapacity,
+        bool alchemizeBlockedBySozu,
         ref GrowthValues required,
         List<GrowthOpportunityUnboundedSource> unbounded)
     {
-        GrowthSource[] fatalSources = cards
-            .Select(FatalSource)
-            .Where(source => source.HasValue)
-            .Select(source => source!.Value)
-            .Distinct()
-            .OrderBy(source => source)
-            .ToArray();
-        if (fatalSources.Length > 1)
+        if (enemyCount > 0)
         {
-            foreach (GrowthSource source in fatalSources)
+            GrowthSource[] fatalSources = cards
+                .Select(FatalSource)
+                .Where(source => source.HasValue)
+                .Select(source => source!.Value)
+                .Distinct()
+                .OrderBy(source => source)
+                .ToArray();
+            if (fatalSources.Length > 1)
             {
-                unbounded.Add(new GrowthOpportunityUnboundedSource(
-                    source.ToString(),
-                    "fatal_source_competition"));
+                foreach (GrowthSource source in fatalSources)
+                {
+                    unbounded.Add(new GrowthOpportunityUnboundedSource(
+                        source.ToString(),
+                        "fatal_source_competition"));
+                }
             }
-        }
-        else if (fatalSources.Length == 1)
-        {
-            GrowthSource source = fatalSources[0];
-            int count = source == GrowthSource.HandOfGreed
-                ? enemyCount
-                : Math.Min(enemyCount, cards.Count(card => FatalSource(card) == source));
-            required = required.With(source, count);
+            else if (fatalSources.Length == 1)
+            {
+                GrowthSource source = fatalSources[0];
+                int count = source == GrowthSource.HandOfGreed
+                    ? enemyCount
+                    : Math.Min(enemyCount, cards.Count(card => FatalSource(card) == source));
+                required = required.With(source, count);
+            }
         }
 
         required = required
             .With(GrowthSource.Royalties, CountFixedPlays(cards, card => card is Royalties))
-            .With(GrowthSource.Alchemize, CountFixedPlays(cards, card => card is Alchemize))
+            .With(GrowthSource.Alchemize, alchemizeBlockedBySozu
+                ? 0
+                : CountFixedPlays(cards, card => card is Alchemize))
             .With(GrowthSource.GeneticAlgorithm, CountFixedPlays(cards,
                 card => card is GeneticAlgorithm && card.DeckVersion != null))
             .With(GrowthSource.TheScythe, CountFixedPlays(cards,
@@ -216,8 +265,10 @@ internal static class GrowthOpportunityPolicy
                 card => card is ForbiddenGrimoire))
             .With(GrowthSource.MadScience, Math.Min(madScienceUpgradeCapacity,
                 CountFixedPlays(cards, MadScienceGrowth.IsImprovementCard)))
-            .With(GrowthSource.ShowOff, CountFixedPlays(cards,
-                card => card is ShowOff && card.DeckVersion != null));
+            .With(GrowthSource.ShowOff, enemyCount <= 0
+                ? 0
+                : Math.Min(enemyCount, CountFixedPlays(cards,
+                    card => card is ShowOff && card.DeckVersion != null)));
     }
 
     private static int CountFixedPlays(

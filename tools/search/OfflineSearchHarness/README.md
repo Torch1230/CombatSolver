@@ -11,7 +11,7 @@ dotnet build tools/search/OfflineSearchHarness/OfflineSearchHarness.csproj -c Re
 # Gate 0：HotKernel 非托管布局、结构体尺寸与打包合同检查（无需启动游戏）
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --check-hot-layout
 
-# Layer 1：0.113.1 全部单人实体覆盖与 HotRootBuilder/HotImportSupport 反射字段审计
+# Layer 1：0.114.0 全部单人实体覆盖与 HotRootBuilder/HotImportSupport 反射字段审计
 dotnet .local/tool-build/OfflineSearchHarness/bin/Release/net9.0/OfflineSearchHarness.dll --audit-hot-coverage
 
 # Layer 2：覆盖引导单人步进锁步差分模糊与失败包回放

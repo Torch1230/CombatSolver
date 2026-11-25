@@ -11,6 +11,8 @@ internal enum HotHookMask : ulong
     AfterCardPlayed              = 1UL << 1,
     ModifyDamageAdditive         = 1UL << 2,
     ModifyDamageMultiplicative   = 1UL << 3,
+    // Gates pre-block ModifyDamageCap, ModifyHpLostBeforeOstyLate (HardToKillPower, HardenedShellPower),
+    // ModifyHpLostAfterOsty, and ModifyHpLostAfterOstyLate.
     ModifyDamageCap              = 1UL << 4,
     ModifyBlockAdditive          = 1UL << 5,
     ModifyBlockMultiplicative    = 1UL << 6,
@@ -54,4 +56,6 @@ internal enum HotHookMask : ulong
     AfterHeal                    = 1UL << 44,
     ModifyHealAmount             = 1UL << 45,
     AfterAutoPostPlay            = 1UL << 46,
+    // STS2 0.114.0 Hook.AfterPlayerTurnStart early pass (HappyFlower, FakeHappyFlower).
+    AfterPlayerTurnStartEarly    = 1UL << 47,
 }

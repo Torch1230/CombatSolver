@@ -24,18 +24,22 @@ internal struct HotTtEntry
 [StructLayout(LayoutKind.Sequential)]
 internal struct HotTtLabel
 {
-    public HotStateHandle StateHandle;  // 12 B
-    public HotColdSidecar? Cold;        // 8 B
-    public long Score;                  // 8 B
-    public int HpLost;                  // 4 B
-    public int NextLabelIdx;            // 4 B (-1 = tail)
-    public short PotionStrategicCost;   // 2 B
-    public ushort ActionCount;          // 2 B
-    public ushort ForcedPotionMask;     // 2 B (subset of forced root slots consumed)
-    public byte PotionCount;            // 1 B
-    public byte DeathSaveUseCount;      // 1 B
-    public byte Active;                 // 1 B (1 = live, 0 = evicted/dominated)
-    public byte Pad;                    // 1 B
+    public HotStateHandle StateHandle;      // 12 B
+    public HotColdSidecar? Cold;            // 8 B
+    public long Score;                      // 8 B
+    public int HpLost;                      // 4 B
+    public int NextLabelIdx;                // 4 B (-1 = tail)
+    public short PotionStrategicCost;       // 2 B
+    public short DeathSaveHpRestored;       // 2 B
+    public ushort ActionCount;              // 2 B
+    public ushort ForcedPotionMask;         // 2 B (subset of forced root slots consumed)
+    public byte PotionCount;                // 1 B
+    public byte OptionalPaidPotionCount;    // 1 B
+    public byte AlchemizeCount;             // 1 B
+    public byte DeathSaveUseCount;          // 1 B
+    public byte HasExplicitPotion;          // 1 B (0 or 1)
+    public byte Active;                     // 1 B (1 = live, 0 = evicted/dominated)
+    public ushort Pad;                      // 2 B
 }
 
 internal readonly record struct HotTtProbeData(
@@ -46,19 +50,25 @@ internal readonly record struct HotTtProbeData(
     ushort ActionCount,
     ushort ForcedPotionMask,
     byte PotionCount,
-    byte DeathSaveUseCount);
+    byte DeathSaveUseCount,
+    byte OptionalPaidPotionCount = 0,
+    byte AlchemizeCount = 0,
+    short DeathSaveHpRestored = 0,
+    bool HasExplicitPotion = false);
 
 /// <summary>
 /// Open-addressed power-of-2 transposition table with epoch-based O(1) pass reset,
 /// intrusive pooled label slab (zero per-collision <c>List&lt;T&gt;</c> allocations),
 /// exact <see cref="HotHash.PackedEquals"/> verification on hash matches, and multi-objective
-/// Pareto dominance across <c>(PotionCount, PotionStrategicCost, DeathSaveUseCount, HpLost, ActionCount, Score)</c>.
+/// Pareto dominance across <c>(ForcedPotionMask, HasExplicitPotion, PotionCount, OptionalPaidPotionCount,
+/// PotionStrategicCost, AlchemizeCount, DeathSaveUseCount, DeathSaveHpRestored, HpLost, ActionCount, Score)</c>.
 /// </summary>
 internal sealed class HotTranspositionTable : IDisposable
 {
     private const int DefaultInitialCapacity = 16_384; // power of 2
     private const int DefaultInitialLabelCapacity = 32_768;
     private const int MaxLabelsPerHashKey = 8;
+    private const ushort MaxActionBypassThreshold = 48;
 
     private HotTtEntry[] _entries;
     private HotTtLabel[] _labels;
@@ -66,6 +76,10 @@ internal sealed class HotTranspositionTable : IDisposable
     private int _activeEntries;
     private int _labelCount;
     private uint _generation;
+    private int _tableVersion;
+    private HotHash128 _lastCheckHash;
+    private int _lastCheckSlot = -1;
+    private int _lastCheckVersion = -1;
     private readonly int _entryLimit;
     private bool _disposed;
 
@@ -107,6 +121,9 @@ internal sealed class HotTranspositionTable : IDisposable
 
         _activeEntries = 0;
         _labelCount = 0;
+        _tableVersion++;
+        _lastCheckSlot = -1;
+        _lastCheckVersion = -1;
     }
 
     /// <summary>
@@ -131,6 +148,9 @@ internal sealed class HotTranspositionTable : IDisposable
             ref readonly HotTtEntry entry = ref entries[slot];
             if (entry.Generation != gen)
             {
+                _lastCheckHash = probe.Hash;
+                _lastCheckSlot = slot;
+                _lastCheckVersion = _tableVersion;
                 resolvedSlot = slot;
                 return _entryLimit > 0 && _activeEntries >= _entryLimit
                     ? HotTtResult.BypassedLimit
@@ -144,7 +164,6 @@ internal sealed class HotTranspositionTable : IDisposable
                 {
                     ref readonly HotTtLabel existing = ref _labels[labelIdx];
                     if (existing.Active != 0
-                        && CanCompareLabels(in existing, in probe)
                         && LabelDominatesProbe(in existing, in probe))
                     {
                         if (HotHash.PackedEquals(
@@ -168,6 +187,61 @@ internal sealed class HotTranspositionTable : IDisposable
 
             slot = (slot + 1) & mask;
         }
+    }
+
+    /// <summary>
+    /// Inserts an already-committed packed state into the table using the <paramref name="resolvedSlot"/>
+    /// returned by <see cref="CheckDominance"/> when still valid, avoiding a redundant probe scan.
+    /// Safely falls back to full probing if the table grew or another key occupied the slot in between.
+    /// </summary>
+    public void InsertAdmitted(
+        in HotTtProbeData probe,
+        HotStateHandle committedHandle,
+        HotColdSidecar? cold,
+        PackedStateArena mainArena,
+        int resolvedSlot)
+    {
+        HotTtEntry[] entries = _entries;
+        uint gen = _generation;
+
+        if ((uint)resolvedSlot < (uint)entries.Length)
+        {
+            ref HotTtEntry entry = ref entries[resolvedSlot];
+            if (entry.Generation == gen && entry.Hash == probe.Hash)
+            {
+                AttachLabelToEntry(resolvedSlot, in probe, committedHandle, cold, mainArena);
+                return;
+            }
+
+            if (entry.Generation != gen)
+            {
+                bool slotProvenEmptyForHash = resolvedSlot == (int)(probe.Hash.Lo & (ulong)_mask)
+                    || (_lastCheckVersion == _tableVersion
+                        && _lastCheckSlot == resolvedSlot
+                        && _lastCheckHash == probe.Hash);
+
+                if (slotProvenEmptyForHash)
+                {
+                    if (_entryLimit > 0 && _activeEntries >= _entryLimit)
+                    {
+                        LimitBypasses++;
+                        return;
+                    }
+
+                    if ((_activeEntries + 1) * 8 < (_mask + 1) * 5)
+                    {
+                        int newLabelIdx = AllocateLabel(in probe, committedHandle, cold, nextLabelIdx: -1);
+                        entry.Hash = probe.Hash;
+                        entry.Generation = gen;
+                        entry.FirstLabelIdx = newLabelIdx;
+                        _activeEntries++;
+                        return;
+                    }
+                }
+            }
+        }
+
+        InsertAdmitted(in probe, committedHandle, cold, mainArena);
     }
 
     /// <summary>
@@ -234,9 +308,30 @@ internal sealed class HotTranspositionTable : IDisposable
         ReadOnlySpan<byte> committedSpan = mainArena.GetSpan(committedHandle);
         ref HotTtEntry entry = ref _entries[slot];
 
+        // Pass 1 (non-mutating): reject already-dominated inserts (e.g. from same parallel wave).
+        int checkIdx = entry.FirstLabelIdx;
+        while (checkIdx >= 0)
+        {
+            ref readonly HotTtLabel existing = ref _labels[checkIdx];
+            if (existing.Active != 0 && LabelDominatesProbe(in existing, in probe))
+            {
+                if (HotHash.PackedEquals(
+                        committedSpan,
+                        cold,
+                        mainArena.GetSpan(existing.StateHandle),
+                        existing.Cold))
+                {
+                    DominatedPrunes++;
+                    return;
+                }
+                HashCollisionGuards++;
+            }
+            checkIdx = existing.NextLabelIdx;
+        }
+
+        // Pass 2: deactivate strictly dominated labels and locate the lowest-priority survivor for eviction.
         int activeCount = 0;
         int worstIdx = -1;
-        long worstScore = long.MaxValue;
         int reusableIdx = -1;
 
         int labelIdx = entry.FirstLabelIdx;
@@ -251,8 +346,7 @@ internal sealed class HotTranspositionTable : IDisposable
                 continue;
             }
 
-            if (CanCompareLabels(in probe, in existing)
-                && ProbeDominatesLabel(in probe, in existing)
+            if (ProbeDominatesLabel(in probe, in existing)
                 && HotHash.PackedEquals(
                     committedSpan,
                     cold,
@@ -268,11 +362,8 @@ internal sealed class HotTranspositionTable : IDisposable
             else
             {
                 activeCount++;
-                if (existing.Score < worstScore)
-                {
-                    worstScore = existing.Score;
+                if (worstIdx < 0 || CompareRetentionPriority(in existing, in _labels[worstIdx]) > 0)
                     worstIdx = labelIdx;
-                }
             }
 
             labelIdx = existing.NextLabelIdx;
@@ -286,7 +377,7 @@ internal sealed class HotTranspositionTable : IDisposable
 
         if (activeCount >= MaxLabelsPerHashKey && worstIdx >= 0)
         {
-            if (probe.Score > worstScore)
+            if (CompareRetentionPriority(in probe, in _labels[worstIdx]) < 0)
                 OverwriteLabel(worstIdx, in probe, committedHandle, cold);
             return;
         }
@@ -320,36 +411,94 @@ internal sealed class HotTranspositionTable : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool CanCompareLabels(in HotTtLabel dominator, in HotTtProbeData candidate)
-        => (dominator.ForcedPotionMask & candidate.ForcedPotionMask) == candidate.ForcedPotionMask;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool CanCompareLabels(in HotTtProbeData dominator, in HotTtLabel candidate)
-        => (dominator.ForcedPotionMask & candidate.ForcedPotionMask) == candidate.ForcedPotionMask;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool LabelDominatesProbe(in HotTtLabel existing, in HotTtProbeData probe)
-        => existing.PotionCount <= probe.PotionCount
+        => (existing.ForcedPotionMask & probe.ForcedPotionMask) == probe.ForcedPotionMask
+            && (!probe.HasExplicitPotion || existing.HasExplicitPotion != 0)
+            && existing.PotionCount <= probe.PotionCount
+            && existing.OptionalPaidPotionCount <= probe.OptionalPaidPotionCount
             && existing.PotionStrategicCost <= probe.PotionStrategicCost
+            && existing.AlchemizeCount >= probe.AlchemizeCount
             && existing.DeathSaveUseCount <= probe.DeathSaveUseCount
+            && existing.DeathSaveHpRestored <= probe.DeathSaveHpRestored
             && existing.HpLost <= probe.HpLost
             && existing.Score >= probe.Score
-            && (existing.ActionCount <= probe.ActionCount || existing.Score > probe.Score);
+            && (existing.ActionCount <= probe.ActionCount
+                || (existing.Score > probe.Score && existing.ActionCount <= MaxActionBypassThreshold));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool ProbeDominatesLabel(in HotTtProbeData probe, in HotTtLabel existing)
-        => probe.PotionCount <= existing.PotionCount
-            && probe.PotionStrategicCost <= existing.PotionStrategicCost
-            && probe.DeathSaveUseCount <= existing.DeathSaveUseCount
-            && probe.HpLost <= existing.HpLost
-            && probe.Score >= existing.Score
-            && (probe.ActionCount <= existing.ActionCount || probe.Score > existing.Score)
-            && (probe.PotionCount < existing.PotionCount
-                || probe.PotionStrategicCost < existing.PotionStrategicCost
-                || probe.DeathSaveUseCount < existing.DeathSaveUseCount
-                || probe.HpLost < existing.HpLost
-                || probe.Score > existing.Score
-                || probe.ActionCount < existing.ActionCount);
+    {
+        if ((probe.ForcedPotionMask & existing.ForcedPotionMask) != existing.ForcedPotionMask)
+            return false;
+        if (existing.HasExplicitPotion != 0 && !probe.HasExplicitPotion)
+            return false;
+        if (probe.PotionCount > existing.PotionCount
+            || probe.OptionalPaidPotionCount > existing.OptionalPaidPotionCount
+            || probe.PotionStrategicCost > existing.PotionStrategicCost
+            || probe.AlchemizeCount < existing.AlchemizeCount
+            || probe.DeathSaveUseCount > existing.DeathSaveUseCount
+            || probe.DeathSaveHpRestored > existing.DeathSaveHpRestored
+            || probe.HpLost > existing.HpLost
+            || probe.Score < existing.Score)
+        {
+            return false;
+        }
+        if (probe.ActionCount > existing.ActionCount
+            && (probe.Score <= existing.Score || probe.ActionCount > MaxActionBypassThreshold))
+        {
+            return false;
+        }
+
+        return probe.PotionCount < existing.PotionCount
+            || probe.OptionalPaidPotionCount < existing.OptionalPaidPotionCount
+            || probe.PotionStrategicCost < existing.PotionStrategicCost
+            || probe.AlchemizeCount > existing.AlchemizeCount
+            || probe.DeathSaveUseCount < existing.DeathSaveUseCount
+            || probe.DeathSaveHpRestored < existing.DeathSaveHpRestored
+            || probe.HpLost < existing.HpLost
+            || probe.Score > existing.Score
+            || probe.ActionCount < existing.ActionCount
+            || probe.ForcedPotionMask != existing.ForcedPotionMask
+            || (probe.HasExplicitPotion && existing.HasExplicitPotion == 0);
+    }
+
+    /// <summary>
+    /// Retention priority comparator for full <see cref="MaxLabelsPerHashKey"/> chains:
+    /// negative means <paramref name="a"/> is BETTER to retain than <paramref name="b"/>;
+    /// positive means <paramref name="a"/> is WORSE (evict first).
+    /// Order: <c>(DeathSave ASC, PotionCount ASC, OptionalPaidPotionCount ASC, PotionCost ASC, HpLost ASC, Score DESC)</c>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CompareRetentionPriority(in HotTtLabel a, in HotTtLabel b)
+    {
+        int cmp = a.DeathSaveUseCount.CompareTo(b.DeathSaveUseCount);
+        if (cmp != 0) return cmp;
+        cmp = a.PotionCount.CompareTo(b.PotionCount);
+        if (cmp != 0) return cmp;
+        cmp = a.OptionalPaidPotionCount.CompareTo(b.OptionalPaidPotionCount);
+        if (cmp != 0) return cmp;
+        cmp = a.PotionStrategicCost.CompareTo(b.PotionStrategicCost);
+        if (cmp != 0) return cmp;
+        cmp = a.HpLost.CompareTo(b.HpLost);
+        if (cmp != 0) return cmp;
+        return b.Score.CompareTo(a.Score);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int CompareRetentionPriority(in HotTtProbeData probe, in HotTtLabel label)
+    {
+        int cmp = probe.DeathSaveUseCount.CompareTo(label.DeathSaveUseCount);
+        if (cmp != 0) return cmp;
+        cmp = probe.PotionCount.CompareTo(label.PotionCount);
+        if (cmp != 0) return cmp;
+        cmp = probe.OptionalPaidPotionCount.CompareTo(label.OptionalPaidPotionCount);
+        if (cmp != 0) return cmp;
+        cmp = probe.PotionStrategicCost.CompareTo(label.PotionStrategicCost);
+        if (cmp != 0) return cmp;
+        cmp = probe.HpLost.CompareTo(label.HpLost);
+        if (cmp != 0) return cmp;
+        return label.Score.CompareTo(probe.Score);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void OverwriteLabel(
@@ -368,10 +517,14 @@ internal sealed class HotTranspositionTable : IDisposable
             HpLost = probe.HpLost,
             NextLabelIdx = preservedNext,
             PotionStrategicCost = probe.PotionStrategicCost,
+            DeathSaveHpRestored = probe.DeathSaveHpRestored,
             ActionCount = probe.ActionCount,
             ForcedPotionMask = probe.ForcedPotionMask,
             PotionCount = probe.PotionCount,
+            OptionalPaidPotionCount = probe.OptionalPaidPotionCount,
+            AlchemizeCount = probe.AlchemizeCount,
             DeathSaveUseCount = probe.DeathSaveUseCount,
+            HasExplicitPotion = probe.HasExplicitPotion ? (byte)1 : (byte)0,
             Active = 1,
         };
     }
@@ -394,10 +547,14 @@ internal sealed class HotTranspositionTable : IDisposable
             HpLost = probe.HpLost,
             NextLabelIdx = nextLabelIdx,
             PotionStrategicCost = probe.PotionStrategicCost,
+            DeathSaveHpRestored = probe.DeathSaveHpRestored,
             ActionCount = probe.ActionCount,
             ForcedPotionMask = probe.ForcedPotionMask,
             PotionCount = probe.PotionCount,
+            OptionalPaidPotionCount = probe.OptionalPaidPotionCount,
+            AlchemizeCount = probe.AlchemizeCount,
             DeathSaveUseCount = probe.DeathSaveUseCount,
+            HasExplicitPotion = probe.HasExplicitPotion ? (byte)1 : (byte)0,
             Active = 1,
         };
         return idx;
@@ -426,6 +583,9 @@ internal sealed class HotTranspositionTable : IDisposable
 
         _entries = newEntries;
         _mask = newMask;
+        _tableVersion++;
+        _lastCheckSlot = -1;
+        _lastCheckVersion = -1;
         // Return previous array cleanly to prevent ArrayPool leaks.
         ArrayPool<HotTtEntry>.Shared.Return(oldEntries, clearArray: false);
     }

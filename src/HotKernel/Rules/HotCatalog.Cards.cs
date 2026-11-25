@@ -14,7 +14,7 @@ internal readonly record struct HotCardCatalogEntry(
     short SetupWeight);
 
 /// <summary>
-/// Static STS2 0.113.1 catalog covering all 716 vanilla cards: domains, all 52 CalcVarKind tags,
+/// Static STS2 0.114.0 catalog covering all 717 vanilla cards: domains, all 50 CalcVarKind tags,
 /// lossless bytecode compilation for standard cards, hook masks, and static setup weights.
 /// </summary>
 internal static class HotCardCatalog
@@ -68,7 +68,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Apparition] = new(HotCustomCardId.Apparition, "APPARITION", HotCardDomain.Event, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Archery] = new(HotCustomCardId.Archery, "ARCHERY", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.Armaments] = new(HotCustomCardId.Armaments, "ARMAMENTS", HotCardDomain.Ironclad, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.ArrowStab] = new(HotCustomCardId.ArrowStab, "ARROW_STAB", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
+        arr[(int)HotCustomCardId.ArrowStab] = new(HotCustomCardId.ArrowStab, "ARROW_STAB", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Arsenal] = new(HotCustomCardId.Arsenal, "ARSENAL", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.AscendersBane] = new(HotCustomCardId.AscendersBane, "ASCENDERS_BANE", HotCardDomain.Curse, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.AshenStrike] = new(HotCustomCardId.AshenStrike, "ASHEN_STRIKE", HotCardDomain.Ironclad, HotCalcVarKind.AshenStrike, HotHookMask.None, false, false, false, 0);
@@ -136,10 +136,10 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.ByrdSwoop] = new(HotCustomCardId.ByrdSwoop, "BYRD_SWOOP", HotCardDomain.Event, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.ByrdonisEgg] = new(HotCustomCardId.ByrdonisEgg, "BYRDONIS_EGG", HotCardDomain.Quest, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Cacophony] = new(HotCustomCardId.Cacophony, "CACOPHONY", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
-        arr[(int)HotCustomCardId.Calamity] = new(HotCustomCardId.Calamity, "CALAMITY", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
+        arr[(int)HotCustomCardId.Calamity] = new(HotCustomCardId.Calamity, "CALAMITY", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, true, false, true, 14);
         arr[(int)HotCustomCardId.Calcify] = new(HotCustomCardId.Calcify, "CALCIFY", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.CalculatedGamble] = new(HotCustomCardId.CalculatedGamble, "CALCULATED_GAMBLE", HotCardDomain.Silent, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.CallOfTheVoid] = new(HotCustomCardId.CallOfTheVoid, "CALL_OF_THE_VOID", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
+        arr[(int)HotCustomCardId.CallOfTheVoid] = new(HotCustomCardId.CallOfTheVoid, "CALL_OF_THE_VOID", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, true, 14);
         arr[(int)HotCustomCardId.Caltrops] = new(HotCustomCardId.Caltrops, "CALTROPS", HotCardDomain.Event, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.Capacitor] = new(HotCustomCardId.Capacitor, "CAPACITOR", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 18);
         arr[(int)HotCustomCardId.CaptureSpirit] = new(HotCustomCardId.CaptureSpirit, "CAPTURE_SPIRIT", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
@@ -262,7 +262,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Ensemble] = new(HotCustomCardId.Ensemble, "ENSEMBLE", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Enthralled] = new(HotCustomCardId.Enthralled, "ENTHRALLED", HotCardDomain.Curse, HotCalcVarKind.None, HotHookMask.BeforeCardPlayed, false, false, false, 0);
         arr[(int)HotCustomCardId.Entrench] = new(HotCustomCardId.Entrench, "ENTRENCH", HotCardDomain.Event, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.Entropy] = new(HotCustomCardId.Entropy, "ENTROPY", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
+        arr[(int)HotCustomCardId.Entropy] = new(HotCustomCardId.Entropy, "ENTROPY", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, true, false, true, 14);
         arr[(int)HotCustomCardId.Envenom] = new(HotCustomCardId.Envenom, "ENVENOM", HotCardDomain.Silent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 24);
         arr[(int)HotCustomCardId.EpicRetrieval] = new(HotCustomCardId.EpicRetrieval, "EPIC_RETRIEVAL", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.BeforeAttack, true, false, false, 0);
         arr[(int)HotCustomCardId.Equilibrium] = new(HotCustomCardId.Equilibrium, "EQUILIBRIUM", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
@@ -331,7 +331,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.GraveWarden] = new(HotCustomCardId.GraveWarden, "GRAVE_WARDEN", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Graveblast] = new(HotCustomCardId.Graveblast, "GRAVEBLAST", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Greed] = new(HotCustomCardId.Greed, "GREED", HotCardDomain.Curse, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
-        arr[(int)HotCustomCardId.Growth] = new(HotCustomCardId.Growth, "GROWTH", HotCardDomain.Fool, HotCalcVarKind.Growth, HotHookMask.None, false, false, false, 0);
+        arr[(int)HotCustomCardId.Growth] = new(HotCustomCardId.Growth, "GROWTH", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Guards] = new(HotCustomCardId.Guards, "GUARDS", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.GuidingStar] = new(HotCustomCardId.GuidingStar, "GUIDING_STAR", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Guilty] = new(HotCustomCardId.Guilty, "GUILTY", HotCardDomain.Curse, HotCalcVarKind.None, HotHookMask.AfterCombatEnd, true, false, false, 0);
@@ -454,7 +454,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.MultiCast] = new(HotCustomCardId.MultiCast, "MULTI_CAST", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Murder] = new(HotCustomCardId.Murder, "MURDER", HotCardDomain.Silent, HotCalcVarKind.Murder, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.MyShinies] = new(HotCustomCardId.MyShinies, "MY_SHINIES", HotCardDomain.Colorless, HotCalcVarKind.MyShinies, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.MythicForm] = new(HotCustomCardId.MythicForm, "MYTHIC_FORM", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 14);
+        arr[(int)HotCustomCardId.MythicForm] = new(HotCustomCardId.MythicForm, "MYTHIC_FORM", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, true, false, true, 14);
         arr[(int)HotCustomCardId.Nail] = new(HotCustomCardId.Nail, "NAIL", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.NecroMastery] = new(HotCustomCardId.NecroMastery, "NECRO_MASTERY", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.NegativePulse] = new(HotCustomCardId.NegativePulse, "NEGATIVE_PULSE", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
@@ -475,6 +475,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Omnislice] = new(HotCustomCardId.Omnislice, "OMNISLICE", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.OneForAll] = new(HotCustomCardId.OneForAll, "ONE_FOR_ALL", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 14);
         arr[(int)HotCustomCardId.OneTwoPunch] = new(HotCustomCardId.OneTwoPunch, "ONE_TWO_PUNCH", HotCardDomain.Ironclad, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
+        arr[(int)HotCustomCardId.Optimism] = new(HotCustomCardId.Optimism, "OPTIMISM", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Orbit] = new(HotCustomCardId.Orbit, "ORBIT", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 26);
         arr[(int)HotCustomCardId.Outbreak] = new(HotCustomCardId.Outbreak, "OUTBREAK", HotCardDomain.Silent, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Outmaneuver] = new(HotCustomCardId.Outmaneuver, "OUTMANEUVER", HotCardDomain.Event, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
@@ -530,7 +531,6 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Rainbow] = new(HotCustomCardId.Rainbow, "RAINBOW", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Rally] = new(HotCustomCardId.Rally, "RALLY", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Rampage] = new(HotCustomCardId.Rampage, "RAMPAGE", HotCardDomain.Ironclad, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.RapidShot] = new(HotCustomCardId.RapidShot, "RAPID_SHOT", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Rattle] = new(HotCustomCardId.Rattle, "RATTLE", HotCardDomain.Necrobinder, HotCalcVarKind.Rattle, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Reanimate] = new(HotCustomCardId.Reanimate, "REANIMATE", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Reap] = new(HotCustomCardId.Reap, "REAP", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
@@ -616,7 +616,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Soulbound] = new(HotCustomCardId.Soulbound, "SOULBOUND", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.SovereignBlade] = new(HotCustomCardId.SovereignBlade, "SOVEREIGN_BLADE", HotCardDomain.Token, HotCalcVarKind.SovereignBlade, HotHookMask.AfterCardEnteredCombat, false, false, false, 0);
         arr[(int)HotCustomCardId.Sow] = new(HotCustomCardId.Sow, "SOW", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
-        arr[(int)HotCustomCardId.SpectrumShift] = new(HotCustomCardId.SpectrumShift, "SPECTRUM_SHIFT", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 22);
+        arr[(int)HotCustomCardId.SpectrumShift] = new(HotCustomCardId.SpectrumShift, "SPECTRUM_SHIFT", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, true, false, true, 22);
         arr[(int)HotCustomCardId.Speedster] = new(HotCustomCardId.Speedster, "SPEEDSTER", HotCardDomain.Silent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.Spinner] = new(HotCustomCardId.Spinner, "SPINNER", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 14);
         arr[(int)HotCustomCardId.SpiritOfAsh] = new(HotCustomCardId.SpiritOfAsh, "SPIRIT_OF_ASH", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
@@ -625,7 +625,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.SpoilsMap] = new(HotCustomCardId.SpoilsMap, "SPOILS_MAP", HotCardDomain.Quest, HotCalcVarKind.None, HotHookMask.AfterCardEnteredCombat, true, false, false, 0);
         arr[(int)HotCustomCardId.SpoilsOfBattle] = new(HotCustomCardId.SpoilsOfBattle, "SPOILS_OF_BATTLE", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.SporeMind] = new(HotCustomCardId.SporeMind, "SPORE_MIND", HotCardDomain.Curse, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.Spur] = new(HotCustomCardId.Spur, "SPUR", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, false, true, false, 0);
+        arr[(int)HotCustomCardId.Spur] = new(HotCustomCardId.Spur, "SPUR", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Squash] = new(HotCustomCardId.Squash, "SQUASH", HotCardDomain.Event, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Squeeze] = new(HotCustomCardId.Squeeze, "SQUEEZE", HotCardDomain.Necrobinder, HotCalcVarKind.Squeeze, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Stack] = new(HotCustomCardId.Stack, "STACK", HotCardDomain.Event, HotCalcVarKind.Stack, HotHookMask.None, false, false, false, 0);
@@ -687,7 +687,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.TheMoon] = new(HotCustomCardId.TheMoon, "THE_MOON", HotCardDomain.Tarot, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.TheScythe] = new(HotCustomCardId.TheScythe, "THE_SCYTHE", HotCardDomain.Necrobinder, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.TheSealedThrone] = new(HotCustomCardId.TheSealedThrone, "THE_SEALED_THRONE", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 30);
-        arr[(int)HotCustomCardId.TheShot] = new(HotCustomCardId.TheShot, "THE_SHOT", HotCardDomain.Token, HotCalcVarKind.TheShot, HotHookMask.None, false, false, false, 0);
+        arr[(int)HotCustomCardId.TheShot] = new(HotCustomCardId.TheShot, "THE_SHOT", HotCardDomain.Token, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.TheSmith] = new(HotCustomCardId.TheSmith, "THE_SMITH", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.TheStar] = new(HotCustomCardId.TheStar, "THE_STAR", HotCardDomain.Tarot, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.TheSun] = new(HotCustomCardId.TheSun, "THE_SUN", HotCardDomain.Tarot, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
@@ -712,6 +712,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Tune] = new(HotCustomCardId.Tune, "TUNE", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, true, false, false, 14);
         arr[(int)HotCustomCardId.Turbo] = new(HotCustomCardId.Turbo, "TURBO", HotCardDomain.Defect, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.Tutor] = new(HotCustomCardId.Tutor, "TUTOR", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
+        arr[(int)HotCustomCardId.TwinShot] = new(HotCustomCardId.TwinShot, "TWIN_SHOT", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.TwinStrike] = new(HotCustomCardId.TwinStrike, "TWIN_STRIKE", HotCardDomain.Ironclad, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.Tyranny] = new(HotCustomCardId.Tyranny, "TYRANNY", HotCardDomain.Regent, HotCalcVarKind.None, HotHookMask.None, true, false, false, 24);
         arr[(int)HotCustomCardId.UltimateDefend] = new(HotCustomCardId.UltimateDefend, "ULTIMATE_DEFEND", HotCardDomain.Colorless, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
@@ -737,7 +738,7 @@ internal static class HotCardCatalog
         arr[(int)HotCustomCardId.Voltaic] = new(HotCustomCardId.Voltaic, "VOLTAIC", HotCardDomain.Defect, HotCalcVarKind.Voltaic, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.WahBlast] = new(HotCustomCardId.WahBlast, "WAH_BLAST", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.WahCho] = new(HotCustomCardId.WahCho, "WAH_CHO", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
-        arr[(int)HotCustomCardId.WahChoKi] = new(HotCustomCardId.WahChoKi, "WAH_CHO_KI", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
+        arr[(int)HotCustomCardId.WahChoKi] = new(HotCustomCardId.WahChoKi, "WAH_CHO_KI", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, true, false, false, 0);
         arr[(int)HotCustomCardId.WahHammer] = new(HotCustomCardId.WahHammer, "WAH_HAMMER", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.ModifyDamageMultiplicative, false, false, false, 0);
         arr[(int)HotCustomCardId.WahKi] = new(HotCustomCardId.WahKi, "WAH_KI", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
         arr[(int)HotCustomCardId.WahSweep] = new(HotCustomCardId.WahSweep, "WAH_SWEEP", HotCardDomain.Fool, HotCalcVarKind.None, HotHookMask.None, false, false, false, 0);
@@ -810,6 +811,10 @@ internal static class HotCardCatalog
                 break;
             case HotCustomCardId.Archery:
                 ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.UseCardMagic, (short)ensurePowerDefId(HotPowerId.ArcheryPower)));
+                break;
+            case HotCustomCardId.ArrowStab:
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage, 0));
+                ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.UseCardMagic, (short)ensurePowerDefId(HotPowerId.AimPower)));
                 break;
             case HotCustomCardId.Arsenal:
                 ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.UseCardMagic, (short)ensurePowerDefId(HotPowerId.ArsenalPower)));
@@ -1344,6 +1349,9 @@ internal static class HotCardCatalog
             case HotCustomCardId.Motif:
                 ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.UseCardMagic, (short)ensurePowerDefId(HotPowerId.MotifPower)));
                 break;
+            case HotCustomCardId.MythicForm:
+                ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.FixedOne, (short)ensurePowerDefId(HotPowerId.MythicFormPower)));
+                break;
             case HotCustomCardId.NecroMastery:
                 ops.Add(new HotCardEffectOp(HotCardOpKind.SummonOsty, HotCardOpFlags.UseCardMagic, 0));
                 ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.FixedOne, (short)ensurePowerDefId(HotPowerId.NecroMasteryPower)));
@@ -1755,6 +1763,11 @@ internal static class HotCardCatalog
                 ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.UseCardMagic, (short)ensurePowerDefId(HotPowerId.ViolentChordPower)));
                 break;
             case HotCustomCardId.Void:
+                break;
+            case HotCustomCardId.WahChoKi:
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Attack, HotCardOpFlags.UseCardDamage, 0));
+                ops.Add(new HotCardEffectOp(HotCardOpKind.GainBlock, HotCardOpFlags.UseCardBlock, 0));
+                ops.Add(new HotCardEffectOp(HotCardOpKind.Draw, HotCardOpFlags.UseCardMagic, 0));
                 break;
             case HotCustomCardId.WellLaidPlans:
                 ops.Add(new HotCardEffectOp(HotCardOpKind.ApplyPowerSelf, HotCardOpFlags.FixedOne, (short)ensurePowerDefId(HotPowerId.WellLaidPlansPower)));

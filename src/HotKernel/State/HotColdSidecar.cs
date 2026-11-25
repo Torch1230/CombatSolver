@@ -37,6 +37,113 @@ internal sealed record HotColdSidecar(
         && (DampenEntries == null || DampenEntries.Length == 0)
         && (MonsterLogs == null || MonsterLogs.Length == 0);
 
+    public static decimal GetDecimalVarDelta(HotColdSidecar? cold, ushort cardUid)
+    {
+        if (cardUid == 0 || cold?.DecimalVars is not { Length: > 0 } entries)
+            return 0m;
+        for (int i = 0; i < entries.Length; i++)
+        {
+            if (entries[i].CardUid == cardUid)
+                return entries[i].Delta;
+        }
+        return 0m;
+    }
+
+    public static void SetDecimalVarDelta(ref HotColdSidecar? cold, ushort cardUid, decimal delta)
+    {
+        if (cardUid == 0)
+            return;
+        if (delta == 0m)
+        {
+            RemoveDecimalVar(ref cold, cardUid);
+            return;
+        }
+        if (delta.Scale != 0)
+            delta /= 1.0000000000000000000000000000m;
+
+        HotDecimalVarEntry[]? prev = cold?.DecimalVars;
+        if (prev == null || prev.Length == 0)
+        {
+            HotDecimalVarEntry[] single = [new HotDecimalVarEntry(cardUid, delta)];
+            cold = cold == null
+                ? new HotColdSidecar(DecimalVars: single)
+                : cold with { DecimalVars = single };
+            return;
+        }
+
+        int insertAt = prev.Length;
+        for (int i = 0; i < prev.Length; i++)
+        {
+            if (prev[i].CardUid == cardUid)
+            {
+                if (prev[i].Delta == delta && prev[i].Delta.Scale == delta.Scale)
+                    return;
+                HotDecimalVarEntry[] updated = new HotDecimalVarEntry[prev.Length];
+                Array.Copy(prev, updated, prev.Length);
+                updated[i] = new HotDecimalVarEntry(cardUid, delta);
+                cold = cold! with { DecimalVars = updated };
+                return;
+            }
+            if (prev[i].CardUid > cardUid)
+            {
+                insertAt = i;
+                break;
+            }
+        }
+
+        HotDecimalVarEntry[] grown = new HotDecimalVarEntry[prev.Length + 1];
+        if (insertAt > 0)
+            Array.Copy(prev, 0, grown, 0, insertAt);
+        grown[insertAt] = new HotDecimalVarEntry(cardUid, delta);
+        if (insertAt < prev.Length)
+            Array.Copy(prev, insertAt, grown, insertAt + 1, prev.Length - insertAt);
+        cold = cold! with { DecimalVars = grown };
+    }
+
+    public static void CloneDecimalVar(ref HotColdSidecar? cold, ushort sourceUid, ushort targetUid)
+    {
+        if (sourceUid == 0 || targetUid == 0 || sourceUid == targetUid)
+            return;
+        decimal delta = GetDecimalVarDelta(cold, sourceUid);
+        if (delta != 0m)
+            SetDecimalVarDelta(ref cold, targetUid, delta);
+    }
+
+    public static void RemoveDecimalVar(ref HotColdSidecar? cold, ushort cardUid)
+    {
+        if (cardUid == 0 || cold?.DecimalVars is not { Length: > 0 } prev)
+            return;
+
+        int idx = -1;
+        for (int i = 0; i < prev.Length; i++)
+        {
+            if (prev[i].CardUid == cardUid)
+            {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0)
+            return;
+
+        HotDecimalVarEntry[]? nextEntries;
+        if (prev.Length == 1)
+        {
+            nextEntries = null;
+        }
+        else
+        {
+            nextEntries = new HotDecimalVarEntry[prev.Length - 1];
+            if (idx > 0)
+                Array.Copy(prev, 0, nextEntries, 0, idx);
+            if (idx + 1 < prev.Length)
+                Array.Copy(prev, idx + 1, nextEntries, idx, prev.Length - idx - 1);
+        }
+
+        HotColdSidecar next = cold with { DecimalVars = nextEntries };
+        cold = next.IsEmpty ? null : next;
+    }
+
     public void MixInto(ref HotHash128Accumulator acc)
     {
         if (DetachedCards is { Length: > 0 } detached)

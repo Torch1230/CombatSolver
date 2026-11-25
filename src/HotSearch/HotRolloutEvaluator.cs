@@ -25,6 +25,9 @@ internal readonly struct HotMiniRolloutResult
     public readonly long Score;
     public readonly int HpLost;
     public readonly int BoardInvestment;
+    public readonly int SetupScore;
+    public readonly int StrategyGoalHpCredit;
+    public readonly int StrategyGoalCount;
     public readonly bool IsVictory;
     public readonly bool IsDefeat;
     public readonly bool IsEventDefeat;
@@ -37,11 +40,17 @@ internal readonly struct HotMiniRolloutResult
         bool isVictory,
         bool isDefeat,
         bool isEventDefeat,
-        int stepsExecuted)
+        int stepsExecuted,
+        int setupScore = 0,
+        int strategyGoalHpCredit = 0,
+        int strategyGoalCount = 0)
     {
         Score = score;
         HpLost = hpLost;
         BoardInvestment = boardInvestment;
+        SetupScore = setupScore;
+        StrategyGoalHpCredit = strategyGoalHpCredit;
+        StrategyGoalCount = strategyGoalCount;
         IsVictory = isVictory;
         IsDefeat = isDefeat;
         IsEventDefeat = isEventDefeat;
@@ -99,6 +108,16 @@ internal sealed class HotRolloutEvaluator : IDisposable
         public bool HasPromotableVictory;
     }
 
+    private const ulong AttackRelicMask = (1UL << (int)RelicCounterId.PenNib) | (1UL << (int)RelicCounterId.Nunchaku);
+    private const ulong SkillRelicMask = 1UL << (int)RelicCounterId.TuningFork;
+    private const ulong CardRelicMask = 1UL << (int)RelicCounterId.IronClub;
+    private const ulong ExhaustRelicMask = 1UL << (int)RelicCounterId.JossPaper;
+    private const ulong StarRelicMask = 1UL << (int)RelicCounterId.GalacticDust;
+    private const ulong TurnTickRelicMask = (1UL << (int)RelicCounterId.HappyFlower)
+        | (1UL << (int)RelicCounterId.FakeHappyFlower)
+        | (1UL << (int)RelicCounterId.Pendulum)
+        | (1UL << (int)RelicCounterId.PollinousCore);
+
     private struct FastTurnContext
     {
         public int UnblockedIncoming;
@@ -109,6 +128,23 @@ internal sealed class HotRolloutEvaluator : IDisposable
         public bool PlayerWeak;
         public bool PlayerFrail;
         public bool HasActiveScaling;
+        public bool HasRetainHand;
+        public bool PreservesExcessBlock;
+        public bool HasStratagemPower;
+    }
+
+    private struct RolloutStrategyContext
+    {
+        public bool Active;
+        public bool PureGrowthUnsatisfied;
+        public bool RelicUnsatisfied;
+        public ulong UnsatisfiedRelicMask;
+        public int RelicDistance;
+        public bool HasLethalInHand;
+        public bool HoldLastEnemyLethal;
+        public bool HasEmptyPotionSlot;
+        public bool HasAnyNonMinionEnemy;
+        public int RemainingStrategyBudget;
     }
 
     private sealed class HotRolloutWorkspace
@@ -386,6 +422,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
         int parentActionCount = 0)
     {
         probeState = postChoiceState;
+        HotParallelExpander.AssignDeterministicCardUids(ref probeState);
         HotColdSidecar? cold = postChoiceCold;
         Span<HotChoiceSelection> stepChoices = stackalloc HotChoiceSelection[HotLimits.MaxChoicesPerAction];
 
@@ -412,6 +449,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
                     probeChoiceBuf,
                     stepChoices,
                     rules,
+                    in policy,
                     in evalLookup,
                     RolloutPilotKind.DefensiveTempo,
                     recordTrace: false,
@@ -458,7 +496,10 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 && (probeState.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) == 0,
             isDefeat: summary.IsDefeat,
             isEventDefeat: summary.IsEventDefeat,
-            stepsExecuted: stepsExecuted);
+            stepsExecuted: stepsExecuted,
+            setupScore: features.SetupScore,
+            strategyGoalHpCredit: policy.HasAnyStrategyTargets ? summary.StrategyGoalHpCredit : 0,
+            strategyGoalCount: policy.HasAnyStrategyTargets ? summary.StrategyGoalCount : 0);
     }
 
     private static void EvaluateCandidate(
@@ -484,6 +525,10 @@ internal sealed class HotRolloutEvaluator : IDisposable
         if (ws.BaseState.TerminalOutcome != HotCombatOutcome.Ongoing || !HotCombatEngine.IsInProgress(in ws.BaseState))
             return;
 
+        // RO-02: assign deterministic non-zero CardUids once on the unpacked (already canonicalized)
+        // base state so rollout steps only re-canonicalize lazily when a choice screen triggers.
+        HotParallelExpander.AssignDeterministicCardUids(ref ws.BaseState);
+
         bool parentSatisfiesHardPotions = CanPromotePotionFreeSuffix(in parent, in policy);
 
         // Pilot A: Defensive / Tempo
@@ -501,26 +546,66 @@ internal sealed class HotRolloutEvaluator : IDisposable
             ws.TraceChoicesA,
             out long scoreA,
             out bool victoryA,
+            out bool defeatA,
+            out bool eventDefeatA,
+            out byte deathSavesA,
+            out long vCentiA,
+            out int goalCreditA,
+            out int goalCountA,
+            out int endTurnA,
             out int traceLenA,
-            out int stepsA);
+            out int stepsA,
+            out bool cleanWinA);
 
-        // Pilot B: Setup-First
-        bool okB = RunPilotFromBase(
-            ws,
-            in parent,
-            rules,
-            in policy,
-            in evalLookup,
-            evalMode,
-            horizonTurns,
-            RolloutPilotKind.SetupFirst,
-            recordTrace: parentSatisfiesHardPotions,
-            ws.TraceStepsB,
-            ws.TraceChoicesB,
-            out long scoreB,
-            out bool victoryB,
-            out int traceLenB,
-            out int stepsB);
+        // RO-02: Smart Pilot B skip when Pilot A already achieved a clean zero-loss, zero-death-save,
+        // all-strategy-targets-satisfied victory, or when no setup/power/engine/debuff/retain cards exist
+        // in live piles (and no strategy targets require SetupFirst stalling).
+        bool skipPilotB = okA
+            && (cleanWinA
+                || (!policy.HasAnyStrategyTargets
+                    && !HasSetupFirstRelevantCards(in ws.BaseState, rules, in evalLookup)));
+
+        bool okB = false;
+        long scoreB = 0;
+        bool victoryB = false;
+        bool defeatB = false;
+        bool eventDefeatB = false;
+        byte deathSavesB = 0;
+        long vCentiB = 0;
+        int goalCreditB = 0;
+        int goalCountB = 0;
+        int endTurnB = 0;
+        int traceLenB = 0;
+        int stepsB = 0;
+
+        if (!skipPilotB)
+        {
+            // Pilot B: Setup-First
+            okB = RunPilotFromBase(
+                ws,
+                in parent,
+                rules,
+                in policy,
+                in evalLookup,
+                evalMode,
+                horizonTurns,
+                RolloutPilotKind.SetupFirst,
+                recordTrace: parentSatisfiesHardPotions,
+                ws.TraceStepsB,
+                ws.TraceChoicesB,
+                out scoreB,
+                out victoryB,
+                out defeatB,
+                out eventDefeatB,
+                out deathSavesB,
+                out vCentiB,
+                out goalCreditB,
+                out goalCountB,
+                out endTurnB,
+                out traceLenB,
+                out stepsB,
+                out _);
+        }
 
         ws.WaveSteps += stepsA + stepsB;
 
@@ -529,13 +614,26 @@ internal sealed class HotRolloutEvaluator : IDisposable
 
         bool chooseB;
         if (!okA)
+        {
             chooseB = true;
+        }
         else if (!okB)
+        {
             chooseB = false;
-        else if (victoryA != victoryB)
-            chooseB = victoryB;
+        }
         else
-            chooseB = scoreB > scoreA;
+        {
+            int rankA = GetPilotOutcomeRank(victoryA, defeatA, eventDefeatA);
+            int rankB = GetPilotOutcomeRank(victoryB, defeatB, eventDefeatB);
+            if (rankA != rankB)
+                chooseB = rankB > rankA;
+            else if (victoryA && victoryB)
+                chooseB = IsBetterVictory(
+                    deathSavesB, vCentiB, goalCreditB, goalCountB, endTurnB, scoreB,
+                    deathSavesA, vCentiA, goalCreditA, goalCountA, endTurnA, scoreA);
+            else
+                chooseB = scoreB > scoreA;
+        }
 
         long bestScore = chooseB ? scoreB : scoreA;
         bool foundVictory = victoryA || victoryB;
@@ -548,8 +646,15 @@ internal sealed class HotRolloutEvaluator : IDisposable
 
         if (foundVictory && parentSatisfiesHardPotions)
         {
-            // When both pilots win, pick the pilot with strictly better terminal Victory score (unified V).
-            bool promoteB = victoryB && (!victoryA || scoreB > scoreA);
+            // When both pilots win, rank strictly by (DeathSaveUseCount ASC, vCenti DESC, StrategyGoalHpCredit DESC, StrategyGoalCount DESC, Turn ASC).
+            bool promoteB = victoryB
+                && (!victoryA || IsBetterVictory(
+                    deathSavesB, vCentiB, goalCreditB, goalCountB, endTurnB, scoreB,
+                    deathSavesA, vCentiA, goalCreditA, goalCountA, endTurnA, scoreA));
+            if (promoteB && traceLenB <= 0 && victoryA && traceLenA > 0)
+                promoteB = false;
+            else if (!promoteB && traceLenA <= 0 && victoryB && traceLenB > 0)
+                promoteB = true;
             int chosenTraceLen = promoteB ? traceLenB : traceLenA;
             if (chosenTraceLen > 0)
             {
@@ -576,6 +681,38 @@ internal sealed class HotRolloutEvaluator : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetPilotOutcomeRank(bool isVictory, bool isDefeat, bool isEventDefeat)
+        => isVictory ? 3 : (!isDefeat && !isEventDefeat ? 2 : (isEventDefeat ? 1 : 0));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsBetterVictory(
+        byte deathSavesB,
+        long vCentiB,
+        int goalCreditB,
+        int goalCountB,
+        int turnB,
+        long scoreB,
+        byte deathSavesA,
+        long vCentiA,
+        int goalCreditA,
+        int goalCountA,
+        int turnA,
+        long scoreA)
+    {
+        if (deathSavesB != deathSavesA)
+            return deathSavesB < deathSavesA;
+        if (vCentiB != vCentiA)
+            return vCentiB > vCentiA;
+        if (goalCreditB != goalCreditA)
+            return goalCreditB > goalCreditA;
+        if (goalCountB != goalCountA)
+            return goalCountB > goalCountA;
+        if (turnB != turnA)
+            return turnB < turnA;
+        return scoreB > scoreA;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool CanPromotePotionFreeSuffix(in HotSearchNode parent, in HotSearchPolicy policy)
     {
         if (policy.ForcedPotionSlotMask != 0
@@ -596,6 +733,64 @@ internal sealed class HotRolloutEvaluator : IDisposable
         return true;
     }
 
+    private static bool HasSetupFirstRelevantCards(
+        in CombatHotState s,
+        HotRules rules,
+        in HotEvalLookup evalLookup)
+    {
+        const HotCardRoleFlags setupRelevantRoles = HotCardRoleFlags.HasSelfBuff
+            | HotCardRoleFlags.HasEngineOp
+            | HotCardRoleFlags.HasDraw
+            | HotCardRoleFlags.HasEnemyDebuff
+            | HotCardRoleFlags.AppliesWeak;
+
+        HotCardRoleFlags[]? cardRoles = evalLookup.CardRoles;
+        int liveLimit = Math.Min(s.DiscardStart + s.DiscardCount, s.TotalCardCount);
+        for (int idx = 0; idx < liveLimit; idx++)
+        {
+            ref readonly HotCard c = ref s.Cards[idx];
+            if (c.CardDefId == 0 || c.CardDefId >= rules.Cards.Length)
+                continue;
+            HotCardDef d = rules.Cards[c.CardDefId];
+            if (d.Type is CardType.Status or CardType.Curse)
+                continue;
+            if (d.Type == CardType.Power || d.SetupWeight > 0)
+                return true;
+            if (HotCombatEngine.HasEffectiveRetainKeyword(in s, in c, rules)
+                || (c.Flags & HotCardFlags.SingleTurnRetain) != 0)
+            {
+                return true;
+            }
+            if (cardRoles != null && (uint)c.CardDefId < (uint)cardRoles.Length
+                && (cardRoles[c.CardDefId] & setupRelevantRoles) != 0)
+            {
+                return true;
+            }
+            if (d.OpCount > 0)
+            {
+                ReadOnlySpan<HotCardEffectOp> ops = rules.GetCardOps(c.CardDefId);
+                for (int k = 0; k < ops.Length; k++)
+                {
+                    switch (ops[k].Op)
+                    {
+                        case HotCardOpKind.Draw:
+                        case HotCardOpKind.ChannelOrb:
+                        case HotCardOpKind.EvokeOrb:
+                        case HotCardOpKind.SummonOsty:
+                        case HotCardOpKind.Forge:
+                        case HotCardOpKind.ShootArrow:
+                        case HotCardOpKind.ApplyPowerSelf:
+                        case HotCardOpKind.ApplyTempStat:
+                        case HotCardOpKind.ApplyPowerTarget:
+                        case HotCardOpKind.ApplyPowerAllEnemies:
+                            return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     private static bool RunPilotFromBase(
         HotRolloutWorkspace ws,
         in HotSearchNode parent,
@@ -610,14 +805,23 @@ internal sealed class HotRolloutEvaluator : IDisposable
         HotChoiceSelection[] traceChoices,
         out long finalScore,
         out bool isRealVictory,
+        out bool isDefeat,
+        out bool isEventDefeat,
+        out byte deathSaveUseCount,
+        out long victoryVCenti,
+        out int strategyGoalHpCredit,
+        out int strategyGoalCount,
+        out int endTurn,
         out int traceStepCount,
-        out int stepsExecuted)
+        out int stepsExecuted,
+        out bool isCleanPerfectVictory)
     {
         ws.RolloutState = ws.BaseState;
         HotColdSidecar? cold = parent.Cold;
 
         stepsExecuted = 0;
         traceStepCount = 0;
+        isCleanPerfectVictory = false;
         int traceChoiceCount = 0;
         bool traceOverflowed = false;
 
@@ -642,6 +846,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
                     ws.ChoiceOptBuf,
                     ws.StepChoiceBuf,
                     rules,
+                    in policy,
                     in evalLookup,
                     pilot,
                     recordTrace: recordTrace && !traceOverflowed,
@@ -672,6 +877,13 @@ internal sealed class HotRolloutEvaluator : IDisposable
             ws.WaveCapacityDrops++;
             finalScore = 0;
             isRealVictory = false;
+            isDefeat = false;
+            isEventDefeat = false;
+            deathSaveUseCount = 0;
+            victoryVCenti = 0;
+            strategyGoalHpCredit = 0;
+            strategyGoalCount = 0;
+            endTurn = 0;
             traceStepCount = 0;
             return false;
         }
@@ -684,26 +896,118 @@ internal sealed class HotRolloutEvaluator : IDisposable
             summary.EmptyPotionSlots,
             in policy);
 
-        HotEvaluator.EvaluateState(
-            in ws.RolloutState,
-            cold,
-            rules,
-            in policy,
-            in evalLookup,
-            in summary,
-            netPotionCostCenti,
-            parent.ActionCount + stepsExecuted,
-            evalMode,
-            out HotEvalFeatures features);
-
-        finalScore = features.Score;
         // Strict Victory gate (#287): NEVER treat EventDefeat / BattlewornDummyTimedOut as Victory!
         isRealVictory = summary.IsVictory
             && ws.RolloutState.TerminalOutcome == HotCombatOutcome.Victory
             && (ws.RolloutState.CombatFlags & HotCombatFlags.BattlewornDummyTimedOut) == 0;
+        isDefeat = !isRealVictory && summary.IsDefeat;
+        isEventDefeat = !isRealVictory && !isDefeat && summary.IsEventDefeat;
+        deathSaveUseCount = summary.DeathSaveUseCount;
+        victoryVCenti = 0;
+        strategyGoalHpCredit = summary.StrategyGoalHpCredit;
+        strategyGoalCount = summary.StrategyGoalCount;
+        endTurn = ws.RolloutState.PlayerTurnNumber;
+
+        if (isRealVictory)
+        {
+            int postCombatHeal = HotRouteQuality.RankedPostCombatRelicHeal(
+                policy.PostCombatRelicHeal,
+                completeVictory: true,
+                summary.PlayerHp,
+                summary.PlayerMaxHp);
+            int netPersistentHpDeltaCenti = HotRouteQuality.ComputeNetPersistentHpDeltaCenti(
+                endPlayerHp: summary.PlayerHp,
+                postCombatMonotoneHeal: postCombatHeal,
+                initialPlayerHp: policy.InitialPlayerHp,
+                endPlayerMaxHp: summary.PlayerMaxHp,
+                initialPlayerMaxHp: policy.InitialPlayerMaxHp,
+                deathSaveHpRestored: summary.DeathSaveHpRestored,
+                growthHpCredit: summary.GrowthHpCredit,
+                bossHpRelief: policy.StrategicBossHpRelief,
+                ignoreLongTermRewards: policy.IgnoreLongTermRewards,
+                relicHpCredit: summary.RelicHpCredit,
+                relicHealingHpCredit: summary.RelicHealingHpCredit,
+                feedMaxHpExcluded: summary.FeedCount * policy.FeedMaxHpPerKill);
+            victoryVCenti = (long)netPersistentHpDeltaCenti - netPotionCostCenti;
+
+            if (!policy.HasAnyStrategyTargets)
+            {
+                long rawWin = 25_000_000L
+                    + victoryVCenti * 390L
+                    - (long)ws.RolloutState.PlayerTurnNumber * 5_000L
+                    - (long)summary.DeathSaveUseCount * 4_000_000L;
+                finalScore = Math.Max(summary.DeathSaveUseCount == 0 ? 12_000_000L : 8_000_000L, rawWin);
+            }
+            else if (summary.AllStrategyTargetsSatisfied)
+            {
+                long rawWin = 25_000_000L
+                    + victoryVCenti * 390L
+                    + (long)summary.StrategyGoalCount * 25_000L
+                    - (long)ws.RolloutState.PlayerTurnNumber * 5_000L
+                    - (long)summary.DeathSaveUseCount * 4_000_000L;
+                finalScore = Math.Max(summary.DeathSaveUseCount == 0 ? 12_000_000L : 8_000_000L, rawWin);
+            }
+            else if (summary.StrategyGoalCount > 0 || summary.StrategyGoalHpCredit > 0)
+            {
+                long rawWin = 16_000_000L
+                    + victoryVCenti * 390L
+                    + (long)summary.StrategyGoalCount * 25_000L
+                    - (long)ws.RolloutState.PlayerTurnNumber * 5_000L
+                    - (long)summary.DeathSaveUseCount * 4_000_000L;
+                finalScore = Math.Max(summary.DeathSaveUseCount == 0 ? 7_000_000L : 4_000_000L, rawWin);
+            }
+            else
+            {
+                // EV-04: keep 0-progress unsatisfied strategy-mode rollout wins well below healthy
+                // ongoing farming states so stalling/farming lines aren't crushed at turn boundaries.
+                long rawWin = 800_000L
+                    + victoryVCenti * 390L
+                    - (long)ws.RolloutState.PlayerTurnNumber * 5_000L
+                    - (long)summary.DeathSaveUseCount * 4_000_000L;
+                finalScore = Math.Max(summary.DeathSaveUseCount == 0 ? 200_000L : 100_000L, rawWin);
+            }
+        }
+        else if (isDefeat || isEventDefeat)
+        {
+            bool hasUnusedPaidPotions = policy.EffectivePotionPolicy != SolverPotionPolicy.Disabled
+                && policy.PaidOptionalPotionCount > 0
+                && (policy.PaidOptionalSlotMask & ~parent.PotionMask) != 0;
+            long defeatBase = (evalMode == HotEvalMode.DesperateRescue || hasUnusedPaidPotions)
+                ? -12_000_000L
+                : -20_000_000L;
+            if (isEventDefeat)
+                defeatBase += 2_000_000L;
+            finalScore = defeatBase
+                + (long)Math.Min((int)ws.RolloutState.PlayerTurnNumber, 30) * 60_000L
+                - (long)Math.Min(summary.EnemyHpSum, 2000) * 10_000L;
+        }
+        else
+        {
+            HotEvaluator.EvaluateState(
+                in ws.RolloutState,
+                cold,
+                rules,
+                in policy,
+                in evalLookup,
+                in summary,
+                netPotionCostCenti,
+                parent.ActionCount + stepsExecuted,
+                evalMode,
+                out HotEvalFeatures features);
+            finalScore = features.Score;
+        }
 
         if (!isRealVictory || traceOverflowed || traceStepCount <= 0)
             traceStepCount = 0;
+
+        isCleanPerfectVictory = isRealVictory
+            && summary.DeathSaveUseCount == 0
+            && summary.HpLost == 0
+            && summary.PlayerHp >= policy.InitialPlayerMaxHp
+            && !policy.HasAnyHealOrUnknownGeneration
+            && !policy.HasAlchemizeInDeck
+            && (!policy.HasAnyStrategyTargets || summary.AllStrategyTargetsSatisfied)
+            && (!recordTrace || traceStepCount > 0);
 
         return true;
     }
@@ -717,6 +1021,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
         HotChoiceSelection[] choiceOptBuf,
         Span<HotChoiceSelection> stepChoices,
         HotRules rules,
+        in HotSearchPolicy policy,
         in HotEvalLookup evalLookup,
         RolloutPilotKind pilot,
         bool recordTrace,
@@ -745,10 +1050,14 @@ internal sealed class HotRolloutEvaluator : IDisposable
             if (state.TerminalOutcome != HotCombatOutcome.Ongoing || !HotCombatEngine.IsInProgress(in state))
                 return false;
 
-            // Match HotPlanMaterializer.cs:115-116 canonicalization & CardUid assignment before EVERY step
-            // so any recorded HotChoiceSelection UIDs replay 100% identically during promotion & materialization.
-            HotStatePacker.CanonicalizeForPack(ref state, ref cold);
-            HotParallelExpander.AssignDeterministicCardUids(ref state);
+            // RO-02: Lazy canonicalization — cards already carry unique non-zero deterministic UIDs
+            // from base-state initialization, so only re-canonicalize here on extreme UID growth,
+            // and lazily inside ExecuteActionWithGreedyChoices when res.NeedsChoice actually triggers.
+            if (state.NextCardUid >= 60_000)
+            {
+                HotStatePacker.CanonicalizeForPack(ref state, ref cold);
+                HotParallelExpander.AssignDeterministicCardUids(ref state);
+            }
 
             int actionCount = HotCombatEngine.EnumerateLegalActions(
                 in state,
@@ -771,6 +1080,25 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 out FastTurnContext ctx);
 
             blockedActionBits.Clear();
+            if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue)
+            {
+                int maxCheck = Math.Min(actionCount, 256);
+                for (int a = 0; a < maxCheck; a++)
+                {
+                    HotAction act = actionBuf[a];
+                    if (act.Kind != HotActionKind.PlayCard || act.SlotOrHandIdx >= state.HandCount)
+                        continue;
+                    ref readonly HotCard c = ref state.Cards[act.SlotOrHandIdx];
+                    if (c.CardDefId < rules.Cards.Length
+                        && rules.Cards[c.CardDefId].CardId == HotCustomCardId.BrightestFlame)
+                    {
+                        int flameCost = HotCombatEngine.GetNamedVarInt(in c, rules.Cards[c.CardDefId], "MaxHp", 2);
+                        if (!policy.AllowsBrightestFlame(state.BrightestFlameMaxHpSpent + flameCost))
+                            blockedActionBits[a >> 6] |= 1UL << (a & 63);
+                    }
+                }
+            }
+
             bool stepSucceeded = false;
 
             while (true)
@@ -786,6 +1114,8 @@ internal sealed class HotRolloutEvaluator : IDisposable
                         in state,
                         cold,
                         rules,
+                        in policy,
+                        in evalLookup,
                         actionBuf,
                         actionCount,
                         blockedActionBits,
@@ -801,21 +1131,52 @@ internal sealed class HotRolloutEvaluator : IDisposable
                     return false;
 
                 HotAction chosenAction = actionBuf[chosenIdx];
-                preStepState = state;
-                HotColdSidecar? preStepCold = cold;
+                bool skipPreStepCopy = CanSkipPreStepCopy(in state, chosenAction, rules, in ctx);
 
                 int choiceCount = 0;
-                bool resolved = ExecuteActionWithGreedyChoices(
-                    ref state,
-                    ref cold,
-                    in preStepState,
-                    preStepCold,
-                    rules,
-                    scratch,
-                    chosenAction,
-                    choiceOptBuf,
-                    stepChoices,
-                    out choiceCount);
+                bool resolved;
+                HotColdSidecar? preStepCold = null;
+
+                if (skipPreStepCopy)
+                {
+                    // RO-02: Pure bytecode non-choice card with no StratagemPower cannot trigger NeedsChoice;
+                    // execute directly without copying the full CombatHotState into preStepState.
+                    HotStepResult fastRes = HotCombatEngine.Step(
+                        ref state,
+                        ref cold,
+                        rules,
+                        scratch,
+                        chosenAction,
+                        default);
+                    resolved = fastRes.Executed && !fastRes.NeedsChoice;
+                }
+                else
+                {
+                    preStepState = state;
+                    preStepCold = cold;
+
+                    resolved = ExecuteActionWithGreedyChoices(
+                        ref state,
+                        ref cold,
+                        ref preStepState,
+                        ref preStepCold,
+                        rules,
+                        evalLookup.CardRoles,
+                        scratch,
+                        chosenAction,
+                        ctx.UnblockedIncoming,
+                        ctx.HasRetainHand,
+                        choiceOptBuf,
+                        stepChoices,
+                        out choiceCount);
+                }
+
+                if (resolved
+                    && policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+                    && !policy.AllowsBrightestFlame(state.BrightestFlameMaxHpSpent))
+                {
+                    resolved = false;
+                }
 
                 if (resolved)
                 {
@@ -859,6 +1220,10 @@ internal sealed class HotRolloutEvaluator : IDisposable
                     break;
                 }
 
+                // If a fast-path step ever unexpectedly failed without a pre-step snapshot, abort cleanly.
+                if (skipPreStepCopy)
+                    return false;
+
                 // Failed to execute or resolve choices: restore pre-step state and block this action index.
                 state = preStepState;
                 cold = preStepCold;
@@ -878,14 +1243,47 @@ internal sealed class HotRolloutEvaluator : IDisposable
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool CanSkipPreStepCopy(
+        in CombatHotState s,
+        HotAction action,
+        HotRules rules,
+        in FastTurnContext ctx)
+    {
+        if (action.Kind != HotActionKind.PlayCard || action.SlotOrHandIdx >= s.HandCount || ctx.HasStratagemPower)
+            return false;
+        ref readonly HotCard card = ref s.Cards[action.SlotOrHandIdx];
+        if (card.CardDefId == 0 || card.CardDefId >= rules.Cards.Length)
+            return false;
+        HotCardDef def = rules.Cards[card.CardDefId];
+        if (def.OpCount == 0
+            || def.CustomHandlerId != 0
+            || def.CanGenerateUnknown
+            || def.CardId == HotCustomCardId.BrightestFlame)
+        {
+            return false;
+        }
+        ReadOnlySpan<HotCardEffectOp> ops = rules.GetCardOps(def.DefId);
+        for (int k = 0; k < ops.Length; k++)
+        {
+            HotCardOpKind op = ops[k].Op;
+            if (op == HotCardOpKind.Custom || op == HotCardOpKind.DiscardHand)
+                return false;
+        }
+        return true;
+    }
+
     private static bool ExecuteActionWithGreedyChoices(
         ref CombatHotState state,
         ref HotColdSidecar? cold,
-        in CombatHotState preStepState,
-        HotColdSidecar? preStepCold,
+        ref CombatHotState preStepState,
+        ref HotColdSidecar? preStepCold,
         HotRules rules,
+        HotCardRoleFlags[]? cardRoles,
         HotExecScratch scratch,
         HotAction action,
+        int unblockedIncoming,
+        bool hasRetainHand,
         HotChoiceSelection[] choiceOptBuf,
         Span<HotChoiceSelection> stepChoices,
         out int choiceCount)
@@ -895,6 +1293,24 @@ internal sealed class HotRolloutEvaluator : IDisposable
         HotStepResult res = HotCombatEngine.Step(ref state, ref cold, rules, scratch, action, default);
         if (!res.Executed)
             return false;
+
+        if (res.NeedsChoice)
+        {
+            // RO-02: Lazily canonicalize + assign deterministic CardUids on the pre-step snapshot
+            // right before choice enumeration/picking so UID tie-breaks (DOP=1 == DOP=N) and
+            // recorded HotChoiceSelection UIDs match TryPromoteRolloutVictory / HotPlanMaterializer
+            // bit-for-bit without paying canonicalization on non-choice steps.
+            state = preStepState;
+            cold = preStepCold;
+            HotStatePacker.CanonicalizeForPack(ref state, ref cold);
+            HotParallelExpander.AssignDeterministicCardUids(ref state);
+            preStepState = state;
+            preStepCold = cold;
+
+            res = HotCombatEngine.Step(ref state, ref cold, rules, scratch, action, default);
+            if (!res.Executed)
+                return false;
+        }
 
         while (res.NeedsChoice)
         {
@@ -908,12 +1324,21 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 scratch,
                 choiceOptBuf);
 
+            int choiceUnblockedIncoming = state.PlayerTurnNumber != preStepState.PlayerTurnNumber
+                ? 0
+                : unblockedIncoming;
+
             if (!TryPickDeterministicGreedyChoice(
                     in state,
                     cold,
                     rules,
+                    cardRoles,
                     scratch.PendingChoiceKind,
+                    scratch.PendingChoiceSourceCardDefId,
                     scratch.PendingChoiceMin,
+                    scratch.PendingChoiceMax,
+                    choiceUnblockedIncoming,
+                    hasRetainHand,
                     choiceOptBuf,
                     optCount,
                     stepChoices[..choiceCount],
@@ -950,8 +1375,13 @@ internal sealed class HotRolloutEvaluator : IDisposable
         in CombatHotState s,
         HotColdSidecar? cold,
         HotRules rules,
+        HotCardRoleFlags[]? cardRoles,
         HotChoiceKind pendingKind,
+        ushort sourceCardDefId,
         byte minCount,
+        byte maxCount,
+        int unblockedIncoming,
+        bool hasRetainHand,
         HotChoiceSelection[] optBuf,
         int optCount,
         ReadOnlySpan<HotChoiceSelection> alreadyPicked,
@@ -978,16 +1408,58 @@ internal sealed class HotRolloutEvaluator : IDisposable
             }
         }
 
-        // For optional multi-pick prompts after >= 1 selection, stop cleanly to avoid over-discarding/looping.
-        if (hasNoneOption && alreadyPicked.Length > 0)
+        // RO-01: Beneficial HandCard prompts (Retain, Setup, Cost-reduce, Copy, Upgrade, Forge, Replay)
+        // classified via card + HotCardDef metadata pick highest quality rather than lowest.
+        bool isUpgradePrompt = false;
+        bool isBeneficialHandChoice = pendingKind == HotChoiceKind.HandCard
+            && ShouldPreferHighestHandChoice(sourceCardDefId, rules, minCount, out isUpgradePrompt);
+
+        // Destructive DrawPile prompts (Charge, Cleanse, Seance) transform/exhaust draw-pile cards and
+        // MUST pick lowest quality (Curses/Statuses/Strikes) rather than best Rare/Power cards!
+        bool isDestructiveDrawChoice = pendingKind == HotChoiceKind.DrawPile
+            && ShouldPreferLowestDrawChoice(sourceCardDefId, rules);
+
+        bool isGuardsHandChoice = pendingKind == HotChoiceKind.HandCard
+            && sourceCardDefId != 0
+            && sourceCardDefId < rules.Cards.Length
+            && rules.Cards[sourceCardDefId].CardId == HotCustomCardId.Guards;
+
+        // RO-01: Allow optional multi-pick prompts (discard/exhaust/scry/thin/Guards) to pick multiple
+        // eligible candidates up to a sensible cap (<= 5 or maxCount) instead of breaking after 1 pick.
+        // GeneratedCard options do not deduplicate by UID, so still stop after 1 pick for optional GeneratedCard.
+        int maxOptionalCap = Math.Min(5, HotLimits.MaxChoicesPerAction - 1);
+        int optionalPickLimit = maxCount > 1 ? Math.Min((int)maxCount, maxOptionalCap) : maxOptionalCap;
+        if (isGuardsHandChoice)
+            optionalPickLimit = Math.Min(4, optionalPickLimit);
+
+        if (hasNoneOption
+            && alreadyPicked.Length > 0
+            && !isBeneficialHandChoice
+            && (pendingKind == HotChoiceKind.GeneratedCard || alreadyPicked.Length >= optionalPickLimit))
         {
             picked = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
             return true;
         }
 
-        // HandCard selections are predominantly discard/exhaust/transform (prefer lowest-quality card first);
-        // Draw/Discard/Exhaust/Generated selections are predominantly fetch/discover/retrieve (prefer highest quality).
-        bool preferLowestQuality = pendingKind == HotChoiceKind.HandCard;
+        // HandCard selections without a beneficial source card, plus destructive DrawPile prompts
+        // (Charge, Cleanse, Seance), prefer lowest quality first; other Draw/Discard/Exhaust/Generated
+        // and beneficial HandCard prompts prefer highest quality first.
+        bool preferLowestQuality = (pendingKind == HotChoiceKind.HandCard && !isBeneficialHandChoice)
+            || isDestructiveDrawChoice;
+
+        // Next-turn / future-pile choices (CosmicIndifference / Headbutt / WahKi putting DiscardPile cards on Draw[0],
+        // destructive DrawPile thinning like Charge/Cleanse/Seance, and beneficial HandCard prompts) do not depend
+        // on current-turn remaining energy.
+        bool isNextTurnPileChoice = isDestructiveDrawChoice
+            || (pendingKind == HotChoiceKind.DiscardPile
+                && sourceCardDefId != 0
+                && sourceCardDefId < rules.Cards.Length
+                && rules.Cards[sourceCardDefId].CardId is HotCustomCardId.CosmicIndifference or HotCustomCardId.Headbutt or HotCustomCardId.WahKi);
+
+        // Guards transforms low-value hand cards into 0-cost 9-Block MinionSacrifice, so basic Defends
+        // remain eligible to upgrade when under attack instead of getting inflated above maxAllowedQuality.
+        int evalUnblockedIncoming = isGuardsHandChoice ? 0 : unblockedIncoming;
+        int evalAvailableEnergy = (isBeneficialHandChoice || isNextTurnPileChoice) ? -1 : s.Energy;
 
         int bestIdx = -1;
         int bestQuality = preferLowestQuality ? int.MaxValue : int.MinValue;
@@ -1002,7 +1474,25 @@ internal sealed class HotRolloutEvaluator : IDisposable
             if (opt.Kind != HotChoiceKind.GeneratedCard && IsUidAlreadyPicked(alreadyPicked, opt.Kind, opt.CardUidOrIndex))
                 continue;
 
-            int q = ComputeGenericChoiceCardQuality(in s, cold, rules, opt);
+            // Never transform SovereignBlade (especially forged blades) via optional Guards prompts.
+            if (hasNoneOption
+                && isGuardsHandChoice
+                && opt.CardDefId < rules.Cards.Length
+                && rules.Cards[opt.CardDefId].CardId == HotCustomCardId.SovereignBlade)
+            {
+                continue;
+            }
+
+            int q = ComputeGenericChoiceCardQuality(
+                in s,
+                cold,
+                rules,
+                cardRoles,
+                opt,
+                evalUnblockedIncoming,
+                evalAvailableEnergy,
+                isUpgradePrompt,
+                hasRetainHand);
 
             bool better;
             if (bestIdx < 0)
@@ -1036,19 +1526,42 @@ internal sealed class HotRolloutEvaluator : IDisposable
             return false;
         }
 
-        // For optional HandCard prompts (e.g. GamblingChip / Purity / WellLaidPlans), only pick if the worst
-        // card is actually negative clutter (Curse/Status/Unplayable); otherwise pass with None.
-        if (hasNoneOption && preferLowestQuality && bestQuality >= 0)
+        // RO-01: For optional lowest-quality prompts (GamblingChip / Purity / optional scry & thinning),
+        // allow discarding/scrying/exhausting Basic Strikes/Defends (quality == 60) when player has
+        // non-lethal safety / spare block (affordable Defends under threat are already boosted > 75).
+        // For Guards under unblocked incoming damage, allow transforming cards <= 80 into MinionSacrifice.
+        if (hasNoneOption && preferLowestQuality)
         {
-            picked = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
-            return true;
+            bool nonLethalSafe = unblockedIncoming == 0
+                || (unblockedIncoming < s.Player.CurrentHp
+                    && s.Player.CurrentHp - unblockedIncoming > Math.Max(4, s.Player.MaxHp / 5));
+            int maxAllowedQuality;
+            if (isGuardsHandChoice)
+                maxAllowedQuality = unblockedIncoming > 0 ? 80 : -1;
+            else if (nonLethalSafe)
+                maxAllowedQuality = 75;
+            else if (unblockedIncoming < s.Player.CurrentHp)
+                maxAllowedQuality = 65;
+            else
+                maxAllowedQuality = -1;
+
+            if (bestQuality > maxAllowedQuality)
+            {
+                picked = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+                return true;
+            }
         }
 
-        // For optional non-Hand prompts, pass if best available card is negative clutter.
-        if (hasNoneOption && !preferLowestQuality && bestQuality < 0)
+        // For optional non-Hand prompts, pass if best available card is negative clutter,
+        // or skip low-value optional GeneratedCard picks when hand is nearly full (>= 9) to avoid 10-card overflow.
+        if (hasNoneOption && !preferLowestQuality)
         {
-            picked = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
-            return true;
+            if (bestQuality < 0
+                || (pendingKind == HotChoiceKind.GeneratedCard && s.HandCount >= 9 && bestQuality < 250))
+            {
+                picked = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
+                return true;
+            }
         }
 
         picked = optBuf[bestIdx];
@@ -1073,44 +1586,17 @@ internal sealed class HotRolloutEvaluator : IDisposable
         in CombatHotState s,
         HotColdSidecar? cold,
         HotRules rules,
-        HotChoiceSelection opt)
+        HotCardRoleFlags[]? cardRoles,
+        HotChoiceSelection opt,
+        int unblockedIncoming,
+        int availableEnergy,
+        bool isUpgradePrompt,
+        bool hasRetainHand)
     {
         if (opt.CardDefId == 0 || opt.CardDefId >= rules.Cards.Length)
             return 0;
 
         HotCardDef def = rules.Cards[opt.CardDefId];
-        int quality;
-        if (def.Type is CardType.Curse or CardType.Status)
-        {
-            quality = -400;
-        }
-        else if (def.IsStrikeTag || def.IsDefendTag)
-        {
-            quality = 60;
-        }
-        else
-        {
-            quality = def.Type switch
-            {
-                CardType.Power => 280,
-                CardType.Skill => 200,
-                CardType.Attack => 190,
-                _ => 120,
-            };
-            quality += def.Rarity switch
-            {
-                CardRarity.Rare => 90,
-                CardRarity.Uncommon => 50,
-                CardRarity.Common => 20,
-                _ => 10,
-            };
-            quality += Math.Min((int)def.SetupWeight * 4, 140);
-            if (def.BaseCost == 0)
-                quality += 40;
-            else if (def.BaseCost == 1)
-                quality += 15;
-        }
-
         if (opt.Kind is HotChoiceKind.HandCard or HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile)
         {
             HotPileKind pile = opt.Kind switch
@@ -1123,23 +1609,428 @@ internal sealed class HotRolloutEvaluator : IDisposable
             int idx = HotCombatEngine.FindCardIndexByUid(in s, pile, opt.CardUidOrIndex);
             if (idx >= 0)
             {
-                ref readonly HotCard c = ref s.Cards[idx];
-                if ((c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
-                {
-                    quality = -450;
-                }
+                return ComputeCardInstanceQuality(
+                    in s,
+                    in s.Cards[idx],
+                    def,
+                    cold,
+                    rules,
+                    unblockedIncoming,
+                    availableEnergy,
+                    isUpgradePrompt,
+                    cardRoles,
+                    hasRetainHand);
+            }
+        }
+
+        int baseQ = ComputeCardBaseQuality(def, rules);
+        if (def.Type is not (CardType.Curse or CardType.Status))
+        {
+            int genCost = Math.Max(0, (int)def.BaseCost);
+            bool affordableNow = availableEnergy < 0 || genCost <= availableEnergy;
+            if (unblockedIncoming > 0 && (def.GainsBlock || def.IsDefendTag) && affordableNow)
+            {
+                int rawBlock = def.BaseBlock > 0 ? def.BaseBlock : 5;
+                int usefulBlock = Math.Min(rawBlock, unblockedIncoming);
+                bool lethal = unblockedIncoming >= s.Player.CurrentHp;
+                bool heavyThreat = lethal
+                    || unblockedIncoming >= 12
+                    || (unblockedIncoming * 4 >= Math.Max(1, s.Player.CurrentHp));
+                if (lethal)
+                    baseQ += 220 + Math.Min(usefulBlock * 14, 180);
+                else if (heavyThreat)
+                    baseQ += 170 + Math.Min(usefulBlock * 10, 130);
                 else
+                    baseQ += 70 + Math.Min(usefulBlock * 8, 80);
+            }
+            bool isRetained = hasRetainHand || (((HotCardKeywordMask)def.BaseKeywords & HotCardKeywordMask.Retain) != 0);
+            bool hasDraw = (cardRoles != null && (uint)def.DefId < (uint)cardRoles.Length
+                    && (cardRoles[def.DefId] & HotCardRoleFlags.HasDraw) != 0)
+                || def.CardId == HotCustomCardId.CosmicIndifference;
+            if (availableEnergy >= 0 && genCost > availableEnergy && !isRetained && !hasDraw)
+            {
+                int prePenalty = baseQ;
+                bool urgentThreat = unblockedIncoming > 0
+                    && (unblockedIncoming >= s.Player.CurrentHp
+                        || unblockedIncoming >= 12
+                        || (unblockedIncoming * 4 >= Math.Max(1, s.Player.CurrentHp)));
+                baseQ -= urgentThreat ? 25 : 15;
+                int floor = (!isUpgradePrompt && prePenalty > 80) ? 85 : 10;
+                if (!isUpgradePrompt && baseQ < floor)
+                    baseQ = floor;
+            }
+        }
+        return baseQ;
+    }
+
+    private static bool IsDestructiveHandChoice(HotCardDef def, HotRules rules)
+    {
+        if (def.CardId is
+            HotCustomCardId.Acrobatics
+            or HotCustomCardId.DaggerThrow
+            or HotCustomCardId.HiddenDaggers
+            or HotCustomCardId.Prepared
+            or HotCustomCardId.Survivor
+            or HotCustomCardId.Brand
+            or HotCustomCardId.BurningPact
+            or HotCustomCardId.TrueGrit
+            or HotCustomCardId.Scavenge
+            or HotCustomCardId.Purity
+            or HotCustomCardId.Begone
+            or HotCustomCardId.Guards
+            or HotCustomCardId.Florescence
+            or HotCustomCardId.TheHermit
+            or HotCustomCardId.SculptingStrike
+            or HotCustomCardId.ThinkingAhead
+            or HotCustomCardId.Glimmer
+            or HotCustomCardId.PhotonCut)
+        {
+            return true;
+        }
+
+        if (def.OpCount > 0)
+        {
+            ReadOnlySpan<HotCardEffectOp> ops = rules.GetCardOps(def.DefId);
+            for (int k = 0; k < ops.Length; k++)
+            {
+                if (ops[k].Op == HotCardOpKind.DiscardHand)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ShouldPreferHighestHandChoice(
+        ushort sourceCardDefId,
+        HotRules rules,
+        byte minCount,
+        out bool isUpgradePrompt)
+    {
+        isUpgradePrompt = false;
+        if (sourceCardDefId == 0 || sourceCardDefId >= rules.Cards.Length)
+            return false;
+
+        HotCardDef def = rules.Cards[sourceCardDefId];
+
+        switch (def.CardId)
+        {
+            case HotCustomCardId.Armaments:
+                isUpgradePrompt = true;
+                return true;
+            case HotCustomCardId.Nightmare:
+            case HotCustomCardId.DualWield:
+            case HotCustomCardId.DecisionsDecisions:
+            case HotCustomCardId.HeirloomHammer:
+            case HotCustomCardId.Transfigure:
+            case HotCustomCardId.HandTrick:
+            case HotCustomCardId.Snap:
+                return true;
+        }
+
+        if (IsDestructiveHandChoice(def, rules))
+            return false;
+
+        // Metadata-driven classification for unlisted beneficial HandCard prompts
+        // (Retain, Setup, Cost-reduce, Copy, Upgrade, Forge) via HotCardDef ops/entry/vars.
+        if (def.OpCount > 0)
+        {
+            ReadOnlySpan<HotCardEffectOp> ops = rules.GetCardOps(def.DefId);
+            for (int k = 0; k < ops.Length; k++)
+            {
+                if (ops[k].Op == HotCardOpKind.Forge)
+                    return true;
+            }
+        }
+
+        string entry = def.Entry;
+        if (!string.IsNullOrEmpty(entry))
+        {
+            if (entry.Contains("UPGRADE", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("ARMAMENT", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("APOTHEOSIS", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("SMITH", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("TEMPER", StringComparison.OrdinalIgnoreCase))
+            {
+                isUpgradePrompt = true;
+                return true;
+            }
+            if (entry.Contains("RETAIN", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("SETUP", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("FORETHOUGHT", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("COPY", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("DUPLICATE", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("CLONE", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("FORGE", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("ENLIGHTEN", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("DISCOUNT", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("REDUCE", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("MIRROR", StringComparison.OrdinalIgnoreCase)
+                || entry.Contains("REPEAT", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        string[] varNames = def.OrderedVarNames;
+        if (varNames != null)
+        {
+            for (int i = 0; i < varNames.Length; i++)
+            {
+                string? vn = varNames[i];
+                if (string.IsNullOrEmpty(vn))
+                    continue;
+                if (vn.Contains("Upgrade", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (c.UpgradeLevel > 0)
-                        quality += 35;
-                    int liveCost = HotCostModifiers.GetLocalEnergyCost(in c, cold);
-                    if (liveCost == 0)
-                        quality += 30;
+                    isUpgradePrompt = true;
+                    return true;
+                }
+                if (vn.Contains("Repeat", StringComparison.OrdinalIgnoreCase)
+                    || vn.Contains("Copy", StringComparison.OrdinalIgnoreCase)
+                    || vn.Contains("Copies", StringComparison.OrdinalIgnoreCase)
+                    || vn.Contains("Forge", StringComparison.OrdinalIgnoreCase)
+                    || vn.Contains("Retain", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
                 }
             }
         }
 
+        return minCount > 0 && (def.Type == CardType.Power || def.SetupWeight > 0);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ShouldPreferLowestDrawChoice(ushort sourceCardDefId, HotRules rules)
+    {
+        if (sourceCardDefId == 0 || sourceCardDefId >= rules.Cards.Length)
+            return false;
+        return rules.Cards[sourceCardDefId].CardId is
+            HotCustomCardId.Charge
+            or HotCustomCardId.Cleanse
+            or HotCustomCardId.Seance;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int GetEffectiveCardSetupWeight(HotCardDef def, HotRules rules)
+    {
+        int sw = def.SetupWeight;
+        if (sw > 0)
+            return sw;
+        if (def.OpCount > 0)
+        {
+            ReadOnlySpan<HotCardEffectOp> ops = rules.GetCardOps(def.DefId);
+            for (int k = 0; k < ops.Length; k++)
+            {
+                if (ops[k].Op == HotCardOpKind.ApplyPowerSelf)
+                {
+                    ushort pDefId = (ushort)ops[k].Arg0;
+                    if (pDefId < rules.Powers.Length && rules.Powers[pDefId].SetupWeight > sw)
+                        sw = rules.Powers[pDefId].SetupWeight;
+                }
+            }
+        }
+        return sw;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ComputeCardBaseQuality(HotCardDef def, HotRules rules)
+    {
+        if (def.Type is CardType.Curse or CardType.Status)
+            return -400;
+        if (def.IsStrikeTag || def.IsDefendTag)
+            return 60;
+
+        int quality = def.Type switch
+        {
+            CardType.Power => 280,
+            CardType.Skill => 200,
+            CardType.Attack => 190,
+            _ => 120,
+        };
+        quality += def.Rarity switch
+        {
+            CardRarity.Rare => 90,
+            CardRarity.Uncommon => 50,
+            CardRarity.Common => 20,
+            _ => 10,
+        };
+        quality += Math.Min(GetEffectiveCardSetupWeight(def, rules) * 4, 140);
+        if (def.BaseCost == 0)
+            quality += 40;
+        else if (def.BaseCost == 1)
+            quality += 15;
         return quality;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ComputeCardInstanceQuality(
+        in CombatHotState s,
+        in HotCard c,
+        HotCardDef def,
+        HotColdSidecar? cold,
+        HotRules rules,
+        int unblockedIncoming = 0,
+        int availableEnergy = -1,
+        bool isUpgradePrompt = false,
+        HotCardRoleFlags[]? cardRoles = null,
+        bool hasRetainHand = false)
+    {
+        if ((c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) != 0)
+            return -450;
+
+        int quality = ComputeCardBaseQuality(def, rules);
+        if (def.CardId == HotCustomCardId.SovereignBlade)
+        {
+            int forgedDelta = Math.Max((int)c.Var0Delta, c.CardPrivate);
+            if (forgedDelta > 0)
+                quality += Math.Min(forgedDelta * 8, 240);
+        }
+
+        if (isUpgradePrompt)
+        {
+            // RO-01: Suppress the +35 already-upgraded bonus during upgrade prompts and strongly prefer
+            // cards that are not yet maxed and gain real cost/value improvements from upgrading.
+            if (c.UpgradeLevel >= def.MaxUpgradeLevel)
+            {
+                quality -= 300;
+            }
+            else
+            {
+                if (def.BaseCost > 0 && def.UpgradedCost >= 0 && def.UpgradedCost < def.BaseCost)
+                    quality += (def.BaseCost - def.UpgradedCost) * 70;
+                int dmgGain = Math.Max(
+                    0,
+                    def.UpgradedDamage * Math.Max(1, (int)def.UpgradedHits)
+                        - def.BaseDamage * Math.Max(1, (int)def.BaseHits));
+                int blkGain = Math.Max(0, def.UpgradedBlock - def.BaseBlock);
+                int magGain = Math.Max(0, def.UpgradedMagic - def.BaseMagic);
+                quality += Math.Min(dmgGain * 4 + blkGain * 5 + magGain * 10, 90);
+            }
+        }
+        else if (c.UpgradeLevel > 0)
+        {
+            quality += 35;
+        }
+
+        bool isCostsX = (c.Flags & HotCardFlags.CostsX) != 0;
+        int effCost = isCostsX
+            ? 0
+            : Math.Max(0, HotCombatEngine.GetEffectiveEnergyCost(in s, in c, cold, rules, isInPlayablePile: true));
+
+        if (!isCostsX && (effCost == 0 || HotCostModifiers.GetLocalEnergyCost(in c, cold) == 0))
+            quality += 30;
+
+        if (def.Type is not (CardType.Curse or CardType.Status))
+        {
+            bool affordableNow = availableEnergy < 0 || effCost <= availableEnergy;
+
+            // RO-01: Context-aware block urgency under unblocked incoming attack so Defend (60)
+            // outranks generic 190/200 non-block picks when affordable and facing heavy threat.
+            if (unblockedIncoming > 0 && (def.GainsBlock || def.IsDefendTag) && affordableNow)
+            {
+                int rawBlock = def.GetBlock(c.UpgradeLevel, c.Var1Delta);
+                if (rawBlock <= 0)
+                    rawBlock = 5;
+                int usefulBlock = Math.Min(rawBlock, unblockedIncoming);
+                bool lethal = unblockedIncoming >= s.Player.CurrentHp;
+                bool heavyThreat = lethal
+                    || unblockedIncoming >= 12
+                    || (unblockedIncoming * 4 >= Math.Max(1, s.Player.CurrentHp));
+                if (lethal)
+                    quality += 220 + Math.Min(usefulBlock * 14, 180);
+                else if (heavyThreat)
+                    quality += 170 + Math.Min(usefulBlock * 10, 130);
+                else
+                    quality += 70 + Math.Min(usefulBlock * 8, 80);
+            }
+
+            bool isRetained = hasRetainHand
+                || HotCombatEngine.HasEffectiveRetainKeyword(in s, in c, rules)
+                || (c.Flags & HotCardFlags.SingleTurnRetain) != 0;
+            bool hasDraw = (cardRoles != null && (uint)def.DefId < (uint)cardRoles.Length
+                    && (cardRoles[def.DefId] & HotCardRoleFlags.HasDraw) != 0)
+                || def.CardId == HotCustomCardId.CosmicIndifference;
+
+            if (availableEnergy >= 0 && effCost > availableEnergy && !isRetained && !hasDraw)
+            {
+                int prePenalty = quality;
+                bool urgentThreat = unblockedIncoming > 0
+                    && (unblockedIncoming >= s.Player.CurrentHp
+                        || unblockedIncoming >= 12
+                        || (unblockedIncoming * 4 >= Math.Max(1, s.Player.CurrentHp)));
+                quality -= urgentThreat ? 25 : 15;
+                int floor = (!isUpgradePrompt && prePenalty > 80) ? 85 : 10;
+                if (!isUpgradePrompt && quality < floor)
+                    quality = floor;
+            }
+        }
+
+        return quality;
+    }
+
+    private static bool ShouldHoldOrSkipCopyCard(
+        in CombatHotState s,
+        HotColdSidecar? cold,
+        HotRules rules,
+        int copyCardHandIdx,
+        bool attackOrPowerOnly,
+        bool canRetain,
+        bool lethalThreat)
+    {
+        int bestHandQuality = int.MinValue;
+        int bestHandSetup = 0;
+
+        for (int h = 0; h < s.HandCount; h++)
+        {
+            if (h == copyCardHandIdx)
+                continue;
+            ref readonly HotCard c = ref s.Cards[h];
+            HotCardDef d = rules.Cards[c.CardDefId];
+            if (attackOrPowerOnly && d.Type is not (CardType.Attack or CardType.Power))
+                continue;
+
+            int q = ComputeCardInstanceQuality(in s, in c, d, cold, rules);
+            int sw = GetEffectiveCardSetupWeight(d, rules);
+            if (q > bestHandQuality)
+                bestHandQuality = q;
+            if (sw > bestHandSetup)
+                bestHandSetup = sw;
+        }
+
+        // Zero-payoff guard: no eligible target in Hand at all.
+        if (bestHandQuality == int.MinValue)
+            return true;
+
+        if (!canRetain || lethalThreat || s.DrawCount == 0)
+            return false;
+
+        int bestDrawQuality = int.MinValue;
+        int bestDrawSetup = 0;
+        int drawEnd = s.DrawStart + s.DrawCount;
+        for (int dIdx = s.DrawStart; dIdx < drawEnd; dIdx++)
+        {
+            ref readonly HotCard c = ref s.Cards[dIdx];
+            HotCardDef d = rules.Cards[c.CardDefId];
+            if (attackOrPowerOnly && d.Type is not (CardType.Attack or CardType.Power))
+                continue;
+
+            int q = ComputeCardInstanceQuality(in s, in c, d, cold, rules);
+            int sw = GetEffectiveCardSetupWeight(d, rules);
+            if (q > bestDrawQuality)
+                bestDrawQuality = q;
+            if (sw > bestDrawSetup)
+                bestDrawSetup = sw;
+        }
+
+        if (bestDrawQuality == int.MinValue)
+            return false;
+        if (bestHandQuality < 0 && bestDrawQuality >= 0)
+            return true;
+        if (bestHandSetup < 18 && bestDrawSetup >= 18)
+            return true;
+        if (bestDrawSetup >= bestHandSetup + 15 && bestDrawSetup >= 24)
+            return true;
+        return bestHandQuality < 280 && bestDrawQuality >= bestHandQuality + 120;
     }
 
     private static int FindUnblockedEndTurnIndex(
@@ -1182,6 +2073,10 @@ internal sealed class HotRolloutEvaluator : IDisposable
         int playerAccelerant = 0;
         int playerEndTurnBlock = 0;
         bool hasActiveScaling = false;
+        bool hasRetainHand = lookup.HasRunicPyramid;
+        bool preservesExcessBlock = false;
+        ushort stratagemDefId = rules.GetPowerDefId(HotPowerId.StratagemPower);
+        bool hasStratagemPower = false;
 
         Span<int> enemyStr = stackalloc int[HotLimits.MaxEnemies];
         Span<byte> enemyWeak = stackalloc byte[HotLimits.MaxEnemies];
@@ -1207,6 +2102,11 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 else if (defId == lookup.IntangibleDefId) playerIntangible += p.Amount;
                 else if (defId == lookup.AccelerantDefId) playerAccelerant += p.Amount;
                 else if (defId == lookup.MetallicizeDefId || defId == lookup.PlatingDefId) playerEndTurnBlock += p.Amount;
+                else if (defId == lookup.BarricadeDefId || defId == lookup.BlurDefId) preservesExcessBlock = true;
+                else if ((defId == lookup.RetainHandDefId || defId == lookup.WellLaidPlansDefId) && p.Amount > 0) hasRetainHand = true;
+
+                if (stratagemDefId != 0 && defId == stratagemDefId && p.Amount > 0)
+                    hasStratagemPower = true;
 
                 if (p.Amount > 0 && defId < rules.Powers.Length && rules.Powers[defId].Type != MegaCrit.Sts2.Core.Entities.Powers.PowerType.Debuff)
                     hasActiveScaling = true;
@@ -1315,6 +2215,9 @@ internal sealed class HotRolloutEvaluator : IDisposable
             PlayerWeak = playerWeak > 0,
             PlayerFrail = playerFrail > 0,
             HasActiveScaling = hasActiveScaling || orbCount > 0,
+            HasRetainHand = hasRetainHand,
+            PreservesExcessBlock = preservesExcessBlock,
+            HasStratagemPower = hasStratagemPower,
         };
     }
 
@@ -1322,6 +2225,8 @@ internal sealed class HotRolloutEvaluator : IDisposable
         in CombatHotState s,
         HotColdSidecar? cold,
         HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
         HotAction[] actionBuf,
         int actionCount,
         ReadOnlySpan<ulong> blockedBits,
@@ -1351,7 +2256,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 HotCardDef hd = rules.Cards[hc.CardDefId];
                 if (hd.Type is CardType.Status or CardType.Curse)
                     continue;
-                bool isRetained = (hc.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0
+                bool isRetained = HotCombatEngine.HasEffectiveRetainKeyword(in s, in hc, rules)
                     || (hc.Flags & HotCardFlags.SingleTurnRetain) != 0;
                 if (!isRetained)
                 {
@@ -1363,6 +2268,26 @@ internal sealed class HotRolloutEvaluator : IDisposable
 
         bool lethalThreat = ctx.UnblockedIncoming >= s.Player.CurrentHp;
         int missingHp = Math.Max(0, s.Player.MaxHp - s.Player.CurrentHp);
+
+        RolloutStrategyContext strat = default;
+        if (policy.HasAnyStrategyTargets)
+        {
+            BuildRolloutStrategyContext(
+                in s,
+                cold,
+                rules,
+                in policy,
+                actionBuf,
+                actionCount,
+                blockedBits,
+                in ctx,
+                enemyHp,
+                enemyBlock,
+                enemyVuln,
+                pilot,
+                lethalThreat,
+                out strat);
+        }
 
         for (int i = 0; i < actionCount; i++)
         {
@@ -1386,8 +2311,11 @@ internal sealed class HotRolloutEvaluator : IDisposable
                     in s,
                     cold,
                     rules,
+                    in policy,
+                    in evalLookup,
                     act,
                     in ctx,
+                    in strat,
                     enemyHp,
                     enemyBlock,
                     enemyIncoming,
@@ -1412,12 +2340,376 @@ internal sealed class HotRolloutEvaluator : IDisposable
         return bestIdx;
     }
 
+    private static void BuildRolloutStrategyContext(
+        in CombatHotState s,
+        HotColdSidecar? cold,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        HotAction[] actionBuf,
+        int actionCount,
+        ReadOnlySpan<ulong> blockedBits,
+        in FastTurnContext ctx,
+        ReadOnlySpan<int> enemyHp,
+        ReadOnlySpan<int> enemyBlock,
+        ReadOnlySpan<byte> enemyVuln,
+        RolloutPilotKind pilot,
+        bool lethalThreat,
+        out RolloutStrategyContext strat)
+    {
+        strat = default;
+        bool pureGrowthUnsatisfied = policy.HasPureGrowthTargets && !policy.AreBoundedGrowthTargetsSatisfied(in s);
+        ulong unsatisfiedRelicMask = 0UL;
+        int relicDistance = 0;
+        if (policy.HasRelicTargets)
+        {
+            RelicCounterEvaluation reIfWin = policy.EvaluateRelicCounters(in s, won: true);
+            unsatisfiedRelicMask = reIfWin.TargetMask & ~reIfWin.SatisfiedMask;
+            relicDistance = reIfWin.Distance;
+        }
+        bool relicUnsatisfied = unsatisfiedRelicMask != 0UL;
+        if (!pureGrowthUnsatisfied && !relicUnsatisfied)
+            return;
+
+        bool hasEmptyPotionSlot = pureGrowthUnsatisfied && HasEmptyPotionSlot(in s);
+        bool hasAnyNonMinion = pureGrowthUnsatisfied && HasAnyNonMinionLivingEnemy(in s, rules);
+
+        strat.Active = true;
+        strat.PureGrowthUnsatisfied = pureGrowthUnsatisfied;
+        strat.RelicUnsatisfied = relicUnsatisfied;
+        strat.UnsatisfiedRelicMask = unsatisfiedRelicMask;
+        strat.RelicDistance = relicDistance;
+        strat.HasEmptyPotionSlot = hasEmptyPotionSlot;
+        strat.HasAnyNonMinionEnemy = hasAnyNonMinion;
+
+        // Check whether any unblocked playable attack can end combat right now.
+        if (ctx.RevivingEnemies == 0 && ctx.AliveEnemies > 0)
+        {
+            for (int i = 0; i < actionCount; i++)
+            {
+                if ((uint)i < 256u && (blockedBits[i >> 6] & (1UL << (i & 63))) != 0)
+                    continue;
+                HotAction act = actionBuf[i];
+                if (act.Kind != HotActionKind.PlayCard || act.SlotOrHandIdx >= s.HandCount)
+                    continue;
+                ref readonly HotCard c = ref s.Cards[act.SlotOrHandIdx];
+                HotCardDef d = rules.Cards[c.CardDefId];
+                if (d.Type != CardType.Attack)
+                    continue;
+                int baseDmg = d.GetDamage(c.UpgradeLevel, c.Var0Delta);
+                if (baseDmg <= 0)
+                    continue;
+                int hits = d.GetHits(c.UpgradeLevel);
+                int perHit = Math.Max(0, baseDmg + ctx.PlayerStrength);
+                if (ctx.PlayerWeak)
+                    perHit = (perHit * 75) / 100;
+                TargetType et = HotCombatEngine.GetEffectiveCardTargetType(in s, in c, d, rules);
+                int kills = 0;
+                if (et == TargetType.AnyEnemy && (uint)act.TargetEnemySlot < HotLimits.MaxEnemies)
+                {
+                    int eSlot = act.TargetEnemySlot;
+                    int scaled = enemyVuln[eSlot] != 0 ? (perHit * 150) / 100 : perHit;
+                    if (enemyHp[eSlot] > 0 && scaled * hits >= enemyHp[eSlot] + enemyBlock[eSlot])
+                        kills = 1;
+                }
+                else if (et == TargetType.AllEnemies)
+                {
+                    int rosterCount = s.RosterCount;
+                    for (int r = 0; r < rosterCount; r++)
+                    {
+                        byte eSlot = s.ActiveEnemyRoster[r];
+                        if (enemyHp[eSlot] <= 0)
+                            continue;
+                        int scaled = enemyVuln[eSlot] != 0 ? (perHit * 150) / 100 : perHit;
+                        if (scaled * hits >= enemyHp[eSlot] + enemyBlock[eSlot])
+                            kills++;
+                    }
+                }
+                if (kills >= ctx.AliveEnemies)
+                {
+                    strat.HasLethalInHand = true;
+                    break;
+                }
+            }
+        }
+
+        // Scan Hand + Draw (and Discard if Draw is low) for unplayed growth / counter-advancing cards & remaining HP budget.
+        bool hasUnplayedGrowth = false;
+        bool hasCounterOrTurnTick = (unsatisfiedRelicMask & TurnTickRelicMask) != 0UL;
+        int growthBudgetSum = 0;
+        int madScienceCount = s.Growth[9];
+
+        int liveLimit = s.DrawCount < 5
+            ? (s.DiscardStart + s.DiscardCount)
+            : (s.DrawStart + s.DrawCount);
+        for (int idx = 0; idx < liveLimit; idx++)
+        {
+            // Skip gap if any between Hand and Draw (none in packed layout: Hand[0..HandCount), Draw[DrawStart..), Discard[DiscardStart..))
+            ref readonly HotCard c = ref s.Cards[idx];
+            if (c.CardDefId == 0 || c.CardDefId >= rules.Cards.Length)
+                continue;
+            HotCardDef d = rules.Cards[c.CardDefId];
+            if (d.Type is CardType.Status or CardType.Curse)
+                continue;
+
+            if (pureGrowthUnsatisfied)
+            {
+                int b = GetGrowthCardBudget(
+                    in c, d, rules, in policy, hasEmptyPotionSlot, hasAnyNonMinion, madScienceCount,
+                    out _, out _);
+                if (b >= 0)
+                {
+                    hasUnplayedGrowth = true;
+                    if (growthBudgetSum < 60)
+                        growthBudgetSum += b;
+                }
+            }
+
+            if (relicUnsatisfied && !hasCounterOrTurnTick)
+            {
+                bool exhaustsCard = (c.LocalKeywordsMask & HotCardKeywordMask.Exhaust) != 0
+                    || (c.Flags & HotCardFlags.ExhaustOnNextPlay) != 0;
+                int starCost = Math.Max(0, HotCombatEngine.GetEffectiveStarCost(in s, in c, cold, rules, isInPlayablePile: false));
+                if (CardAdvancesUnsatisfiedRelic(d.Type, exhaustsCard, starCost, unsatisfiedRelicMask))
+                    hasCounterOrTurnTick = true;
+            }
+        }
+
+        int relicBudgetSum = 0;
+        if (relicUnsatisfied && policy.RelicTargets != null)
+        {
+            HotRelicTargetEntry[] relicTargets = policy.RelicTargets;
+            for (int i = 0; i < relicTargets.Length; i++)
+            {
+                HotRelicTargetEntry entry = relicTargets[i];
+                if ((unsatisfiedRelicMask & (1UL << (int)entry.Id)) != 0UL && entry.HpAllowance > 0)
+                    relicBudgetSum += entry.HpAllowance;
+            }
+        }
+
+        int spentSoFar = Math.Max(0, policy.InitialPlayerHp - s.Player.CurrentHp);
+        int remainingBudget = Math.Max(0, growthBudgetSum + relicBudgetSum - spentSoFar);
+        strat.RemainingStrategyBudget = remainingBudget;
+
+        if (pilot == RolloutPilotKind.SetupFirst
+            && !lethalThreat
+            && (hasUnplayedGrowth || hasCounterOrTurnTick))
+        {
+            int hpAfterHit = s.Player.CurrentHp - ctx.UnblockedIncoming;
+            bool comfortablySafe = ctx.UnblockedIncoming == 0
+                || (hpAfterHit > Math.Max(4, s.Player.MaxHp / 4) && ctx.UnblockedIncoming <= remainingBudget);
+            if (comfortablySafe)
+                strat.HoldLastEnemyLethal = true;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool HasEmptyPotionSlot(in CombatHotState s)
+    {
+        int slots = Math.Min((int)s.PotionSlotCount, HotLimits.MaxPotions);
+        for (int i = 0; i < slots; i++)
+        {
+            if (s.Potions[i] == 0)
+                return true;
+        }
+        return false;
+    }
+
+    private static bool HasAnyNonMinionLivingEnemy(in CombatHotState s, HotRules rules)
+    {
+        ushort minionDefId = rules.GetPowerDefId(HotPowerId.MinionPower);
+        int rosterCount = s.RosterCount;
+        for (int r = 0; r < rosterCount; r++)
+        {
+            byte eSlot = s.ActiveEnemyRoster[r];
+            ref readonly HotEnemy enemy = ref s.Enemies[eSlot];
+            if ((enemy.Vital.Flags & HotCreatureFlags.Alive) == 0 || enemy.Vital.CurrentHp <= 0)
+                continue;
+            if (minionDefId == 0)
+                return true;
+            byte creatureSlot = (byte)(3 + eSlot);
+            bool isMinion = false;
+            int pCount = s.PowerCount;
+            for (int p = 0; p < pCount; p++)
+            {
+                ref readonly HotPower pw = ref s.Powers[p];
+                if (pw.OwnerSlot == creatureSlot && pw.PowerDefId == minionDefId && pw.Amount > 0)
+                {
+                    isMinion = true;
+                    break;
+                }
+            }
+            if (!isMinion)
+                return true;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsMadScienceImprovement(in HotCard card, HotCardDef def)
+    {
+        if (def.CardId != HotCustomCardId.MadScience)
+            return false;
+        CardType msType = (CardType)(card.CardPrivate & 0xFFFF);
+        if (msType == CardType.None)
+            msType = def.Type;
+        int rider = (card.CardPrivate >> 16) & 0xFFFF;
+        return msType == CardType.Power && rider == 9; // HotTinkerRiderEffect.Improvement == 9
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsGoopyDeckBacked(in HotCard card, HotRules rules)
+        => (card.Flags & HotCardFlags.HasDeckVersion) != 0
+            && card.EnchId != 0
+            && card.EnchId < rules.Enchantments.Length
+            && rules.Enchantments[card.EnchId].EnchantmentId == HotEnchantmentId.Goopy;
+
+    private static int GetGrowthCardBudget(
+        in HotCard card,
+        HotCardDef def,
+        HotRules rules,
+        in HotSearchPolicy policy,
+        bool hasEmptyPotionSlot,
+        bool hasAnyNonMinionEnemy,
+        int madScienceCount,
+        out bool isFatalFinisher,
+        out bool isPlayableGrowth)
+    {
+        isFatalFinisher = false;
+        isPlayableGrowth = false;
+        GrowthValues b = policy.EffectiveGrowthBudgets;
+        int budget = -1;
+
+        switch (def.CardId)
+        {
+            case HotCustomCardId.HandOfGreed:
+                if (hasAnyNonMinionEnemy) { isFatalFinisher = true; budget = Math.Max(budget, b.HandOfGreed); }
+                break;
+            case HotCustomCardId.TheHunt:
+                if (hasAnyNonMinionEnemy) { isFatalFinisher = true; budget = Math.Max(budget, b.TheHunt); }
+                break;
+            case HotCustomCardId.Feed:
+                if (hasAnyNonMinionEnemy) { isFatalFinisher = true; budget = Math.Max(budget, b.Feed); }
+                break;
+            case HotCustomCardId.Royalties:
+                isPlayableGrowth = true;
+                budget = Math.Max(budget, b.Royalties);
+                break;
+            case HotCustomCardId.Alchemize:
+                if (!policy.HasSozu && hasEmptyPotionSlot)
+                {
+                    isPlayableGrowth = true;
+                    budget = Math.Max(budget, b.Alchemize);
+                }
+                break;
+            case HotCustomCardId.GeneticAlgorithm:
+                if ((card.Flags & HotCardFlags.HasDeckVersion) != 0)
+                {
+                    isPlayableGrowth = true;
+                    budget = Math.Max(budget, b.GeneticAlgorithm);
+                }
+                break;
+            case HotCustomCardId.TheScythe:
+                if ((card.Flags & HotCardFlags.HasDeckVersion) != 0)
+                {
+                    isPlayableGrowth = true;
+                    budget = Math.Max(budget, b.TheScythe);
+                }
+                break;
+            case HotCustomCardId.ForbiddenGrimoire:
+                isPlayableGrowth = true;
+                budget = Math.Max(budget, b.ForbiddenGrimoire);
+                break;
+            case HotCustomCardId.MadScience:
+                if (IsMadScienceImprovement(in card, def) && madScienceCount < rules.MadScienceUpgradeCapacity)
+                {
+                    isPlayableGrowth = true;
+                    budget = Math.Max(budget, b.MadScience);
+                }
+                break;
+            case HotCustomCardId.ShowOff:
+                if (hasAnyNonMinionEnemy)
+                {
+                    isPlayableGrowth = true;
+                    budget = Math.Max(budget, b.ShowOff);
+                }
+                break;
+        }
+
+        if (IsGoopyDeckBacked(in card, rules))
+        {
+            isPlayableGrowth = true;
+            budget = Math.Max(budget, b.Goopy);
+        }
+
+        return budget;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool CardAdvancesUnsatisfiedRelic(
+        CardType cardType,
+        bool exhausts,
+        int starCost,
+        ulong unsatisfiedRelicMask)
+    {
+        if ((unsatisfiedRelicMask & CardRelicMask) != 0UL)
+            return true;
+        if ((unsatisfiedRelicMask & AttackRelicMask) != 0UL && cardType == CardType.Attack)
+            return true;
+        if ((unsatisfiedRelicMask & SkillRelicMask) != 0UL && cardType == CardType.Skill)
+            return true;
+        if ((unsatisfiedRelicMask & ExhaustRelicMask) != 0UL && exhausts)
+            return true;
+        if ((unsatisfiedRelicMask & StarRelicMask) != 0UL && starCost > 0)
+            return true;
+        return false;
+    }
+
+    private static bool HasFatalEligibleKillTarget(
+        in CombatHotState s,
+        HotRules rules,
+        TargetType effTarget,
+        int targetSlot,
+        ReadOnlySpan<int> enemyHp,
+        ReadOnlySpan<int> enemyBlock,
+        ReadOnlySpan<byte> enemyVuln,
+        int perHit,
+        int hits)
+    {
+        if (effTarget == TargetType.AnyEnemy)
+        {
+            return (uint)targetSlot < HotLimits.MaxEnemies
+                && enemyHp[targetSlot] > 0
+                && HotCombatEngine.ShouldEnemyDeathTriggerFatal(in s, rules, targetSlot);
+        }
+        if (effTarget == TargetType.AllEnemies)
+        {
+            int rosterCount = s.RosterCount;
+            for (int r = 0; r < rosterCount; r++)
+            {
+                byte eSlot = s.ActiveEnemyRoster[r];
+                if (enemyHp[eSlot] <= 0)
+                    continue;
+                int scaled = enemyVuln[eSlot] != 0 ? (perHit * 150) / 100 : perHit;
+                if (scaled * hits >= enemyHp[eSlot] + enemyBlock[eSlot]
+                    && HotCombatEngine.ShouldEnemyDeathTriggerFatal(in s, rules, eSlot))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return HasAnyNonMinionLivingEnemy(in s, rules);
+    }
+
     private static int ScorePlayCardAction(
         in CombatHotState s,
         HotColdSidecar? cold,
         HotRules rules,
+        in HotSearchPolicy policy,
+        in HotEvalLookup evalLookup,
         HotAction act,
         in FastTurnContext ctx,
+        in RolloutStrategyContext strat,
         ReadOnlySpan<int> enemyHp,
         ReadOnlySpan<int> enemyBlock,
         ReadOnlySpan<int> enemyIncoming,
@@ -1434,7 +2726,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
         int starCost = Math.Max(0, HotCombatEngine.GetEffectiveStarCost(in s, in card, cold, rules, isInPlayablePile: true));
         bool exhausts = (card.LocalKeywordsMask & HotCardKeywordMask.Exhaust) != 0
             || (card.Flags & HotCardFlags.ExhaustOnNextPlay) != 0;
-        bool isRetained = (card.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0
+        bool isRetained = HotCombatEngine.HasEffectiveRetainKeyword(in s, in card, rules)
             || (card.Flags & HotCardFlags.SingleTurnRetain) != 0;
 
         bool hasDraw = false;
@@ -1442,10 +2734,28 @@ internal sealed class HotRolloutEvaluator : IDisposable
         bool hasEngineOp = false;
         bool hasSelfBuff = false;
         bool hasEnemyDebuff = false;
+        bool appliesWeak = false;
         bool hasHeal = def.CanHealPlayer;
         bool hasSelfHpLoss = false;
         bool hasBlockOp = def.GainsBlock;
         bool hasAttackOp = def.Type == CardType.Attack;
+        int effectiveSetupWeight = def.SetupWeight;
+
+        HotCardRoleFlags[]? cardRoles = evalLookup.CardRoles;
+        if (cardRoles != null && (uint)card.CardDefId < (uint)cardRoles.Length)
+        {
+            HotCardRoleFlags roleFlags = cardRoles[card.CardDefId];
+            hasDraw |= (roleFlags & HotCardRoleFlags.HasDraw) != 0;
+            hasEnergyOrStarGain |= (roleFlags & HotCardRoleFlags.HasEnergyOrStarGain) != 0;
+            hasEngineOp |= (roleFlags & HotCardRoleFlags.HasEngineOp) != 0;
+            hasSelfBuff |= (roleFlags & HotCardRoleFlags.HasSelfBuff) != 0;
+            hasEnemyDebuff |= (roleFlags & HotCardRoleFlags.HasEnemyDebuff) != 0;
+            appliesWeak |= (roleFlags & HotCardRoleFlags.AppliesWeak) != 0;
+            hasBlockOp |= (roleFlags & HotCardRoleFlags.HasBlock) != 0;
+            hasSelfHpLoss |= (roleFlags & HotCardRoleFlags.HasSelfHpLoss) != 0;
+            if (appliesWeak)
+                hasEnemyDebuff = true;
+        }
 
         ReadOnlySpan<HotCardEffectOp> ops = rules.GetCardOps(card.CardDefId);
         for (int k = 0; k < ops.Length; k++)
@@ -1467,13 +2777,25 @@ internal sealed class HotRolloutEvaluator : IDisposable
                     hasEngineOp = true;
                     break;
                 case HotCardOpKind.ApplyPowerSelf:
+                {
+                    hasSelfBuff = true;
+                    ushort pDefId = (ushort)ops[k].Arg0;
+                    if (pDefId < rules.Powers.Length && rules.Powers[pDefId].SetupWeight > effectiveSetupWeight)
+                        effectiveSetupWeight = rules.Powers[pDefId].SetupWeight;
+                    break;
+                }
                 case HotCardOpKind.ApplyTempStat:
                     hasSelfBuff = true;
                     break;
                 case HotCardOpKind.ApplyPowerTarget:
                 case HotCardOpKind.ApplyPowerAllEnemies:
+                {
                     hasEnemyDebuff = true;
+                    ushort pDefId = (ushort)ops[k].Arg0;
+                    if (pDefId < rules.Powers.Length && rules.Powers[pDefId].PowerId == HotPowerId.WeakPower)
+                        appliesWeak = true;
                     break;
+                }
                 case HotCardOpKind.Heal:
                     hasHeal = true;
                     break;
@@ -1502,6 +2824,62 @@ internal sealed class HotRolloutEvaluator : IDisposable
             return -200;
         }
 
+        // Zero-payoff & RetainHandPower hold guards (zero heap allocation):
+        if (def.CardId == HotCustomCardId.GrandFinale && s.DrawCount > 0)
+            return (ctx.HasRetainHand || isRetained) ? -120 : -20;
+        if (def.CardId == HotCustomCardId.CalculatedGamble && s.HandCount <= 1)
+            return -120;
+        if (def.CardId is HotCustomCardId.Nightmare or HotCustomCardId.DualWield
+            && ShouldHoldOrSkipCopyCard(
+                in s,
+                cold,
+                rules,
+                act.SlotOrHandIdx,
+                attackOrPowerOnly: def.CardId == HotCustomCardId.DualWield,
+                canRetain: ctx.HasRetainHand || isRetained,
+                lethalThreat: lethalThreat))
+        {
+            return -120;
+        }
+        bool isFatalFinisher = false;
+        bool isPlayableGrowth = false;
+        int cardGrowthBudget = -1;
+        bool advancesRelic = false;
+        if (strat.Active)
+        {
+            if (strat.PureGrowthUnsatisfied)
+            {
+                cardGrowthBudget = GetGrowthCardBudget(
+                    in card, def, rules, in policy,
+                    strat.HasEmptyPotionSlot, strat.HasAnyNonMinionEnemy, s.Growth[9],
+                    out isFatalFinisher, out isPlayableGrowth);
+            }
+            if (strat.RelicUnsatisfied && !hasSelfHpLoss)
+            {
+                advancesRelic = CardAdvancesUnsatisfiedRelic(def.Type, exhausts, starCost, strat.UnsatisfiedRelicMask);
+            }
+        }
+
+        bool isPureBlockCard = hasBlockOp
+            && !hasAttackOp
+            && !hasDraw
+            && !hasEnergyOrStarGain
+            && !hasEngineOp
+            && !hasSelfBuff
+            && !hasEnemyDebuff
+            && !hasHeal
+            && def.Type != CardType.Power;
+        if ((ctx.HasRetainHand || isRetained)
+            && ctx.UnblockedIncoming == 0
+            && !ctx.PreservesExcessBlock
+            && isPureBlockCard
+            && !isPlayableGrowth
+            && !advancesRelic
+            && s.HandCount <= 7)
+        {
+            return -60;
+        }
+
         // Estimate generic Block and Damage strictly from HotCardDef + generic combat stats.
         int estBlock = 0;
         if (hasBlockOp)
@@ -1522,6 +2900,8 @@ internal sealed class HotRolloutEvaluator : IDisposable
 
         int estSingleDmg = 0;
         int estTotalDmg = 0;
+        int estPerHit = 0;
+        int estHits = 1;
         int killsCount = 0;
         int killedIncoming = 0;
         int targetSlot = act.TargetEnemySlot;
@@ -1531,11 +2911,13 @@ internal sealed class HotRolloutEvaluator : IDisposable
         {
             int baseDmg = def.GetDamage(card.UpgradeLevel, card.Var0Delta);
             int hits = def.GetHits(card.UpgradeLevel);
+            estHits = hits;
             if (baseDmg > 0)
             {
                 int perHit = Math.Max(0, baseDmg + ctx.PlayerStrength);
                 if (ctx.PlayerWeak)
                     perHit = (perHit * 75) / 100;
+                estPerHit = perHit;
 
                 if (effTarget == TargetType.AnyEnemy && (uint)targetSlot < HotLimits.MaxEnemies)
                 {
@@ -1581,15 +2963,80 @@ internal sealed class HotRolloutEvaluator : IDisposable
             }
         }
 
-        // Immediate fight-ending lethal ALWAYS wins priority in both pilots!
+        // Immediate fight-ending lethal ALWAYS wins priority in both pilots when no unsatisfied strategy targets remain!
         if (killsCount > 0 && killsCount >= ctx.AliveEnemies && ctx.RevivingEnemies == 0)
+        {
+            if (!strat.Active)
+                return 1_000_000 + estTotalDmg * 10 - energyCost;
+
+            if (isFatalFinisher
+                && HasFatalEligibleKillTarget(in s, rules, effTarget, targetSlot, enemyHp, enemyBlock, enemyVuln, estPerHit, estHits))
+            {
+                return 1_500_000 + estTotalDmg * 10 - energyCost;
+            }
+
+            if (isPlayableGrowth && (!strat.HoldLastEnemyLethal || !strat.RelicUnsatisfied))
+                return 1_400_000 + estTotalDmg * 10 - energyCost;
+
+            if (advancesRelic && strat.RelicDistance <= 1 && !strat.PureGrowthUnsatisfied)
+                return 1_300_000 + estTotalDmg * 10 - energyCost;
+
+            if (strat.HoldLastEnemyLethal)
+                return -100;
+
             return 1_000_000 + estTotalDmg * 10 - energyCost;
+        }
 
         // Avoid committing suicide via self-HP loss cards unless lethal.
         if (hasSelfHpLoss && s.Player.CurrentHp <= 3)
             return -500;
 
+        if (strat.Active && !lethalThreat)
+        {
+            // Playable non-lethal growth cards (Alchemize, Royalties, ForbiddenGrimoire, MadScience(Improvement),
+            // deck-backed GeneticAlgorithm/Goopy/TheScythe, ShowOff) rank ABOVE non-Fatal last-enemy lethal (1_200_000).
+            if (isPlayableGrowth)
+            {
+                bool safePlay = ctx.UnblockedIncoming == 0
+                    || (strat.HasLethalInHand && (s.Energy > energyCost || ctx.UnblockedIncoming <= Math.Max(0, cardGrowthBudget)));
+                if (safePlay)
+                {
+                    int tieBoost = (energyCost == 0 && starCost == 0) || def.CardId == HotCustomCardId.ShowOff ? 50 : 0;
+                    return 1_200_000 + tieBoost - energyCost * 100;
+                }
+            }
+
+            // Safe relic counter-advancing cards rank above non-target last-enemy lethal (1_150_000).
+            if (advancesRelic)
+            {
+                bool safeCounterPlay = ctx.UnblockedIncoming == 0
+                    || (strat.HasLethalInHand && (s.Energy > energyCost || ctx.UnblockedIncoming <= strat.RemainingStrategyBudget));
+                if (safeCounterPlay)
+                    return 1_150_000 - energyCost * 100;
+            }
+        }
+
         int prio = 50;
+
+        if (strat.Active)
+        {
+            if (isPlayableGrowth && !lethalThreat)
+                prio += 1_800 + Math.Max(0, cardGrowthBudget) * 160;
+            if (isFatalFinisher)
+            {
+                if (killsCount > 0
+                    && HasFatalEligibleKillTarget(in s, rules, effTarget, targetSlot, enemyHp, enemyBlock, enemyVuln, estPerHit, estHits))
+                {
+                    prio += 25_000 + Math.Max(0, cardGrowthBudget) * 200;
+                }
+                else if (killsCount == 0)
+                {
+                    prio -= 300;
+                }
+            }
+            if (advancesRelic && !lethalThreat)
+                prio += 650;
+        }
 
         // Free resource / draw accelerators run early so the pilot sees the full hand & energy pool.
         if (energyCost == 0 && starCost == 0)
@@ -1624,12 +3071,16 @@ internal sealed class HotRolloutEvaluator : IDisposable
 
         if (pilot == RolloutPilotKind.DefensiveTempo)
         {
-            // Pilot A (Defensive / Tempo): minimize immediate unblocked incoming HP loss first,
-            // then maximize enemy HP reduction and efficient energy utilization.
+            // Pilot A (Defensive / Tempo): block lethal or critical (<25% MaxHp) incoming first,
+            // otherwise scale Power priority by catalog SetupWeight so scaling engines get played!
+            int postHitHp = s.Player.CurrentHp - ctx.UnblockedIncoming;
+            bool criticalDanger = lethalThreat
+                || (ctx.UnblockedIncoming > 0 && postHitHp * 4 < Math.Max(1, s.Player.MaxHp));
+
             if (ctx.UnblockedIncoming > 0)
             {
                 if (usefulBlock > 0)
-                    prio += usefulBlock * (lethalThreat ? 260 : 135) + 450;
+                    prio += usefulBlock * (lethalThreat ? 260 : criticalDanger ? 185 : 135) + 450;
                 else if (estBlock > 0)
                     prio += estBlock * 15;
 
@@ -1637,19 +3088,43 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 {
                     bool targetsAttacker = (uint)targetSlot < HotLimits.MaxEnemies && enemyIncoming[targetSlot] > 0;
                     prio += (targetsAttacker || effTarget == TargetType.AllEnemies) ? 420 : 180;
+                    if (appliesWeak)
+                    {
+                        int targetIncoming = effTarget == TargetType.AllEnemies
+                            ? ctx.UnblockedIncoming
+                            : ((uint)targetSlot < HotLimits.MaxEnemies ? enemyIncoming[targetSlot] : 0);
+                        int weakMitigation = Math.Min(ctx.UnblockedIncoming, Math.Max(0, targetIncoming / 4));
+                        if (weakMitigation > 0)
+                            prio += weakMitigation * (lethalThreat ? 220 : 120);
+                    }
                 }
             }
-            else if (estBlock > 0)
+            else
             {
-                // Already fully blocked: small credit only (or higher if excess block is useful).
-                prio += Math.Min(estBlock, 15) * 6;
+                if (estBlock > 0)
+                {
+                    // Already fully blocked: small credit only (or higher if excess block is preserved).
+                    prio += Math.Min(estBlock, 15) * (ctx.PreservesExcessBlock ? 28 : 6);
+                }
+                if (hasEnemyDebuff)
+                    prio += 180;
             }
 
             if (estTotalDmg > 0)
                 prio += estTotalDmg * 45;
 
             if (def.Type == CardType.Power)
-                prio += ctx.UnblockedIncoming == 0 ? 520 + def.SetupWeight * 15 : (lethalThreat ? 100 : 240);
+            {
+                int powerWeight = Math.Clamp(effectiveSetupWeight > 0 ? effectiveSetupWeight : 12, 0, 50);
+                if (ctx.UnblockedIncoming == 0)
+                    prio += 720 + powerWeight * 24;
+                else if (!criticalDanger)
+                    prio += 360 + powerWeight * 16;
+                else if (!lethalThreat)
+                    prio += 200 + powerWeight * 8;
+                else
+                    prio += 80;
+            }
 
             if (hasDraw)
                 prio += 320;
@@ -1678,7 +3153,7 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 prio += usefulBlock * 240 + 1_200;
 
             if (def.Type == CardType.Power)
-                prio += 1_550 + Math.Clamp((int)def.SetupWeight, 0, 30) * 25;
+                prio += 1_550 + Math.Clamp(effectiveSetupWeight, 0, 50) * 25;
 
             if (hasEngineOp)
                 prio += 950;
@@ -1772,6 +3247,12 @@ internal sealed class HotRolloutEvaluator : IDisposable
                 if (!res.Executed || res.NeedsChoice)
                     return false;
 
+                if (policy.BrightestFlameEffectiveMaxHpLimit.HasValue
+                    && !policy.AllowsBrightestFlame(_commitState.BrightestFlameMaxHpSpent))
+                {
+                    return false;
+                }
+
                 byte autoPotionDelta = DetectAutoPotionDelta(in _commitBeforeStepState, in _commitState);
                 curPotionCount = (byte)Math.Min(byte.MaxValue, curPotionCount + autoPotionDelta);
                 curActionCount = (ushort)Math.Min(ushort.MaxValue, curActionCount + 1);
@@ -1829,6 +3310,8 @@ internal sealed class HotRolloutEvaluator : IDisposable
                     if (step.ChoiceCount > 0) flags |= HotNodeFlags.HasChoice;
                     if (summary.DeathSaveUseCount > 0) flags |= HotNodeFlags.HasDeathSave;
                     if (summary.ForfeitsGold) flags |= HotNodeFlags.ForfeitsGold;
+                    if (summary.AllGrowthTargetsSatisfied) flags |= HotNodeFlags.AllGrowthTargetsSatisfied;
+                    if (summary.AllRelicTargetsSatisfied) flags |= HotNodeFlags.AllRelicTargetsSatisfied;
 
                     _stagedPromoteNodes[builtCount++] = new HotSearchNode
                     {
@@ -1853,6 +3336,12 @@ internal sealed class HotRolloutEvaluator : IDisposable
                         OptionalityScore = eval.OptionalityScore,
                         OutstandingStolen = (short)Math.Clamp(summary.OutstandingStolen, 0, short.MaxValue),
                         GrowthHpCredit = (short)Math.Clamp(summary.GrowthHpCredit, short.MinValue, short.MaxValue),
+                        RelicHpCredit = summary.RelicHpCredit,
+                        RelicHealingHpCredit = summary.RelicHealingHpCredit,
+                        RelicSatisfiedMask = summary.RelicSatisfiedMask,
+                        RelicDistance = summary.RelicDistance,
+                        RelicSatisfiedPriority = summary.RelicSatisfiedPriority,
+                        FeedCount = summary.FeedCount,
                         PotionStrategicCost = parentNode.PotionStrategicCost,
                         DeathSaveHpRestored = (short)Math.Clamp(summary.DeathSaveHpRestored, 0, short.MaxValue),
                         PotionMask = parentNode.PotionMask,

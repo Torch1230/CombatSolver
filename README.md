@@ -1,90 +1,35 @@
 # 战斗路线求解器 / Combat Solver
 
-Combat Solver 是一个面向《杀戮尖塔 2》单人模式的战斗路线求解器。进入战斗后，它会在后台模拟当前手牌、牌堆、敌人行动、药水、遗物、选牌和跨回合状态，并在预算范围内给出推荐路线、预计战损与关键行动。
+Combat Solver 是面向《杀戮尖塔 2》单人模式（标准 / 恐惧 / 极速）的战斗路线求解器。进入战斗后，它在主线程捕获稳定局面，在后台独立模拟手牌、牌堆、敌人意图、药水、遗物与跨回合效果，并给出推荐路线与预计整场战损。你可以仅参考建议、执行当前回合，或连续全自动接管；搜索绝不修改游戏 RNG 或后台操作真实战斗。
 
-玩家可以只查看建议，也可以让求解器执行当前回合，或连续接管整场战斗。搜索不会修改游戏 RNG，也不会在后台操作真实战斗状态。
+- **发布与更新**：[GitHub Release](https://github.com/Torch1230/CombatSolver/releases/latest) · [版本更新日志](docs/releases/README.md)
+- **参与贡献**：[社区任务入口](https://github.com/Torch1230/CombatSolver/issues/171) · [贡献指南](CONTRIBUTING.md) · [夹具与测试指南](docs/community/testing-guide.md)
 
-**参与开发：** [社区任务入口](https://github.com/Torch1230/CombatSolver/issues/171)按每批 5 个主题发布故障修复与路线优化任务。每主题 1 至 2 个代表包，版本见各批次说明。[贡献指南](CONTRIBUTING.md)说明整批认领与 PR 流程。[夹具与脚手架指南](docs/community/testing-guide.md)说明差分、包回放与策略实验入口。
+> **English Quick Guide:** The overlay switches to English automatically when the game language is not Simplified/Traditional Chinese (restart to refresh existing panels). Use **Play turn** for one turn, **Auto: On** (or **Auto-enable auto-play**) for continuous play, **Recalculate** / **Stop search** / **Use candidate** / **Freeze route** to control execution, and `Ctrl+F9` to toggle the overlay. Configure **Potions**, **Growth**, **Relics**, and **Settings** (**General**, **Performance**, **Reports > Upload report** / **Export report**) from the header. Single-player only.
 
-最新客户端与安装包见 [GitHub Release](https://github.com/Torch1230/CombatSolver/releases/latest)，各版本变更见[更新日志目录](docs/releases/README.md)。
+## 核心功能
 
-**English UI:** Set the game language to English and restart the game. CombatSolver provides a recommended route; use **Play turn** for one turn or **Auto: On** for continuous play. Configure potions, growth and search budgets in the overlay. **Settings > Reports > Upload report** submits a bug report. Logs, raw errors and some detailed diagnostics retain their original text. Single-player only.
+- **高速跨回合引擎**：持续模拟后续抽牌、洗牌、敌人行动与状态结算，按生存、胜利与整场战损排优，而非只看眼前一回合。普通战斗瞬间完成，复杂战斗在时限内自动逐级深化。
+- **清晰路线与灵活接管**：按回合展示出牌、目标、选牌、药水与关键遗物触发，顶部汇总本局已扣血、预计总扣血与回血。支持仅查看、**重新计算**、**执行本回合**、**全自动**（右侧可勾选**自动开启全自动**）；搜索中可**停止计算**或**采用当前路线**，出解后可**冻结路线**暂停自动重算；遭遇偷窃类敌人时可切换**保牌/保钱**或**放走**；按 `Ctrl+F9` 随时显隐界面。
+- **原生选牌与路线复用**：开局选牌、回合初选牌与抽弃牌均保留游戏原生页面与动画；实机状态与预测一致时跨回合直接复用路线，仅在状态偏离时重新计算。
 
-界面跟随游戏语言：简体/繁体中文使用现有中文文案，其他语言使用英文。简化版不提供独立语言开关；卡牌胶囊、选牌和相关悬停说明支持运行中切换语言，其他既有窗口可通过重启统一刷新。
+## 策略侧栏
 
-## 主要功能
+主界面顶栏提供三个独立策略侧栏，配置均自动保存：
 
-- **跨回合搜索**：继续预测抽牌、洗牌、敌人行动、持续状态和后续资源，而不是只计算眼前一回合。
-- **路线与战损展示**：按回合展示出牌、目标、选牌、药水、结束回合和关键遗物触发，并显示当前路线的预计整场战损。
-- **三种使用方式**：仅查看路线、执行本回合、连续全自动。搜索期间可以立即停止，并暂停本场后续自动搜索。
-- **原生选牌流程**：开局选牌、回合开始选牌以及抽弃牌等操作继续使用游戏原生页面和动画；求解器在页面出现后计算并展示计划。
-- **跨回合路线复用**：实机状态与预测一致时直接沿用既有路线，只有状态发生实际变化时才重新搜索。
-- **逐瓶药水策略**：主界面实时显示当前药水的图标和名称，每瓶可独立设为智能使用、强制使用或禁用保护，并可在「药水策略」面板中直接调整每瓶药水的省血阈值；新获得的药水默认使用智能策略。
-- **局外成长策略**：主界面“成长策略”侧栏可分别配置八类局外收益每次允许的额外战损，点击输入框外部或按回车保存；默认 0 也会优先获取同等战损下的收益。搜索设置另有“提前结束搜索的战损阈值”，有成长目标或非零成长额度时不生效。
-- **可调搜索预算**：提供低、中、高、极高和自定义配置，并支持单线程或 `2-16` 路并行搜索。
-- **界面与通知**：默认使用深色界面，可切换浅色模式并调整覆盖层透明度；搜索结束可按设置发送 Windows 系统通知和提示音。
-- **问题反馈**：可以从设置中直接上传问题包，也可以导出到本地后手动提交。问题描述会附带本场自动分类，便于定位更优路线、计划外重算、执行中止和搜索失败。
-- **在线统计**：默认每 30 秒向作者发送随机安装标识、昵称、角色、楼层、当前战斗、预计战损和版本，可在设置中关闭；不上传完整路线，离线后清除昵称和战斗详情，保留历史人数及安装标识对应的累计在线时长。详见 [统计字段与关闭方式](docs/ONLINE_STATISTICS.md)。
-
-## 工作方式
-
-1. 游戏完成发牌并进入稳定的玩家操作阶段后，Combat Solver 在主线程捕获一次战斗根状态。
-2. 后台搜索只操作该根状态派生出的独立模拟分支，推进卡牌、牌堆、RNG、怪物 AI、药水、遗物和跨回合效果。
-3. 搜索结果转换为只读路线快照并显示在覆盖层中，不会因为展示路线而操作真实战斗。
-4. 玩家选择执行后，Mod 通过游戏原生入口依次完成计划动作；实际状态偏离预测时停止复用并重新搜索。
-
-这一设计把“预测”和“实机执行”分开：后台线程不能读取持续变化的实机值，模拟分支也不能修改真实战斗。
-
-## 战前预测 API（面向 Mod 开发者）
-
-该接口从 `0.31.2` 起提供，当前公开 API 版本为 v6。v5 的确定预测与假设样本入口保持兼容；使用规划快照入口的伴生 Mod 应依赖包含 v6 的 CombatSolver 构建。
-
-`CombatSolver.Api.PreCombatForecastApi` 为地图信息类 Mod 提供公开的战前预测入口。调用方在游戏主线程提交当前单人跑局、已确定的 `EncounterModel`、目标楼层及房间/地图节点类型；API 返回预计整场战损、所选路线中的药水动作、搜索边界、可信度、结束回合和诊断日志位置。
-
-该入口不会在当前游戏进程中建立战斗。它先序列化完整跑局并生成不透明状态令牌，再启动 Combat Solver 独占的 Windows headless 游戏进程；子进程加载与主进程完全一致的 Mod 集合，在独立用户目录中精确恢复跑局、核对规范化快照、进入目标战斗并复用现有求解器。Combat Solver 会在主进程初始化期间用独立文件副本保存本次会话实际选择的 Mod 文件；Steam 在游戏运行中更新工坊目录时，worker 仍加载主进程已经载入的版本。API v6 会在每次请求完整回到主菜单且后台活动归零后复用同一进程；默认空闲两分钟后关闭，调用方也可把期限改为其他值、用 `null` 一直维持、调用 `StopWorkerAsync()` 立即关闭，或要求请求完成后自动关闭。调用方可以读取 PID、工作集和私有内存，手动重启/预热，并在 worker 已经待命时立即重设空闲期限。隔离设置会把主音量、BGM、音效与环境音强制为零。结果返回前，主进程再次比较活动跑局、战斗状态和完整令牌；任一状态或 RNG 变化都会返回 `LiveStateChanged`，不会发布过期结果。
-
-`SimulateAsync` 提供独立的纯模拟入口：调用方从当前幕原生遭遇池选择怪组并提供样本种子，worker 在精确恢复当前跑局之后，只在隔离进程中替换怪物组成/生命、开局洗牌、怪物行动和其他战斗相关 RNG。它使用当前牌组、遗物、药水与生命评估假设战斗，不代表尚未确定的远处战斗结果。
-
-`SimulatePlanningAsync` 用调用方提供的独立 `SerializableRun` 作为 worker 的实际跑局状态，同时用当前跑局只捕获 Mod/游戏环境并在返回前验证 live 状态未变化。这样地图规划可以把已计划的牌、生命、药水和地图修改带入战斗模拟；它接受问号点和原生事件战斗，并在主线程按目标坐标确定第二首领标记。规划存档必须属于同一幕、种子、角色和玩家身份，失败或过期结果不会写回主跑局。
-
-最小调用方式：
-
-```csharp
-if (PreCombatForecastApi.IsAvailable)
-{
-    PreCombatForecastResult result = await PreCombatForecastApi.ForecastAsync(
-        run,
-        encounter,
-        targetActFloor,
-        targetMapColumn,
-        PreCombatRoomKind.Normal,
-        PreCombatMapPointKind.Normal);
-}
-```
-
-当前 API 版本为 `6`，仅支持 Windows、单人跑局和未处于战斗中的状态。首次请求需要建立隔离游戏镜像并启动进程，适合由地图信息类 Mod 异步调用。相同状态与目标的确定请求会复用运行中任务或已完成结果；显式假设样本和规划快照模拟不进入确定结果缓存。`SetWorkerIdleTimeoutAsync()` 与请求选项中的 `WorkerIdleTimeoutMilliseconds` 控制当前及后续 worker 的空闲期限，`null` 表示不自动关闭。
-
-确定预测的 `ForceRefresh=true` 同时绕过已完成结果缓存与正在运行的同参数任务；是否取消 worker 仍由 `CancelWorkerWhenCallerCancels` 独立控制。正在运行的请求仅在关闭标志与空闲期限一致时共享任务。已完成结果仍可跨生命周期选项复用，但缓存命中也会落实本次关闭/空闲设置；需要等待其他请求释放 worker 时，在安全空闲边界处理，不取消其他调用方的搜索。
-
-## 第三方角色适配
-
-主项目开发与社区任务面向原版游戏内容，不主动实现修改游戏内容的第三方 Mod 适配。已有登记入口供第三方作者维护自己的适配层。
-
-`0.31.3` 合入 PR #50–#55，提供第三方 Power 战略估值、药水玩家选择与牌堆可选弃牌入口，并补充未镜像可打出条件的覆盖提示。使用这些入口的适配 Mod 应将 CombatSolver 最低依赖设为 `0.31.3`。
-
-各角色的具体战斗效果由适配层实现与验证。登记方式、分支状态要求和验证方法见 [第三方 Mod 适配手册](docs/third-party/README.md)。
+- **药水（Potions）**：实时列出当前药水图标与槽位，支持快捷预设（全部智能 / 全部保护 / 全部强制 / 仅用已强制）；每瓶可独立切换 **智能使用 / 强制使用 / 禁用保护**。智能模式下可逐瓶设定 **省血阈值**（按药水类型保存，支持单瓶「默认」与一键「重置阈值」，修改后立即重算；新获得药水默认智能使用）。
+- **遗物（Relics）**：支持 10 种跨战斗循环计数遗物（如开心小花、摆动球、钢笔尖、双截棍等）配置 **结束计数范围**、**愿付额外战损** 与 **优先级（1–3，3 最高）**，并自动按优先级协调同周期错位遗物；同时支持 **带骨肉** 半血回血目标（按净战损权衡是否值得额外卖血）。可勾选「显示未持有」提前配置，或展开查看其他不可卡数遗物说明。
+- **成长（Growth）**：可为 11 类原版局外成长来源（及第三方已登记来源）逐项设置每次收益允许的额外战损（默认 `0` 也会在同战损下优先拿收益）；提供 **不考虑局外收益** 总开关（关闭额度与保路，保留同战损平局优先），以及 **至亮之焰** 单场最大生命消耗上限开关与额度。
 
 ## 安装与兼容性
 
-运行要求：
+运行要求（声明值以 [CombatSolver.json](CombatSolver.json) 为准）：
 
-- 《杀戮尖塔 2》最低 `0.113.0`（已适配 `0.113.1`）
-- [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) 最低 `0.6.11`
-- 单人战斗模式
+- 《杀戮尖塔 2》最低 `0.114.0`（已完整适配 `0.114.0` 单人标准、恐惧与极速模式）
+- [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) `0.6.16` 或更高版本
+- 仅支持单人战斗，不支持多人模式
 
-最低版本以 [CombatSolver.json](CombatSolver.json) 的声明为准。
-
-推荐通过 Steam 创意工坊订阅。使用 GitHub Release 手动安装时，在游戏目录的 `mods/CombatSolver` 下放置以下文件：
+推荐通过 Steam 创意工坊订阅。若通过 GitHub Release 手动安装，将以下四个文件放入游戏目录的 `mods/CombatSolver/`：
 
 ```text
 CombatSolver.dll
@@ -93,97 +38,72 @@ LICENSE
 THIRD_PARTY_NOTICES.md
 ```
 
-启用 RitsuLib 和 Combat Solver 后进入一场单人战斗。等待发牌和回合开始效果结算，路线面板会自动显示搜索进度和结果。
+启用 RitsuLib 与 Combat Solver 后进入单人战斗，待发牌及回合开始效果结算完毕，覆盖层即自动开始计算。
 
-## 操作与设置
+**求解边界**：搜索基于时间上限的启发式探索，展示的是预算内找到的最佳路线，不承诺数学意义上的全局最优解。遇到未适配的第三方内容性 Mod 或未知战斗语义时，求解器会明确停止在不支持边界，不会误报胜利。覆盖范围见 [战斗 Hook 覆盖报告](docs/COMBAT_HOOK_COVERAGE.md) 与 [适配验证记录](docs/ADAPTATION_VERIFICATION.md)。
 
-路线面板提供三个主要入口：
+## 设置与性能
 
-- **重新计算**：从当前实机状态开始一次新搜索，并恢复本场自动搜索。
-- **执行本回合**：只执行计划中的当前回合；进入下一回合选牌页面后将控制权交还玩家。
-- **全自动**：连续搜索、执行并结束回合，直到战斗结束、玩家停止或安全复核阻止继续执行。
+顶栏点击 **设置** 可切换三个分页：
 
-搜索期间，“执行本回合”位置会变为红色的“停止计算”。停止后，后续回合不会主动搜索，直到玩家点击“重新计算”。
+### 常规（General）
 
-设置页分为三类：
+- **开始计算**：求解器总开关与自动计算开关（关闭自动计算后改为手动点击开始）。
+- **搜索停止条件**：默认开启「达到战损目标后停止搜索」，阈值默认 `0` HP（零损）；仅当完整胜利、未多用药水且当前在场的成长／遗物目标均满足时才会提前结束。
+- **出牌速度与自动执行暂停**：自动出牌速度可选 **跟随游戏（默认）/ 正常 / 快速 / 瞬间**，并支持 `0–3` 秒牌间额外停顿；可分别设置在预计结束战斗、死亡回合或重算后战损增加时自动暂停交还控制权。
+- **幕末 Boss**：第一、二幕与最终 Boss 分别可选 **通关优先（默认）**（一二幕按战后回血 80% 折算血量并优先保药，终战保活优先留资源）或 **最低战损**。
+- **药水奖励预测**：默认关闭；开启后提前显示战后药水掉落并在药水栏已满时纳入智能用药考量。
+- **显示与通知**：默认 **深色主题** 与 **`65%` 覆盖层透明度**（范围 `25%–100%`，可切换浅色主题，立即生效）；支持 Windows 搜索结束系统通知与提示音（关闭 / 仅游戏不在前台 / 始终）。
+- **在线统计**：默认开启，每 30 秒发送心跳并同步跑局统计；设置中可随时关闭（停止上报，最迟 90 秒离线）。详见 [在线统计](docs/ONLINE_STATISTICS.md) 与 [跑局战绩](docs/RUN_STATISTICS.md)。
 
-| 分类 | 内容 |
-| --- | --- |
-| 常规 | 求解器开关、自动执行、搜索结束通知、深色/浅色主题、覆盖层透明度和出牌间隔 |
-| 性能 | 搜索预设、搜索并行度、搜索停止条件和自定义搜索参数 |
-| 反馈 | 诊断日志、联系方式、在线上传和本地导出 |
+### 性能（Performance）
 
-深色主题和 `100%` 透明度为默认设置。主题及透明度调整会立即应用，不需要重新进入战斗。
+新一代高速引擎大幅降低了内存占用，不再需要任何 NoGC、多核回收或内存清理工具，性能页仅保留两项设置：
 
-## 搜索预算
+- **战斗最大求解时长**：默认 `30` 秒（范围 `1–600` 秒）。普通战斗仍会瞬间完成；遇到复杂或高战损战斗时在设定时限内自动逐级深化。
+- **最大并发线程数**：默认 **自动**（16 核及以上 `8` 线程、4–15 核 `4` 线程、2–3 核 `2` 线程，其余单线程），可手动设为关闭（单线程）或 `2–16` 上限。若疑为并行异常，请先上传问题包，再切换为单线程重试。
 
-预设控制一套搜索时间、Beam、节点和动作分支预算。搜索持续更新当前最佳路线；时间是上限，满足战损目标及本场成长、资源和必要用药条件时可以提前结束。旧自定义配置沿用原深搜参数。
+### 反馈（Reports）
 
-| 预设 | 搜索时间 | 搜索节点 | 适用场景 |
-| --- | ---: | ---: | --- |
-| 低 | `60s` | `60,000` | 资源有限或希望快速获得建议 |
-| 中（默认） | `120s` | `120,000` | 日常使用 |
-| 高 | `180s` | `250,000` | 复杂战斗与更宽搜索 |
-| 极高 | `300s` | `500,000` | 更充分的路线搜索 |
+遇到错误路线、计划外重算、执行中止或搜索失败时，请在「设置 > 反馈」点击 **上传问题包**（自动附带版本与问题分类），或点击 **导出问题包** 保存至桌面 `CombatSolver-BugReports` 手动提交。页面还提供选填联系 QQ、搜索分支调试日志及保留本进程全部战斗日志开关。
 
-新一代高速求解引擎大幅降低了内存占用与运行时分配开销，不再需要单独配置 NoGC、多核内存回收启动项或手动内存清理工具。
+## 战前预测 API 与第三方适配
 
-默认按可用逻辑处理器自动选择并行度：16 个及以上用 `8` 线程，4–15 个用 `4` 线程，2–3 个用 `2` 线程，其余用单线程。用户可在单线程和 `2-16` 路之间手动选择，实际并行度还会受当前可独立展开的分支数限制；超过物理核心数后通常收益很小，甚至会因超线程竞争而变慢，因此默认值不会自动追求最高 CPU 占用。
+`CombatSolver.Api.PreCombatForecastApi`（当前版本 `v6`，仅支持 Windows 单人非战斗状态）为地图信息类 Mod 提供战前模拟能力。它在独占的隔离无头游戏进程中加载与主进程一致的 Mod 副本并校验状态令牌（主跑局或 RNG 变动时返回 `LiveStateChanged`）：`ForecastAsync` 用于确定性战前预测并复用同参结果缓存；`SimulateAsync` 用于指定怪组与样本种子的假设评估；`SimulatePlanningAsync` 允许传入独立 `SerializableRun` 规划存档。隔离进程默认空闲 2 分钟自动关闭，并可通过 `SetWorkerIdleTimeoutAsync`、`RestartWorkerAsync`、`StopWorkerAsync` 与 `GetWorkerStatus` 控制生命周期。
 
-提高搜索预算或并行度通常可以扩大搜索范围，也会增加 CPU 占用、峰值内存和游戏帧率压力。遇到并行搜索异常时，请先上传问题包，再切换为单线程重试。
+```csharp
+if (PreCombatForecastApi.IsAvailable)
+{
+    PreCombatForecastResult result = await PreCombatForecastApi.ForecastAsync(
+        run, encounter, targetActFloor, targetMapColumn,
+        PreCombatRoomKind.Normal, PreCombatMapPointKind.Normal);
+}
+```
 
-## 求解目标与边界
+主项目与社区任务面向原版游戏内容，不主动实现修改战斗语义的第三方 Mod 适配；第三方作者可查阅 [第三方 Mod 适配手册](docs/third-party/README.md) 了解登记入口、语义门禁与验证标准。
 
-智能用药以无可选药水的路线为基线，结合每瓶药水在「药水策略」面板中配置的「省血阈值」（按药水类型保存，支持恢复默认）决定是否用药：只有省下的等价血量达到对应阈值时才采用用药路线。必要获胜、保留复活资源、追回资源和明确强制用药按各自策略处理；禁用保护继续限制可用动作。
+## 构建与开发
 
-Combat Solver 使用受时间与节点预算约束的启发式路线搜索。它展示的是当前预算内找到的最佳路线，不承诺数学意义上的全局最优解。路线视野没有固定回合数或洗牌次数上限，但循环检测、状态合并和预算终止仍会限制实际搜索范围。
-
-游戏与依赖版本要求见[安装与兼容性](#安装与兼容性)。运行时遇到尚未支持的新版本或第三方战斗语义时，求解器会明确停止在不支持边界。求解器不会把未完成模拟误报为胜利。多人模式、局外流程和第三方 Mod 的自定义战斗效果不在通用兼容范围内。
-
-详细覆盖情况见 [战斗 Hook 覆盖报告](docs/COMBAT_HOOK_COVERAGE.md) 与 [适配验证记录](docs/ADAPTATION_VERIFICATION.md)。
-
-## 开发
-
-项目使用 C#、.NET 9 和 Godot。Windows 构建命令：
+项目基于 C# / .NET 9 / Godot，构建脚本会自动探测常见 Steam 目录（如需自定义路径，请复制 `local.props.example` 为已被忽略的 `local.props`）：
 
 ```powershell
+# Windows (PowerShell 7)
 pwsh -NoProfile -File tools/build/build-local-stack.ps1 -Configuration Release
 ```
 
-Linux 构建命令：
-
 ```bash
+# Linux (Bash)
 ./tools/build/build-local-stack.sh --configuration Release
 ```
 
-构建脚本会探测常见 Steam 安装路径。自动探测不适用时，复制 `local.props.example` 为 `local.props` 并配置本机路径；不要提交个人绝对路径。
-
-开发前建议先阅读：
-
-- [文档总目录](docs/README.md)：当前指南、版本日志和各专题索引
-- [架构与职责地图](docs/ARCHITECTURE.md)
-- [开发记录](docs/DEVELOPMENT_NOTES.md)
-- [测试矩阵](docs/TEST_MATRIX.md)
-- [重构路线](docs/refactoring/refactor-roadmap.md)
-
-Windows 和 Linux 的无人测试入口分别为 `tools/testing/run-unattended-test.ps1` 与 `tools/testing/run-unattended-test.sh`。测试会启动隔离的游戏 `--headless` 进程；涉及真实布局、动画、输入和性能的结论仍需在可见 Steam 会话中验证。
-
-## 问题反馈
-
-遇到错误路线、计划外重算、自动执行异常或搜索失败时，请在设置的“反馈”页使用“上传问题包”。上传内容会附带 Combat Solver 版本和本场自动分类；服务器与后端由社区贡献者 [iRyougi](https://github.com/iRyougi) 提供支持。
-
-也可以使用“导出问题包”将完整包保存到桌面的 `CombatSolver-BugReports`，再通过项目维护者提供的反馈渠道提交。问题包中的日志、战斗状态和自动分类通常比单张截图更适合复现搜索问题。
+无人测试入口为 `tools/testing/run-unattended-test.ps1` 与 `tools/testing/run-unattended-test.sh`（UI 布局、动画与实机帧率仍需在可见 Steam 会话验证）。更多开发指引见 [文档总目录](docs/README.md)、[架构地图](docs/ARCHITECTURE.md)、[开发笔记](docs/DEVELOPMENT_NOTES.md)、[测试矩阵](docs/TEST_MATRIX.md) 与 [重构路线](docs/refactoring/refactor-roadmap.md)。
 
 ## 开源、许可与代码来源
 
-Combat Solver 的内置战斗模拟核心使用并改造了 Random Foreseer 的部分实现。Random Foreseer 由 **hotwords123** 创建，当前采用 MIT License。
-
-相关来源关系持续存在于当前版本，涉及战斗状态、牌堆、RNG、Fork、History 与 Mirror 等基础逻辑。Combat Solver 在此基础上持续重构并扩展了跨回合搜索、路线复用、自动执行、原生选牌流程和性能控制。Combat Solver 不加载或分发 Random Foreseer 程序集作为运行时依赖；运行时分离不改变上述代码来源关系。
+Combat Solver 的内置战斗模拟核心使用并改造了由 **hotwords123** 创建的 **Random Foreseer**（MIT License），涵盖战斗状态、牌堆、RNG、Fork、History 与 Mirror 等基础逻辑；Combat Solver 在此基础上持续重构并扩展了跨回合求解、路线复用、自动执行与原生选牌流程。Combat Solver 不加载或分发 Random Foreseer 程序集作为运行时依赖，运行时分离不改变上述代码来源关系。
 
 - [Random Foreseer GitHub 仓库](https://github.com/hotwords123/StS2.RandomForeseer)
-- [Random Foreseer 创意工坊页面](https://steamcommunity.com/sharedfiles/filedetails/?id=3747531952)
+- [Random Foreseer Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3747531952)
 - [Combat Solver GitHub 仓库](https://github.com/Torch1230/CombatSolver)
 
-感谢 hotwords123 与 Random Foreseer 所做的工作。来源关系、署名和早期书面许可记录见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)，并随每个二进制发布包提供。
-
-Combat Solver 采用 [MIT License](LICENSE)。Random Foreseer 的版权署名及代码来源关系保留在 `LICENSE` 与 `THIRD_PARTY_NOTICES.md` 中。
+感谢 **hotwords123** 与 Random Foreseer 的工作。完整来源关系、署名与早期书面许可记录见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)，并随每个二进制发布包一同提供。本项目采用 [MIT License](LICENSE)。

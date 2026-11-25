@@ -25,6 +25,39 @@ internal static class HotSearchConstants
 }
 
 /// <summary>
+/// Compact pre-resolved relic counter target frozen once at root entry for zero-allocation evaluation.
+/// Uses <c>0xFF</c> for <see cref="StateSlot"/> on <see cref="RelicCounterId.MeatOnTheBone"/>.
+/// </summary>
+internal readonly struct HotRelicTargetEntry
+{
+    public readonly RelicCounterId Id;
+    public readonly byte StateSlot;
+    public readonly byte Period;
+    public readonly byte Min;
+    public readonly byte Max;
+    public readonly byte Priority;
+    public readonly short HpAllowance;
+
+    public HotRelicTargetEntry(
+        RelicCounterId id,
+        byte stateSlot,
+        byte period,
+        byte min,
+        byte max,
+        byte priority,
+        short hpAllowance)
+    {
+        Id = id;
+        StateSlot = stateSlot;
+        Period = period;
+        Min = min;
+        Max = max;
+        Priority = priority;
+        HpAllowance = hpAllowance;
+    }
+}
+
+/// <summary>
 /// Zero-allocation distilled search policy frozen once at root entry.
 /// Single source of truth consumed by evaluator, potion policy, retention, incumbent pruning, and coordinator.
 /// </summary>
@@ -74,7 +107,17 @@ internal readonly struct HotSearchPolicy
     public readonly bool HasPaidEntropicBrew;
     public readonly bool HasRenewablePotionShapedRock;
     public readonly bool HasAnyHealOrUnknownGeneration;
+    public readonly bool HasPureGrowthTargets;
+    public readonly bool HasRelicTargets;
+    public readonly bool HasAnyStrategyTargets;
     public readonly bool HasGrowthTargets;
+    public readonly bool HasBoundedGrowthTargets;
+    public readonly bool HasMeatOnTheBoneTarget;
+    public readonly ulong RelicTargetMask;
+    public readonly byte FeedMaxHpPerKill;
+    public readonly int? BrightestFlameEffectiveMaxHpLimit;
+    public readonly HotRelicTargetEntry[] RelicTargets;
+    public readonly int[] RequiredGrowthCounts;
     public readonly bool CanStopAtHpTarget;
     public readonly bool IncludeTurnSetup;
     public readonly bool IsActEndingBoss;
@@ -127,15 +170,111 @@ internal readonly struct HotSearchPolicy
         AcceptableBattleHpLoss = policy.AcceptableBattleHpLoss;
         HasRenewablePotionShapedRock = root.HasRenewablePotionShapedRock || rules.HasRenewablePotionShapedRock;
         HasAnyHealOrUnknownGeneration = rules.HasAnyHealOrUnknownGeneration;
-        HasGrowthTargets = policy.EffectiveHasGrowthTargets || policy.RelicTargets.Count > 0;
-        CanStopAtHpTarget = policy.CanStopAtHpTarget && !HasGrowthTargets;
+        IgnoreLongTermRewards = policy.IgnoreLongTermRewards;
+        EffectiveGrowthBudgets = policy.EffectiveGrowthBudgets;
+
+        HasPureGrowthTargets = !IgnoreLongTermRewards && policy.EffectiveHasGrowthTargets;
+        if (HasPureGrowthTargets
+            && policy.GrowthOpportunityTargets.IsBounded
+            && policy.GrowthOpportunityTargets.RequiredRewards.Extras.IsEmpty)
+        {
+            GrowthValues req = policy.GrowthOpportunityTargets.RequiredRewards;
+            HasBoundedGrowthTargets = true;
+            RequiredGrowthCounts =
+            [
+                req.HandOfGreed,
+                req.TheHunt,
+                req.Feed,
+                req.Royalties,
+                req.Alchemize,
+                req.GeneticAlgorithm,
+                req.TheScythe,
+                req.Goopy,
+                req.ForbiddenGrimoire,
+                req.MadScience,
+                req.ShowOff,
+            ];
+        }
+        else
+        {
+            HasBoundedGrowthTargets = false;
+            RequiredGrowthCounts = Array.Empty<int>();
+        }
+
+        IReadOnlyList<RelicCounterTarget> policyRelicTargets = policy.RelicTargets;
+        if (policyRelicTargets is { Count: > 0 })
+        {
+            HotRelicTargetEntry[] entries = new HotRelicTargetEntry[policyRelicTargets.Count];
+            ulong targetMask = 0UL;
+            bool hasMeat = false;
+            for (int i = 0; i < policyRelicTargets.Count; i++)
+            {
+                RelicCounterTarget t = policyRelicTargets[i];
+                targetMask |= 1UL << (int)t.Id;
+                byte stateSlot;
+                if (t.Id == RelicCounterId.MeatOnTheBone)
+                {
+                    stateSlot = 0xFF;
+                    hasMeat = true;
+                }
+                else
+                {
+                    stateSlot = rules.GetRelicStateSlot(MapToHotRelicId(t.Id));
+                }
+
+                entries[i] = new HotRelicTargetEntry(
+                    id: t.Id,
+                    stateSlot: stateSlot,
+                    period: (byte)Math.Clamp(t.Period, 1, byte.MaxValue),
+                    min: (byte)Math.Clamp(t.Minimum, 0, byte.MaxValue),
+                    max: (byte)Math.Clamp(t.Maximum, 0, byte.MaxValue),
+                    priority: (byte)Math.Clamp(t.Priority, 1, 3),
+                    hpAllowance: (short)Math.Clamp(t.HpAllowance, short.MinValue, short.MaxValue));
+            }
+
+            RelicTargets = entries;
+            RelicTargetMask = targetMask;
+            HasRelicTargets = true;
+            HasMeatOnTheBoneTarget = hasMeat;
+        }
+        else
+        {
+            RelicTargets = Array.Empty<HotRelicTargetEntry>();
+            RelicTargetMask = 0UL;
+            HasRelicTargets = false;
+            HasMeatOnTheBoneTarget = false;
+        }
+
+        HasAnyStrategyTargets = HasPureGrowthTargets || HasRelicTargets;
+        HasGrowthTargets = HasAnyStrategyTargets;
+        CanStopAtHpTarget = policy.CanStopAtHpTarget;
+
+        byte feedMaxHpPerKill = 3;
+        ushort feedDefId = rules.GetCardDefId(HotCustomCardId.Feed);
+        if (feedDefId != 0)
+        {
+            int totalCards = rootState.TotalCardCount;
+            for (int i = 0; i < totalCards; i++)
+            {
+                ref readonly HotCard c = ref rootState.Cards[i];
+                if (c.CardDefId == feedDefId && c.UpgradeLevel > 0)
+                {
+                    feedMaxHpPerKill = 4;
+                    break;
+                }
+            }
+        }
+        FeedMaxHpPerKill = feedMaxHpPerKill;
+
+        BrightestFlameEffectiveMaxHpLimit = policy.BrightestFlameMaxHpLossLimit.HasValue
+            ? Math.Max(policy.BrightestFlameMaxHpLossLimit.Value, rootState.BrightestFlameMaxHpSpent)
+            : null;
+
         IncludeTurnSetup = policy.IncludeTurnSetup;
         IsActEndingBoss = root.IsActEndingBoss;
         IsBossEncounter = rules.IsBossEncounter || root.IsActEndingBoss;
         IsEliteEncounter = rules.IsEliteEncounter;
         IsTheftEncounter = rules.IsTheftEncounter || policy.TheftPolicy != null;
-        IgnoreLongTermRewards = policy.IgnoreLongTermRewards;
-        EffectiveGrowthBudgets = policy.EffectiveGrowthBudgets;
         TranspositionEntryLimit = policy.TranspositionEntryLimit;
         MaxDegreeOfParallelism = Math.Clamp(policy.MaxDegreeOfParallelism, 1, HotSearchConstants.MaximumSearchMaxDegreeOfParallelism);
 
@@ -299,6 +438,165 @@ internal readonly struct HotSearchPolicy
 
     public bool HasForcedDirectives => ForcedDirectiveCount > 0;
     public bool HasHardPotionConstraint => ForcedDirectiveCount > 0 || EffectivePotionPolicy == SolverPotionPolicy.RequireAtLeastOne;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool AllowsBrightestFlame(int spentAfterAction)
+        => !BrightestFlameEffectiveMaxHpLimit.HasValue
+            || spentAfterAction <= BrightestFlameEffectiveMaxHpLimit.Value;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool AreAllRelicTargetsSatisfied(ushort satisfiedMask)
+        => !HasRelicTargets || (((ulong)satisfiedMask & RelicTargetMask) == RelicTargetMask);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool AreBoundedGrowthTargetsSatisfied(in CombatHotState state)
+    {
+        if (!HasPureGrowthTargets)
+            return true;
+        if (!HasBoundedGrowthTargets)
+            return false;
+        int[] required = RequiredGrowthCounts;
+        for (int i = 0; i < 11; i++)
+        {
+            if (state.Growth[i] < required[i])
+                return false;
+        }
+        return true;
+    }
+
+    public bool AreBoundedGrowthTargetsSatisfied(GrowthValues rewards)
+    {
+        if (!HasPureGrowthTargets)
+            return true;
+        if (!HasBoundedGrowthTargets)
+            return false;
+        int[] required = RequiredGrowthCounts;
+        return rewards.HandOfGreed >= required[0]
+            && rewards.TheHunt >= required[1]
+            && rewards.Feed >= required[2]
+            && rewards.Royalties >= required[3]
+            && rewards.Alchemize >= required[4]
+            && rewards.GeneticAlgorithm >= required[5]
+            && rewards.TheScythe >= required[6]
+            && rewards.Goopy >= required[7]
+            && rewards.ForbiddenGrimoire >= required[8]
+            && rewards.MadScience >= required[9]
+            && rewards.ShowOff >= required[10];
+    }
+
+    /// <summary>
+    /// Zero-allocation relic counter evaluator matching <see cref="RelicCounterPolicy.Add"/> and legacy
+    /// <see cref="RelicCounterEvaluation"/> semantics (modulo normalization, <c>JossPaper</c> reads
+    /// <c>Current</c> only, <c>MeatOnTheBone</c> credits <see cref="RelicCounterEvaluation.HealingHpCredit"/>
+    /// on victory only and never adds to <see cref="RelicCounterEvaluation.HpCredit"/> or
+    /// <see cref="RelicCounterEvaluation.SatisfiedPriority"/>).
+    /// </summary>
+    public RelicCounterEvaluation EvaluateRelicCounters(in CombatHotState state, bool won)
+    {
+        HotRelicTargetEntry[] targets = RelicTargets;
+        if (targets == null || targets.Length == 0)
+            return default;
+
+        ulong satisfiedMask = 0UL;
+        ulong targetMask = 0UL;
+        int hpCredit = 0;
+        int healingHpCredit = 0;
+        int distance = 0;
+        int satisfiedPriority = 0;
+        ulong counterValues = 0UL;
+        ulong targetMinimums = 0UL;
+        ulong targetMaximums = 0UL;
+
+        int hp = state.Player.CurrentHp;
+        int maxHp = state.Player.MaxHp;
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            HotRelicTargetEntry t = targets[i];
+            int idIdx = (int)t.Id;
+            ulong bit = 1UL << idIdx;
+            targetMask |= bit;
+
+            int value;
+            if (t.Id == RelicCounterId.MeatOnTheBone)
+            {
+                int woundedPct = PostCombatRelicHeal.WoundedHpPercent;
+                value = hp > 0
+                    && maxHp > 0
+                    && woundedPct > 0
+                    && (long)hp * 100L <= (long)maxHp * woundedPct
+                    ? 1
+                    : 0;
+            }
+            else if (t.StateSlot < state.RelicStateCount)
+            {
+                int raw = state.RelicStates[t.StateSlot].Current;
+                int period = t.Period;
+                int rem = raw % period;
+                value = rem < 0 ? rem + period : rem;
+            }
+            else
+            {
+                value = 0;
+            }
+
+            bool satisfied = value >= t.Min && value <= t.Max;
+            if (satisfied)
+            {
+                satisfiedMask |= bit;
+                if (t.Id != RelicCounterId.MeatOnTheBone)
+                {
+                    hpCredit += t.HpAllowance;
+                    satisfiedPriority += 1 << ((t.Priority - 1) * 4);
+                }
+                else if (won)
+                {
+                    int thresholdHeal = PostCombatRelicHeal.HealFor(hp, maxHp)
+                        - PostCombatRelicHeal.MonotoneHealFor(hp, maxHp);
+                    healingHpCredit = ActEndingBossPolicy.PersistentValueOfRecoveredHp(
+                        thresholdHeal,
+                        StrategicBossHpRelief);
+                }
+            }
+            else
+            {
+                distance += value < t.Min
+                    ? t.Min - value
+                    : t.Period - value + t.Min;
+            }
+
+            int nibbleShift = idIdx * 4;
+            ulong clearMask = ~(15UL << nibbleShift);
+            counterValues = (counterValues & clearMask) | ((ulong)(value & 0xF) << nibbleShift);
+            targetMinimums = (targetMinimums & clearMask) | ((ulong)(t.Min & 0xF) << nibbleShift);
+            targetMaximums = (targetMaximums & clearMask) | ((ulong)(t.Max & 0xF) << nibbleShift);
+        }
+
+        return new RelicCounterEvaluation(satisfiedMask, targetMask, hpCredit, distance)
+        {
+            CounterValues = counterValues,
+            SatisfiedPriority = satisfiedPriority,
+            HealingHpCredit = healingHpCredit,
+            TargetMinimums = targetMinimums,
+            TargetMaximums = targetMaximums,
+        };
+    }
+
+    private static HotRelicId MapToHotRelicId(RelicCounterId id) => id switch
+    {
+        RelicCounterId.HappyFlower => HotRelicId.HappyFlower,
+        RelicCounterId.FakeHappyFlower => HotRelicId.FakeHappyFlower,
+        RelicCounterId.Pendulum => HotRelicId.Pendulum,
+        RelicCounterId.PollinousCore => HotRelicId.PollinousCore,
+        RelicCounterId.PenNib => HotRelicId.PenNib,
+        RelicCounterId.Nunchaku => HotRelicId.Nunchaku,
+        RelicCounterId.TuningFork => HotRelicId.TuningFork,
+        RelicCounterId.JossPaper => HotRelicId.JossPaper,
+        RelicCounterId.IronClub => HotRelicId.IronClub,
+        RelicCounterId.GalacticDust => HotRelicId.GalacticDust,
+        RelicCounterId.MeatOnTheBone => HotRelicId.MeatOnTheBone,
+        _ => HotRelicId.None,
+    };
 }
 
 /// <summary>
@@ -337,6 +635,17 @@ internal readonly record struct HotRouteKey(
     public byte EmptyPotionSlots { get; init; }
     public byte RouteTurn { get; init; }
     public bool IsEventDefeat { get; init; }
+    public short RelicHpCredit { get; init; }
+    public short RelicHealingHpCredit { get; init; }
+    public ushort RelicSatisfiedMask { get; init; }
+    public ushort RelicSatisfiedPriority { get; init; }
+    public ushort RelicDistance { get; init; }
+    public bool AllGrowthTargetsSatisfied { get; init; }
+    public bool AllRelicTargetsSatisfied { get; init; }
+    public int StrategyGoalHpCredit => GrowthHpCredit + RelicHpCredit;
+    public int StrategicHpCredit => GrowthHpCredit + RelicHpCredit + RelicHealingHpCredit;
+    public int StrategyGoalCount => GrowthRewardCount + RelicSatisfiedPriority;
+    public bool AllStrategyTargetsSatisfied => AllGrowthTargetsSatisfied && AllRelicTargetsSatisfied;
 }
 
 /// <summary>
@@ -361,14 +670,14 @@ internal static class HotRouteQuality
 
     /// <summary>
     /// Returns the persistent post-combat HP weight per 1 raw HP in centi-HP:
-    /// <c>100</c> (1.0x Normal/MinimizeHpLoss), <c>20</c> (0.2x ActClearHeal), <c>0</c> (0.0x RunEnding).
+    /// <c>100</c> (1.0x Normal/MinimizeHpLoss), <c>35</c> (0.35x ActClearHeal), <c>20</c> (0.20x RunEnding).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int PersistentHpScale(BossHpRelief bossHpRelief)
         => bossHpRelief switch
         {
-            BossHpRelief.ActClearHeal => 20,
-            BossHpRelief.RunEnding => 0,
+            BossHpRelief.ActClearHeal => 35,
+            BossHpRelief.RunEnding => 20,
             _ => 100,
         };
 
@@ -399,27 +708,33 @@ internal static class HotRouteQuality
         int deathSaveHpRestored,
         int growthHpCredit,
         BossHpRelief bossHpRelief,
-        bool ignoreLongTermRewards)
+        bool ignoreLongTermRewards,
+        int relicHpCredit = 0,
+        int relicHealingHpCredit = 0,
+        int feedMaxHpExcluded = 0)
     {
         int hpScale = PersistentHpScale(bossHpRelief);
         int deathSaveHp = Math.Max(0, deathSaveHpRestored);
         int rawHpDelta = (endPlayerHp + postCombatMonotoneHeal - deathSaveHp) - initialPlayerHp;
 
         int maxHpGain = Math.Max(0, endPlayerMaxHp - initialPlayerMaxHp);
+        int nonFeedMaxHpGain = Math.Max(0, maxHpGain - Math.Max(0, feedMaxHpExcluded));
         int maxHpLoss = Math.Max(0, initialPlayerMaxHp - endPlayerMaxHp);
 
         int maxHpGainCreditCenti = (bossHpRelief != BossHpRelief.RunEnding && !ignoreLongTermRewards)
-            ? maxHpGain * HotSearchConstants.MaxHpGainWeightCenti
+            ? nonFeedMaxHpGain * HotSearchConstants.MaxHpGainWeightCenti
             : 0;
         int maxHpLossPenaltyCenti = bossHpRelief != BossHpRelief.RunEnding
             ? maxHpLoss * HotSearchConstants.MaxHpLossWeightCenti
             : 0;
         int deathSavePenaltyCenti = DeathSavePremium(deathSaveHp) * HotSearchConstants.HpFixedScale;
 
+        int totalStrategicCredit = growthHpCredit + relicHpCredit + relicHealingHpCredit;
+
         return rawHpDelta * hpScale
             + maxHpGainCreditCenti
             - maxHpLossPenaltyCenti
-            + growthHpCredit * HotSearchConstants.HpFixedScale
+            + totalStrategicCredit * HotSearchConstants.HpFixedScale
             - deathSavePenaltyCenti;
     }
 
@@ -445,6 +760,7 @@ internal static class HotRouteQuality
             node.PlayerHp,
             endPlayerMaxHp);
 
+        int feedMaxHpExcluded = node.FeedCount * policy.FeedMaxHpPerKill;
         int netHpDeltaCenti = ComputeNetPersistentHpDeltaCenti(
             endPlayerHp: node.PlayerHp,
             postCombatMonotoneHeal: postCombatHeal,
@@ -454,7 +770,10 @@ internal static class HotRouteQuality
             deathSaveHpRestored: node.DeathSaveHpRestored,
             growthHpCredit: node.GrowthHpCredit,
             bossHpRelief: policy.StrategicBossHpRelief,
-            ignoreLongTermRewards: policy.IgnoreLongTermRewards);
+            ignoreLongTermRewards: policy.IgnoreLongTermRewards,
+            relicHpCredit: node.RelicHpCredit,
+            relicHealingHpCredit: node.RelicHealingHpCredit,
+            feedMaxHpExcluded: feedMaxHpExcluded);
 
         int netPotionCostCenti = HotPotionPolicy.ComputeNetPotionOpportunityCostCenti(
             node.PotionStrategicCost,
@@ -498,6 +817,13 @@ internal static class HotRouteQuality
             EmptyPotionSlots = node.EmptyPotionSlots,
             RouteTurn = node.Turn,
             IsEventDefeat = node.IsEventDefeat,
+            RelicHpCredit = node.RelicHpCredit,
+            RelicHealingHpCredit = node.RelicHealingHpCredit,
+            RelicSatisfiedMask = node.RelicSatisfiedMask,
+            RelicSatisfiedPriority = node.RelicSatisfiedPriority,
+            RelicDistance = node.RelicDistance,
+            AllGrowthTargetsSatisfied = !policy.HasPureGrowthTargets || node.AllGrowthTargetsSatisfied,
+            AllRelicTargetsSatisfied = !policy.HasRelicTargets || node.AllRelicTargetsSatisfied,
         };
     }
 
@@ -508,9 +834,29 @@ internal static class HotRouteQuality
     {
         bool isEventDefeat = result.BoundaryReason == SearchBoundaryReason.EventDefeat
             || result.Snapshot.BoundaryReason == SearchBoundaryReason.EventDefeat;
+        SolverSnapshot snap = result.Snapshot;
+
+        RelicCounterEvaluation relics = snap.RelicCounters;
+        short relicHpCredit = (short)Math.Clamp(relics.HpCredit, short.MinValue, short.MaxValue);
+        short relicHealingHpCredit = (short)Math.Clamp(relics.HealingHpCredit, short.MinValue, short.MaxValue);
+        ushort relicSatisfiedMask = (ushort)relics.SatisfiedMask;
+        ushort relicSatisfiedPriority = (ushort)Math.Clamp(relics.SatisfiedPriority, 0, ushort.MaxValue);
+        ushort relicDistance = (ushort)Math.Clamp(relics.Distance, 0, ushort.MaxValue);
+        bool allRelicSatisfied = !policy.HasRelicTargets || policy.AreAllRelicTargetsSatisfied(relicSatisfiedMask);
+        bool allGrowthSatisfied = !policy.HasPureGrowthTargets || policy.AreBoundedGrowthTargetsSatisfied(snap.GrowthRewards);
 
         if (result.ComparisonQuality is { } q)
         {
+            int pureGrowthHpCredit = policy.IgnoreLongTermRewards ? 0 : snap.GrowthHpCredit;
+            int pureGrowthRewardCount = policy.IgnoreLongTermRewards ? 0 : snap.GrowthRewards.Total;
+            if (pureGrowthHpCredit == 0 && relicHpCredit == 0 && q.GrowthHpCredit != 0)
+                pureGrowthHpCredit = q.GrowthHpCredit;
+            if (pureGrowthRewardCount == 0 && relicSatisfiedPriority == 0 && q.GrowthRewardCount != 0)
+                pureGrowthRewardCount = q.GrowthRewardCount;
+
+            int netHpDeltaCentiFromQ = -q.StrategicHpDeficit * HotSearchConstants.HpFixedScale;
+            int potionCostCentiFromQ = Math.Max(0, q.PotionStrategicCost) * HotSearchConstants.HpFixedScale;
+
             return new HotRouteKey(
                 Won: q.Won && !isEventDefeat,
                 Survives: q.Survives,
@@ -520,13 +866,13 @@ internal static class HotRouteQuality
                 StrategicHpDeficit: q.StrategicHpDeficit,
                 OptionalPotionStrategicCost: q.PotionStrategicCost,
                 RawPotionStrategicCost: q.PotionStrategicCost,
-                GrowthHpCredit: q.GrowthHpCredit,
-                GrowthRewardCount: q.GrowthRewardCount,
+                GrowthHpCredit: pureGrowthHpCredit,
+                GrowthRewardCount: pureGrowthRewardCount,
                 CombatEndedTurn: (q.Won && !isEventDefeat ? q.CombatEndedTurn : null) ?? int.MaxValue,
                 ProjectedBattleHpLost: q.ProjectedBattleHpLost,
                 ProjectedBattlePotionCount: q.ProjectedBattlePotionCount,
                 ExplicitPotionCount: result.ExplicitPotionCount,
-                PlayerHp: result.Snapshot.PlayerHp,
+                PlayerHp: snap.PlayerHp,
                 EnemyHp: q.EnemyHp,
                 Score: double.IsFinite(q.Score)
                     ? (long)Math.Clamp(q.Score, -1_000_000_000_000_000d, 1_000_000_000_000_000d)
@@ -534,12 +880,25 @@ internal static class HotRouteQuality
                 PotionMask: 0,
                 AmbergrisCount: 0)
             {
-                RouteTurn = (byte)Math.Clamp(result.DeathTurn ?? result.CombatEndedTurn ?? result.Snapshot.Turn, 0, byte.MaxValue),
+                HasCentiPrecision = true,
+                NetPersistentHpDeltaCenti = netHpDeltaCentiFromQ,
+                NetPotionOpportunityCostCenti = potionCostCentiFromQ,
+                OptionalPaidPotionCount = q.PotionStrategicCost > 0
+                    ? (byte)Math.Clamp(result.ExplicitPotionCount, 0, byte.MaxValue)
+                    : (byte)0,
+                EndPlayerMaxHp = snap.PlayerMaxHp,
+                RouteTurn = (byte)Math.Clamp(result.DeathTurn ?? result.CombatEndedTurn ?? snap.Turn, 0, byte.MaxValue),
                 IsEventDefeat = isEventDefeat,
+                RelicHpCredit = relicHpCredit,
+                RelicHealingHpCredit = relicHealingHpCredit,
+                RelicSatisfiedMask = relicSatisfiedMask,
+                RelicSatisfiedPriority = relicSatisfiedPriority,
+                RelicDistance = relicDistance,
+                AllGrowthTargetsSatisfied = allGrowthSatisfied,
+                AllRelicTargetsSatisfied = allRelicSatisfied,
             };
         }
 
-        SolverSnapshot snap = result.Snapshot;
         bool won = snap.AllEnemiesDead && !snap.PlayerDead && !result.OnlyDeathRoutesFound && !isEventDefeat;
         bool survives = !snap.PlayerDead && snap.PlayerHp > 0;
         int postCombatHeal = RankedPostCombatRelicHeal(
@@ -547,6 +906,9 @@ internal static class HotRouteQuality
             won,
             snap.PlayerHp,
             snap.PlayerMaxHp);
+        int pureGrowthHp = policy.IgnoreLongTermRewards ? 0 : snap.GrowthHpCredit;
+        int pureGrowthCount = policy.IgnoreLongTermRewards ? 0 : snap.GrowthRewards.Total;
+        int snapFeedMaxHpExcluded = snap.GrowthRewards.Feed * policy.FeedMaxHpPerKill;
         int netHpDeltaCenti = ComputeNetPersistentHpDeltaCenti(
             endPlayerHp: snap.PlayerHp,
             postCombatMonotoneHeal: postCombatHeal,
@@ -554,9 +916,12 @@ internal static class HotRouteQuality
             endPlayerMaxHp: snap.PlayerMaxHp,
             initialPlayerMaxHp: policy.InitialPlayerMaxHp,
             deathSaveHpRestored: snap.DeathSaveHpRestored,
-            growthHpCredit: snap.StrategicHpCredit,
+            growthHpCredit: pureGrowthHp,
             bossHpRelief: policy.StrategicBossHpRelief,
-            ignoreLongTermRewards: policy.IgnoreLongTermRewards);
+            ignoreLongTermRewards: policy.IgnoreLongTermRewards,
+            relicHpCredit: relicHpCredit,
+            relicHealingHpCredit: relicHealingHpCredit,
+            feedMaxHpExcluded: snapFeedMaxHpExcluded);
 
         int potionCostCenti = Math.Max(0, result.PotionHpRequired) * HotSearchConstants.HpFixedScale;
 
@@ -569,8 +934,8 @@ internal static class HotRouteQuality
             StrategicHpDeficit: RoundCentiToHp(-netHpDeltaCenti),
             OptionalPotionStrategicCost: result.PotionHpRequired,
             RawPotionStrategicCost: result.PotionHpRequired,
-            GrowthHpCredit: snap.GrowthHpCredit,
-            GrowthRewardCount: snap.GrowthRewards.Total,
+            GrowthHpCredit: pureGrowthHp,
+            GrowthRewardCount: pureGrowthCount,
             CombatEndedTurn: result.CombatEndedTurn ?? int.MaxValue,
             ProjectedBattleHpLost: result.ProjectedBattleHpLost,
             ProjectedBattlePotionCount: result.BattlePotionsUsedSoFar + result.PotionCount,
@@ -586,15 +951,26 @@ internal static class HotRouteQuality
             HasCentiPrecision = true,
             NetPersistentHpDeltaCenti = netHpDeltaCenti,
             NetPotionOpportunityCostCenti = potionCostCenti,
+            OptionalPaidPotionCount = result.PotionHpRequired > 0
+                ? (byte)Math.Clamp(result.ExplicitPotionCount, 0, byte.MaxValue)
+                : (byte)0,
             EndPlayerMaxHp = snap.PlayerMaxHp,
             RouteTurn = (byte)Math.Clamp(result.DeathTurn ?? result.CombatEndedTurn ?? snap.Turn, 0, byte.MaxValue),
             IsEventDefeat = isEventDefeat,
+            RelicHpCredit = relicHpCredit,
+            RelicHealingHpCredit = relicHealingHpCredit,
+            RelicSatisfiedMask = relicSatisfiedMask,
+            RelicSatisfiedPriority = relicSatisfiedPriority,
+            RelicDistance = relicDistance,
+            AllGrowthTargetsSatisfied = allGrowthSatisfied,
+            AllRelicTargetsSatisfied = allRelicSatisfied,
         };
     }
 
     /// <summary>
     /// Compares two routes under the single unified lexicographic objective:
-    /// <c>(Won, Survives, -DeathSaveCount, -TheftLoss, NetPersistentHpDelta - NetPotionOpportunityCost, NetPersistentHpDelta, Growth, Turn, RawHpLost, Potions, EnemyHp, Score)</c>.
+    /// <c>(Won, Survives, -DeathSaveCount, -TheftLoss, NetPersistentHpDelta - NetPotionOpportunityCost, NetPersistentHpDelta, Growth, RawHpLost, Potions, Turn, EnemyHp, Score)</c>
+    /// (with defeat-only routes ranked by optional paid potion cost/count ASC when <paramref name="includeOptionalPotionCost"/> is enabled, then <c>(EnemyHp ASC, RouteTurn DESC, Score DESC)</c>).
     /// Returns negative if <paramref name="a"/> is better than <paramref name="b"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -630,6 +1006,42 @@ internal static class HotRouteQuality
                 return cmp;
         }
 
+        // Defeat-only routes: hopeless unwinnable fights must never burn optional paid potions just to shave enemy HP
+        // (Phase B still freely uses potions whenever they achieve survival or victory in Steps 1-2 above).
+        // Rank by lower paid-potion cost/count first, then lower remaining enemy HP, longer survival turn, and higher score.
+        if (!a.Won && !a.Survives && !b.Won && !b.Survives)
+        {
+            if (includeOptionalPotionCost)
+            {
+                if (a.HasCentiPrecision && b.HasCentiPrecision)
+                {
+                    cmp = a.NetPotionOpportunityCostCenti.CompareTo(b.NetPotionOpportunityCostCenti);
+                    if (cmp != 0)
+                        return cmp;
+
+                    cmp = a.OptionalPaidPotionCount.CompareTo(b.OptionalPaidPotionCount);
+                    if (cmp != 0)
+                        return cmp;
+                }
+                else
+                {
+                    cmp = a.OptionalPotionStrategicCost.CompareTo(b.OptionalPotionStrategicCost);
+                    if (cmp != 0)
+                        return cmp;
+                }
+            }
+
+            cmp = a.EnemyHp.CompareTo(b.EnemyHp);
+            if (cmp != 0)
+                return cmp;
+
+            cmp = b.RouteTurn.CompareTo(a.RouteTurn);
+            if (cmp != 0)
+                return cmp;
+
+            return b.Score.CompareTo(a.Score);
+        }
+
         // 5. Unified persistent-HP economic value V = NetPersistentHpDelta - NetPotionOpportunityCost
         if (a.HasCentiPrecision && b.HasCentiPrecision)
         {
@@ -663,36 +1075,27 @@ internal static class HotRouteQuality
                 return cmp;
         }
 
-        // 6. Growth credit & realized reward count
-        cmp = b.GrowthHpCredit.CompareTo(a.GrowthHpCredit);
+        // 6. Strategy goal credit & realized reward/priority count (excludes MeatOnTheBone HealingHpCredit)
+        cmp = b.StrategyGoalHpCredit.CompareTo(a.StrategyGoalHpCredit);
         if (cmp != 0)
             return cmp;
 
-        cmp = b.GrowthRewardCount.CompareTo(a.GrowthRewardCount);
+        cmp = b.StrategyGoalCount.CompareTo(a.StrategyGoalCount);
         if (cmp != 0)
             return cmp;
 
-        // 7. Faster victory turn; for defeat-only routes, prefer surviving MORE turns before death.
-        if (!a.Won && !a.Survives && !b.Won && !b.Survives)
-        {
-            cmp = b.RouteTurn.CompareTo(a.RouteTurn);
-            if (cmp != 0)
-                return cmp;
-        }
-        else
-        {
-            cmp = a.CombatEndedTurn.CompareTo(b.CombatEndedTurn);
-            if (cmp != 0)
-                return cmp;
-        }
-
-        // 8. Lower raw projected battle HP loss on equal persistent HP
+        // 7. Lower raw projected battle HP loss on equal persistent HP
         cmp = a.ProjectedBattleHpLost.CompareTo(b.ProjectedBattleHpLost);
         if (cmp != 0)
             return cmp;
 
-        // 9. Fewer potions used (prevents wasting 0-cost/free potions for 0 gain)
+        // 8. Fewer potions used (prevents wasting 0-cost/free potions for 0 gain)
         cmp = a.ProjectedBattlePotionCount.CompareTo(b.ProjectedBattlePotionCount);
+        if (cmp != 0)
+            return cmp;
+
+        // 9. Faster victory turn
+        cmp = a.CombatEndedTurn.CompareTo(b.CombatEndedTurn);
         if (cmp != 0)
             return cmp;
 
@@ -715,7 +1118,8 @@ internal static class HotRouteQuality
 
     /// <summary>
     /// Checks whether a complete victory meets the configured zero/acceptable HP loss stop target
-    /// with no paid optional potions spent (0-cost Token/Rock/Generated potions are allowed in Stage 1).
+    /// with no paid optional potions spent (0-cost Token/Rock/Generated potions are allowed in Stage 1)
+    /// and all active growth/relic strategy targets satisfied.
     /// </summary>
     public static bool MeetsVictoryStopTarget(in HotRouteKey key, in HotSearchPolicy policy)
         => policy.CanStopAtHpTarget
@@ -728,6 +1132,7 @@ internal static class HotRouteQuality
             && key.OptionalPaidPotionCount == 0
             && (policy.EffectivePotionPolicy != SolverPotionPolicy.RequireAtLeastOne
                 || key.ExplicitPotionCount >= policy.MinimumRequiredPotionUses)
+            && key.AllStrategyTargetsSatisfied
             && key.ProjectedBattleHpLost <= policy.AcceptableBattleHpLoss;
 
     /// <summary>
@@ -749,7 +1154,7 @@ internal static class HotRouteQuality
             ForfeitsEncounterGold = key.ForfeitsGold,
             Survives = key.Survives,
             DeathSaveUseCount = key.DeathSaveUseCount,
-            GrowthHpCredit = key.GrowthHpCredit,
-            GrowthRewardCount = key.GrowthRewardCount,
+            GrowthHpCredit = key.StrategyGoalHpCredit,
+            GrowthRewardCount = key.StrategyGoalCount,
         };
 }

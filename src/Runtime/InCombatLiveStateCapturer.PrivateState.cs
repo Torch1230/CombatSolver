@@ -345,9 +345,6 @@ internal static partial class InCombatLiveStateCapturer
             case TheScythe scythe:
                 fields["TheScythe._increasedDamage"] = IntVal(scythe.IncreasedDamage);
                 break;
-            case TheShot shot:
-                fields["TheShot._cardsExhaustedByFlorescence"] = DecimalVal(shot._cardsExhaustedByFlorescence);
-                break;
             case Thrash thrash:
                 fields["Thrash._damage"] = DecimalVal(thrash.DynamicVars.Damage.BaseValue + thrash._extraDamage);
                 break;
@@ -482,6 +479,10 @@ internal static partial class InCombatLiveStateCapturer
                 break;
             case FakeHappyFlower fhf:
                 fields["FakeHappyFlower._turnsSeen"] = IntVal(fhf.TurnsSeen);
+                fields["FakeHappyFlower._grantEnergyThisTurn"] = BoolVal(
+                    (bool)(typeof(FakeHappyFlower)
+                        .GetField("_grantEnergyThisTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                        ?.GetValue(fhf) ?? throw new MissingFieldException(typeof(FakeHappyFlower).FullName, "_grantEnergyThisTurn")));
                 break;
             case FakeOrichalcum fo:
                 fields["FakeOrichalcum._shouldTrigger"] = BoolVal(fo._shouldTrigger);
@@ -494,6 +495,10 @@ internal static partial class InCombatLiveStateCapturer
                 break;
             case HappyFlower hf:
                 fields["HappyFlower._turnCounter"] = IntVal(hf.TurnsSeen);
+                fields["HappyFlower._grantEnergyThisTurn"] = BoolVal(
+                    (bool)(typeof(HappyFlower)
+                        .GetField("_grantEnergyThisTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                        ?.GetValue(hf) ?? throw new MissingFieldException(typeof(HappyFlower).FullName, "_grantEnergyThisTurn")));
                 break;
             case HistoryCourse:
                 (CardModel? lastAtk, int lastTurn, CardModel? prevAtk, int prevTurn) = FindHistoryCourseAttacks(
@@ -824,9 +829,6 @@ internal static partial class InCombatLiveStateCapturer
             case MonologuePower mono:
                 fields["MonologuePower._strengthApplied"] = DecimalVal(mono.DynamicVars["StrengthApplied"].BaseValue);
                 fields["MonologuePower._strength"] = DecimalVal(mono.DynamicVars.Strength.BaseValue);
-                break;
-            case MythicFormPower mythic:
-                fields["MythicFormPower._upgradedCount"] = IntVal(mythic.DynamicVars["Upgraded"].IntValue);
                 break;
             case NemesisPower nemesis:
                 bool shouldApplyIntangible = (bool)(typeof(NemesisPower)

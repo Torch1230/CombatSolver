@@ -1,11 +1,14 @@
+#if ENABLE_PERFORMANCE_RECORDING
 using System.Reflection;
 using System.Text;
 using MegaCrit.Sts2.Core.Runs;
+#endif
 
 namespace CombatSolver;
 
 internal sealed partial class UnattendedTestRunner
 {
+#if ENABLE_PERFORMANCE_RECORDING
     private async Task AssertProcessDiagnosticsAsync()
     {
         WrapperRegistrySnapshot wrappers = await Task.Run(PerformanceRecording.CreateWrapperRegistryProbe());
@@ -45,4 +48,9 @@ internal sealed partial class UnattendedTestRunner
             throw new InvalidOperationException("Cross-combat performance evidence was lost or included per-frame samples.");
         _completedChecks.Add("ProcessDiagnostics:SavedRunPendingNetService:CrossCombatGcEvidence:NoDisplaySamples");
     }
+#else
+    private Task AssertProcessDiagnosticsAsync()
+        => Task.FromException(new InvalidOperationException(
+            "PROCESS-DIAGNOSTICS requires an instrumented diagnostics build (performance recording enabled)."));
+#endif
 }

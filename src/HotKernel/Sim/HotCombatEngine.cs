@@ -408,13 +408,13 @@ internal static partial class HotCombatEngine
         // 1. Early card-self modifiers
         if (def.CardId == HotCustomCardId.Coda)
         {
-            int melodies = CountFinishedMelodies(in s);
+            int melodies = CountStartedMelodies(in s);
             if (melodies > 0)
                 cost = Math.Max(0, cost - 2 * melodies);
         }
         else if (def.CardId == HotCustomCardId.ChoLimbs)
         {
-            if (s.Fool.MelodyFinished[0] > 0 || s.Fool.MelodyFinished[2] > 0)
+            if (s.Fool.MelodyStarted[0] > 0 || s.Fool.MelodyStarted[2] > 0)
                 cost = Math.Max(0, cost - 2);
         }
 
@@ -455,14 +455,27 @@ internal static partial class HotCombatEngine
             }
         }
 
-        // 4. Late power & relic pass (Corruption, FreeAttack/Skill/Power/Card, Veilpiercer, VoidForm, BrilliantScarf)
+        // 4. Late power & relic pass (Corruption, FreeAttack/Skill/Power, Veilpiercer, VoidForm, Ensemble, BrilliantScarf)
         for (int i = 0; i < powerCount; i++)
         {
             ref readonly HotPower p = ref s.Powers[i];
-            if (p.OwnerSlot != 0 || p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
+            if (p.Amount <= 0 || p.PowerDefId >= rules.Powers.Length)
                 continue;
 
-            switch (rules.Powers[p.PowerDefId].PowerId)
+            HotPowerId powerId = rules.Powers[p.PowerDefId].PowerId;
+            if (powerId == HotPowerId.EnsemblePower)
+            {
+                // STS2 0.114.0 EnsemblePower.cs:15-24,34-54: TryModifyEnergyCostInCombatLate sets cost to 0
+                // whenever card.Owner.Creature != base.Owner and card is in Hand or Play.
+                if (p.OwnerSlot != 0 && isInPlayablePile)
+                    cost = 0;
+                continue;
+            }
+
+            if (p.OwnerSlot != 0)
+                continue;
+
+            switch (powerId)
             {
                 case HotPowerId.CorruptionPower:
                     if (def.Type == CardType.Skill)
@@ -481,11 +494,6 @@ internal static partial class HotCombatEngine
 
                 case HotPowerId.FreePowerPower:
                     if (isInPlayablePile && def.Type == CardType.Power)
-                        cost = 0;
-                    break;
-
-                case HotPowerId.FreeCardPower:
-                    if (isInPlayablePile)
                         cost = 0;
                     break;
 
@@ -564,12 +572,12 @@ internal static partial class HotCombatEngine
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int CountFinishedMelodies(in CombatHotState s)
+    private static int CountStartedMelodies(in CombatHotState s)
     {
         int count = 0;
-        if (s.Fool.MelodyFinished[0] > 0) count++;
-        if (s.Fool.MelodyFinished[1] > 0) count++;
-        if (s.Fool.MelodyFinished[2] > 0) count++;
+        if (s.Fool.MelodyStarted[0] > 0) count++;
+        if (s.Fool.MelodyStarted[1] > 0) count++;
+        if (s.Fool.MelodyStarted[2] > 0) count++;
         return count;
     }
 
@@ -577,7 +585,8 @@ internal static partial class HotCombatEngine
         in CombatHotState s,
         in HotCard card,
         HotCardDef def,
-        HotRules rules)
+        HotRules rules,
+        bool isAutoPlay = false)
     {
         int playStarts = s.Counters[(int)HotCounterSlot.CardPlayStartsThisTurn];
 
@@ -593,6 +602,7 @@ internal static partial class HotCombatEngine
         }
 
         // In-hand restriction curses (Enthralled, Normality)
+        // STS2 0.113.1 Enthralled.cs:36-39: autoPlayType != AutoPlayType.None bypasses Enthralled.
         int handCount = s.HandCount;
         for (int i = 0; i < handCount; i++)
         {
@@ -600,7 +610,7 @@ internal static partial class HotCombatEngine
             if (handCardDefId >= rules.Cards.Length)
                 continue;
             HotCustomCardId handCardId = rules.Cards[handCardDefId].CardId;
-            if (handCardId == HotCustomCardId.Enthralled && def.CardId != HotCustomCardId.Enthralled)
+            if (!isAutoPlay && handCardId == HotCustomCardId.Enthralled && def.CardId != HotCustomCardId.Enthralled)
                 return false;
             if (handCardId == HotCustomCardId.Normality && playStarts >= 3)
                 return false;
@@ -636,8 +646,12 @@ internal static partial class HotCombatEngine
                     break;
 
                 case HotPowerId.SlothPower:
-                case HotPowerId.EncorePower:
                     if (p.Aux0 >= p.Amount)
+                        return false;
+                    break;
+
+                case HotPowerId.EncorePower:
+                    if (p.Aux0 + p.Aux1 >= p.Amount)
                         return false;
                     break;
             }

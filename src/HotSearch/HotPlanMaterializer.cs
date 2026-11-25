@@ -303,7 +303,7 @@ internal static class HotPlanMaterializer
             // Record enemy kills caused by this action (keyed by planActions index, NOT raw stepIdx!; exclude escaped enemies!)
             ulong aliveMaskAfter = CaptureAliveEnemySlotMask(in state);
             ulong newlyKilled = aliveMaskBefore & ~aliveMaskAfter;
-            if (planAction.IsExecutable && newlyKilled != 0)
+            if ((planAction.IsExecutable || planAction.Kind == PlanActionKind.EndTurn) && newlyKilled != 0)
             {
                 List<string> killedNames = [];
                 for (int eSlot = 0; eSlot < state.EnemyCount; eSlot++)
@@ -397,18 +397,27 @@ internal static class HotPlanMaterializer
             ? hotPolicy.PostCombatRelicHeal.HealFor(finalSummary.PlayerHp, finalSummary.PlayerMaxHp)
             : 0;
 
-        GrowthValues realizedGrowth = new(
-            HandOfGreed: state.Growth[0],
-            TheHunt: state.Growth[1],
-            Feed: state.Growth[2],
-            Royalties: state.Growth[3],
-            Alchemize: state.Growth[4],
-            GeneticAlgorithm: state.Growth[5],
-            TheScythe: state.Growth[6],
-            Goopy: state.Growth[7],
-            ForbiddenGrimoire: state.Growth[8],
-            MadScience: state.Growth[9],
-            ShowOff: state.Growth[10]);
+        GrowthValues realizedGrowth = policy.IgnoreLongTermRewards
+            ? default
+            : new(
+                HandOfGreed: state.Growth[0],
+                TheHunt: state.Growth[1],
+                Feed: state.Growth[2],
+                Royalties: state.Growth[3],
+                Alchemize: state.Growth[4],
+                GeneticAlgorithm: state.Growth[5],
+                TheScythe: state.Growth[6],
+                Goopy: state.Growth[7],
+                ForbiddenGrimoire: state.Growth[8],
+                MadScience: state.Growth[9],
+                ShowOff: state.Growth[10]);
+
+        int realizedLongTermResourceValue = policy.IgnoreLongTermRewards
+            ? 0
+            : state.LongTermResourceValue;
+        RelicCounterEvaluation realizedRelicCounters = hotPolicy.HasRelicTargets
+            ? hotPolicy.EvaluateRelicCounters(in state, won: finalWon)
+            : default;
 
         SolverSnapshot snapshot = new(
             HasRisk: false,
@@ -422,7 +431,7 @@ internal static class HotPlanMaterializer
             CumulativePlayerHpLost: finalSummary.HpLost,
             RecoveredPlayerHp: finalSummary.HpRecovered,
             DeathSaveRelicHpRestored: state.DeathSaveRelicHpRestored,
-            LongTermResourceValue: state.LongTermResourceValue,
+            LongTermResourceValue: realizedLongTermResourceValue,
             AngerCopiesGenerated: state.AngerCopiesGenerated,
             ProjectedPlayerHp: finalSummary.PlayerHp,
             PlayerBlock: finalSummary.PlayerBlock,
@@ -442,6 +451,7 @@ internal static class HotPlanMaterializer
             ProjectedDeathSaveUseCount = finalSummary.DeathSaveUseCount,
             GrowthHpCredit = finalSummary.GrowthHpCredit,
             GrowthRewards = realizedGrowth,
+            RelicCounters = realizedRelicCounters,
             ForfeitsEncounterGold = finalSummary.ForfeitsGold,
             UnrecoveredGold = state.OutstandingStolenGold > 0 ? state.OutstandingStolenGold : null,
             UnrecoveredCards = state.OutstandingStolenCards > 0 ? state.OutstandingStolenCards : null,
@@ -833,7 +843,7 @@ internal static class HotPlanMaterializer
             }
 
             // Check if this pick continues an open multi-select prompt (e.g. GamblingChip, GamblersBrew,
-            // Ashwater, Purity, NeowsFury, Guards, WellLaidPlans, Prepared+, HiddenDaggers, Dredge,
+            // Ashwater, Purity, NeowsFury, Guards, Prepared+, HiddenDaggers, Dredge,
             // Charge, Seance, PhotonCut, ToolsOfTheTrade, Tyranny, Entropy, ForegoneConclusion, Stratagem).
             if (openPrompt != null
                 && pendingKind != HotChoiceKind.GeneratedCard
@@ -931,7 +941,7 @@ internal static class HotPlanMaterializer
                 timing));
 
             int effectiveMax = totalCandidates > 0 ? Math.Min(meta.MaxSelect, totalCandidates) : meta.MaxSelect;
-            if (pendingKind != HotChoiceKind.GeneratedCard && (effectiveMax > 1 || meta.IsOptional))
+            if (pendingKind != HotChoiceKind.GeneratedCard && (effectiveMax > 1 || (meta.IsOptional && meta.MaxSelect > 1)))
             {
                 OpenMultiSelectPrompt nextPrompt = new()
                 {
@@ -955,7 +965,8 @@ internal static class HotPlanMaterializer
                 nextPrompt.PickedOptionIndices.Add(optionIndex);
                 nextPrompt.PickedTokens.Add(token);
 
-                if (!meta.IsOptional && nextPrompt.PickedUids.Count >= nextPrompt.MaxSelect)
+                if (nextPrompt.PickedUids.Count >= meta.MaxSelect
+                    || (!meta.IsOptional && nextPrompt.PickedUids.Count >= nextPrompt.MaxSelect))
                 {
                     FinalizeOpenPrompt(nextPrompt, result);
                 }
@@ -1072,11 +1083,6 @@ internal static class HotPlanMaterializer
                 case HotCustomCardId.KiChant:
                     maxSelect = 1;
                     kiChantTopLimit = probeScratch.PendingChoiceMax > 0 ? probeScratch.PendingChoiceMax : 3;
-                    break;
-
-                case HotCustomCardId.WellLaidPlans:
-                    maxSelect = Math.Max(1, HotCombatEngine.GetPowerAmountById(in probeState, rules, 0, HotPowerId.WellLaidPlansPower));
-                    isOptional = true;
                     break;
 
                 case HotCustomCardId.Guards:
@@ -1562,7 +1568,8 @@ internal static class HotPlanMaterializer
         totalCandidateCount = 0;
 
         // Fix 3: GeneratedCard tokens compute real UpgradeLevel (Abundance, Quasar+, Splash+),
-        // real StateKey (including CostsX & ChoicesParadox Retain), real OptionOccurrence, and real Title.
+        // real StateKey (including CostsX, HasStarCostX, IsSlyThisTurn, ShowOff, Disintegration,
+        // and ChoicesParadox Retain), real OptionOccurrence, and real Title.
         if (sel.Kind == HotChoiceKind.GeneratedCard || pendingKind == HotChoiceKind.GeneratedCard)
         {
             ReadOnlySpan<ushort> generatedOptions = HotCombatEngine.GetPendingGeneratedChoiceOptions();
@@ -1591,6 +1598,16 @@ internal static class HotPlanMaterializer
             int upgradeLevel = upgradeGeneratedOptions && genDef.MaxUpgradeLevel > 0 ? 1 : 0;
             HotCard generatedCard = BuildSyntheticGeneratedChoiceCard(chosenDefId, genDef, (byte)upgradeLevel, isChoicesParadox);
             string genStateKey = HotContinuationStamp.FormatChoiceCardKey(in generatedCard, cold: null, rules);
+            if (genDef.CardId == HotCustomCardId.Disintegration
+                && pausedState.CurrentSide == HotCombatSide.Enemy
+                && TryResolveKnowledgeDemonDisintegrationDamage(in pausedState, rules, out int disintDmg)
+                && disintDmg != 6)
+            {
+                genStateKey = genStateKey.Replace(
+                    "|vars=DisintegrationPower=6|",
+                    $"|vars=DisintegrationPower={disintDmg}|",
+                    StringComparison.Ordinal);
+            }
 
             int resolvedOptIdx = sel.CardUidOrIndex;
             if ((uint)resolvedOptIdx >= (uint)generatedOptions.Length || generatedOptions[resolvedOptIdx] != chosenDefId)
@@ -1637,14 +1654,106 @@ internal static class HotPlanMaterializer
         HotPileKind pile = MapHotPileKind(pendingKind);
         int zoneStart = HotPiles.ZoneStart(in pausedState, pile);
         int zoneCount = HotPiles.ZoneCount(in pausedState, pile);
+        HotCustomCardId sourceCardId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
+            ? rules.Cards[sourceCardDefId].CardId
+            : HotCustomCardId.None;
         int foundIdx = HotCombatEngine.FindCardIndexByUid(in pausedState, pile, sel.CardUidOrIndex);
 
         if (foundIdx < 0)
         {
-            string fallbackId = sel.CardDefId > 0 && sel.CardDefId < rules.Cards.Length
-                ? rules.Cards[sel.CardDefId].Entry
-                : string.Empty;
-            return new PlanCardToken(fallbackId, 0, fallbackId, 0, 0, displayNames.Card(fallbackId, 0));
+            bool hasValidDefId = sel.CardDefId > 0 && sel.CardDefId < rules.Cards.Length;
+
+            // (a) Probe target pile by CardDefId (filtered first, then full pile) to recover foundIdx
+            // and run the normal occurrence/candidate path.
+            if (hasValidDefId)
+            {
+                int probeLimit = sourceCardId == HotCustomCardId.KiChant && pile == HotPileKind.Draw && kiChantTopLimit > 0
+                    ? Math.Min(zoneCount, kiChantTopLimit)
+                    : zoneCount;
+                for (int offset = 0; offset < probeLimit; offset++)
+                {
+                    int idx = zoneStart + offset;
+                    ref readonly HotCard candidate = ref pausedState.Cards[idx];
+                    if (candidate.CardDefId != sel.CardDefId)
+                        continue;
+                    if (!allowedUids.IsEmpty && !ContainsUid(allowedUids, candidate.CardUid))
+                        continue;
+                    if (!MatchesLiveChoiceFilter(in pausedState, in candidate, pausedCold, rules, sourceCardId, isTouchOfInsanity))
+                        continue;
+                    foundIdx = idx;
+                    break;
+                }
+
+                if (foundIdx < 0)
+                {
+                    for (int offset = 0; offset < zoneCount; offset++)
+                    {
+                        int idx = zoneStart + offset;
+                        if (pausedState.Cards[idx].CardDefId == sel.CardDefId)
+                        {
+                            foundIdx = idx;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // (b) If still not found in the target pile, scan all zones of pausedState, then stateBefore,
+            // by CardUid to recover real UpgradeLevel & FormatChoiceCardKey.
+            if (foundIdx < 0 && sel.CardUidOrIndex != 0)
+            {
+                int pausedTotal = pausedState.TotalCardCount;
+                for (int i = 0; i < pausedTotal; i++)
+                {
+                    ref readonly HotCard crossCard = ref pausedState.Cards[i];
+                    if (crossCard.CardUid == sel.CardUidOrIndex
+                        && crossCard.CardDefId > 0 && crossCard.CardDefId < rules.Cards.Length)
+                    {
+                        string crossId = rules.Cards[crossCard.CardDefId].Entry;
+                        string crossKey = HotContinuationStamp.FormatChoiceCardKey(in crossCard, pausedCold, rules);
+                        return new PlanCardToken(
+                            crossId,
+                            crossCard.UpgradeLevel,
+                            crossKey,
+                            0,
+                            0,
+                            displayNames.Card(crossId, crossCard.UpgradeLevel));
+                    }
+                }
+
+                int beforeTotal = stateBefore.TotalCardCount;
+                for (int i = 0; i < beforeTotal; i++)
+                {
+                    ref readonly HotCard crossCard = ref stateBefore.Cards[i];
+                    if (crossCard.CardUid == sel.CardUidOrIndex
+                        && crossCard.CardDefId > 0 && crossCard.CardDefId < rules.Cards.Length)
+                    {
+                        string crossId = rules.Cards[crossCard.CardDefId].Entry;
+                        string crossKey = HotContinuationStamp.FormatChoiceCardKey(in crossCard, pausedCold, rules);
+                        return new PlanCardToken(
+                            crossId,
+                            crossCard.UpgradeLevel,
+                            crossKey,
+                            0,
+                            0,
+                            displayNames.Card(crossId, crossCard.UpgradeLevel));
+                    }
+                }
+            }
+
+            // (c) Last resort: synthesize a canonical HotCard token + FormatChoiceCardKey instead of bare fallbackId.
+            if (foundIdx < 0)
+            {
+                if (hasValidDefId)
+                {
+                    HotCardDef fallbackDef = rules.Cards[sel.CardDefId];
+                    string fallbackId = fallbackDef.Entry;
+                    HotCard syntheticFallback = BuildSyntheticGeneratedChoiceCard(sel.CardDefId, fallbackDef, (byte)0, false);
+                    string fallbackKey = HotContinuationStamp.FormatChoiceCardKey(in syntheticFallback, cold: null, rules);
+                    return new PlanCardToken(fallbackId, 0, fallbackKey, 0, 0, displayNames.Card(fallbackId, 0));
+                }
+                return new PlanCardToken(string.Empty, 0, string.Empty, 0, 0, displayNames.Card(string.Empty, 0));
+            }
         }
 
         ref readonly HotCard card = ref pausedState.Cards[foundIdx];
@@ -1661,10 +1770,6 @@ internal static class HotPlanMaterializer
                 sourceOccurrence++;
             }
         }
-
-        HotCustomCardId sourceCardId = sourceCardDefId > 0 && sourceCardDefId < rules.Cards.Length
-            ? rules.Cards[sourceCardDefId].CardId
-            : HotCustomCardId.None;
 
         int scanCount = zoneCount;
         if (sourceCardId == HotCustomCardId.KiChant && pile == HotPileKind.Draw && kiChantTopLimit > 0)
@@ -1781,7 +1886,7 @@ internal static class HotPlanMaterializer
             LocalKeywordsMask = (HotCardKeywordMask)def.BaseKeywords,
             KeywordsAddedOutsideMask = HotCardKeywordMask.None,
             KeywordsRemovedOutsideMask = HotCardKeywordMask.None,
-            Flags = HotCombatEngine.IsEnergyCostXCard(def.CardId) ? HotCardFlags.CostsX : HotCardFlags.None,
+            Flags = HotCombatEngine.GetInitialCardFlags(def),
         };
         if (upgradeLevel > 0)
             HotCombatEngine.ApplyUpgradeKeywords(ref generated, def.CardId);
@@ -1794,7 +1899,46 @@ internal static class HotPlanMaterializer
             }
             generated.KeywordsRemovedOutsideMask &= ~HotCardKeywordMask.Retain;
         }
+        // Match STS2 v0.113.1 CardModel.IsSlyThisTurn (CardModel.cs:700-709):
+        // true iff Keywords contains CardKeyword.Sly (or HasSingleTurnSly).
+        if ((generated.LocalKeywordsMask & HotCardKeywordMask.Sly) != 0)
+            generated.Flags |= HotCardFlags.IsSlyThisTurn;
+        else
+            generated.Flags &= ~HotCardFlags.IsSlyThisTurn;
+        // Match freshly constructed ShowOff._currentAim = 5, _increasedAim = 0 (ShowOff.cs:19-21).
+        if (def.PrivateKind == HotCardPrivateKind.ShowOff)
+        {
+            short baseAim = (short)GetCardVarInt(in generated, def, "BaseAim", 5);
+            generated.CardPrivate = baseAim & 0xFFFF;
+        }
         return generated;
+    }
+
+    private static bool TryResolveKnowledgeDemonDisintegrationDamage(
+        in CombatHotState s,
+        HotRules rules,
+        out int damage)
+    {
+        for (int r = 0; r < s.RosterCount; r++)
+        {
+            byte slot = s.ActiveEnemyRoster[r];
+            ref readonly HotEnemy enemy = ref s.Enemies[slot];
+            if ((enemy.Vital.Flags & HotCreatureFlags.Alive) == 0)
+                continue;
+            if (enemy.MonsterDefId > 0
+                && enemy.MonsterDefId < rules.Monsters.Length
+                && rules.Monsters[enemy.MonsterDefId].MonsterId == HotMonsterId.KnowledgeDemon)
+            {
+                int counter = enemy.AiRegs[0];
+                if ((uint)counter < 3u)
+                {
+                    damage = (rules.RulesSnapshot.IsDread ? 8 : 6) + counter;
+                    return true;
+                }
+            }
+        }
+        damage = 0;
+        return false;
     }
 
     private static bool MatchesLiveChoiceFilter(
@@ -1834,11 +1978,9 @@ internal static class HotPlanMaterializer
             HotCustomCardId.HandTrick => def.Type == CardType.Skill && (card.Flags & HotCardFlags.IsSlyThisTurn) == 0,
             HotCustomCardId.HeirloomHammer => def.Domain == HotCardDomain.Colorless,
             HotCustomCardId.SculptingStrike => (card.LocalKeywordsMask & HotCardKeywordMask.Ethereal) == 0,
-            HotCustomCardId.Snap => (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0,
+            HotCustomCardId.Snap => !HotCombatEngine.HasEffectiveRetainKeyword(in s, in card, rules),
             HotCustomCardId.DecisionsDecisions => def.Type == CardType.Skill && (card.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0,
-            HotCustomCardId.LockedIn or HotCustomCardId.ArrowStab => def.IsShootTag,
-            HotCustomCardId.WellLaidPlans => (card.Flags & HotCardFlags.SingleTurnRetain) == 0
-                && (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0,
+            HotCustomCardId.LockedIn => def.IsShootTag,
             _ => true,
         };
     }
@@ -1991,7 +2133,7 @@ internal static class HotPlanMaterializer
         return id switch
         {
             HotCustomCardId.Headbutt or HotCustomCardId.ThinkingAhead or HotCustomCardId.Glimmer
-                or HotCustomCardId.Recall or HotCustomCardId.CosmicIndifference or HotCustomCardId.PhotonCut
+                or HotCustomCardId.WahKi or HotCustomCardId.CosmicIndifference or HotCustomCardId.PhotonCut
                 => PlanChoiceEffect.MoveToDrawTop,
             HotCustomCardId.Survivor or HotCustomCardId.Acrobatics or HotCustomCardId.Prepared
                 or HotCustomCardId.DaggerThrow or HotCustomCardId.HiddenDaggers or HotCustomCardId.TheHermit
@@ -2003,11 +2145,12 @@ internal static class HotPlanMaterializer
             HotCustomCardId.Nightmare => PlanChoiceEffect.Nightmare,
             HotCustomCardId.DualWield or HotCustomCardId.HeirloomHammer => PlanChoiceEffect.Duplicate,
             HotCustomCardId.Begone or HotCustomCardId.Charge or HotCustomCardId.Guards or HotCustomCardId.Seance
+                or HotCustomCardId.Florescence
                 => PlanChoiceEffect.Transform,
             HotCustomCardId.Transfigure => PlanChoiceEffect.Modify,
             HotCustomCardId.HandTrick => PlanChoiceEffect.ApplySly,
             HotCustomCardId.SculptingStrike => PlanChoiceEffect.ApplyEthereal,
-            HotCustomCardId.Snap or HotCustomCardId.WellLaidPlans => PlanChoiceEffect.ApplyRetain,
+            HotCustomCardId.Snap => PlanChoiceEffect.ApplyRetain,
             HotCustomCardId.DecisionsDecisions => PlanChoiceEffect.AutoPlayRepeated,
             _ => kind is HotChoiceKind.DrawPile or HotChoiceKind.DiscardPile or HotChoiceKind.ExhaustPile
                 ? PlanChoiceEffect.MoveToHand

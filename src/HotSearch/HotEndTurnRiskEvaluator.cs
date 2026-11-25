@@ -38,6 +38,20 @@ internal static class HotEndTurnRiskEvaluator
                 if (choice.Timing is not (PlanChoiceTiming.PlayerTurnEnd or PlanChoiceTiming.EnemyTurn))
                     continue;
 
+                // STS2 v0.113.1 WellLaidPlansPower (StackType.Single, ShouldFlush => false) retains
+                // the whole hand without prompting a PlayerTurnEnd HandCard choice. Skip any legacy
+                // WellLaidPlans choice entries so they never shift scratch.ChoiceCursor for subsequent
+                // TurnEnd/EnemyTurn choices (while preserving AutoPostPlay Snap ApplyRetain choices).
+                if (choice.Timing == PlanChoiceTiming.PlayerTurnEnd
+                    && (string.Equals(choice.SourceId, "WELL_LAID_PLANS", StringComparison.Ordinal)
+                        || string.Equals(choice.SourceId, "WELL_LAID_PLANS_POWER", StringComparison.Ordinal)
+                        || (string.IsNullOrEmpty(choice.SourceId)
+                            && choice.Effect == PlanChoiceEffect.ApplyRetain
+                            && HotCombatEngine.GetPowerAmountById(in state, rules, ownerSlot: 0, HotPowerId.WellLaidPlansPower) > 0)))
+                {
+                    continue;
+                }
+
                 if (choice.Cards.Count == 0)
                 {
                     choiceBuf[choiceCount++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
@@ -73,22 +87,6 @@ internal static class HotEndTurnRiskEvaluator
                     PlanCardToken token = choice.Cards[c];
                     HotChoiceSelection resolved = ResolveChoiceToken(in state, cold, rules, kind, token);
                     choiceBuf[choiceCount++] = resolved;
-                }
-
-                // WellLaidPlans loops up to min(wlpAmt, eligibleHandCount) with minCount=0;
-                // when the plan retains fewer cards than both limits, append the None terminator
-                // that HotPlanMaterializer cleanly stripped for NativeChoiceRuntime.
-                if (choice.Effect == PlanChoiceEffect.ApplyRetain
-                    && kind == HotChoiceKind.HandCard
-                    && choiceCount < HotLimits.MaxChoicesPerAction)
-                {
-                    int wlpAmt = HotCombatEngine.GetPowerAmountById(in state, rules, ownerSlot: 0, HotPowerId.WellLaidPlansPower);
-                    if (choice.Cards.Count < wlpAmt)
-                    {
-                        int eligible = CountEligibleWellLaidPlansCards(in state);
-                        if (choice.Cards.Count < eligible)
-                            choiceBuf[choiceCount++] = new HotChoiceSelection(HotChoiceKind.None, 0, 0);
-                    }
                 }
             }
         }
@@ -184,21 +182,5 @@ internal static class HotEndTurnRiskEvaluator
 
         ushort fallbackDefId = rules.FindCardDefId(token.CardId);
         return new HotChoiceSelection(kind, 0, fallbackDefId);
-    }
-
-    private static int CountEligibleWellLaidPlansCards(in CombatHotState s)
-    {
-        int eligible = 0;
-        int handCount = s.HandCount;
-        for (int i = 0; i < handCount; i++)
-        {
-            ref readonly HotCard card = ref s.Cards[i];
-            if ((card.Flags & HotCardFlags.SingleTurnRetain) == 0
-                && (card.LocalKeywordsMask & HotCardKeywordMask.Retain) == 0)
-            {
-                eligible++;
-            }
-        }
-        return eligible;
     }
 }

@@ -277,7 +277,8 @@ internal static class HotKernelChecks
 
         s.Fool.Arrows[0] = 0x0021;
         s.Fool.Arrows[1] = 0x0002;
-        s.Fool.Arrows[2] = 0x0013;
+        // 0x0041 = Away on enemySlot 2; dirtyPadding sets retired bit 4 (0x0010) to verify ZeroExplicitPadding masks it off.
+        s.Fool.Arrows[2] = dirtyPadding ? (ushort)0x0051 : (ushort)0x0041;
         s.Fool.MelodyStarted[0] = 1;
         s.Fool.MelodyFinished[1] = 2;
         s.Fool.MelodyCardsFinished = 3;
@@ -575,8 +576,8 @@ internal static class HotKernelChecks
 
         HotCostModifiers.AddEnergyModifier(ref card, ref cold, -1, false, (int)LocalCostModifierExpiration.EndOfTurn, false);
         HotCostModifiers.AddEnergyModifier(ref card, ref cold, -1, false, (int)LocalCostModifierExpiration.EndOfTurn, false);
-        Check(card.CostModCount == 1 && HotCostModifiers.GetLocalEnergyCost(in card, cold) == 0 && cold == null,
-            "Consecutive relative cost modifier merge failed.");
+        Check(card.CostModCount == 2 && HotCostModifiers.GetLocalEnergyCost(in card, cold) == 0 && cold == null,
+            "Consecutive relative cost modifiers should stay verbatim inline.");
 
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, 1, false, (int)LocalCostModifierExpiration.WhenPlayed, false);
         HotCostModifiers.AddEnergyModifierExact(ref card, ref cold, 1, false, (int)LocalCostModifierExpiration.EndOfCombat, false);
@@ -588,7 +589,7 @@ internal static class HotKernelChecks
             $"Unexpected overflow local energy cost: {HotCostModifiers.GetLocalEnergyCost(in card, cold)}.");
 
         HotCostModifiers.ExpireAfterPlay(ref card, ref cold);
-        Check((card.Flags & HotCardFlags.HasCostOverflow) == 0 && card.CostModCount == 3 && cold == null,
+        Check((card.Flags & HotCardFlags.HasCostOverflow) == 0 && card.CostModCount == 4 && cold == null,
             "Overflow demotion after ExpireAfterPlay failed.");
         Check(HotCostModifiers.GetLocalEnergyCost(in card, cold) == 2,
             $"Unexpected cost after ExpireAfterPlay: {HotCostModifiers.GetLocalEnergyCost(in card, cold)}.");

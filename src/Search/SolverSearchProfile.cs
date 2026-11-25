@@ -14,5 +14,5 @@ internal sealed record SolverSearchProfile(
         MaxCardBranchesPerNode: 64,
         MaxPileChoiceBranchesPerAction: 18,
         MaxHandChoiceBranchesPerAction: 24,
-        SoftTimeBudgetMilliseconds: 4_000);
+        SoftTimeBudgetMilliseconds: 30_000);
 }

@@ -43,11 +43,11 @@ internal static class InCombatRustKernelPolicyMapper
 
         long liveThinkCeilingMs = (long)Math.Round(
             Math.Clamp(
-                searchPolicy.MaxHardFightThinkSeconds > 0d
-                    ? searchPolicy.MaxHardFightThinkSeconds
-                    : SearchPolicySnapshot.DefaultMaxHardFightThinkSeconds,
-                SearchPolicySnapshot.MinMaxHardFightThinkSeconds,
-                SearchPolicySnapshot.MaxMaxHardFightThinkSeconds) * 1000d);
+                searchPolicy.MaxCombatSolveSeconds > 0d
+                    ? searchPolicy.MaxCombatSolveSeconds
+                    : SearchPolicySnapshot.DefaultMaxCombatSolveSeconds,
+                SearchPolicySnapshot.MinMaxCombatSolveSeconds,
+                SearchPolicySnapshot.MaxMaxCombatSolveSeconds) * 1000d);
         long rawBudgetMs = searchPolicy.BudgetOverrideMilliseconds is { } overrideMs
             ? overrideMs
             : (!searchPolicy.FixedBudget && searchPolicy.AdaptiveEscalationEnabled

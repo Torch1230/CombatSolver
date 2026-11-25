@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace CombatSolver.HotKernel;
@@ -37,6 +38,8 @@ internal sealed class HotRules
     public ushort[] UnlockedCharacterCardPool { get; init; } = [];
     public ushort[] UnlockedColorlessCardPool { get; init; } = [];
     public ushort[] UnlockedCurseCardPool { get; init; } = [];
+    public ushort[] UnlockedStatusCardPool { get; init; } = [];
+    public ushort[] UnlockedTokenCardPool { get; init; } = [];
     public ushort[] OtherCharacterCardPool { get; init; } = [];
     public ushort[] TarotCardPool { get; init; } = [];
     public ushort[] CombatCharacterAttackPool { get; init; } = [];
@@ -44,6 +47,11 @@ internal sealed class HotRules
     public ushort[] CombatCharacterPowerPool { get; init; } = [];
     public ushort[] CombatColorlessPool { get; init; } = [];
     public ushort[] UnlockedPotionPool { get; init; } = [];
+    /// <summary>
+    /// Per-character-domain unlocked combat card pools indexed by <c>(int)HotCardDomain</c>
+    /// (1=Ironclad .. 6=Fool), preserving exact <c>CardPoolModel.GetUnlockedCards</c> order.
+    /// </summary>
+    public ushort[][] UnlockedCharacterPoolsByDomain { get; init; } = [];
 
     // Encounter & search pruning metadata
     public HotDominionId Dominion { get; init; }
@@ -52,15 +60,18 @@ internal sealed class HotRules
     public bool IsFurCoatActiveInCurrentRoom { get; init; }
     public bool IsBossEncounter { get; init; }
     public bool IsEliteEncounter { get; init; }
+    public bool IsWeakEncounter { get; init; }
     public bool IsTheftEncounter { get; init; }
     public string CharacterEntry { get; init; } = string.Empty;
     public string EncounterEntry { get; init; } = string.Empty;
     public string[] EncounterSlots { get; init; } = [];
+    public int InitialEncounterMonsterCount { get; init; }
     public int CurrentActIndex { get; init; }
     public int TotalFloor { get; init; }
     public int PostCombatRelicUnconditionalHeal { get; init; }
     public int PostCombatRelicWoundedHeal { get; init; }
     public int PostCombatRelicWoundedHpPercent { get; init; }
+    public int MadScienceUpgradeCapacity { get; init; } = int.MaxValue;
 
     public required ushort[] ActiveRelicDefIds { get; init; }
     public required HotActiveRelic[] ActiveRelics { get; init; }
@@ -79,6 +90,7 @@ internal sealed class HotRules
     public required bool EncounterGoldForfeited { get; init; }
     public required int BaseMaxEnergy { get; init; }
     public required int BaseHandDraw { get; init; }
+    public byte BaseOrbSlotCount { get; init; }
 
     public required string[] EnemySlotNames { get; init; }
     public required string[] EnemyMonsterEntries { get; init; }
@@ -207,6 +219,56 @@ internal sealed class HotRules
         => RelicDefIdByEntry.TryGetValue(entry, out ushort id) ? id : (ushort)0;
 
     /// <summary>
+    /// Resolves the exact STS2 0.114.0 <c>CardFactory.GetDefaultTransformationOptions</c>
+    /// (<c>CardFactory.cs:171-176</c>) source pool for <paramref name="origDef"/>.
+    /// </summary>
+    public ushort[] GetUnlockedTransformPool(HotCardDef origDef)
+    {
+        // CardFactory.cs:173: Quest or Event/Ancient/Token -> ColorlessCardPool; else original.Pool.
+        if (origDef.Type == CardType.Quest
+            || origDef.Rarity is CardRarity.Event or CardRarity.Ancient or CardRarity.Token)
+        {
+            return CombatColorlessPool;
+        }
+
+        // Dispatch by card domain (= vanilla CardModel.Pool) rather than intercepting Status/Curse
+        // rarity first: KnowledgeDemon Status cards (Amnesia, Disintegration, MindRot, Sloth, WasteAway)
+        // have CardRarity.Status but belong to TokenCardPool (HotCardDomain.Token).
+        HotCardDomain domain = origDef.Domain;
+        return domain switch
+        {
+            HotCardDomain.Curse => UnlockedCurseCardPool,
+            HotCardDomain.Status => UnlockedStatusCardPool,
+            HotCardDomain.Token => UnlockedTokenCardPool,
+            HotCardDomain.Colorless or HotCardDomain.Event or HotCardDomain.Quest => CombatColorlessPool,
+            HotCardDomain.Tarot => TarotCardPool,
+            HotCardDomain.Ironclad
+                or HotCardDomain.Silent
+                or HotCardDomain.Defect
+                or HotCardDomain.Regent
+                or HotCardDomain.Necrobinder
+                or HotCardDomain.Fool => ResolveCharacterDomainTransformPool(domain),
+            _ => origDef.Rarity switch
+            {
+                CardRarity.Curse => UnlockedCurseCardPool,
+                CardRarity.Status => UnlockedStatusCardPool,
+                _ => UnlockedCharacterCardPool,
+            },
+        };
+    }
+
+    private ushort[] ResolveCharacterDomainTransformPool(HotCardDomain domain)
+    {
+        int idx = (int)domain;
+        if ((uint)idx < (uint)UnlockedCharacterPoolsByDomain.Length
+            && UnlockedCharacterPoolsByDomain[idx] is { Length: > 0 } domainPool)
+        {
+            return domainPool;
+        }
+        return UnlockedCharacterCardPool;
+    }
+
+    /// <summary>
     /// Exact zero-allocation card comparator matching <see cref="CombatSolver.Engine.InCombat.Simulation.CombatCardOrdering"/>
     /// for <c>HotPiles.ShuffleDiscardIntoDraw</c>.
     /// </summary>
@@ -274,8 +336,8 @@ internal sealed class HotRules
             {
                 if (!ReferenceEquals(namesA, namesB) && !string.Equals(namesA[i], namesB[i], StringComparison.Ordinal))
                     break;
-                decimal valA = GetCardVarValue(in a, defA, i);
-                decimal valB = GetCardVarValue(in b, defB, i);
+                decimal valA = GetCardVarValue(in a, defA, i, cold);
+                decimal valB = GetCardVarValue(in b, defB, i, cold);
                 cmp = valA.CompareTo(valB);
                 if (cmp != 0)
                     return cmp;
@@ -289,8 +351,8 @@ internal sealed class HotRules
             int idxB = FindOrderedNameIndex(namesB, namesA[i]);
             if (idxB < 0)
                 continue;
-            decimal valA = GetCardVarValue(in a, defA, i);
-            decimal valB = GetCardVarValue(in b, defB, idxB);
+            decimal valA = GetCardVarValue(in a, defA, i, cold);
+            decimal valB = GetCardVarValue(in b, defB, idxB, cold);
             cmp = valA.CompareTo(valB);
             if (cmp != 0)
                 return cmp;
@@ -299,26 +361,33 @@ internal sealed class HotRules
         return 0;
     }
 
-    public static decimal GetCardVarValue(in HotCard card, HotCardDef def, int varIndex)
+    public static decimal GetCardVarValue(in HotCard card, HotCardDef def, int varIndex, HotColdSidecar? cold = null)
     {
         decimal value = card.UpgradeLevel > 0 && varIndex < def.UpgradedVarValues.Length
             ? def.UpgradedVarValues[varIndex]
             : def.BaseVarValues[varIndex];
-        if (varIndex == def.Var0Index && card.Var0Delta != 0)
-            value += card.Var0Delta;
+        if (varIndex == def.Var0Index)
+        {
+            if (card.Var0Delta != 0)
+                value += card.Var0Delta;
+            if (cold != null && card.CardUid != 0)
+                value += HotColdSidecar.GetDecimalVarDelta(cold, card.CardUid);
+        }
         else if (varIndex == def.Var1Index && card.Var1Delta != 0)
+        {
             value += card.Var1Delta;
+        }
         return value;
     }
 
     /// <summary>
-    /// Computes <c>CardEnergyCost.GetWithModifiers(CostModifiers.Local)</c> matching STS2 0.113.1.
+    /// Computes <c>CardEnergyCost.GetWithModifiers(CostModifiers.Local)</c> matching STS2 0.114.0.
     /// </summary>
     public static int GetCardLocalEnergyCost(in HotCard card, HotColdSidecar? cold)
         => HotCostModifiers.GetLocalEnergyCost(in card, cold);
 
     /// <summary>
-    /// Computes <c>CardModel.CurrentStarCost</c> matching STS2 0.113.1.
+    /// Computes <c>CardModel.CurrentStarCost</c> matching STS2 0.114.0.
     /// </summary>
     public static int GetCardCurrentStarCost(in HotCard card, HotColdSidecar? cold)
         => HotCostModifiers.GetEffectiveStarCost(in card, cold);

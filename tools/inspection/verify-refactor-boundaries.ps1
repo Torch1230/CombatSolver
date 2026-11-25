@@ -209,7 +209,6 @@ Require-Text 'src/Api/PreCombatForecastApi.cs' 'public static class PreCombatFor
 Require-Text 'src/Api/PreCombatForecastWorker.cs' 'COMBATSOLVER_PRECOMBAT_WORKER' 'pre-combat worker boundary'
 Require-Text 'src/Api/CombatShowcaseApi.cs' 'public static class CombatShowcaseApi' 'showcase API boundary'
 Require-Text 'src/Runtime/CombatShowcaseRuntime.cs' 'SolverController.AcceptShowcaseRoute' 'showcase runtime boundary'
-Require-Text 'src/Runtime/CombatShowcaseModEligibility.cs' 'FindGameplayModificationNames' 'showcase mod eligibility boundary'
 foreach ($apiFile in Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "src\Api") -Filter *.cs -File) {
     foreach ($forbiddenCall in @('SolverController.RequestSearch', 'CombatManager.Instance.SetUpCombat', 'RunManager.Instance.EnterRoomDebug')) {
         foreach ($match in Select-String -LiteralPath $apiFile.FullName -SimpleMatch $forbiddenCall) {

@@ -23,6 +23,7 @@ internal static partial class PreCombatForecastWorker
     private static readonly object PinnedModSourcesSync = new();
     private static readonly Dictionary<string, PinnedModSource> PinnedModSources =
         new(StringComparer.Ordinal);
+    private static bool _modSourcesPinAttempted;
     private static WorkerSession? _session;
     private static string? _ownedRuntimeRoot;
     private static int _workerStartCount;
@@ -37,6 +38,35 @@ internal static partial class PreCombatForecastWorker
     internal static int WorkerStartCountForTesting => Volatile.Read(ref _workerStartCount);
 
     internal static int WorkerReuseCountForTesting => Volatile.Read(ref _workerReuseCount);
+
+    internal static void EnsureMainProcessModSourcesPinned()
+    {
+        if (Volatile.Read(ref _modSourcesPinAttempted)
+            || !OperatingSystem.IsWindows()
+            || Entry.IsPreCombatWorker)
+        {
+            return;
+        }
+
+        lock (PinnedModSourcesSync)
+        {
+            if (_modSourcesPinAttempted)
+                return;
+            try
+            {
+                PinMainProcessModSources();
+            }
+            catch (Exception ex)
+            {
+                Entry.Logger.Warn(
+                    $"[CombatSolver/PreCombatApi] MOD_SOURCE_PINNING_UNAVAILABLE error={ex}");
+            }
+            finally
+            {
+                Volatile.Write(ref _modSourcesPinAttempted, true);
+            }
+        }
+    }
 
     internal static void PinMainProcessModSources()
     {
@@ -93,11 +123,13 @@ internal static partial class PreCombatForecastWorker
             Entry.Logger.Info(
                 $"[CombatSolver/PreCombatApi] MOD_SOURCES_PINNED " +
                 $"mods={PinnedModSources.Count} sources={sourceIndex} root={pinnedRoot}");
+            Volatile.Write(ref _modSourcesPinAttempted, true);
         }
     }
 
     internal static string ResolvePinnedModSource(string id, string version, string sourcePath)
     {
+        EnsureMainProcessModSourcesPinned();
         string fullSourcePath = Path.GetFullPath(sourcePath);
         lock (PinnedModSourcesSync)
         {
@@ -190,15 +222,7 @@ internal static partial class PreCombatForecastWorker
             SetIdleWorkerLifetime(options.WorkerIdleTimeoutMilliseconds);
 
             string runtimeRoot = RuntimeRoot(snapshot.GameRoot);
-            string requestRoot = Path.Combine(runtimeRoot, "requests", requestId);
-            string snapshotPath = Path.Combine(requestRoot, "run.save.json");
             EnsureRuntimeRoot(runtimeRoot, snapshot.GameRoot);
-            Directory.CreateDirectory(requestRoot);
-            await File.WriteAllBytesAsync(
-                    snapshotPath,
-                    snapshot.SerializedPlanningRun ?? snapshot.SerializedRun,
-                    cancellationToken)
-                .ConfigureAwait(false);
 
             string sessionSignature = BuildSessionSignature(snapshot);
             WorkerSession? session = TryGetReusableSession(sessionSignature);
@@ -213,6 +237,14 @@ internal static partial class PreCombatForecastWorker
                 Interlocked.Increment(ref _workerReuseCount);
             }
             diagnosticLogPath = session.LogPath;
+            string requestRoot = Path.Combine(session.WorkerDataRoot, "precombat-requests", requestId);
+            string snapshotPath = Path.Combine(requestRoot, "run.save.json");
+            Directory.CreateDirectory(requestRoot);
+            await File.WriteAllBytesAsync(
+                    snapshotPath,
+                    snapshot.SerializedPlanningRun ?? snapshot.SerializedRun,
+                    cancellationToken)
+                .ConfigureAwait(false);
             DeleteIfExists(session.ResultPath);
             DeleteIfExists(session.ReadyPath);
 
@@ -484,6 +516,7 @@ internal static partial class PreCombatForecastWorker
         string sessionSignature,
         CancellationToken cancellationToken)
     {
+        EnsureMainProcessModSourcesPinned();
         string workerGameRoot = Path.Combine(runtimeRoot, "game");
         string sessionRoot = Path.Combine(runtimeRoot, "session");
         string roamingRoot = Path.Combine(sessionRoot, "Roaming");
@@ -508,6 +541,7 @@ internal static partial class PreCombatForecastWorker
             WorkerSession session = new(
                 sessionSignature,
                 StartWorker(workerExe, workerGameRoot, roamingRoot, localRoot, logPath),
+                workerDataRoot,
                 Path.Combine(workerDataRoot, "combat_solver_test_request.json"),
                 Path.Combine(workerDataRoot, "combat_solver_test_result.json"),
                 Path.Combine(workerDataRoot, "combat_solver_test_ready.json"),
@@ -912,6 +946,7 @@ internal static partial class PreCombatForecastWorker
     private sealed record WorkerSession(
         string Signature,
         Process Process,
+        string WorkerDataRoot,
         string RequestPath,
         string ResultPath,
         string ReadyPath,

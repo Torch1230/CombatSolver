@@ -78,10 +78,25 @@ internal sealed class HotExecScratch
     public int LastStarsSpent;
     public int CurrentPlayIndex;
     public int CurrentPlayTargetSlot;
+    // STS2 0.114.0 UnmovablePower: 0 or 1 indicating whether the active CardPlay has already
+    // incremented HotCounterSlot.CardBlockGainsThisTurn (saved/restored across nested AutoPlays).
     public int CardBlockGainsInCurrentPlay;
     public bool UnblockedDamageThisPlay;
     public bool AttackActive;
     public uint AttackUnblockedEnemyMask;
+    // STS2 0.114.0 Creature.IsAttacking / MonsterModel.IsPerformingMove deferred death cleanup:
+    //   AttackingCreatureSlotMask: bit (1u << slot) set while slot (0=Player, 1=Osty, 2=Wuppy, 3..18=Enemies)
+    //     is executing AttackCommand.Execute (save/restore previous bit for nested attacks).
+    //   PerformingMoveEnemyMask: bit (1u << enemySlot) set while enemySlot (0..15) executes PerformMove.
+    //   DeferredDeathCleanupSlotMask: bit (1u << slot) set when Kill defers RemoveAllPowersAfterDeath /
+    //     RemoveCreature / DeactivateHooks until the active attack or monster move completes.
+    public uint AttackingCreatureSlotMask;
+    public uint PerformingMoveEnemyMask;
+    public uint DeferredDeathCleanupSlotMask;
+    // Monotonic per-action AttackCommand sequence IDs so powers (e.g. QuietusPower) can latch a
+    // specific AttackCommand instance across nested attacks and remove themselves in AfterAttack.
+    public int NextAttackCommandSeq;
+    public int ActiveAttackCommandSeq;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void BeginChoiceGroup(HotChoiceGroupFlags flags = HotChoiceGroupFlags.None)
@@ -123,5 +138,10 @@ internal sealed class HotExecScratch
         UnblockedDamageThisPlay = false;
         AttackActive = false;
         AttackUnblockedEnemyMask = 0;
+        AttackingCreatureSlotMask = 0;
+        PerformingMoveEnemyMask = 0;
+        DeferredDeathCleanupSlotMask = 0;
+        NextAttackCommandSeq = 0;
+        ActiveAttackCommandSeq = 0;
     }
 }

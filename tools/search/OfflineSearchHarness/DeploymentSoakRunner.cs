@@ -58,15 +58,26 @@ internal sealed class PlanDrivenCardSelector(IReadOnlyList<PlanCardChoice> plans
             return Task.FromResult<IEnumerable<CardModel>>(selected);
         }
 
-        // 原版 CardSelectCmd 在 options.Count <= minSelect 且无需手动确认时会隐式自动选择而不调用 ICardSelector。
-        // 若上一条单卡计划因隐式自动选择被跳过，且紧邻下一条计划精确命中当前候选窗口，则对齐到下一条计划。
-        if (plan.Cards.Count == 1 && _planIndex + 1 < _plans.Count)
+        // 原版 CardSelectCmd（FromCombatPile / FromHand / FromSimpleGrid / FromHandForUpgrade）在
+        // eligibleCount == 0 或 !prefs.RequireManualConfirmation && eligibleCount <= prefs.MinSelect 时
+        // 会隐式自动选择全部候选（单卡或多卡，例如 FOREGONE_CONCLUSION_POWER 在抽牌堆仅剩 2 张时自动选 2 张）
+        // 而不调用 ICardSelector.GetSelectedCards。
+        // 向前扫描连续的可隐式自动跳过前缀，若后续某条计划在 minSelect..maxSelect 内精确命中当前候选窗口，
+        // 则跳过已被原版隐式消费的前缀并对齐到该计划。
+        if (optList.Count > 0)
         {
-            PlanCardChoice nextPlan = _plans[_planIndex + 1];
-            if (TryResolvePlan(nextPlan, optList, minSelect, maxSelect, out List<CardModel> nextSelected, out _))
+            for (int skip = 1; _planIndex + skip < _plans.Count; skip++)
             {
-                _planIndex += 2;
-                return Task.FromResult<IEnumerable<CardModel>>(nextSelected);
+                PlanCardChoice skippedPlan = _plans[_planIndex + skip - 1];
+                if (!CanSkipImplicitPrefixPlan(skippedPlan, optList, minSelect, maxSelect))
+                    break;
+
+                PlanCardChoice candidatePlan = _plans[_planIndex + skip];
+                if (TryResolvePlan(candidatePlan, optList, minSelect, maxSelect, out List<CardModel> alignedSelected, out _))
+                {
+                    _planIndex += skip + 1;
+                    return Task.FromResult<IEnumerable<CardModel>>(alignedSelected);
+                }
             }
         }
 
@@ -78,6 +89,50 @@ internal sealed class PlanDrivenCardSelector(IReadOnlyList<PlanCardChoice> plans
         IReadOnlyList<CardRewardAlternative> alternatives)
         => new() { card = options.Count > 0 ? options[0].Card : null };
 
+    private static bool CanSkipImplicitPrefixPlan(
+        PlanCardChoice skippedPlan,
+        List<CardModel> optList,
+        int minSelect,
+        int maxSelect)
+    {
+        // 空候选（0 张）在原版 CardSelectCmd 中不会调用 ICardSelector。
+        if (skippedPlan.Cards.Count == 0)
+            return true;
+
+        // 生成牌三选一（SourcePile == None 且有候选）在原版不会隐式自动选择。
+        if (skippedPlan.SourcePile == PileType.None)
+            return false;
+
+        // 可选选牌（MinSelect == 0，RequireManualConfirmation == true）在有候选时永不隐式自动选择。
+        if (IsAlwaysManualWhenNonEmpty(skippedPlan.SourceId))
+            return false;
+
+        // 来源牌堆不同（如 Draw 的 FOREGONE_CONCLUSION_POWER 与 Hand 的 TYRANNY_POWER）说明不依赖当前 optList。
+        if (!MatchesSourcePile(skippedPlan, optList))
+            return true;
+
+        // 同牌堆场景下，只有当前 optList 无法满足 skippedPlan 时才允许作为已被前序隐式消费的前缀跳过。
+        return !TryResolvePlan(skippedPlan, optList, minSelect, maxSelect, out _, out _);
+    }
+
+    private static bool IsAlwaysManualWhenNonEmpty(string sourceId)
+        => sourceId is
+            "GAMBLING_CHIP"
+            or "GAMBLERS_BREW"
+            or "ASHWATER"
+            or "PURITY"
+            or "GUARDS"
+            or "NEOWS_FURY";
+
+    private static bool MatchesSourcePile(PlanCardChoice plan, List<CardModel> optList)
+    {
+        if (optList.Count == 0)
+            return true;
+        if (plan.SourcePile == PileType.None)
+            return plan.Cards.Count == 0 || optList.All(static o => o.Pile == null || o.Pile.Type == PileType.None);
+        return optList.All(o => o.Pile != null && o.Pile.Type == plan.SourcePile);
+    }
+
     private static bool TryResolvePlan(
         PlanCardChoice plan,
         List<CardModel> optList,
@@ -88,6 +143,13 @@ internal sealed class PlanDrivenCardSelector(IReadOnlyList<PlanCardChoice> plans
     {
         selected = new List<CardModel>(plan.Cards.Count);
         error = null;
+
+        if (!MatchesSourcePile(plan, optList))
+        {
+            string actualPiles = string.Join(", ", optList.Select(static o => o.Pile?.Type.ToString() ?? "None").Distinct());
+            error = $"计划选牌来源牌堆失配：expected={plan.SourcePile} actual=[{actualPiles}]（source={plan.SourceId}/{plan.Effect}）。";
+            return false;
+        }
 
         if (plan.Cards.Count == 0)
         {
@@ -172,9 +234,11 @@ internal static class DeploymentSoakRunner
     {
         int fights = 60;
         int seed = 2026;
+        string pool = "all";
         string profile = "Medium";
         int dop = 8;
         int budgetMs = 15_000;
+        int onlyFight = -1;
         string repoRoot = ResolveRepoRoot();
         string outPath = Path.Combine(repoRoot, ".local", "offline-harness", "soak-deploy.json");
         string? dumpOutcomesPath = null;
@@ -189,14 +253,18 @@ internal static class DeploymentSoakRunner
             {
                 case "--fights": fights = Math.Max(1, int.Parse(NextVal())); break;
                 case "--seed": seed = int.Parse(NextVal()); break;
+                case "--pool": pool = NextVal().ToLowerInvariant(); break;
                 case "--profile": profile = NextVal(); break;
                 case "--dop": dop = Math.Max(1, int.Parse(NextVal())); break;
                 case "--budget-ms": budgetMs = Math.Max(500, int.Parse(NextVal())); break;
+                case "--only-fight": onlyFight = int.Parse(NextVal()); break;
                 case "--out": outPath = Path.GetFullPath(NextVal()); break;
                 case "--dump-outcomes": dumpOutcomesPath = Path.GetFullPath(NextVal()); break;
                 default: throw new ArgumentException($"--soak-deploy 未知选项：{key}");
             }
         }
+        if (pool is not ("all" or "high-risk"))
+            throw new ArgumentException("--pool 只支持 all|high-risk。");
         if (profile is not ("Low" or "Medium" or "High" or "VeryHigh"))
             throw new ArgumentException("--profile 只支持 Low|Medium|High|VeryHigh。");
 
@@ -204,7 +272,7 @@ internal static class DeploymentSoakRunner
         Directory.CreateDirectory(outDir);
 
         Stopwatch totalSw = Stopwatch.StartNew();
-        Console.WriteLine($"=== --soak-deploy (fights={fights}, seed={seed}, profile={profile}, dop={dop}, budgetMs={budgetMs}, out={outPath}) ===");
+        Console.WriteLine($"=== --soak-deploy (fights={fights}, seed={seed}, pool={pool}, profile={profile}, dop={dop}, budgetMs={budgetMs}, out={outPath}) ===");
 
         HarnessLog.TraceInit = false;
         HarnessLog.VerboseGameLog = false;
@@ -223,7 +291,9 @@ internal static class DeploymentSoakRunner
         };
         GameBootstrap.EnsureBootstrapped(loop, modOptions);
 
-        List<(string Tag, CombatSetupSpec Setup)> scenarios = BuildSoakScenarios(fights, seed);
+        List<(string Tag, CombatSetupSpec Setup)> scenarios = pool == "high-risk"
+            ? BuildHighRiskSoakScenarios(fights, seed)
+            : BuildSoakScenarios(fights, seed);
 
         int gen2Before = GC.CollectionCount(2);
         using MemorySampler memory = new(TimeSpan.FromMilliseconds(150));
@@ -250,6 +320,8 @@ internal static class DeploymentSoakRunner
         {
             for (int f = 0; f < scenarios.Count; f++)
             {
+                if (onlyFight >= 0 && f != onlyFight)
+                    continue;
                 (string tag, CombatSetupSpec setup) = scenarios[f];
                 FightOutcomeRecord outcomeRecord = RunSingleSoakFight(
                     loop, f, tag, setup,
@@ -258,10 +330,11 @@ internal static class DeploymentSoakRunner
                     ref choiceMismatchCount, ref continuationsReused,
                     ref totalTurnsDeployed, ref totalSolves,
                     ref totalHpLoss, ref totalPotionsUsed, ref completedFightsForStats,
-                    solveTimesMs, replanSamples, errorSamples);
+                    solveTimesMs, replanSamples, errorSamples,
+                    traceFight: onlyFight == f);
                 fightOutcomes.Add(outcomeRecord);
 
-                if ((f + 1) % 10 == 0 || f + 1 == scenarios.Count)
+                if (onlyFight < 0 && ((f + 1) % 10 == 0 || f + 1 == scenarios.Count))
                 {
                     Console.WriteLine(
                         $"[soak] {f + 1}/{scenarios.Count} | wins={wins} defeats={defeats} errors={hardErrorCount} | " +
@@ -271,7 +344,8 @@ internal static class DeploymentSoakRunner
             }
 
             // 专项回归（#136）：Custom baseBeamWidth=135 & 180 (>100 / >160) 下 Stage 2 药水搜索不得抛 Math.Clamp 异常
-            customBeam135Stage2Ok = RunCustomBeamStage2Regression(loop, dop, ref hardErrorCount, errorSamples);
+            customBeam135Stage2Ok = onlyFight >= 0
+                || RunCustomBeamStage2Regression(loop, dop, ref hardErrorCount, errorSamples);
         }
         finally
         {
@@ -299,7 +373,7 @@ internal static class DeploymentSoakRunner
         {
             BenchmarkOutcomeHelper.WriteOutcomeFile(dumpOutcomesPath, new BenchmarkOutcomeFile
             {
-                Suite = "soak-deploy",
+                Suite = pool == "high-risk" ? "soak-deploy-high-risk" : "soak-deploy",
                 Profile = profile,
                 SearchMode = "Coordinator",
                 PotionPolicy = "Smart",
@@ -315,6 +389,7 @@ internal static class DeploymentSoakRunner
         {
             fights,
             seed,
+            pool,
             profile,
             dop,
             budget_ms = budgetMs,
@@ -340,7 +415,7 @@ internal static class DeploymentSoakRunner
             gc_gen2 = gcGen2,
             custom_beam135_stage2_ok = customBeam135Stage2Ok,
             outcomes_path = dumpOutcomesPath,
-            replan_samples = replanSamples.Take(25).ToArray(),
+            replan_samples = replanSamples.Take(100).ToArray(),
             error_samples = errorSamples.Take(25).ToArray(),
         };
 
@@ -394,7 +469,8 @@ internal static class DeploymentSoakRunner
         ref int completedFightsForStats,
         List<double> solveTimesMs,
         List<SoakReplanSample> replanSamples,
-        List<SoakErrorSample> errorSamples)
+        List<SoakErrorSample> errorSamples,
+        bool traceFight = false)
     {
         int currentTurn = 0;
         int replansBeforeFight = unplannedReplanCount;
@@ -431,6 +507,14 @@ internal static class DeploymentSoakRunner
             int initialFairyCount = player.PotionSlots
                 .Count(static p => p != null && string.Equals(p.Id.Entry, "FAIRY_IN_A_BOTTLE", StringComparison.Ordinal));
 
+            if (traceFight)
+            {
+                Console.WriteLine($"[trace-fight#{fightIndex}] tag={tag} char={setup.CharacterId} mode={setup.GameMode} dom={setup.DominionId ?? "-"} enc={setup.EncounterId} asc={setup.Ascension} act={setup.ActIndex} startHp={startHp}/{startMaxHp}");
+                Console.WriteLine($"  relics=[{string.Join(", ", setup.Relics)}] potions=[{string.Join(", ", setup.Potions)}]");
+                Console.WriteLine($"  powers=[{string.Join(", ", setup.InitialPowers.Select(p => $"{p.PowerId}:{p.Amount}@{(p.OnPlayer ? "P" : $"E{p.EnemyIndex}")}"))}]");
+                Console.WriteLine($"  cards=[{string.Join(", ", setup.Cards.Select(c => $"{c.CardId}{(c.UpgradeLevel > 0 ? $"+{c.UpgradeLevel}" : "")}{(c.EnchantmentId != null ? $"[{c.EnchantmentId}:{c.EnchantmentAmount}]" : "")}"))}]");
+            }
+
             SolverResult? activePlan = null;
             const int maxTurns = 35;
 
@@ -443,6 +527,13 @@ internal static class DeploymentSoakRunner
                 currentTurn = player.PlayerCombatState!.TurnNumber;
                 BattleDamageSnapshot damage = BattleDamageTracker.Observe(combat);
                 ContinuationStamp liveStamp = ContinuationStamp.CaptureLive(combat);
+
+                if (traceFight)
+                {
+                    Console.WriteLine($"[trace-T{currentTurn}] liveHp={player.Creature.CurrentHp}/{player.Creature.MaxHp} B={player.Creature.Block} E={player.PlayerCombatState.Energy}/{player.PlayerCombatState.MaxEnergy} S={player.PlayerCombatState.Stars} P=[{string.Join(",", player.Creature.Powers.Select(p => $"{p.Id.Entry}={p.Amount}"))}]");
+                    Console.WriteLine($"  enemies=[{string.Join(", ", combat.Enemies.Select(e => $"{e.CombatId}:{e.Monster?.Id.Entry ?? e.Name}={e.CurrentHp}/{e.MaxHp}+B{e.Block}[{string.Join(",", e.Powers.Select(p => $"{p.Id.Entry}={p.Amount}"))}]"))}]");
+                    Console.WriteLine($"  hand=[{string.Join(", ", player.PlayerCombatState.Hand.Cards.Select(c => $"{c.Id.Entry}{(c.CurrentUpgradeLevel > 0 ? $"+{c.CurrentUpgradeLevel}" : "")}(E{c.EnergyCost.GetResolved()})"))}]");
+                }
 
                 if (activePlan != null)
                 {
@@ -460,11 +551,15 @@ internal static class DeploymentSoakRunner
                         if (expected != null)
                         {
                             string firstDiff = expected.ExpectedState.DescribeFirstDifference(liveStamp);
+                            if (traceFight)
+                                Console.WriteLine($"[trace-REPLAN T{currentTurn} StateMismatch] {firstDiff}");
                             unplannedReplanCount++;
                             replanSamples.Add(new SoakReplanSample(fightIndex, tag, currentTurn, "StateMismatch", firstDiff));
                         }
                         else if (activePlan.BoundaryReason == SearchBoundaryReason.None)
                         {
+                            if (traceFight)
+                                Console.WriteLine($"[trace-REPLAN T{currentTurn} ContinuationMissing] cached={activePlan.Continuations.Count} prevEnded={activePlan.CombatEndedTurn?.ToString() ?? "-"}");
                             unplannedReplanCount++;
                             replanSamples.Add(new SoakReplanSample(
                                 fightIndex, tag, currentTurn, "ContinuationMissing",
@@ -620,6 +715,8 @@ internal static class DeploymentSoakRunner
                     }
 
                     PlanDrivenCardSelector actionSelector = new(choicePlans);
+                    if (traceFight)
+                        Console.WriteLine($"  action#{actionIdx}: {action.Kind} {(action.Kind == PlanActionKind.UsePotion ? $"slot={action.PotionSlot}:{action.PotionId}" : $"{action.CardId}+{action.CardUpgradeLevel}")} target={action.TargetCombatId?.ToString() ?? "-"} ({action.TargetName}) choices=[{string.Join("; ", choicePlans)}]");
                     using (RunManager.Instance.CardSelectorStack.PushSelector(player, actionSelector))
                     {
                         _ = RealCombatDriver.RunRealCombatAction(
@@ -654,6 +751,8 @@ internal static class DeploymentSoakRunner
                     // 离线 EndTurn 会连续推进 PlayerTurnEnd -> EnemyTurn -> PlayerTurnStart -> 下一回合 Play，
                     // 必须把 TurnStartChoices（含 PlayerTurnEnd / EnemyTurn / PlayerTurnStart 如 TyrannyPower）全部喂给选牌器！
                     IReadOnlyList<PlanCardChoice> endTurnChoices = plannedEndTurn.TurnStartChoices ?? [];
+                    if (traceFight)
+                        Console.WriteLine($"  end_turn: T{planTurn} turnStartChoices=[{string.Join("; ", endTurnChoices)}]");
                     PlanDrivenCardSelector endTurnSelector = new(endTurnChoices);
                     using (RunManager.Instance.CardSelectorStack.PushSelector(player, endTurnSelector))
                     {
@@ -952,6 +1051,278 @@ internal static class DeploymentSoakRunner
         }
 
         return result;
+    }
+
+    private static List<(string Tag, CombatSetupSpec Setup)> BuildHighRiskSoakScenarios(int fights, int seed)
+    {
+        Random rng = new(seed);
+
+        Dictionary<string, CharacterModel> charMap = ModelDb.AllCharacters
+            .ToDictionary(static c => c.Id.Entry, StringComparer.Ordinal);
+
+        CardModel[] colorlessHighRisk = ModelDb.CardPool<ColorlessCardPool>().AllCards
+            .Where(c => !HotCoverageAuditor.IsMockOrDeprecated(c)
+                && GeneratedCombatScenario.IsSingleplayerCard(c)
+                && c.Rarity is CardRarity.Common or CardRarity.Uncommon or CardRarity.Rare
+                && HighRiskPoolFilter.IsHighRiskCard(c))
+            .DistinctBy(static c => c.Id)
+            .OrderBy(static c => c.Id.Entry, StringComparer.Ordinal)
+            .ToArray();
+
+        RelicModel[] sharedHighRiskRelics = ModelDb.RelicPool<SharedRelicPool>().AllRelics
+            .Where(r => !HotCoverageAuditor.IsMockOrDeprecated(r)
+                && GeneratedCombatScenario.IsSingleplayerRelic(r)
+                && r.Rarity is RelicRarity.Common or RelicRarity.Uncommon or RelicRarity.Rare or RelicRarity.Shop
+                && HighRiskPoolFilter.IsHighRiskRelic(r))
+            .DistinctBy(static r => r.Id)
+            .OrderBy(static r => r.Id.Entry, StringComparer.Ordinal)
+            .ToArray();
+
+        PotionModel[] sharedPotions = ModelDb.PotionPool<SharedPotionPool>().AllPotions
+            .Where(p => !HotCoverageAuditor.IsMockOrDeprecated(p))
+            .DistinctBy(static p => p.Id)
+            .OrderBy(static p => p.Id.Entry, StringComparer.Ordinal)
+            .ToArray();
+
+        // 高风险遭遇池：优先覆盖全部 Boss (40%) + Elite (30%) + 复杂机制 Normal (30%)
+        List<ActEncounterChoice> allHighRiskEncs = HighRiskPoolFilter.SelectHighRiskActEncounters();
+        List<ActEncounterChoice> bossQueue = ShuffleCopy(allHighRiskEncs.Where(static x => x.Risk.PriorityTier == 3), rng);
+        List<ActEncounterChoice> eliteQueue = ShuffleCopy(allHighRiskEncs.Where(static x => x.Risk.PriorityTier == 2), rng);
+        List<ActEncounterChoice> normalQueue = ShuffleCopy(allHighRiskEncs.Where(static x => x.Risk.PriorityTier == 1), rng);
+        int bossCursor = 0, eliteCursor = 0, normalCursor = 0;
+
+        DominionModel[] dominions = ModelDb.All.OfType<DominionModel>()
+            .Where(d => !HotCoverageAuditor.IsMockOrDeprecated(d))
+            .OrderBy(static d => d.Id.Entry, StringComparer.Ordinal)
+            .ToArray();
+
+        EnchantmentModel[] soakEnchantments = ModelDb.DebugEnchantments
+            .Where(e => !HotCoverageAuditor.IsMockOrDeprecated(e)
+                && e.Id.Entry is "ADROIT" or "SHARP" or "NIMBLE" or "SWIFT" or "VIGOROUS" or "STEADY"
+                    or "SPIRAL" or "INSTINCT" or "TEZCATARAS_EMBER" or "PERFECT_FIT"
+                    or "SLUMBERING_ESSENCE" or "MOMENTUM" or "GOOPY" or "SLITHER" or "INKY")
+            .OrderBy(static e => e.Id.Entry, StringComparer.Ordinal)
+            .ToArray();
+
+        List<(string Tag, CombatSetupSpec Setup)> result = new(fights);
+        for (int i = 0; i < fights; i++)
+        {
+            string charId = AllCharacters[i % AllCharacters.Length];
+            CharacterModel ch = charMap[charId];
+
+            GameMode mode = (i % 6) switch
+            {
+                0 or 1 or 2 => GameMode.Standard,
+                3 or 4 => GameMode.Dread,
+                _ => GameMode.Blitz,
+            };
+            string? dominionId = mode == GameMode.Dread && dominions.Length > 0
+                ? dominions[(i / 2) % dominions.Length].Id.Entry
+                : null;
+
+            ActEncounterChoice encChoice = (i % 10) switch
+            {
+                0 or 3 or 6 or 9 when bossQueue.Count > 0 => bossQueue[bossCursor++ % bossQueue.Count],
+                1 or 4 or 7 when eliteQueue.Count > 0 => eliteQueue[eliteCursor++ % eliteQueue.Count],
+                _ when normalQueue.Count > 0 => normalQueue[normalCursor++ % normalQueue.Count],
+                _ => allHighRiskEncs[rng.Next(allHighRiskEncs.Count)],
+            };
+            int actIdx = encChoice.ActIndex;
+            EncounterModel enc = encChoice.Encounter;
+
+            CardModel[] charHighRisk = ch.CardPool.AllCards
+                .Where(c => !HotCoverageAuditor.IsMockOrDeprecated(c)
+                    && GeneratedCombatScenario.IsSingleplayerCard(c)
+                    && c.Rarity is CardRarity.Common or CardRarity.Uncommon or CardRarity.Rare
+                    && HighRiskPoolFilter.IsHighRiskCard(c)
+                    && (mode != GameMode.Blitz || c.IsAllowedInBlitz))
+                .DistinctBy(static c => c.Id)
+                .OrderBy(static c => c.Id.Entry, StringComparer.Ordinal)
+                .ToArray();
+            CardModel[] charTier2 = charHighRisk.Where(HighRiskPoolFilter.IsUltraHighRiskCard).ToArray();
+            CardModel[] charTier1 = charHighRisk.Where(HighRiskPoolFilter.IsModerateCard).ToArray();
+
+            CardModel[] colorlessAllowed = colorlessHighRisk
+                .Where(c => mode != GameMode.Blitz || c.IsAllowedInBlitz)
+                .ToArray();
+            CardModel[] colorlessTier2 = colorlessAllowed.Where(HighRiskPoolFilter.IsUltraHighRiskCard).ToArray();
+            CardModel[] colorlessTier1 = colorlessAllowed.Where(HighRiskPoolFilter.IsModerateCard).ToArray();
+
+            CardModel[] cheapPlayableT2 = charTier2.Where(HighRiskPoolFilter.IsCheapPlayableBackboneCard).ToArray();
+            CardModel[] cheapPlayableT1 = charTier1.Where(HighRiskPoolFilter.IsCheapPlayableBackboneCard).ToArray();
+            CardModel[] cheapAttacksT2 = cheapPlayableT2.Where(static c => c.Type == CardType.Attack).ToArray();
+            CardModel[] cheapAttacksT1 = cheapPlayableT1.Where(static c => c.Type == CardType.Attack).ToArray();
+            CardModel[] cheapSkillsT2 = cheapPlayableT2.Where(static c => c.Type == CardType.Skill).ToArray();
+            CardModel[] cheapSkillsT1 = cheapPlayableT1.Where(static c => c.Type == CardType.Skill).ToArray();
+            CardModel[] playableAttacksT2 = charTier2
+                .Where(static c => c.Type == CardType.Attack && !c.CanonicalKeywords.Contains(CardKeyword.Unplayable))
+                .ToArray();
+            CardModel[] playableAttacksT1 = charTier1
+                .Where(static c => c.Type == CardType.Attack && !c.CanonicalKeywords.Contains(CardKeyword.Unplayable))
+                .ToArray();
+            CardModel[] playableSkillsT2 = charTier2
+                .Where(static c => c.Type == CardType.Skill && !c.CanonicalKeywords.Contains(CardKeyword.Unplayable))
+                .ToArray();
+            CardModel[] playableSkillsT1 = charTier1
+                .Where(static c => c.Type == CardType.Skill && !c.CanonicalKeywords.Contains(CardKeyword.Unplayable))
+                .ToArray();
+
+            // 1. 清空初始打击/防御，保留极简可打出的高风险骨架（角色特征非基础起始牌 + 按 80% Tier2 / 20% Tier1 补足 3 张低费攻/技）
+            List<CardModel> pickedModels = new(16);
+            CardModel[] starterSig = HighRiskPoolFilter.GetHighRiskStarterBackbone(ch, mode);
+            foreach (CardModel sig in starterSig)
+                pickedModels.Add(sig);
+
+            if (!pickedModels.Any(static c => c.Type == CardType.Attack) && (cheapAttacksT2.Length > 0 || cheapAttacksT1.Length > 0))
+                pickedModels.Add(HighRiskPoolFilter.PickTierWeighted(cheapAttacksT2, cheapAttacksT1, rng));
+            if (!pickedModels.Any(static c => c.Type == CardType.Skill) && (cheapSkillsT2.Length > 0 || cheapSkillsT1.Length > 0))
+                pickedModels.Add(HighRiskPoolFilter.PickTierWeighted(cheapSkillsT2, cheapSkillsT1, rng));
+            while (pickedModels.Count < 3 && (cheapPlayableT2.Length > 0 || cheapPlayableT1.Length > 0))
+                pickedModels.Add(HighRiskPoolFilter.PickTierWeighted(cheapPlayableT2, cheapPlayableT1, rng));
+
+            // 2. 加入 8~12 张高风险主牌（0% Tier0 / ~80% Tier2 UltraHighRisk / ~20% Tier1 Moderate），带可玩性护栏避免死手
+            int coreCardTarget = 8 + rng.Next(5); // 8..12
+            int powerCount = pickedModels.Count(static c => c.Type == CardType.Power);
+            int heavyCostCount = pickedModels.Count(IsHeavyCostCard);
+            int unplayableCount = pickedModels.Count(IsUnplayableCard);
+            int attackCount = pickedModels.Count(static c => c.Type == CardType.Attack);
+            int skillCount = pickedModels.Count(static c => c.Type == CardType.Skill);
+
+            int addedCore = 0;
+            int guard = 0;
+            while (addedCore < coreCardTarget && charHighRisk.Length > 0 && guard < coreCardTarget * 8)
+            {
+                guard++;
+                CardModel pick;
+                if (attackCount < 3 && (playableAttacksT2.Length > 0 || playableAttacksT1.Length > 0))
+                    pick = HighRiskPoolFilter.PickTierWeighted(playableAttacksT2, playableAttacksT1, rng);
+                else if (skillCount < 2 && (playableSkillsT2.Length > 0 || playableSkillsT1.Length > 0))
+                    pick = HighRiskPoolFilter.PickTierWeighted(playableSkillsT2, playableSkillsT1, rng);
+                else if (addedCore >= coreCardTarget - 2 && (colorlessTier2.Length > 0 || colorlessTier1.Length > 0) && rng.Next(2) == 0)
+                    pick = HighRiskPoolFilter.PickTierWeighted(colorlessTier2, colorlessTier1, rng);
+                else
+                    pick = HighRiskPoolFilter.PickTierWeighted(charTier2, charTier1, rng);
+
+                bool isPower = pick.Type == CardType.Power;
+                bool isHeavy = IsHeavyCostCard(pick);
+                bool isUnplayable = IsUnplayableCard(pick);
+                if (isPower && powerCount >= 3) continue;
+                if (isHeavy && heavyCostCount >= 3) continue;
+                if (isUnplayable && unplayableCount >= 1) continue;
+
+                pickedModels.Add(pick);
+                addedCore++;
+                if (isPower) powerCount++;
+                if (isHeavy) heavyCostCount++;
+                if (isUnplayable) unplayableCount++;
+                if (pick.Type == CardType.Attack) attackCount++;
+                if (pick.Type == CardType.Skill) skillCount++;
+            }
+
+            List<CardInjectionSpec> addedCards = new(pickedModels.Count);
+            int enchBudget = soakEnchantments.Length > 0 ? 1 + rng.Next(2) : 0;
+            for (int cIdx = 0; cIdx < pickedModels.Count; cIdx++)
+            {
+                CardModel pick = pickedModels[cIdx];
+                int upg = rng.Next(3) == 0 && pick.MaxUpgradeLevel > 0 ? 1 : 0;
+                string? enchId = null;
+                if (enchBudget > 0 && rng.Next(4) == 0)
+                {
+                    EnchantmentModel cand = soakEnchantments[rng.Next(soakEnchantments.Length)];
+                    if (RealCombatDriver.CanSafelyEnchant(cand, pick))
+                    {
+                        enchId = cand.Id.Entry;
+                        enchBudget--;
+                    }
+                }
+                addedCards.Add(new CardInjectionSpec(pick.Id.Entry, upg, enchId, 2));
+            }
+
+            // 3. 高风险战斗遗物（仅 HookMask != None 或 SpecialKind != None，优先纳入 1~2 个有状态/追踪遗物）
+            RelicModel[] relicPool = ch.RelicPool.AllRelics
+                .Concat(sharedHighRiskRelics)
+                .Where(r => !HotCoverageAuditor.IsMockOrDeprecated(r)
+                    && GeneratedCombatScenario.IsSingleplayerRelic(r)
+                    && HighRiskPoolFilter.IsHighRiskRelic(r)
+                    && (mode != GameMode.Blitz || !RelicLists.notAllowedInBlitz.Contains(r.Id)))
+                .DistinctBy(static r => r.Id)
+                .OrderBy(static r => r.Id.Entry, StringComparer.Ordinal)
+                .ToArray();
+
+            RelicModel[] statefulPool = relicPool.Where(HighRiskPoolFilter.IsStatefulOrTrackedRelic).ToArray();
+            int relicCount = 3 + rng.Next(3); // 3..5
+            HashSet<string> chosenRelics = new(StringComparer.Ordinal);
+            int statefulTarget = Math.Min(2, relicCount);
+            for (int r = 0; r < statefulTarget * 3 && chosenRelics.Count < statefulTarget && statefulPool.Length > 0; r++)
+                chosenRelics.Add(statefulPool[rng.Next(statefulPool.Length)].Id.Entry);
+            for (int r = 0; r < relicCount * 3 && chosenRelics.Count < relicCount && relicPool.Length > 0; r++)
+                chosenRelics.Add(relicPool[rng.Next(relicPool.Length)].Id.Entry);
+
+            PotionModel[] potionPool = ch.PotionPool.AllPotions
+                .Concat(sharedPotions)
+                .Where(p => !HotCoverageAuditor.IsMockOrDeprecated(p))
+                .DistinctBy(static p => p.Id)
+                .OrderBy(static p => p.Id.Entry, StringComparer.Ordinal)
+                .ToArray();
+
+            int potionCount = 2 + rng.Next(2);
+            List<string> chosenPotions = new(potionCount);
+            for (int p = 0; p < potionCount && potionPool.Length > 0; p++)
+                chosenPotions.Add(potionPool[rng.Next(potionPool.Length)].Id.Entry);
+
+            int ascension = mode == GameMode.Blitz ? (i % 6) : ((i % 4 == 0) ? 10 : 0);
+            int baseHp = encChoice.Risk.PriorityTier switch
+            {
+                3 => 95,
+                2 => 88,
+                _ => 82,
+            };
+            int maxHp = baseHp + actIdx * 10;
+            int curHp = maxHp - rng.Next(12);
+
+            string tag = $"soak_hr_{i:D2}_{charId.ToLowerInvariant()}_{mode.ToString().ToLowerInvariant()}_{enc.Id.Entry.ToLowerInvariant()}";
+            result.Add((tag, new CombatSetupSpec
+            {
+                CharacterId = charId,
+                EncounterId = enc.Id.Entry,
+                Seed = $"SOAKHR{seed:X4}_{i:D3}",
+                GameMode = mode,
+                DominionId = dominionId,
+                Ascension = ascension,
+                ActIndex = actIdx,
+                PlayerMaxHp = maxHp,
+                PlayerHp = curHp,
+                ClearStarterDeck = true,
+                Cards = addedCards.ToArray(),
+                Relics = chosenRelics.ToArray(),
+                PotionSlotCount = 3,
+                Potions = chosenPotions.ToArray(),
+                ExtraStars = charId == "REGENT" ? 2 : 0,
+            }));
+        }
+
+        return result;
+    }
+
+    private static bool IsHeavyCostCard(CardModel card)
+        => card.EnergyCost.CostsX
+            || card.HasStarCostX
+            || card.EnergyCost.Canonical >= 3
+            || card.CanonicalStarCost >= 2;
+
+    private static bool IsUnplayableCard(CardModel card)
+        => card.EnergyCost.Canonical < 0
+            || card.CanonicalKeywords.Contains(CardKeyword.Unplayable);
+
+    private static List<T> ShuffleCopy<T>(IEnumerable<T> source, Random rng)
+    {
+        List<T> list = source.ToList();
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
+        return list;
     }
 
     private static double Percentile(List<double> values, double p)

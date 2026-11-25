@@ -13,6 +13,7 @@ internal ref struct HotHookArgs
     public byte ActorSlot;
     public byte TargetSlot;
     public int CardIdx;
+    public ushort CardUid;
     public ushort CardDefId;
     public ushort PowerDefId;
     public int Amount;

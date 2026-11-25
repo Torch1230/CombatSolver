@@ -12,7 +12,7 @@ internal readonly record struct HotRelicCatalogEntry(
     bool CanGenerateUnknown);
 
 /// <summary>
-/// Static STS2 0.113.1 catalog covering all vanilla concrete relics with exact hook masks and capability flags.
+/// Static STS2 0.114.0 catalog covering all vanilla concrete relics with exact hook masks and capability flags.
 /// </summary>
 internal static class HotRelicCatalog
 {
@@ -43,13 +43,14 @@ internal static class HotRelicCatalog
     {
         HotRelicCatalogEntry[] arr = new HotRelicCatalogEntry[(int)HotRelicId.Count];
         arr[(int)HotRelicId.Akabeko] = new(HotRelicId.Akabeko, "AKABEKO", HotHookMask.AfterSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.AlchemicalCoffer] = new(HotRelicId.AlchemicalCoffer, "ALCHEMICAL_COFFER", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.AlchemicalCoffer] = new(HotRelicId.AlchemicalCoffer, "ALCHEMICAL_COFFER", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.AmethystAubergine] = new(HotRelicId.AmethystAubergine, "AMETHYST_AUBERGINE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Anchor] = new(HotRelicId.Anchor, "ANCHOR", HotHookMask.BeforeSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.ArcaneScroll] = new(HotRelicId.ArcaneScroll, "ARCANE_SCROLL", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.ArcaneScroll] = new(HotRelicId.ArcaneScroll, "ARCANE_SCROLL", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.ArchaicTooth] = new(HotRelicId.ArchaicTooth, "ARCHAIC_TOOTH", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.ArtOfWar] = new(HotRelicId.ArtOfWar, "ART_OF_WAR", HotHookMask.AfterCardPlayed | HotHookMask.AfterTurnEnd | HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
-        arr[(int)HotRelicId.Astrolabe] = new(HotRelicId.Astrolabe, "ASTROLABE", HotHookMask.None, false, false, false, true);
+        // AfterEnergyReset runs directly via HotRelics.HandleAfterEnergyResetRelics (not AfterSideTurnStart).
+        arr[(int)HotRelicId.ArtOfWar] = new(HotRelicId.ArtOfWar, "ART_OF_WAR", HotHookMask.AfterCardPlayed | HotHookMask.AfterTurnEnd | HotHookMask.AfterCombatEnd, true, false, false, false);
+        arr[(int)HotRelicId.Astrolabe] = new(HotRelicId.Astrolabe, "ASTROLABE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.BagOfMarbles] = new(HotRelicId.BagOfMarbles, "BAG_OF_MARBLES", HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.BagOfPreparation] = new(HotRelicId.BagOfPreparation, "BAG_OF_PREPARATION", HotHookMask.ModifyHandDraw, false, false, false, false);
         arr[(int)HotRelicId.BathRobes] = new(HotRelicId.BathRobes, "BATH_ROBES", HotHookMask.BeforeSideTurnStart, false, false, true, false);
@@ -70,11 +71,12 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.BloodVial] = new(HotRelicId.BloodVial, "BLOOD_VIAL", HotHookMask.AfterSideTurnStart, false, false, true, false);
         arr[(int)HotRelicId.BoneFlute] = new(HotRelicId.BoneFlute, "BONE_FLUTE", HotHookMask.AfterAttack, false, false, false, false);
         arr[(int)HotRelicId.BoneTea] = new(HotRelicId.BoneTea, "BONE_TEA", HotHookMask.AfterSideTurnStart, true, false, false, false);
-        arr[(int)HotRelicId.BookOfFiveRings] = new(HotRelicId.BookOfFiveRings, "BOOK_OF_FIVE_RINGS", HotHookMask.AfterCardEnteredCombat, false, false, true, false);
+        arr[(int)HotRelicId.BookOfFiveRings] = new(HotRelicId.BookOfFiveRings, "BOOK_OF_FIVE_RINGS", HotHookMask.AfterCardEnteredCombat, false, false, false, false);
         arr[(int)HotRelicId.BookRepairKnife] = new(HotRelicId.BookRepairKnife, "BOOK_REPAIR_KNIFE", HotHookMask.None, false, false, true, false);
         arr[(int)HotRelicId.Bookmark] = new(HotRelicId.Bookmark, "BOOKMARK", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.BoomingConch] = new(HotRelicId.BoomingConch, "BOOMING_CONCH", HotHookMask.ModifyHandDraw | HotHookMask.AfterSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.BoundPhylactery] = new(HotRelicId.BoundPhylactery, "BOUND_PHYLACTERY", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterSideTurnStart, false, false, false, false);
+        // AfterEnergyResetLate runs directly via HotRelics.HandleAfterEnergyResetLateRelics (not AfterSideTurnStart).
+        arr[(int)HotRelicId.BoundPhylactery] = new(HotRelicId.BoundPhylactery, "BOUND_PHYLACTERY", HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.BowlerHat] = new(HotRelicId.BowlerHat, "BOWLER_HAT", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Bread] = new(HotRelicId.Bread, "BREAD", HotHookMask.ModifyMaxEnergy | HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.BrilliantScarf] = new(HotRelicId.BrilliantScarf, "BRILLIANT_SCARF", HotHookMask.ModifyEnergyCost | HotHookMask.ModifyStarCost | HotHookMask.BeforeSideTurnStart | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd, false, true, false, false);
@@ -104,7 +106,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.DarkstonePeriapt] = new(HotRelicId.DarkstonePeriapt, "DARKSTONE_PERIAPT", HotHookMask.AfterCardEnteredCombat, false, false, false, false);
         arr[(int)HotRelicId.DataDisk] = new(HotRelicId.DataDisk, "DATA_DISK", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.DaughterOfTheWind] = new(HotRelicId.DaughterOfTheWind, "DAUGHTER_OF_THE_WIND", HotHookMask.AfterCardPlayed, false, false, false, false);
-        arr[(int)HotRelicId.DelicateFrond] = new(HotRelicId.DelicateFrond, "DELICATE_FROND", HotHookMask.BeforeSideTurnStart, false, false, false, true);
+        arr[(int)HotRelicId.DelicateFrond] = new(HotRelicId.DelicateFrond, "DELICATE_FROND", HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.DemonTongue] = new(HotRelicId.DemonTongue, "DEMON_TONGUE", HotHookMask.AfterDamageReceived | HotHookMask.BeforeSideTurnStart, false, true, true, false);
         arr[(int)HotRelicId.DiamondDiadem] = new(HotRelicId.DiamondDiadem, "DIAMOND_DIADEM", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.DingyRug] = new(HotRelicId.DingyRug, "DINGY_RUG", HotHookMask.None, false, false, false, false);
@@ -122,18 +124,19 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.EmberTea] = new(HotRelicId.EmberTea, "EMBER_TEA", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.EmotionChip] = new(HotRelicId.EmotionChip, "EMOTION_CHIP", HotHookMask.AfterDamageReceived | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.EmptyCage] = new(HotRelicId.EmptyCage, "EMPTY_CAGE", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.EternalFeather] = new(HotRelicId.EternalFeather, "ETERNAL_FEATHER", HotHookMask.None, false, false, true, false);
+        arr[(int)HotRelicId.EternalFeather] = new(HotRelicId.EternalFeather, "ETERNAL_FEATHER", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.ExerciseMat] = new(HotRelicId.ExerciseMat, "EXERCISE_MAT", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.FakeAnchor] = new(HotRelicId.FakeAnchor, "FAKE_ANCHOR", HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.FakeBloodVial] = new(HotRelicId.FakeBloodVial, "FAKE_BLOOD_VIAL", HotHookMask.AfterSideTurnStart, false, false, true, false);
-        arr[(int)HotRelicId.FakeHappyFlower] = new(HotRelicId.FakeHappyFlower, "FAKE_HAPPY_FLOWER", HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
-        arr[(int)HotRelicId.FakeLeesWaffle] = new(HotRelicId.FakeLeesWaffle, "FAKE_LEES_WAFFLE", HotHookMask.None, false, false, true, false);
+        arr[(int)HotRelicId.FakeHappyFlower] = new(HotRelicId.FakeHappyFlower, "FAKE_HAPPY_FLOWER", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterPlayerTurnStartEarly | HotHookMask.AfterCombatEnd, true, false, false, false);
+        arr[(int)HotRelicId.FakeLeesWaffle] = new(HotRelicId.FakeLeesWaffle, "FAKE_LEES_WAFFLE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.FakeMango] = new(HotRelicId.FakeMango, "FAKE_MANGO", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.FakeMerchantsRug] = new(HotRelicId.FakeMerchantsRug, "FAKE_MERCHANTS_RUG", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.FakeOrichalcum] = new(HotRelicId.FakeOrichalcum, "FAKE_ORICHALCUM", HotHookMask.BeforeTurnEnd | HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.FakeSneckoEye] = new(HotRelicId.FakeSneckoEye, "FAKE_SNECKO_EYE", HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.FakeStrikeDummy] = new(HotRelicId.FakeStrikeDummy, "FAKE_STRIKE_DUMMY", HotHookMask.ModifyDamageAdditive, false, false, false, false);
-        arr[(int)HotRelicId.FakeVenerableTeaSet] = new(HotRelicId.FakeVenerableTeaSet, "FAKE_VENERABLE_TEA_SET", HotHookMask.AfterSideTurnStart, true, false, false, false);
+        // AfterEnergyReset runs directly via HotRelics.HandleAfterEnergyResetRelics (not AfterSideTurnStart).
+        arr[(int)HotRelicId.FakeVenerableTeaSet] = new(HotRelicId.FakeVenerableTeaSet, "FAKE_VENERABLE_TEA_SET", HotHookMask.None, true, false, false, false);
         arr[(int)HotRelicId.FencingManual] = new(HotRelicId.FencingManual, "FENCING_MANUAL", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.Fertilizer] = new(HotRelicId.Fertilizer, "FERTILIZER", HotHookMask.AfterCardGenerated, false, false, false, false);
         arr[(int)HotRelicId.FestivePopper] = new(HotRelicId.FestivePopper, "FESTIVE_POPPER", HotHookMask.AfterSideTurnStart, false, false, false, false);
@@ -159,8 +162,8 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.Gorget] = new(HotRelicId.Gorget, "GORGET", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.GremlinHorn] = new(HotRelicId.GremlinHorn, "GREMLIN_HORN", HotHookMask.AfterDeath, false, false, false, false);
         arr[(int)HotRelicId.HandDrill] = new(HotRelicId.HandDrill, "HAND_DRILL", HotHookMask.AfterBlockBroken, false, false, false, false);
-        arr[(int)HotRelicId.HappyFlower] = new(HotRelicId.HappyFlower, "HAPPY_FLOWER", HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
-        arr[(int)HotRelicId.HeftyTablet] = new(HotRelicId.HeftyTablet, "HEFTY_TABLET", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.HappyFlower] = new(HotRelicId.HappyFlower, "HAPPY_FLOWER", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterPlayerTurnStartEarly | HotHookMask.AfterCombatEnd, true, false, false, false);
+        arr[(int)HotRelicId.HeftyTablet] = new(HotRelicId.HeftyTablet, "HEFTY_TABLET", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.HelicalDart] = new(HotRelicId.HelicalDart, "HELICAL_DART", HotHookMask.AfterCardPlayed, false, false, false, false);
         arr[(int)HotRelicId.HistoryCourse] = new(HotRelicId.HistoryCourse, "HISTORY_COURSE", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.HornCleat] = new(HotRelicId.HornCleat, "HORN_CLEAT", HotHookMask.ShouldClearBlock, false, false, false, false);
@@ -173,18 +176,18 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.JewelryBox] = new(HotRelicId.JewelryBox, "JEWELRY_BOX", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.JossPaper] = new(HotRelicId.JossPaper, "JOSS_PAPER", HotHookMask.AfterCardExhausted | HotHookMask.AfterTurnEnd | HotHookMask.AfterCombatEnd, false, true, false, false);
         arr[(int)HotRelicId.JuzuBracelet] = new(HotRelicId.JuzuBracelet, "JUZU_BRACELET", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.Kaleidoscope] = new(HotRelicId.Kaleidoscope, "KALEIDOSCOPE", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.Kaleidoscope] = new(HotRelicId.Kaleidoscope, "KALEIDOSCOPE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Kifuda] = new(HotRelicId.Kifuda, "KIFUDA", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Kunai] = new(HotRelicId.Kunai, "KUNAI", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd, false, true, false, false);
         arr[(int)HotRelicId.Kusarigama] = new(HotRelicId.Kusarigama, "KUSARIGAMA", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterTurnEnd | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd, false, true, false, false);
         arr[(int)HotRelicId.Lantern] = new(HotRelicId.Lantern, "LANTERN", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.LargeCapsule] = new(HotRelicId.LargeCapsule, "LARGE_CAPSULE", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.LastingCandy] = new(HotRelicId.LastingCandy, "LASTING_CANDY", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.LastingCandy] = new(HotRelicId.LastingCandy, "LASTING_CANDY", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.LavaLamp] = new(HotRelicId.LavaLamp, "LAVA_LAMP", HotHookMask.AfterDamageReceived, false, false, false, false);
         arr[(int)HotRelicId.LavaRock] = new(HotRelicId.LavaRock, "LAVA_ROCK", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.LeadPaperweight] = new(HotRelicId.LeadPaperweight, "LEAD_PAPERWEIGHT", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.LeadPaperweight] = new(HotRelicId.LeadPaperweight, "LEAD_PAPERWEIGHT", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.LeafyPoultice] = new(HotRelicId.LeafyPoultice, "LEAFY_POULTICE", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.LeesWaffle] = new(HotRelicId.LeesWaffle, "LEES_WAFFLE", HotHookMask.None, false, false, true, false);
+        arr[(int)HotRelicId.LeesWaffle] = new(HotRelicId.LeesWaffle, "LEES_WAFFLE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.LetterOpener] = new(HotRelicId.LetterOpener, "LETTER_OPENER", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterSideTurnStart | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd, false, true, false, false);
         arr[(int)HotRelicId.LizardTail] = new(HotRelicId.LizardTail, "LIZARD_TAIL", HotHookMask.ShouldDie, false, true, true, false);
         arr[(int)HotRelicId.LoomingFruit] = new(HotRelicId.LoomingFruit, "LOOMING_FRUIT", HotHookMask.None, false, false, false, false);
@@ -194,9 +197,9 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.LuckyFysh] = new(HotRelicId.LuckyFysh, "LUCKY_FYSH", HotHookMask.AfterCardEnteredCombat, false, false, false, false);
         arr[(int)HotRelicId.LunarPastry] = new(HotRelicId.LunarPastry, "LUNAR_PASTRY", HotHookMask.AfterTurnEnd, false, false, false, false);
         arr[(int)HotRelicId.Mango] = new(HotRelicId.Mango, "MANGO", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.MassiveScroll] = new(HotRelicId.MassiveScroll, "MASSIVE_SCROLL", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.MassiveScroll] = new(HotRelicId.MassiveScroll, "MASSIVE_SCROLL", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.MawBank] = new(HotRelicId.MawBank, "MAW_BANK", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.MealTicket] = new(HotRelicId.MealTicket, "MEAL_TICKET", HotHookMask.None, false, false, true, false);
+        arr[(int)HotRelicId.MealTicket] = new(HotRelicId.MealTicket, "MEAL_TICKET", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.MeatCleaver] = new(HotRelicId.MeatCleaver, "MEAT_CLEAVER", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.MeatOnTheBone] = new(HotRelicId.MeatOnTheBone, "MEAT_ON_THE_BONE", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterHpLost | HotHookMask.AfterCombatEnd, false, false, true, false);
         arr[(int)HotRelicId.MembershipCard] = new(HotRelicId.MembershipCard, "MEMBERSHIP_CARD", HotHookMask.None, false, false, false, false);
@@ -238,7 +241,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.PaelsTears] = new(HotRelicId.PaelsTears, "PAELS_TEARS", HotHookMask.BeforeTurnEnd | HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.PaelsTooth] = new(HotRelicId.PaelsTooth, "PAELS_TOOTH", HotHookMask.AfterCombatEnd, false, false, false, false);
         arr[(int)HotRelicId.PaelsWing] = new(HotRelicId.PaelsWing, "PAELS_WING", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.PandorasBox] = new(HotRelicId.PandorasBox, "PANDORAS_BOX", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.PandorasBox] = new(HotRelicId.PandorasBox, "PANDORAS_BOX", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Pantograph] = new(HotRelicId.Pantograph, "PANTOGRAPH", HotHookMask.BeforeSideTurnStart, false, false, true, false);
         arr[(int)HotRelicId.PaperKrane] = new(HotRelicId.PaperKrane, "PAPER_KRANE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.PaperPhrog] = new(HotRelicId.PaperPhrog, "PAPER_PHROG", HotHookMask.None, false, false, false, false);
@@ -248,10 +251,10 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.Pendulum] = new(HotRelicId.Pendulum, "PENDULUM", HotHookMask.BeforeHandDraw | HotHookMask.ModifyHandDraw | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.Permafrost] = new(HotRelicId.Permafrost, "PERMAFROST", HotHookMask.AfterCardPlayed, false, true, false, false);
         arr[(int)HotRelicId.PetrifiedToad] = new(HotRelicId.PetrifiedToad, "PETRIFIED_TOAD", HotHookMask.BeforeSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.PhialHolster] = new(HotRelicId.PhialHolster, "PHIAL_HOLSTER", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.PhialHolster] = new(HotRelicId.PhialHolster, "PHIAL_HOLSTER", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.PhilosophersStone] = new(HotRelicId.PhilosophersStone, "PHILOSOPHERS_STONE", HotHookMask.ModifyMaxEnergy | HotHookMask.AfterHpLost, false, false, false, false);
         arr[(int)HotRelicId.PhylacteryUnbound] = new(HotRelicId.PhylacteryUnbound, "PHYLACTERY_UNBOUND", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.Planisphere] = new(HotRelicId.Planisphere, "PLANISPHERE", HotHookMask.None, false, false, true, false);
+        arr[(int)HotRelicId.Planisphere] = new(HotRelicId.Planisphere, "PLANISPHERE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Pocketwatch] = new(HotRelicId.Pocketwatch, "POCKETWATCH", HotHookMask.AfterCardPlayed | HotHookMask.ModifyHandDraw | HotHookMask.BeforeSideTurnStart | HotHookMask.AfterSideTurnStart | HotHookMask.AfterCombatEnd, true, false, false, false);
         arr[(int)HotRelicId.PollinousCore] = new(HotRelicId.PollinousCore, "POLLINOUS_CORE", HotHookMask.BeforeHandDraw | HotHookMask.AfterCombatEnd | HotHookMask.ModifyHandDraw, true, false, false, false);
         arr[(int)HotRelicId.Pomander] = new(HotRelicId.Pomander, "POMANDER", HotHookMask.None, false, false, false, false);
@@ -268,8 +271,8 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.RainbowRing] = new(HotRelicId.RainbowRing, "RAINBOW_RING", HotHookMask.BeforeSideTurnStart | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd, true, true, false, false);
         arr[(int)HotRelicId.RazorTooth] = new(HotRelicId.RazorTooth, "RAZOR_TOOTH", HotHookMask.AfterCardPlayed, false, false, false, false);
         arr[(int)HotRelicId.RedMask] = new(HotRelicId.RedMask, "RED_MASK", HotHookMask.BeforeSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.RedSkull] = new(HotRelicId.RedSkull, "RED_SKULL", HotHookMask.AfterCombatEnd | HotHookMask.AfterHpLost, true, false, false, false);
-        arr[(int)HotRelicId.RegalPillow] = new(HotRelicId.RegalPillow, "REGAL_PILLOW", HotHookMask.None, false, false, true, false);
+        arr[(int)HotRelicId.RedSkull] = new(HotRelicId.RedSkull, "RED_SKULL", HotHookMask.AfterCombatEnd | HotHookMask.AfterHpLost | HotHookMask.AfterHeal, true, false, false, false);
+        arr[(int)HotRelicId.RegalPillow] = new(HotRelicId.RegalPillow, "REGAL_PILLOW", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Regalite] = new(HotRelicId.Regalite, "REGALITE", HotHookMask.AfterCardGenerated | HotHookMask.BeforeSideTurnStart | HotHookMask.AfterCombatEnd, false, true, false, false);
         arr[(int)HotRelicId.ReptileTrinket] = new(HotRelicId.ReptileTrinket, "REPTILE_TRINKET", HotHookMask.AfterHpLost, false, false, false, false);
         arr[(int)HotRelicId.RingOfTheDrake] = new(HotRelicId.RingOfTheDrake, "RING_OF_THE_DRAKE", HotHookMask.ModifyHandDraw, false, false, false, false);
@@ -285,7 +288,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.SandCastle] = new(HotRelicId.SandCastle, "SAND_CASTLE", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.ScreamingFlagon] = new(HotRelicId.ScreamingFlagon, "SCREAMING_FLAGON", HotHookMask.BeforeTurnEnd, false, false, false, false);
         arr[(int)HotRelicId.ScrollBoxes] = new(HotRelicId.ScrollBoxes, "SCROLL_BOXES", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.SeaGlass] = new(HotRelicId.SeaGlass, "SEA_GLASS", HotHookMask.None, false, false, false, true);
+        arr[(int)HotRelicId.SeaGlass] = new(HotRelicId.SeaGlass, "SEA_GLASS", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.SealOfGold] = new(HotRelicId.SealOfGold, "SEAL_OF_GOLD", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.SelfFormingClay] = new(HotRelicId.SelfFormingClay, "SELF_FORMING_CLAY", HotHookMask.AfterDamageReceived, false, false, false, false);
         arr[(int)HotRelicId.SereTalon] = new(HotRelicId.SereTalon, "SERE_TALON", HotHookMask.None, false, false, false, false);
@@ -314,7 +317,7 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.SwordOfStone] = new(HotRelicId.SwordOfStone, "SWORD_OF_STONE", HotHookMask.AfterCombatEnd, false, false, false, false);
         arr[(int)HotRelicId.SymbioticVirus] = new(HotRelicId.SymbioticVirus, "SYMBIOTIC_VIRUS", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.TanxsWhistle] = new(HotRelicId.TanxsWhistle, "TANXS_WHISTLE", HotHookMask.None, false, false, false, false);
-        arr[(int)HotRelicId.TeaOfDiscourtesy] = new(HotRelicId.TeaOfDiscourtesy, "TEA_OF_DISCOURTESY", HotHookMask.BeforeSideTurnStart, false, false, true, false);
+        arr[(int)HotRelicId.TeaOfDiscourtesy] = new(HotRelicId.TeaOfDiscourtesy, "TEA_OF_DISCOURTESY", HotHookMask.BeforeSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.TheAbacus] = new(HotRelicId.TheAbacus, "THE_ABACUS", HotHookMask.AfterShuffle, false, false, false, false);
         arr[(int)HotRelicId.TheBoot] = new(HotRelicId.TheBoot, "THE_BOOT", HotHookMask.ModifyDamageCap, false, false, false, false);
         arr[(int)HotRelicId.TheCourier] = new(HotRelicId.TheCourier, "THE_COURIER", HotHookMask.None, false, false, false, false);
@@ -341,7 +344,8 @@ internal static class HotRelicCatalog
         arr[(int)HotRelicId.VakuuCardSelector] = new(HotRelicId.VakuuCardSelector, "VAKUU_CARD_SELECTOR", HotHookMask.None, false, false, false, false);
         arr[(int)HotRelicId.Vambrace] = new(HotRelicId.Vambrace, "VAMBRACE", HotHookMask.BeforeSideTurnStart | HotHookMask.ModifyBlockMultiplicative | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd, false, true, false, false);
         arr[(int)HotRelicId.VelvetChoker] = new(HotRelicId.VelvetChoker, "VELVET_CHOKER", HotHookMask.ModifyMaxEnergy | HotHookMask.BeforeCardPlayed | HotHookMask.AfterCardPlayed | HotHookMask.AfterCombatEnd | HotHookMask.BeforeSideTurnStart, false, false, false, false);
-        arr[(int)HotRelicId.VenerableTeaSet] = new(HotRelicId.VenerableTeaSet, "VENERABLE_TEA_SET", HotHookMask.AfterSideTurnStart, true, false, false, false);
+        // AfterEnergyReset runs directly via HotRelics.HandleAfterEnergyResetRelics (not AfterSideTurnStart).
+        arr[(int)HotRelicId.VenerableTeaSet] = new(HotRelicId.VenerableTeaSet, "VENERABLE_TEA_SET", HotHookMask.None, true, false, false, false);
         arr[(int)HotRelicId.VeryHotCocoa] = new(HotRelicId.VeryHotCocoa, "VERY_HOT_COCOA", HotHookMask.AfterSideTurnStart, false, false, false, false);
         arr[(int)HotRelicId.VexingPuzzlebox] = new(HotRelicId.VexingPuzzlebox, "VEXING_PUZZLEBOX", HotHookMask.AfterSideTurnStart, false, false, false, true);
         arr[(int)HotRelicId.VitruvianMinion] = new(HotRelicId.VitruvianMinion, "VITRUVIAN_MINION", HotHookMask.ModifyDamageMultiplicative | HotHookMask.ModifyBlockMultiplicative, false, false, false, false);

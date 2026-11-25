@@ -14,7 +14,7 @@ Usage: build-local-stack.sh [options]
 Options:
   -c, --configuration NAME  Debug or Release (default: Release)
       --for-publication     Require embedded online service configuration
-      --private-config-directory PATH  Directory containing presence.props and showcase.props
+      --private-config-directory PATH  Directory containing presence.props
   -h, --help                Show this help
 EOF
 }
@@ -71,11 +71,9 @@ if [[ "$for_publication" == true ]]; then
         private_config_directory="$repository_root/.local"
     fi
     [[ -f "$private_config_directory/presence.props" ]] || die "missing private connection configuration: presence.props"
-    [[ -f "$private_config_directory/showcase.props" ]] || die "missing private connection configuration: showcase.props"
     private_config_directory="$(cd -- "$private_config_directory" && pwd)"
     build_arguments+=(
         "-p:PresencePropsPath=$private_config_directory/presence.props"
-        "-p:ShowcasePropsPath=$private_config_directory/showcase.props"
     )
 fi
 

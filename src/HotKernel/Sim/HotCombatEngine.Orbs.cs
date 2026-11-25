@@ -80,7 +80,7 @@ internal static partial class HotCombatEngine
             HotOrbId.Frost => ModifyOrbValue(in s, rules, orbId, 2),
             HotOrbId.Dark => ModifyOrbValue(in s, rules, orbId, 6),
             HotOrbId.Plasma => orb.PassiveVal > 0 ? orb.PassiveVal : 1,
-            HotOrbId.Glass => Math.Max(0, (int)orb.PassiveVal),
+            HotOrbId.Glass => ModifyOrbValue(in s, rules, orbId, Math.Max(0, (int)orb.PassiveVal)),
             _ => 0,
         };
     }
@@ -95,7 +95,7 @@ internal static partial class HotCombatEngine
             HotOrbId.Frost => ModifyOrbValue(in s, rules, orbId, 5),
             HotOrbId.Dark => Math.Max(0, orb.EvokeVal),
             HotOrbId.Plasma => orb.EvokeVal > 0 ? orb.EvokeVal : 2,
-            HotOrbId.Glass => Math.Max(0, orb.EvokeVal),
+            HotOrbId.Glass => ModifyOrbValue(in s, rules, orbId, Math.Max(0, (int)orb.PassiveVal)) * 2,
             _ => 0,
         };
     }
@@ -126,8 +126,8 @@ internal static partial class HotCombatEngine
                     break;
 
                 case HotOrbId.Glass:
-                    s.Orbs[i].PassiveVal = (short)Math.Max(0, s.Orbs[i].PassiveVal + deltaFocus);
-                    s.Orbs[i].EvokeVal = s.Orbs[i].PassiveVal * 2;
+                    // GlassOrb.cs:15,21,23: PassiveVal stores unmodified base _passiveVal; Focus applies on read.
+                    s.Orbs[i].EvokeVal = ModifyOrbValue(in s, rules, orbId, Math.Max(0, (int)s.Orbs[i].PassiveVal)) * 2;
                     break;
             }
         }
@@ -188,11 +188,15 @@ internal static partial class HotCombatEngine
         if (IsOverOrEnding(in s) || scratch.NeedsChoice || orbTypeId == 0)
             return false;
 
-        // Vanilla OrbCmd.Channel grants 1 slot to non-Defect characters if capacity is 0.
-        if (s.OrbCapacity == 0)
+        // Vanilla OrbCmd.Channel (OrbCmd.cs:74-77) grants 1 slot only when both BaseOrbSlotCount == 0
+        // and current capacity == 0; Defect (BaseOrbSlotCount == 3) reduced to 0 slots drops channeled orbs.
+        if (s.OrbCapacity == 0 && rules.BaseOrbSlotCount == 0)
             s.OrbCapacity = 1;
 
-        if (s.OrbCapacity > 0 && s.OrbCount >= s.OrbCapacity)
+        if (s.OrbCapacity == 0)
+            return false;
+
+        if (s.OrbCount >= s.OrbCapacity)
         {
             EvokeOrb(ref s, ref cold, rules, scratch, orbIdx: 0, repeat: 1, dequeue: true);
             if (scratch.NeedsChoice || IsOverOrEnding(in s))
@@ -242,8 +246,9 @@ internal static partial class HotCombatEngine
                 effEvoke = baseEvoke;
                 break;
             case HotOrbId.Glass:
-                effPassive = (short)ModifyOrbValue(in s, rules, orbId, basePassive);
-                effEvoke = effPassive * 2;
+                // GlassOrb.cs:15,21,23: store unmodified base _passiveVal (4); Focus applies on read.
+                effPassive = basePassive;
+                effEvoke = ModifyOrbValue(in s, rules, orbId, Math.Max(0, (int)basePassive)) * 2;
                 break;
             default:
                 effPassive = basePassive;
@@ -289,8 +294,9 @@ internal static partial class HotCombatEngine
             // Matches OrbModel._validOrbs order: Lightning, Frost, Dark, Plasma, Glass.
             int pick = HotRng.NextInt(ref s.Rng[(int)HotRngStream.CombatOrbGeneration], 5);
             HotOrbId orbId = (HotOrbId)(pick + 1);
-            if (!ChannelOrb(ref s, ref cold, rules, scratch, orbId))
-                break;
+            ChannelOrb(ref s, ref cold, rules, scratch, orbId);
+            if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                return;
         }
     }
 
@@ -422,12 +428,14 @@ internal static partial class HotCombatEngine
             {
                 case HotOrbId.Lightning:
                 {
-                    int dmg = ModifyOrbValue(in s, rules, orbId, 3);
-                    int enemySlot = forcedTargetEnemySlot >= 0 && IsValidEnemyTarget(in s, forcedTargetEnemySlot)
-                        ? forcedTargetEnemySlot
+                    // LightningOrb.cs:52, TeslaCoil.cs:35, CreatureCmd.cs:305: explicit target does not retarget
+                    // or consume CombatTargets RNG if dead/unhittable (deals 0).
+                    int enemySlot = forcedTargetEnemySlot >= 0
+                        ? (IsValidEnemyTarget(in s, forcedTargetEnemySlot) ? forcedTargetEnemySlot : -1)
                         : PickRandomLivingEnemySlot(ref s);
                     if (enemySlot >= 0)
                     {
+                        int dmg = ModifyOrbValue(in s, rules, orbId, 3);
                         DealDamage(ref s, ref cold, rules, scratch, dealerSlot: 0, targetSlot: (byte)(3 + enemySlot), baseDamage: dmg, isPoweredAttack: false);
                     }
                     break;
@@ -456,13 +464,16 @@ internal static partial class HotCombatEngine
 
                 case HotOrbId.Glass:
                 {
-                    int val = s.Orbs[orbIdx].PassiveVal;
-                    if (val <= 0)
+                    // GlassOrb.cs:15,21,23,30-40: evaluate Focus-adjusted PassiveVal first; if > 0,
+                    // decrement unmodified base _passiveVal (clamped >= 0) before dealing damage.
+                    int basePassive = Math.Max(0, (int)s.Orbs[orbIdx].PassiveVal);
+                    int effectivePassive = ModifyOrbValue(in s, rules, orbId, basePassive);
+                    if (effectivePassive <= 0)
                         break;
-                    short nextPassive = (short)Math.Max(0, val - 1);
-                    s.Orbs[orbIdx].PassiveVal = nextPassive;
-                    s.Orbs[orbIdx].EvokeVal = nextPassive * 2;
-                    DamageAllEnemies(ref s, ref cold, rules, scratch, dealerSlot: 0, baseDamage: val, isPoweredAttack: false);
+                    short nextBasePassive = (short)Math.Max(0, basePassive - 1);
+                    s.Orbs[orbIdx].PassiveVal = nextBasePassive;
+                    s.Orbs[orbIdx].EvokeVal = ModifyOrbValue(in s, rules, orbId, nextBasePassive) * 2;
+                    DamageAllEnemies(ref s, ref cold, rules, scratch, dealerSlot: 0, baseDamage: effectivePassive, isPoweredAttack: false);
                     break;
                 }
             }

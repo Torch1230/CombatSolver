@@ -34,7 +34,12 @@ internal enum HotCounterSlot : byte
     SadnessGeneratedBefore       = 20,
     BaseMaxEnergy                = 21,
     BaseHandDraw                 = 22,
-    CardBlockGainsThisTurn       = 23,
+    // STS2 0.114.0 UnmovablePower: counts distinct CardPlays (not individual BlockGainedEntry events)
+    // that gained card/monster-move block for the player this turn.
+    CardBlockGainsThisTurn              = 23,
+    ShivPlaysFinishedThisTurn           = 24,
+    FirstInSeriesCardPlayStartsThisTurn = 25,
+    HistoryCardsExhausted               = 26,
 }
 
 internal enum HotCardOpKind : byte
@@ -109,9 +114,8 @@ internal enum HotCardPrivateKind : byte
     MadScience       = 4,
     Rampage          = 5,
     TheScythe        = 6,
-    TheShot          = 7,
-    ShowOff          = 8,
-    SovereignBlade   = 9,
+    ShowOff          = 7,
+    SovereignBlade   = 8,
 }
 
 internal enum HotPowerSpecialKind : byte

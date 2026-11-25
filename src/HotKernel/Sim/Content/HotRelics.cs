@@ -14,6 +14,11 @@ namespace CombatSolver.HotKernel;
 internal static class HotRelics
 {
     private const int MaxStackPoolCards = 512;
+    private const int EmotionChipTaggedBit = 1 << 30;
+    private const int EmotionChipTurnMask = 0x7FFF;
+    private const int EmotionChipRootPrevSentinel = 0x7FFF;
+    private const int PaelsEyeWasPartBit = 1;
+    private const int PaelsEyeManualPlayedBit = 2;
 
     public static void DispatchRelicHook(
         ref CombatHotState s,
@@ -40,6 +45,9 @@ internal static class HotRelics
 
         byte stateSlot = ar.StateSlot;
         bool hasState = stateSlot < s.RelicStateCount;
+
+        if (args.CardUid != 0)
+            HotCombatEngine.RefreshHookCardIdx(in s, ref args);
 
         switch (hook)
         {
@@ -179,6 +187,10 @@ internal static class HotRelics
                 HandleBeforeSideTurnStart(ref s, ref cold, rules, scratch, relicId, stateSlot, hasState, ref args);
                 break;
 
+            case HotHookMask.AfterPlayerTurnStartEarly:
+                HandleAfterPlayerTurnStartEarly(ref s, rules, relicId, stateSlot, hasState);
+                break;
+
             case HotHookMask.AfterSideTurnStart:
                 HandleAfterSideTurnStart(ref s, ref cold, rules, scratch, relicId, stateSlot, hasState, ref args);
                 break;
@@ -257,14 +269,187 @@ internal static class HotRelics
                 continue;
 
             ref HotRelicState rs = ref s.RelicStates[ar.StateSlot];
-            rs.Current = rs.PreviousOrAux;
-            rs.PreviousOrAux = 0;
+            int raw = rs.PreviousOrAux;
+            int curTurn = Math.Clamp(s.PlayerTurnNumber, 1, EmotionChipRootPrevSentinel - 1);
+            int prevTurnNeeded = curTurn - 1;
+
+            bool hitPrevTurn;
+            bool hitCurTurn;
+            if ((raw & EmotionChipTaggedBit) == 0)
+            {
+                hitPrevTurn = raw != 0 && prevTurnNeeded > 0;
+                hitCurTurn = false;
+            }
+            else
+            {
+                int last = raw & EmotionChipTurnMask;
+                int prev = (raw >> 15) & EmotionChipTurnMask;
+                hitPrevTurn = prevTurnNeeded > 0
+                    && (last == prevTurnNeeded || prev == prevTurnNeeded || prev == EmotionChipRootPrevSentinel);
+                hitCurTurn = last == curTurn;
+            }
+
+            rs.Current = hitPrevTurn ? 1 : 0;
+            rs.PreviousOrAux = hitCurTurn ? (EmotionChipTaggedBit | curTurn) : 0;
             if (rs.Current != 0)
             {
                 int orbCount = s.OrbCount;
                 for (int o = 0; o < orbCount && o < s.OrbCount && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); o++)
                     HotCombatEngine.TriggerOrbPassive(ref s, ref cold, rules, scratch, o, forcedTargetEnemySlot: -1, applyTriggerCountMods: true);
             }
+        }
+    }
+
+    /// <summary>
+    /// Records an EmotionChip-eligible player damage history entry at the <c>CreatureCmd.cs:364</c>
+    /// <c>History.DamageReceived</c> boundary (before <c>AfterDamageReceived</c> / <c>Kill</c>, so
+    /// fatal hits revived by LizardTail / FairyInABottle, 0-damage unblocked hits, unblockable hits,
+    /// and <c>LoseMaxHp</c> overflow are all captured).
+    /// </summary>
+    internal static void RecordEmotionChipDamageIfEligible(
+        ref CombatHotState s,
+        HotRules rules,
+        int targetSlot,
+        bool wasFullyBlocked)
+    {
+        if (targetSlot != 0 || wasFullyBlocked || HotCombatEngine.IsOverOrEnding(in s))
+            return;
+        if (!rules.HasRelic(HotRelicId.EmotionChip))
+            return;
+
+        HotActiveRelic[] active = rules.ActiveRelics;
+        for (int i = 0; i < active.Length; i++)
+        {
+            HotActiveRelic ar = active[i];
+            if (ar.RelicDefId >= rules.Relics.Length || rules.Relics[ar.RelicDefId].RelicId != HotRelicId.EmotionChip)
+                continue;
+            if (ar.StateSlot >= s.RelicStateCount)
+                continue;
+
+            RecordEmotionChipDamage(ref s.RelicStates[ar.StateSlot], s.PlayerTurnNumber);
+        }
+    }
+
+    private static void RecordEmotionChipDamage(ref HotRelicState rs, int playerTurnNumber)
+    {
+        int turn = Math.Clamp(playerTurnNumber, 1, EmotionChipRootPrevSentinel - 1);
+        int raw = rs.PreviousOrAux;
+        if ((raw & EmotionChipTaggedBit) == 0)
+        {
+            int prev = raw != 0 ? EmotionChipRootPrevSentinel : 0;
+            rs.PreviousOrAux = EmotionChipTaggedBit | (prev << 15) | turn;
+            return;
+        }
+
+        int last = raw & EmotionChipTurnMask;
+        if (last == turn)
+            return;
+        rs.PreviousOrAux = EmotionChipTaggedBit | (last << 15) | turn;
+    }
+
+    internal static int DecodeEmotionChipThisTurn(in HotRelicState rs, int playerTurnNumber)
+    {
+        int raw = rs.PreviousOrAux;
+        if ((raw & EmotionChipTaggedBit) == 0)
+            return raw != 0 ? 1 : 0;
+
+        int curTurn = Math.Clamp(playerTurnNumber, 1, EmotionChipRootPrevSentinel - 1);
+        return (raw & EmotionChipTurnMask) == curTurn ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Fires player relics overriding <c>AfterEnergyReset</c> (<c>ArtOfWar</c>,
+    /// <c>FakeVenerableTeaSet</c>, <c>VenerableTeaSet</c>) in <see cref="HotRules.ActiveRelics"/> order,
+    /// immediately after energy reset and AfterEnergyReset player powers and BEFORE hand draw.
+    /// </summary>
+    internal static void HandleAfterEnergyResetRelics(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch)
+    {
+        if (!HotCombatEngine.IsInProgress(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+            return;
+
+        HotActiveRelic[] active = rules.ActiveRelics;
+        for (int i = 0; i < active.Length; i++)
+        {
+            HotActiveRelic ar = active[i];
+            if (ar.RelicDefId == 0 || ar.RelicDefId >= rules.Relics.Length)
+                continue;
+
+            HotRelicDef def = rules.Relics[ar.RelicDefId];
+            HotRelicId relicId = def.RelicId != HotRelicId.None
+                ? def.RelicId
+                : HotRelicCatalog.FindByEntry(def.Entry);
+            byte stateSlot = ar.StateSlot;
+            bool hasState = stateSlot < s.RelicStateCount;
+
+            switch (relicId)
+            {
+                case HotRelicId.ArtOfWar:
+                    if (hasState && s.PlayerTurnNumber > 1)
+                    {
+                        ref HotRelicState rs = ref s.RelicStates[stateSlot];
+                        if (rs.PreviousOrAux == 0)
+                            HotCombatEngine.GainEnergy(ref s, rules, 1);
+                        rs.PreviousOrAux = 0;
+                        rs.Current = 0;
+                    }
+                    break;
+
+                case HotRelicId.FakeVenerableTeaSet:
+                    if (hasState && s.RelicStates[stateSlot].Current != 0)
+                    {
+                        HotCombatEngine.GainEnergy(ref s, rules, 1);
+                        s.RelicStates[stateSlot].Current = 0;
+                    }
+                    break;
+
+                case HotRelicId.VenerableTeaSet:
+                    if (hasState && s.RelicStates[stateSlot].Current != 0)
+                    {
+                        HotCombatEngine.GainEnergy(ref s, rules, 2);
+                        s.RelicStates[stateSlot].Current = 0;
+                    }
+                    break;
+            }
+
+            if (scratch.NeedsChoice || HotCombatEngine.IsOverOrEnding(in s))
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Fires player relics overriding <c>AfterEnergyResetLate</c> (<c>BoundPhylactery</c>) in
+    /// <see cref="HotRules.ActiveRelics"/> order, after <c>AfterEnergyReset</c> and BEFORE hand draw.
+    /// </summary>
+    internal static void HandleAfterEnergyResetLateRelics(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch)
+    {
+        if (!HotCombatEngine.IsInProgress(in s) || (s.Player.Flags & HotCreatureFlags.Alive) == 0 || scratch.NeedsChoice)
+            return;
+
+        HotActiveRelic[] active = rules.ActiveRelics;
+        for (int i = 0; i < active.Length; i++)
+        {
+            HotActiveRelic ar = active[i];
+            if (ar.RelicDefId == 0 || ar.RelicDefId >= rules.Relics.Length)
+                continue;
+
+            HotRelicDef def = rules.Relics[ar.RelicDefId];
+            HotRelicId relicId = def.RelicId != HotRelicId.None
+                ? def.RelicId
+                : HotRelicCatalog.FindByEntry(def.Entry);
+
+            if (relicId == HotRelicId.BoundPhylactery && s.PlayerTurnNumber != 1)
+                HotRegentNecro.SummonOsty(ref s, ref cold, rules, scratch, 1);
+
+            if (scratch.NeedsChoice || HotCombatEngine.IsOverOrEnding(in s))
+                return;
         }
     }
 
@@ -723,14 +908,16 @@ internal static class HotRelics
         bool hasState,
         ref HotHookArgs args)
     {
-        // Post-block / post-Osty HP loss phase (BoolFlag == false) matches ModifyHpLostAfterOsty*
+        // Post-block / post-Osty HP loss phases (BoolFlag == false):
+        // Amount == 1 -> ModifyHpLostAfterOsty (BeatingRemnant.cs:42, TungstenRod.cs:19)
+        // Amount == 2 -> ModifyHpLostAfterOstyLate (TheBoot.cs:26-49)
         if (args.BoolFlag)
             return;
 
         switch (relicId)
         {
             case HotRelicId.BeatingRemnant:
-                if (args.TargetSlot == 0 && hasState)
+                if (args.Amount == 1 && args.TargetSlot == 0 && hasState)
                 {
                     decimal remainingCap = Math.Max(0m, 20m - s.RelicStates[stateSlot].Current);
                     if (args.DecimalValue > remainingCap)
@@ -739,12 +926,13 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.TungstenRod:
-                if (args.TargetSlot == 0 && args.DecimalValue > 0m)
+                if (args.Amount == 1 && args.TargetSlot == 0 && args.DecimalValue > 0m)
                     args.DecimalValue = Math.Max(0m, args.DecimalValue - 1m);
                 break;
 
             case HotRelicId.TheBoot:
-                if (args.IsPoweredAttack
+                if (args.Amount == 2
+                    && args.IsPoweredAttack
                     && (args.ActorSlot == 0 || args.ActorSlot == 1)
                     && args.TargetSlot >= 3
                     && args.DecimalValue >= 1m
@@ -841,14 +1029,10 @@ internal static class HotRelics
         switch (relicId)
         {
             case HotRelicId.ChemicalX:
-                if (args.PlayIndex == 0 && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
-                {
-                    ref HotCard card = ref s.Cards[args.CardIdx];
-                    if ((card.Flags & HotCardFlags.CostsX) != 0)
-                        card.CapturedEnergy = (short)(card.CapturedEnergy + 2);
-                    if ((card.Flags & HotCardFlags.HasStarCostX) != 0)
-                        scratch.LastStarsSpent += 2;
-                }
+                // Vanilla ChemicalX.BeforeCardPlayed (ChemicalX.cs:17-29) only calls Flash();
+                // the +2 bonus is applied in ModifyXValue at X-cost resolution sites
+                // (ResolveCoreEnergyX/ResolveCoreStarX, HotRegentNecro, HotFoolTarot),
+                // never by mutating CapturedEnergy / LastStarsSpent.
                 break;
 
             case HotRelicId.IntimidatingHelmet:
@@ -860,12 +1044,18 @@ internal static class HotRelics
                 if (hasState
                     && cardDef.Type == CardType.Attack
                     && s.RelicStates[stateSlot].Current == 0
-                    && s.RelicStates[stateSlot].PreviousOrAux == 0
-                    && args.CardIdx >= 0
-                    && args.CardIdx < s.TotalCardCount)
+                    && s.RelicStates[stateSlot].PreviousOrAux == 0)
                 {
-                    s.RelicStates[stateSlot].PreviousOrAux = s.Cards[args.CardIdx].CardUid;
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
+                    if (playedUid != 0)
+                        s.RelicStates[stateSlot].PreviousOrAux = playedUid;
                 }
+                break;
+
+            case HotRelicId.PaelsEye:
+                // STS2 0.113.1 PaelsEye.cs:69,156: only non-auto card plays this turn disable Pael's Eye.
+                if (hasState && !args.IsAutoPlay && s.RelicStates[stateSlot].Current == 0)
+                    s.RelicStates[stateSlot].PreviousOrAux |= PaelsEyeManualPlayedBit;
                 break;
 
             case HotRelicId.PenNib:
@@ -873,8 +1063,12 @@ internal static class HotRelics
                 {
                     ref HotRelicState rs = ref s.RelicStates[stateSlot];
                     rs.Current = (rs.Current + 1) % 10;
-                    if (rs.Current == 0 && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
-                        rs.PreviousOrAux = s.Cards[args.CardIdx].CardUid;
+                    if (rs.Current == 0)
+                    {
+                        ushort playedUid = ResolveHookCardUid(in s, in args);
+                        if (playedUid != 0)
+                            rs.PreviousOrAux = playedUid;
+                    }
                 }
                 break;
         }
@@ -987,14 +1181,14 @@ internal static class HotRelics
 
             case HotRelicId.MummifiedHand:
                 if (cardDef.Type == CardType.Power && s.HandCount > 0)
-                    TriggerMummifiedHand(ref s, ref cold);
+                    TriggerMummifiedHand(ref s, ref cold, rules);
                 break;
 
             case HotRelicId.MusicBox:
-                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0 && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
+                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0)
                 {
                     ushort trackedUid = (ushort)s.RelicStates[stateSlot].PreviousOrAux;
-                    if (s.Cards[args.CardIdx].CardUid == trackedUid)
+                    if (ResolveHookCardUid(in s, in args) == trackedUid && (uint)args.CardIdx < (uint)s.TotalCardCount)
                     {
                         s.RelicStates[stateSlot].Current = 1;
                         s.RelicStates[stateSlot].PreviousOrAux = 0;
@@ -1030,7 +1224,7 @@ internal static class HotRelics
                 {
                     ref HotRelicState rs = ref s.RelicStates[stateSlot];
                     ushort affectedUid = (ushort)(rs.PreviousOrAux >> 2);
-                    ushort playedUid = args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0;
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
                     if (affectedUid == 0 || affectedUid == playedUid)
                     {
                         rs.Current = 2;
@@ -1040,9 +1234,10 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.PenNib:
-                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0 && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
+                if (hasState && s.RelicStates[stateSlot].PreviousOrAux != 0)
                 {
-                    if (s.Cards[args.CardIdx].CardUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
+                    if (playedUid != 0 && playedUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
                         s.RelicStates[stateSlot].PreviousOrAux = 0;
                 }
                 break;
@@ -1093,7 +1288,7 @@ internal static class HotRelics
 
             case HotRelicId.RazorTooth:
                 if (cardDef.Type is CardType.Attack or CardType.Skill && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount)
-                    HotCombatEngine.UpgradeCard(ref s, rules, args.CardIdx);
+                    HotCombatEngine.UpgradeCard(ref s, rules, args.CardIdx, ref cold);
                 break;
 
             case HotRelicId.Shuriken:
@@ -1128,12 +1323,14 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.Vambrace:
-                if (hasState && s.RelicStates[stateSlot].Current == 0 && s.RelicStates[stateSlot].PreviousOrAux != 0
-                    && args.CardIdx >= 0 && args.CardIdx < s.TotalCardCount
-                    && s.Cards[args.CardIdx].CardUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
+                if (hasState && s.RelicStates[stateSlot].Current == 0 && s.RelicStates[stateSlot].PreviousOrAux != 0)
                 {
-                    s.RelicStates[stateSlot].Current = 1;
-                    s.RelicStates[stateSlot].PreviousOrAux = 0;
+                    ushort playedUid = ResolveHookCardUid(in s, in args);
+                    if (playedUid != 0 && playedUid == (ushort)s.RelicStates[stateSlot].PreviousOrAux)
+                    {
+                        s.RelicStates[stateSlot].Current = 1;
+                        s.RelicStates[stateSlot].PreviousOrAux = 0;
+                    }
                 }
                 break;
         }
@@ -1177,7 +1374,20 @@ internal static class HotRelics
         bool hasState,
         ref HotHookArgs args)
     {
-        if (args.TargetSlot != 0 || args.UnblockedDamage <= 0)
+        if (args.TargetSlot != 0)
+            return;
+
+        // STS2 0.113.1 EmotionChip.cs:19 & CreatureCmd.cs:339,364: LostHpInPreviousTurn checks
+        // History DamageReceivedEntry (!WasFullyBlocked && HappenedLastPlayerTurn), which includes
+        // 0-UnblockedDamage hits that were not fully blocked (e.g. TungstenRod/Buffer/0 dmg with 0 Block).
+        if (relicId == HotRelicId.EmotionChip)
+        {
+            if (hasState && !args.WasFullyBlocked && !HotCombatEngine.IsOverOrEnding(in s))
+                RecordEmotionChipDamage(ref s.RelicStates[stateSlot], s.PlayerTurnNumber);
+            return;
+        }
+
+        if (args.UnblockedDamage <= 0)
             return;
 
         switch (relicId)
@@ -1201,11 +1411,6 @@ internal static class HotRelics
                     s.RelicStates[stateSlot].Current = 1;
                     HotCombatEngine.HealCreature(ref s, ref cold, rules, scratch, targetSlot: 0, amount: args.UnblockedDamage);
                 }
-                break;
-
-            case HotRelicId.EmotionChip:
-                if (hasState && !args.WasFullyBlocked)
-                    s.RelicStates[stateSlot].PreviousOrAux = 1;
                 break;
 
             case HotRelicId.SelfFormingClay:
@@ -1637,6 +1842,39 @@ internal static class HotRelics
         }
     }
 
+    /// <summary>
+    /// Vanilla STS2 0.113.1 <c>Hook.ShouldTakeExtraTurn</c> (Hook.cs:2563-2583) Pass 1
+    /// (<c>ShouldTakeExtraTurnEarly</c>) + <c>PaelsEye.AfterTakingExtraTurn</c> (PaelsEye.cs:109-140):
+    /// consumes <c>PaelsEye</c> ONLY and leaves <c>ExtraTurnPower</c> untouched when triggered.
+    /// </summary>
+    internal static bool TryConsumePaelsEyeExtraTurn(ref CombatHotState s, HotRules rules)
+    {
+        if (!rules.HasRelic(HotRelicId.PaelsEye))
+            return false;
+
+        HotActiveRelic[] active = rules.ActiveRelics;
+        for (int i = 0; i < active.Length; i++)
+        {
+            HotActiveRelic ar = active[i];
+            if (ar.RelicDefId >= rules.Relics.Length || rules.Relics[ar.RelicDefId].RelicId != HotRelicId.PaelsEye)
+                continue;
+            if (ar.StateSlot >= s.RelicStateCount)
+                continue;
+
+            ref HotRelicState rs = ref s.RelicStates[ar.StateSlot];
+            if (rs.Current == 0
+                && (rs.PreviousOrAux & PaelsEyeWasPartBit) != 0
+                && !AnyManualCardPlayedForPaelsEye(in s, rules, in rs))
+            {
+                rs.Current = 1;
+                rs.PreviousOrAux &= ~PaelsEyeManualPlayedBit;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static void HandleShouldTakeExtraTurn(
         ref CombatHotState s,
         HotRules rules,
@@ -1645,15 +1883,8 @@ internal static class HotRelics
         bool hasState,
         ref HotHookArgs args)
     {
-        if (relicId == HotRelicId.PaelsEye && hasState)
-        {
-            ref HotRelicState rs = ref s.RelicStates[stateSlot];
-            if (rs.Current == 0 && rs.PreviousOrAux != 0 && !AnyManualCardPlayedForPaelsEye(in s, rules))
-            {
-                args.BoolFlag = true;
-                rs.Current = 1;
-            }
-        }
+        // PaelsEye is evaluated exclusively in Pass 1 via TryConsumePaelsEyeExtraTurn
+        // (matching vanilla Hook.ShouldTakeExtraTurnEarly priority over ExtraTurnPower).
     }
 
     private static void HandleBeforeTurnEnd(
@@ -1672,13 +1903,15 @@ internal static class HotRelics
         switch (relicId)
         {
             case HotRelicId.Orichalcum:
-                // Relics dispatch before Powers (Plating/Metallicize) in HotCombatEngine.DispatchHooks.
-                if (s.Player.Block == 0)
+                // STS2 0.113.1 Orichalcum.cs:44-66: latches Block == 0 in BeforeSideTurnEndVeryEarly
+                // (carried via args.BoolFlag before PlatingPower/MetallicizePower run), grants +6 Block here.
+                if (args.BoolFlag)
                     HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: 6, isCardBlock: false);
                 break;
 
             case HotRelicId.FakeOrichalcum:
-                if (s.Player.Block == 0)
+                // STS2 0.113.1 FakeOrichalcum.cs:46-68: same BeforeSideTurnEndVeryEarly latch, grants +3 Block.
+                if (args.BoolFlag)
                     HotCombatEngine.GainBlock(ref s, ref cold, rules, scratch, targetSlot: 0, baseAmount: 3, isCardBlock: false);
                 break;
 
@@ -1720,10 +1953,26 @@ internal static class HotRelics
                 if (hasState)
                 {
                     ref HotRelicState rs = ref s.RelicStates[stateSlot];
-                    if (rs.Current == 0 && rs.PreviousOrAux != 0 && !AnyManualCardPlayedForPaelsEye(in s, rules))
+                    if (rs.Current == 0
+                        && (rs.PreviousOrAux & PaelsEyeWasPartBit) != 0
+                        && !AnyManualCardPlayedForPaelsEye(in s, rules, in rs))
                     {
-                        while (s.HandCount > 0 && !HotCombatEngine.IsOverOrEnding(in s) && !scratch.NeedsChoice)
-                            HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, 0, causedByEthereal: false);
+                        // STS2 0.113.1 PaelsEye.cs:124-127: snapshot Hand before exhausting so cards
+                        // added/drawn mid-loop (e.g. BurningSticks, DarkEmbrace, JossPaper) are NOT exhausted.
+                        int snapCount = Math.Min((int)s.HandCount, HotLimits.MaxCards);
+                        if (snapCount > 0)
+                        {
+                            Span<ushort> handUids = stackalloc ushort[HotLimits.MaxCards];
+                            for (int i = 0; i < snapCount; i++)
+                                handUids[i] = s.Cards[i].CardUid;
+
+                            for (int i = 0; i < snapCount && !HotCombatEngine.IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
+                            {
+                                int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, handUids[i]);
+                                if (idx >= 0)
+                                    HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
+                            }
+                        }
                     }
                 }
                 break;
@@ -1832,6 +2081,27 @@ internal static class HotRelics
                     ref HotRelicState rs = ref s.RelicStates[stateSlot];
                     rs.PreviousOrAux = rs.Current;
                     rs.Current = 0;
+                }
+                break;
+
+            // STS2 0.114.0 HappyFlower.cs:97-107 & FakeHappyFlower.cs:97-107:
+            // increment TurnsSeen and latch GrantEnergyThisTurn in BeforeSideTurnStart;
+            // grant energy in AfterPlayerTurnStartEarly.
+            case HotRelicId.FakeHappyFlower:
+                if (hasState)
+                {
+                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
+                    rs.Current = (rs.Current + 1) % 5;
+                    rs.PreviousOrAux = rs.Current == 0 ? 1 : 0;
+                }
+                break;
+
+            case HotRelicId.HappyFlower:
+                if (hasState)
+                {
+                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
+                    rs.Current = (rs.Current + 1) % 3;
+                    rs.PreviousOrAux = rs.Current == 0 ? 1 : 0;
                 }
                 break;
 
@@ -1962,17 +2232,6 @@ internal static class HotRelics
                     HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.VigorPower, 8);
                 break;
 
-            case HotRelicId.ArtOfWar:
-                if (hasState && s.PlayerTurnNumber > 1)
-                {
-                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
-                    if (rs.PreviousOrAux == 0)
-                        HotCombatEngine.GainEnergy(ref s, rules, 1);
-                    rs.PreviousOrAux = 0;
-                    rs.Current = 0;
-                }
-                break;
-
             case HotRelicId.BathTowel:
                 if (s.PlayerTurnNumber <= 1)
                     HotCombatEngine.HealCreature(ref s, ref cold, rules, scratch, targetSlot: 0, amount: 8);
@@ -1992,7 +2251,7 @@ internal static class HotRelics
                 if (s.PlayerTurnNumber <= 1)
                 {
                     for (int i = 0; i < s.HandCount; i++)
-                        HotCombatEngine.UpgradeCard(ref s, rules, i);
+                        HotCombatEngine.UpgradeCard(ref s, rules, i, ref cold);
                 }
                 break;
 
@@ -2000,7 +2259,7 @@ internal static class HotRelics
                 if (hasState && s.PlayerTurnNumber <= 1 && s.RelicStates[stateSlot].Current > 0)
                 {
                     for (int i = 0; i < s.HandCount; i++)
-                        HotCombatEngine.UpgradeCard(ref s, rules, i);
+                        HotCombatEngine.UpgradeCard(ref s, rules, i, ref cold);
                     s.RelicStates[stateSlot].Current--;
                 }
                 break;
@@ -2029,11 +2288,6 @@ internal static class HotRelics
                             HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, picked[i], HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                     }
                 }
-                break;
-
-            case HotRelicId.BoundPhylactery:
-                if (s.PlayerTurnNumber != 1)
-                    HotRegentNecro.SummonOsty(ref s, ref cold, rules, scratch, 1);
                 break;
 
             case HotRelicId.PhylacteryUnbound:
@@ -2121,42 +2375,6 @@ internal static class HotRelics
                     HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, 0, 0, HotPowerId.StretchPower, 6);
                 break;
 
-            case HotRelicId.FakeHappyFlower:
-                if (hasState)
-                {
-                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
-                    rs.Current = (rs.Current + 1) % 5;
-                    if (rs.Current == 0)
-                        HotCombatEngine.GainEnergy(ref s, rules, 1);
-                }
-                break;
-
-            case HotRelicId.HappyFlower:
-                if (hasState)
-                {
-                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
-                    rs.Current = (rs.Current + 1) % 3;
-                    if (rs.Current == 0)
-                        HotCombatEngine.GainEnergy(ref s, rules, 1);
-                }
-                break;
-
-            case HotRelicId.FakeVenerableTeaSet:
-                if (hasState && s.RelicStates[stateSlot].Current != 0)
-                {
-                    HotCombatEngine.GainEnergy(ref s, rules, 1);
-                    s.RelicStates[stateSlot].Current = 0;
-                }
-                break;
-
-            case HotRelicId.VenerableTeaSet:
-                if (hasState && s.RelicStates[stateSlot].Current != 0)
-                {
-                    HotCombatEngine.GainEnergy(ref s, rules, 2);
-                    s.RelicStates[stateSlot].Current = 0;
-                }
-                break;
-
             case HotRelicId.FencingManual:
                 if (s.PlayerTurnNumber <= 1)
                     HotRegentNecro.Forge(ref s, ref cold, rules, scratch, 10);
@@ -2242,8 +2460,14 @@ internal static class HotRelics
                 break;
 
             case HotRelicId.PaelsEye:
-                if (hasState && s.RelicStates[stateSlot].Current == 0)
-                    s.RelicStates[stateSlot].PreviousOrAux = 1;
+                if (hasState)
+                {
+                    ref HotRelicState rs = ref s.RelicStates[stateSlot];
+                    if (rs.Current == 0)
+                        rs.PreviousOrAux = PaelsEyeWasPartBit;
+                    else
+                        rs.PreviousOrAux &= ~PaelsEyeManualPlayedBit;
+                }
                 break;
 
             case HotRelicId.PaelsLegion:
@@ -2311,6 +2535,27 @@ internal static class HotRelics
                         HotPotions.AddGeneratedFreeThisTurnToHand(ref s, ref cold, rules, scratch, picked[0]);
                 }
                 break;
+        }
+    }
+
+    private static void HandleAfterPlayerTurnStartEarly(
+        ref CombatHotState s,
+        HotRules rules,
+        HotRelicId relicId,
+        byte stateSlot,
+        bool hasState)
+    {
+        if (!hasState)
+            return;
+
+        if (relicId is HotRelicId.HappyFlower or HotRelicId.FakeHappyFlower)
+        {
+            ref HotRelicState rs = ref s.RelicStates[stateSlot];
+            if (rs.PreviousOrAux != 0)
+            {
+                rs.PreviousOrAux = 0;
+                HotCombatEngine.GainEnergy(ref s, rules, 1);
+            }
         }
     }
 
@@ -2419,15 +2664,15 @@ internal static class HotRelics
         }
     }
 
-    private static void TriggerMummifiedHand(ref CombatHotState s, ref HotColdSidecar? cold)
+    private static void TriggerMummifiedHand(ref CombatHotState s, ref HotColdSidecar? cold, HotRules rules)
     {
         int handCount = s.HandCount;
         if (handCount == 0)
             return;
 
         // Exact STS2 0.113.1 4-tier priority selection via CombatCardSelection RNG:
-        // 1) base > 0 AND current > 0
-        // 2) current > 0
+        // 1) base > 0 AND current (with global modifiers) > 0
+        // 2) current (with global modifiers) > 0
         // 3) base > 0
         // 4) any card in hand
         Span<int> tier1 = stackalloc int[HotLimits.MaxCards];
@@ -2439,9 +2684,13 @@ internal static class HotRelics
         {
             ref readonly HotCard c = ref s.Cards[i];
             bool baseCosts = c.BaseEnergyCost > 0 || c.BaseStarCost > 0;
-            int localE = (c.Flags & HotCardFlags.CostsX) != 0 ? 0 : HotCostModifiers.GetLocalEnergyCost(in c, cold);
-            int effS = (c.Flags & HotCardFlags.HasStarCostX) != 0 ? 0 : HotCostModifiers.GetEffectiveStarCost(in c, cold);
-            bool curCosts = localE > 0 || effS > 0;
+            int effE = (c.Flags & HotCardFlags.CostsX) != 0
+                ? 0
+                : HotCombatEngine.GetEffectiveEnergyCost(in s, in c, cold, rules, isInPlayablePile: true);
+            int effS = (c.Flags & HotCardFlags.HasStarCostX) != 0
+                ? 0
+                : HotCombatEngine.GetEffectiveStarCost(in s, in c, cold, rules, isInPlayablePile: true);
+            bool curCosts = effE > 0 || effS > 0;
 
             if (baseCosts && curCosts) tier1[c1++] = i;
             if (curCosts) tier2[c2++] = i;
@@ -2469,7 +2718,8 @@ internal static class HotRelics
             return;
 
         bool retainWholeHand = rules.HasRelic(HotRelicId.RunicPyramid)
-            || HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.RetainHandPower) > 0;
+            || HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.RetainHandPower) > 0
+            || HotCombatEngine.GetPowerAmountById(in s, rules, 0, HotPowerId.WellLaidPlansPower) > 0;
 
         Span<int> candidates = stackalloc int[HotLimits.MaxCards];
         int count = 0;
@@ -2478,7 +2728,7 @@ internal static class HotRelics
             ref readonly HotCard c = ref s.Cards[i];
             bool retained = retainWholeHand
                 || (c.Flags & HotCardFlags.SingleTurnRetain) != 0
-                || (c.LocalKeywordsMask & HotCardKeywordMask.Retain) != 0;
+                || HotCombatEngine.HasEffectiveRetainKeyword(in s, in c, rules);
             if (!retained || (c.Flags & HotCardFlags.CostsX) != 0)
                 continue;
             if (HotCostModifiers.GetLocalEnergyCost(in c, cold) > 0)
@@ -2554,8 +2804,9 @@ internal static class HotRelics
         ushort srcUid = clone.CardUid;
         ushort cloneUid = s.NextCardUid++;
         clone.CardUid = cloneUid;
-        clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe);
+        clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
         clone.Flags |= HotCardFlags.IsClone;
+        clone.DampenOrigUpg = 0;
 
         if ((clone.Flags & HotCardFlags.HasCostOverflow) != 0 && cold?.CostOverflow is { Length: > 0 } overflows)
         {
@@ -2580,8 +2831,8 @@ internal static class HotRelics
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool AnyManualCardPlayedForPaelsEye(in CombatHotState s, HotRules rules)
-        => s.Counters[(int)HotCounterSlot.CardsPlayedThisTurn] > 0
+    private static bool AnyManualCardPlayedForPaelsEye(in CombatHotState s, HotRules rules, in HotRelicState rs)
+        => (rs.PreviousOrAux & PaelsEyeManualPlayedBit) != 0
             || (s.PlayerTurnNumber == 1 && rules.HasRelic(HotRelicId.WhisperingEarring));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -2592,6 +2843,12 @@ internal static class HotRelics
         HotPileKind pile = HotPiles.PileOfIndex(in s, cardIdx);
         return pile is HotPileKind.Hand or HotPileKind.Play;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ushort ResolveHookCardUid(in CombatHotState s, in HotHookArgs args)
+        => args.CardUid != 0
+            ? args.CardUid
+            : ((uint)args.CardIdx < (uint)s.TotalCardCount ? s.Cards[args.CardIdx].CardUid : (ushort)0);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsCombatGeneratable(HotCardDef def)

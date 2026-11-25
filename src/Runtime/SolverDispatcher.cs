@@ -19,7 +19,9 @@ internal sealed partial class SolverDispatcher : Node
             return;
         _instance = new SolverDispatcher { Name = "CombatSolverDispatcher" };
         host.AddChild(_instance);
+#if ENABLE_PERFORMANCE_RECORDING
         PerformanceRecording.Start(host);
+#endif
         OnlinePresence.Start(host);
         _instance.SetProcess(true);
     }
@@ -32,7 +34,9 @@ internal sealed partial class SolverDispatcher : Node
     public override void _Process(double delta)
     {
         long now = Stopwatch.GetTimestamp();
+#if ENABLE_PERFORMANCE_RECORDING
         long allocated = PerformanceRecording.Enabled ? GC.GetAllocatedBytesForCurrentThread() : 0;
+#endif
         if (_lastProcessTimestamp != 0)
             SolverController.ObserveMainThreadFrameGap(Stopwatch.GetElapsedTime(_lastProcessTimestamp, now));
         _lastProcessTimestamp = now;
@@ -60,9 +64,11 @@ internal sealed partial class SolverDispatcher : Node
             if (!CombatManager.Instance.IsInProgress)
                 SolverDisplayNames.WarmUpNextBatch();
         }
+#if ENABLE_PERFORMANCE_RECORDING
         if (PerformanceRecording.Enabled)
             PerformanceRecording.Dispatcher(Stopwatch.GetElapsedTime(now).TotalMilliseconds,
                 GC.GetAllocatedBytesForCurrentThread() - allocated);
+#endif
     }
 
     public override void _ExitTree()

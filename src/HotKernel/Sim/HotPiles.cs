@@ -226,23 +226,29 @@ internal static class HotPiles
 
         HotRng.UnstableShuffle(buf, ref s.Rng[(int)HotRngStream.Shuffle]);
 
-        // PerfectFit enchantment (ModifyShuffleOrder, !isInitialShuffle):
-        // moves each enchanted card to the top (index 0) of the newly shuffled Draw pile.
+        // PerfectFit enchantment (ModifyShuffleOrder, !isInitialShuffle; PlayerCombatState.AllPiles:
+        // Hand, DrawPile, DiscardPile, ExhaustPile, PlayPile; CardPileCmd.Shuffle lines 1082-1090):
+        // iterate pre-shuffle Draw then Discard (0..count-1 within each pile, still intact in s.Cards
+        // before buf.CopyTo(dst)) so multiple PerfectFit cards move to buf[0] in exact vanilla listener order.
         if (total > 1 && rules != null)
         {
             byte perfectFitEnchId = rules.GetEnchantmentDefId(HotEnchantmentId.PerfectFit);
             if (perfectFitEnchId != 0)
             {
-                for (int i = 0; i < total; i++)
+                Span<HotCard> preShuffleCards = MemoryMarshal.CreateSpan(ref s.Cards[0], s.TotalCardCount);
+                for (int i = 0; i < drawCount; i++)
                 {
-                    if (buf[i].EnchId != perfectFitEnchId)
+                    ref readonly HotCard preCard = ref preShuffleCards[drawStart + i];
+                    if (preCard.EnchId != perfectFitEnchId)
                         continue;
-                    if (i > 0)
-                    {
-                        HotCard card = buf[i];
-                        buf.Slice(0, i).CopyTo(buf.Slice(1, i));
-                        buf[0] = card;
-                    }
+                    MoveMatchingCardToFront(buf, preCard.CardUid, preCard.CardDefId, perfectFitEnchId);
+                }
+                for (int i = 0; i < discardCount; i++)
+                {
+                    ref readonly HotCard preCard = ref preShuffleCards[discardStart + i];
+                    if (preCard.EnchId != perfectFitEnchId)
+                        continue;
+                    MoveMatchingCardToFront(buf, preCard.CardUid, preCard.CardDefId, perfectFitEnchId);
                 }
             }
         }
@@ -273,6 +279,40 @@ internal static class HotPiles
         s.DrawCount = (ushort)total;
         s.DiscardCount = 0;
         s.ShuffleEventCount++;
+    }
+
+    private static void MoveMatchingCardToFront(Span<HotCard> buf, ushort cardUid, ushort cardDefId, byte perfectFitEnchId)
+    {
+        int k = -1;
+        if (cardUid != 0)
+        {
+            for (int j = 0; j < buf.Length; j++)
+            {
+                if (buf[j].CardUid == cardUid)
+                {
+                    k = j;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            for (int j = buf.Length - 1; j >= 0; j--)
+            {
+                if (buf[j].CardUid == 0 && buf[j].CardDefId == cardDefId && buf[j].EnchId == perfectFitEnchId)
+                {
+                    k = j;
+                    break;
+                }
+            }
+        }
+
+        if (k > 0)
+        {
+            HotCard card = buf[k];
+            buf.Slice(0, k).CopyTo(buf.Slice(1, k));
+            buf[0] = card;
+        }
     }
 
     [ThreadStatic]
