@@ -1847,6 +1847,16 @@ impl ContentDispatcher for Sts2Content {
         }
     }
 
+    fn resume_auto_post_play_power(
+        &self,
+        state: &mut BattleState,
+        creature: CreatureHandle,
+        power_id: PowerId,
+        remaining_iterations: i32,
+    ) -> Result<(), KernelError> {
+        powers::resume_auto_post_play_power(self, state, creature, power_id, remaining_iterations)
+    }
+
     fn enchantment_on_play(
         &self,
         state: &mut BattleState,
@@ -2808,9 +2818,14 @@ impl ContentDispatcher for Sts2Content {
                 ) -> Result<bool, KernelError> {
                     let rev0 = state.hook_cache.revision;
                     let played_card_type = state.card(cp.card).map(|c| {
-                        let idx = c.id as usize;
-                        debug_assert!(idx < CONTENT_TABLES.card_metas.len());
-                        unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        if c.id == CardId::MadScience {
+                            cards::colorless_special::resolved_type(state, cp.card)
+                                .unwrap_or(CardType::Attack)
+                        } else {
+                            let idx = c.id as usize;
+                            debug_assert!(idx < CONTENT_TABLES.card_metas.len());
+                            unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        }
                     });
                     let idx0 = bits.trailing_zeros() as usize;
                     bits &= bits - 1;
@@ -2875,9 +2890,14 @@ impl ContentDispatcher for Sts2Content {
                 ) -> Result<bool, KernelError> {
                     let rev0 = state.hook_cache.revision;
                     let played_card_type = state.card(cp.card).map(|c| {
-                        let idx = c.id as usize;
-                        debug_assert!(idx < CONTENT_TABLES.card_metas.len());
-                        unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        if c.id == CardId::MadScience {
+                            cards::colorless_special::resolved_type(state, cp.card)
+                                .unwrap_or(CardType::Attack)
+                        } else {
+                            let idx = c.id as usize;
+                            debug_assert!(idx < CONTENT_TABLES.card_metas.len());
+                            unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        }
                     });
                     let idx0 = bits.trailing_zeros() as usize;
                     bits &= bits - 1;
@@ -2942,9 +2962,14 @@ impl ContentDispatcher for Sts2Content {
                 ) -> Result<bool, KernelError> {
                     let rev0 = state.hook_cache.revision;
                     let played_card_type = state.card(cp.card).map(|c| {
-                        let idx = c.id as usize;
-                        debug_assert!(idx < CONTENT_TABLES.card_metas.len());
-                        unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        if c.id == CardId::MadScience {
+                            cards::colorless_special::resolved_type(state, cp.card)
+                                .unwrap_or(CardType::Attack)
+                        } else {
+                            let idx = c.id as usize;
+                            debug_assert!(idx < CONTENT_TABLES.card_metas.len());
+                            unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        }
                     });
                     let idx0 = bits.trailing_zeros() as usize;
                     bits &= bits - 1;
@@ -3388,9 +3413,14 @@ impl ContentDispatcher for Sts2Content {
                 ) -> Result<bool, KernelError> {
                     let rev0 = state.hook_cache.revision;
                     let played_card_type = state.card(cp.card).map(|c| {
-                        let idx = c.id as usize;
-                        debug_assert!(idx < CONTENT_TABLES.card_metas.len());
-                        unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        if c.id == CardId::MadScience {
+                            cards::colorless_special::resolved_type(state, cp.card)
+                                .unwrap_or(CardType::Attack)
+                        } else {
+                            let idx = c.id as usize;
+                            debug_assert!(idx < CONTENT_TABLES.card_metas.len());
+                            unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        }
                     });
                     let slot_idx = HookSlot::AfterCardPlayed as usize;
                     let mut count = 0usize;
@@ -3493,9 +3523,14 @@ impl ContentDispatcher for Sts2Content {
                 ) -> Result<bool, KernelError> {
                     let rev0 = state.hook_cache.revision;
                     let played_card_type = state.card(cp.card).map(|c| {
-                        let idx = c.id as usize;
-                        debug_assert!(idx < CONTENT_TABLES.card_metas.len());
-                        unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        if c.id == CardId::MadScience {
+                            cards::colorless_special::resolved_type(state, cp.card)
+                                .unwrap_or(CardType::Attack)
+                        } else {
+                            let idx = c.id as usize;
+                            debug_assert!(idx < CONTENT_TABLES.card_metas.len());
+                            unsafe { CONTENT_TABLES.card_metas.get_unchecked(idx).card_type }
+                        }
                     });
                     let slot_idx = HookSlot::BeforeCardPlayed as usize;
                     let mut count = 0usize;

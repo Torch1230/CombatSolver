@@ -649,7 +649,7 @@ pub fn monster_setup_for_combat(
     let initial_state = match mid {
         MonsterId::Aeonglass => "EBB_MOVE",
         MonsterId::BattleFriendV1 | MonsterId::BattleFriendV2 | MonsterId::BattleFriendV3 => {
-            "IDLE"
+            "NOTHING_MOVE"
         }
         MonsterId::ByrdineMonster
         | MonsterId::Byrdpip
@@ -1163,7 +1163,7 @@ pub fn monster_roll_move(
                 _ => "HAMMER_UPPERCUT_MOVE",
             },
             MonsterId::BattleFriendV1 | MonsterId::BattleFriendV2 | MonsterId::BattleFriendV3 => {
-                "IDLE"
+                "NOTHING_MOVE"
             }
             MonsterId::ByrdineMonster
             | MonsterId::Byrdpip
@@ -1824,7 +1824,10 @@ pub fn monster_perform_move(
                 )?;
             }
         }
-        (MonsterId::BattleFriendV1 | MonsterId::BattleFriendV2 | MonsterId::BattleFriendV3, "IDLE") => {}
+        (
+            MonsterId::BattleFriendV1 | MonsterId::BattleFriendV2 | MonsterId::BattleFriendV3,
+            "NOTHING_MOVE" | "IDLE",
+        ) => {}
         (
             MonsterId::ByrdineMonster
             | MonsterId::Byrdpip
@@ -2838,6 +2841,7 @@ pub fn dispatch_hook(
                                 == Some(&FieldValue::Bool(true))
                         });
                     if should_escape {
+                        state.battleworn_dummy_timed_out = true;
                         escape_creature(content, state, creature)?;
                     }
                 }
@@ -2934,9 +2938,10 @@ pub fn monster_attack_intent_hits(
         (MonsterId::Axebot, "HAMMER_UPPERCUT_MOVE") => {
             Ok(smallvec![(Dec::from_i32(deadly(18, 14)), 1)])
         }
-        (MonsterId::BattleFriendV1 | MonsterId::BattleFriendV2 | MonsterId::BattleFriendV3, "IDLE") => {
-            Ok(SmallVec::new())
-        }
+        (
+            MonsterId::BattleFriendV1 | MonsterId::BattleFriendV2 | MonsterId::BattleFriendV3,
+            "NOTHING_MOVE" | "IDLE",
+        ) => Ok(SmallVec::new()),
         (
             MonsterId::ByrdineMonster
             | MonsterId::Byrdpip

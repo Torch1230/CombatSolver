@@ -3,7 +3,7 @@ use crate::state::{CardHandle, CreatureHandle};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::borrow::Cow;
-use sts2_types::{CardPilePosition, PileType, PotionId};
+use sts2_types::{CardPilePosition, PileType, PotionId, PowerId};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ChoiceTiming {
@@ -106,7 +106,15 @@ pub enum ContinuationFrame {
     },
     AfterAutoPrePlayResume {
         remaining_listeners: Vec<HookListener>,
-        is_late: bool,
+        stage: u8,
+    },
+    AfterAutoPostPlayResume {
+        remaining_listeners: Vec<HookListener>,
+    },
+    AfterAutoPostPlayPowerResume {
+        creature: CreatureHandle,
+        power_id: PowerId,
+        remaining_iterations: i32,
     },
 }
 

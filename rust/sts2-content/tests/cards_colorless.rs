@@ -184,6 +184,7 @@ fn build_battle(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: (creatures.len() as u32) + 1,
@@ -1143,4 +1144,68 @@ fn frozen_pools_and_jackpot_roll_ordering_are_respected() {
     play_hand_card(&mut s_v114, 0, None, vec![]).unwrap();
     // Temperance: 20 block
     assert_eq!(s_v114.player.block, 20);
+}
+
+#[test]
+fn mad_science_decodes_int_type_and_rider_private_fields() {
+    let (mut state, enemies) = build_battle(
+        CharacterId::Defect,
+        &[CardId::MadScience, CardId::MadScience],
+        &[],
+        &[],
+        &[(MonsterId::FuzzyWurmCrawler, 50)],
+    );
+    state.player.energy = 6;
+    let ms_atk = state.player.hand[0];
+    let ms_pwr = state.player.hand[1];
+    state.card_ext_mut(ms_atk).unwrap().private_fields.insert(
+        "MadScience._type".to_owned(),
+        FieldValue::Int(1), // Attack
+    );
+    state.card_ext_mut(ms_atk).unwrap().private_fields.insert(
+        "MadScience.<Rider>k__BackingField".to_owned(),
+        FieldValue::Int(3), // Choking -> 6 ChokingPower
+    );
+    state.card_ext_mut(ms_pwr).unwrap().private_fields.insert(
+        "MadScience._type".to_owned(),
+        FieldValue::Int(3), // Power
+    );
+    state.card_ext_mut(ms_pwr).unwrap().private_fields.insert(
+        "MadScience.<Rider>k__BackingField".to_owned(),
+        FieldValue::Int(9), // Improvement -> ImprovementPower
+    );
+    state.invalidate_hook_cache();
+
+    assert_eq!(mad_science_resolved_type(&state, ms_atk), CardType::Attack);
+    assert_eq!(mad_science_resolved_type(&state, ms_pwr), CardType::Power);
+    assert_eq!(
+        mad_science_resolved_target_type(&state, ms_atk),
+        TargetType::AnyEnemy
+    );
+    assert_eq!(
+        mad_science_resolved_target_type(&state, ms_pwr),
+        TargetType::SelfTarget
+    );
+
+    play_hand_card(&mut state, 0, Some(enemies[0]), vec![]).unwrap();
+    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, 50 - 12);
+    let choking = state
+        .creature(enemies[0])
+        .unwrap()
+        .powers
+        .iter()
+        .find(|p| p.id == PowerId::StranglePower)
+        .map_or(0, |p| p.amount);
+    assert_eq!(choking, 6);
+
+    play_hand_card(&mut state, 0, None, vec![]).unwrap();
+    let improvement = state
+        .player_creature()
+        .unwrap()
+        .powers
+        .iter()
+        .find(|p| p.id == PowerId::ImprovementPower)
+        .map_or(0, |p| p.amount);
+    assert_eq!(improvement, 1);
+    assert!(state.card(ms_pwr).unwrap().removed_from_state || state.card(ms_pwr).unwrap().pile == PileType::None);
 }

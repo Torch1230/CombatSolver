@@ -961,11 +961,10 @@ fn dispatch_hook_cold(
                             .iter()
                             .copied()
                             .filter(|&h| {
-                                state.card(h).is_some_and(|c| {
-                                    content
-                                        .card_meta(c.id)
-                                        .is_ok_and(|m| m.card_type == CardType::Attack)
-                                })
+                                state.card(h).is_some()
+                                    && content
+                                        .card_resolved_type(state, h)
+                                        .is_ok_and(|ct| ct == CardType::Attack)
                             })
                             .collect();
                         let mut rng = *state.run_rngs.get(RunRngType::CombatCardSelection);
@@ -3040,6 +3039,73 @@ fn dispatch_hook_cold(
                             .creature(creature)
                             .is_some_and(|c| c.powers.iter().any(|pw| pw.handle == p.handle));
                         if !still_present {
+                            let can_stun = state.is_in_progress
+                                && state.creature(creature).is_some_and(|c| {
+                                    c.current_hp > 0
+                                        && c.monster.as_ref().is_some_and(|m| {
+                                            m.next_move_id.is_none()
+                                                || m.next_move_can_transition_away
+                                        })
+                                });
+                            let computed_follow_up = if can_stun {
+                                let saved = state.creature(creature).and_then(|c| {
+                                    c.monster.as_ref().map(|m| {
+                                        (
+                                            m.current_state_id.clone(),
+                                            m.next_move_id.clone(),
+                                            m.next_move_can_transition_away,
+                                            m.performed_first_move,
+                                            m.state_log_ids.len(),
+                                            m.transient_move_follow_up_state_id.clone(),
+                                            m.state_log_ids.last().cloned(),
+                                        )
+                                    })
+                                });
+                                if let Some((
+                                    prev_cur,
+                                    prev_next,
+                                    prev_can,
+                                    prev_perf,
+                                    prev_log_len,
+                                    prev_follow,
+                                    last_logged,
+                                )) = saved
+                                {
+                                    let fallback_state =
+                                        last_logged.unwrap_or_else(|| prev_cur.clone());
+                                    if let Some(m) = state
+                                        .creature_mut(creature)
+                                        .and_then(|c| c.monster.as_mut())
+                                    {
+                                        m.current_state_id = fallback_state;
+                                        m.next_move_id = None;
+                                        m.next_move_can_transition_away = true;
+                                        m.performed_first_move = true;
+                                        m.transient_move_follow_up_state_id = None;
+                                    }
+                                    content.monster_roll_move(state, creature)?;
+                                    let next_state = state
+                                        .creature(creature)
+                                        .and_then(|c| c.monster.as_ref())
+                                        .map(|m| m.current_state_id.clone());
+                                    if let Some(m) = state
+                                        .creature_mut(creature)
+                                        .and_then(|c| c.monster.as_mut())
+                                    {
+                                        m.current_state_id = prev_cur;
+                                        m.next_move_id = prev_next;
+                                        m.next_move_can_transition_away = prev_can;
+                                        m.performed_first_move = prev_perf;
+                                        m.state_log_ids.truncate(prev_log_len);
+                                        m.transient_move_follow_up_state_id = prev_follow;
+                                    }
+                                    next_state
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
                             if let Some(c) = state.creature_mut(creature) {
                                 if let Some(m) = &mut c.monster {
                                     if m.monster_id == MonsterId::ThievingHopper {
@@ -3050,7 +3116,11 @@ fn dispatch_hook_cold(
                                     }
                                 }
                             }
-                            creature_cmd::stun(state, creature, None)?;
+                            creature_cmd::stun(
+                                state,
+                                creature,
+                                computed_follow_up.as_deref(),
+                            )?;
                         }
                     }
                 }
@@ -3198,8 +3268,8 @@ fn dispatch_hook_cold(
                             && !matches!(c.pile, PileType::None | PileType::Deck)
                             && c.affliction.is_none()
                             && content
-                                .card_meta(c.id)
-                                .is_ok_and(|m| m.card_type == CardType::Power)
+                                .card_resolved_type(state, c.handle)
+                                .is_ok_and(|ct| ct == CardType::Power)
                     })
                     .map(|c| c.handle)
                     .collect();
@@ -3210,12 +3280,10 @@ fn dispatch_hook_cold(
             }
             HookSlot::AfterCardEnteredCombat => {
                 if let HookArgs::CardOnly(card_h) = args {
-                    let needs_afflict = state.card(*card_h).is_some_and(|c| {
-                        c.affliction.is_none()
-                            && content
-                                .card_meta(c.id)
-                                .is_ok_and(|m| m.card_type == CardType::Power)
-                    });
+                    let needs_afflict = state.card(*card_h).is_some_and(|c| c.affliction.is_none())
+                        && content
+                            .card_resolved_type(state, *card_h)
+                            .is_ok_and(|ct| ct == CardType::Power);
                     if needs_afflict {
                         let _ = card::afflict(state, *card_h, AfflictionId::Galvanized, p.amount);
                     }
@@ -3984,11 +4052,11 @@ fn dispatch_hook_cold(
         PowerId::InfestedPower => match slot {
             HookSlot::AfterDeath => {
                 if let HookArgs::AfterDeath { target, .. } = args {
-                    if *target == creature {
+                    if *target == creature && state.is_live_combat() {
                         const WRIGGLER_SLOTS: [&str; 4] =
                             ["wriggler1", "wriggler2", "wriggler3", "wriggler4"];
                         for slot in WRIGGLER_SLOTS {
-                            let wh = creature_cmd::spawn_monster_in_combat(
+                            let wh = creature_cmd::create_monster_creature(
                                 state,
                                 content,
                                 MonsterId::Wriggler,
@@ -4003,7 +4071,13 @@ fn dispatch_hook_cold(
                                     );
                                 }
                             }
-                            creature_cmd::stun(state, wh, None)?;
+                            creature_cmd::add_created_monster(
+                                state,
+                                content,
+                                wh,
+                                owner_side,
+                                Some(Cow::Borrowed(slot)),
+                            )?;
                         }
                     }
                 }
@@ -5072,7 +5146,8 @@ fn clone_card_in_combat(
         .ok_or_else(|| KernelError::InvalidState("missing clone source card".to_owned()))?;
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let ext_index = if let Some(ext) = state.card_ext(source.ext_index).cloned() {
+    let ext_index = if let Some(mut ext) = state.card_ext(source.ext_index).cloned() {
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         Some(idx)
@@ -5102,10 +5177,10 @@ pub(crate) fn is_card_type(
     card: CardHandle,
     expected: CardType,
 ) -> Result<bool, KernelError> {
-    let Some(ci) = state.card(card) else {
+    if state.card(card).is_none() {
         return Ok(false);
-    };
-    Ok(content.card_meta(ci.id)?.card_type == expected)
+    }
+    Ok(content.card_resolved_type(state, card)? == expected)
 }
 
 fn is_card_with_tag(
@@ -5825,7 +5900,7 @@ pub fn feral_modify_card_play_result_location(
     if ci.temp_flags.contains(CardTempFlags::IS_DUPE) {
         return Ok(location);
     }
-    if content.card_meta(ci.id)?.card_type != CardType::Attack {
+    if content.card_resolved_type(state, card_h)? != CardType::Attack {
         return Ok(location);
     }
     let Some(p) = state

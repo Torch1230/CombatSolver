@@ -869,7 +869,7 @@ impl TurnRolloutPilotEntry {
         total_steps: usize,
     ) -> Self {
         let is_defeat = fast.player_dead || fast.projected_player_hp <= 0;
-        let linear_adj = !(profile.base_score_only || is_defeat);
+        let linear_adj = !(profile.base_score_only || is_defeat || fast.is_event_defeat);
         let step_actions = total_steps.min(u16::MAX as usize) as u16;
         let scores_at_zero =
             compute_scores_at_zero(fast, full, root_baseline, profile, linear_adj, step_actions);
@@ -4305,6 +4305,7 @@ where
     for turn in 0..horizon_turns {
         if !state.is_in_progress
             || state.won
+            || state.battleworn_dummy_timed_out
             || !state.has_living_player_creature()
             || total_steps >= MAX_TOTAL_ROLLOUT_STEPS
         {
@@ -4548,7 +4549,7 @@ fn finish_choice_probe_eval(
                 let dbg_fast = evaluate_fast(&dbg_state, content, root_baseline, None);
                 let dbg_win = dbg_fast.won;
                 let dbg_loss = dbg_fast.player_dead || dbg_fast.projected_player_hp <= 0;
-                let dbg_full = if dbg_win || dbg_loss {
+                let dbg_full = if dbg_win || dbg_loss || dbg_fast.is_event_defeat {
                     FullEvalDetails::default()
                 } else {
                     evaluate_full_details_cached(
@@ -4559,7 +4560,7 @@ fn finish_choice_probe_eval(
                         Some(&mut dbg_intent),
                     )
                 };
-                let dbg_lin = !(profile.base_score_only || dbg_loss);
+                let dbg_lin = !(profile.base_score_only || dbg_loss || dbg_fast.is_event_defeat);
                 let dbg_scores1 = compute_scores_at_zero(
                     &dbg_fast,
                     &dbg_full,
@@ -4602,7 +4603,7 @@ fn finish_choice_probe_eval(
     let fast = evaluate_fast(eval_state, content, root_baseline, None);
     let is_victory = fast.won;
     let is_defeat = fast.player_dead || fast.projected_player_hp <= 0;
-    let terminal = is_victory || is_defeat;
+    let terminal = is_victory || is_defeat || fast.is_event_defeat;
     let full = if terminal {
         FullEvalDetails::default()
     } else {
@@ -4614,7 +4615,7 @@ fn finish_choice_probe_eval(
             Some(intent_cache),
         )
     };
-    let linear_adj = !(profile.base_score_only || is_defeat);
+    let linear_adj = !(profile.base_score_only || is_defeat || fast.is_event_defeat);
     let probe_steps = total_steps.min(u16::MAX as usize) as u16;
     let scores_at_zero =
         compute_scores_at_zero(&fast, &full, root_baseline, profile, linear_adj, probe_steps);
@@ -4966,8 +4967,10 @@ fn run_pilot_from_base(
     )?;
 
     let final_fast = evaluate_fast(&ws.pilot_state, content, root_baseline, None);
-    let final_terminal =
-        final_fast.won || final_fast.player_dead || final_fast.projected_player_hp <= 0;
+    let final_terminal = final_fast.won
+        || final_fast.player_dead
+        || final_fast.projected_player_hp <= 0
+        || final_fast.is_event_defeat;
     let final_full = if final_terminal {
         crate::eval::FullEvalDetails::default()
     } else {

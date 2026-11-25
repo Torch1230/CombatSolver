@@ -398,11 +398,10 @@ internal static class HotFoolTarot
 
             case HotCustomCardId.LockedIn:
             {
-                if (HasShootCardInPile(in s, rules, HotPileKind.Draw))
+                if (!HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Draw, HotChoiceKind.DrawPile, cardDefId, HotCustomCardId.LockedIn, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
                     if (idx >= 0)
                         MoveCardToHandOrDiscard(ref s, idx);
                 }
@@ -660,9 +659,8 @@ internal static class HotFoolTarot
                 // STS2 0.114.0 Florescence.cs:23-32: choose 1 card in hand (filter: null) and transform into TheShot(+).
                 if (s.HandCount > 0 && !HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     ushort theShotDefId = rules.GetCardDefId(HotCustomCardId.TheShot);
                     if (idx >= 0 && theShotDefId != 0)
                         HotCombatEngine.TransformCardInPlace(ref s, ref cold, rules, scratch, idx, theShotDefId, upgraded: card.UpgradeLevel > 0);
@@ -697,7 +695,7 @@ internal static class HotFoolTarot
                         int chosenIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sadUids[0]);
                         if (chosenIdx >= 0)
                         {
-                            HotCard clone = CloneCardForTransform(ref s, ref cold, in card);
+                            HotCard clone = CloneCardForTransform(ref s, ref cold, rules, in card);
                             TransformCardInPlaceWithInstance(ref s, ref cold, rules, scratch, chosenIdx, in clone);
                         }
                     }
@@ -764,22 +762,31 @@ internal static class HotFoolTarot
                 }
 
                 int topActual = Math.Min(lookCount, (int)s.DrawCount);
-                if (topActual > 0)
+                if (!HotCombatEngine.IsOverOrEnding(in s) && topActual > 0)
                 {
                     Span<ushort> topUids = stackalloc ushort[Math.Min(topActual, 16)];
                     for (int i = 0; i < topUids.Length; i++)
                         topUids[i] = s.Cards[s.DrawStart + i].CardUid;
 
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, (byte)topActual, out HotChoiceSelection sel))
-                        return PauseForChoice(in s, out result);
+                    ushort chosenUid;
+                    if (topActual == 1)
+                    {
+                        chosenUid = topUids[0];
+                    }
+                    else
+                    {
+                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, (byte)topActual, out HotChoiceSelection sel))
+                            return PauseForChoice(in s, out result);
+                        chosenUid = sel.CardUidOrIndex;
+                    }
 
-                    int chosenIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
+                    int chosenIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, chosenUid);
                     if (chosenIdx >= 0)
                         MoveCardToHandOrDiscard(ref s, chosenIdx);
 
                     for (int i = 0; i < topUids.Length && !scratch.NeedsChoice; i++)
                     {
-                        if (topUids[i] == sel.CardUidOrIndex)
+                        if (topUids[i] == chosenUid)
                             continue;
                         int remIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, topUids[i]);
                         if (remIdx >= 0)
@@ -833,9 +840,8 @@ internal static class HotFoolTarot
                 }
                 if (s.DiscardCount > 0 && !HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DiscardPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Discard, HotChoiceKind.DiscardPile, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Discard, sel.CardUidOrIndex);
                     if (idx >= 0)
                         HotPiles.MoveCard(ref s, idx, HotPileKind.Draw, 0);
                 }
@@ -1360,11 +1366,10 @@ internal static class HotFoolTarot
 
             case HotCustomCardId.TheHermit:
             {
-                if (s.HandCount > 0)
+                if (!HotCombatEngine.IsOverOrEnding(in s) && s.HandCount > 0)
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                     {
                         ushort chosenDef = s.Cards[idx].CardDefId;
@@ -3074,22 +3079,10 @@ internal static class HotFoolTarot
             HotPiles.MoveCard(ref s, cardIdx, HotPileKind.Discard, s.DiscardCount);
     }
 
-    private static bool HasShootCardInPile(in CombatHotState s, HotRules rules, HotPileKind pile)
-    {
-        int start = HotPiles.ZoneStart(in s, pile);
-        int end = start + HotPiles.ZoneCount(in s, pile);
-        for (int i = start; i < end; i++)
-        {
-            ushort id = s.Cards[i].CardDefId;
-            if (id < rules.Cards.Length && rules.Cards[id].IsShootTag)
-                return true;
-        }
-        return false;
-    }
-
     private static HotCard CloneCardForTransform(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
+        HotRules rules,
         in HotCard fallbackCard)
     {
         int srcIdx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Play, fallbackCard.CardUid);
@@ -3106,6 +3099,7 @@ internal static class HotFoolTarot
             | HotCardFlags.FetchPlayedThisTurn);
         clone.Flags |= HotCardFlags.IsClone;
         clone.DampenOrigUpg = 0;
+        HotCombatEngine.ClearPerInstanceHistoryOnClone(ref clone, rules);
 
         if ((clone.Flags & HotCardFlags.HasCostOverflow) != 0 && cold?.CostOverflow is { Length: > 0 } overflows)
         {

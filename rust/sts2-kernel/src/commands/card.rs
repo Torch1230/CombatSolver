@@ -241,7 +241,8 @@ fn clone_card_instance(
     cloned.pile = PileType::None;
     cloned.removed_from_state = false;
     cloned.transform_into_after_play = None;
-    cloned.ext_index = src_ext.map(|ext| {
+    cloned.ext_index = src_ext.map(|mut ext| {
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len();
         state.card_extensions.push(ext);
         idx as u32

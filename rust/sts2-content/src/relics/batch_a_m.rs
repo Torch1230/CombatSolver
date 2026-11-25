@@ -509,10 +509,10 @@ fn is_card_type(
     card: CardHandle,
     expected: CardType,
 ) -> Result<bool, KernelError> {
-    let Some(ci) = state.card(card) else {
+    if state.card(card).is_none() {
         return Ok(false);
-    };
-    Ok(state.fast_card_meta(content, ci.id)?.card_type == expected)
+    }
+    Ok(content.card_resolved_type(state, card)? == expected)
 }
 
 fn card_has_tag(
@@ -660,7 +660,8 @@ fn create_clone(state: &mut BattleState, orig_handle: CardHandle) -> Result<Card
         .ok_or_else(|| KernelError::InvalidState("missing clone source card".to_owned()))?;
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let ext_index = if let Some(ext) = state.card_ext(source.ext_index).cloned() {
+    let ext_index = if let Some(mut ext) = state.card_ext(source.ext_index).cloned() {
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         Some(idx)
@@ -698,7 +699,8 @@ fn create_dupe(state: &mut BattleState, orig_handle: CardHandle) -> Result<CardH
         .ok_or_else(|| KernelError::InvalidState("missing dupe source card".to_owned()))?;
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let ext_index = if let Some(ext) = state.card_ext(source.ext_index).cloned() {
+    let ext_index = if let Some(mut ext) = state.card_ext(source.ext_index).cloned() {
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         Some(idx)

@@ -350,14 +350,13 @@ pub fn enchantment_hook_mask(id: EnchantmentId) -> Result<HookMask, KernelError>
         | EnchantmentId::RoyallyApproved
         | EnchantmentId::Sharp
         | EnchantmentId::SoulsPower
-        | EnchantmentId::Sown
         | EnchantmentId::Spiral
         | EnchantmentId::Steady
-        | EnchantmentId::Swift
         | EnchantmentId::TezcatarasEmber => Ok(HookMask::EMPTY),
-        EnchantmentId::Glam | EnchantmentId::Vigorous => {
-            Ok(HookMask::EMPTY.with(HookSlot::AfterCardPlayed))
-        }
+        EnchantmentId::Glam
+        | EnchantmentId::Sown
+        | EnchantmentId::Swift
+        | EnchantmentId::Vigorous => Ok(HookMask::EMPTY.with(HookSlot::AfterCardPlayed)),
         EnchantmentId::Goopy | EnchantmentId::Nimble => {
             Ok(HookMask::EMPTY.with(HookSlot::ModifyBlockAdditive))
         }
@@ -669,21 +668,11 @@ pub fn enchantment_on_play(
             if status != EnchantmentStatus::Normal {
                 return Ok(());
             }
-            if let Some(ext) = state.card_ext_mut(card) {
-                if let Some(ench) = ext.enchantment.as_mut() {
-                    ench.status = EnchantmentStatus::Disabled;
-                }
-            }
             gold::gain_energy(state, content, Dec::from_i32(amount))
         }
         EnchantmentId::Swift => {
             if status != EnchantmentStatus::Normal {
                 return Ok(());
-            }
-            if let Some(ext) = state.card_ext_mut(card) {
-                if let Some(ench) = ext.enchantment.as_mut() {
-                    ench.status = EnchantmentStatus::Disabled;
-                }
             }
             let _ = sts2_kernel::commands::card_pile::draw(state, content, amount, false)?;
             Ok(())
@@ -722,7 +711,7 @@ pub fn dispatch_enchantment_hook(
 
     let (ench_id, amount) = ench_snapshot;
     match ench_id {
-        EnchantmentId::Glam | EnchantmentId::Vigorous => {
+        EnchantmentId::Glam | EnchantmentId::Sown | EnchantmentId::Swift | EnchantmentId::Vigorous => {
             if slot == HookSlot::AfterCardPlayed {
                 if let HookArgs::CardPlay(cp) = args {
                     if cp.card == card {
@@ -821,10 +810,8 @@ pub fn dispatch_enchantment_hook(
         | EnchantmentId::RoyallyApproved
         | EnchantmentId::Sharp
         | EnchantmentId::SoulsPower
-        | EnchantmentId::Sown
         | EnchantmentId::Spiral
         | EnchantmentId::Steady
-        | EnchantmentId::Swift
         | EnchantmentId::TezcatarasEmber => Ok(HookResult::default()),
     }
 }

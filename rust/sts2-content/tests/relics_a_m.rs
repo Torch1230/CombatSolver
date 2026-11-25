@@ -189,6 +189,7 @@ fn build_test_battle(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: 2,
@@ -1371,4 +1372,106 @@ fn pending_kernel_hook_relics_helpers_and_fail_closed_dispatch() {
     // Prevent unused import warnings for osty helper
     let _ = osty::summon(&mut state, &content, Dec::ONE).unwrap();
     let _ = gold::gain_gold(&mut state, &content, Dec::ONE).unwrap();
+}
+
+#[test]
+fn music_box_thrumming_hatchet_clone_does_not_inherit_play_turn_history() {
+    let content = Sts2Content;
+    let deck = [
+        CardId::ThrummingHatchet,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+    ];
+    let (mut state, _pc, enemy) = build_test_battle(
+        CharacterId::Ironclad,
+        &deck,
+        &[RelicId::MusicBox],
+        100,
+    );
+    CombatEngine::start_combat(&mut state, &content).unwrap();
+
+    let hatchet_h = find_hand_card(&state, CardId::ThrummingHatchet);
+
+    let mut choices = SmallVec::new();
+    CombatEngine::play_card(&mut state, &content, hatchet_h, Some(enemy), &mut choices).unwrap();
+
+    let clone_h = state
+        .player
+        .hand
+        .iter()
+        .copied()
+        .find(|&h| state.card(h).unwrap().clone_of_handle.get() == Some(hatchet_h))
+        .expect("MusicBox should create an Ethereal clone in hand");
+    assert!(state
+        .card(clone_h)
+        .unwrap()
+        .has_local_keyword(CardKeywords::ETHEREAL));
+    assert_eq!(
+        state
+            .card_ext(state.card(clone_h).unwrap().ext_index)
+            .and_then(|e| e.private_fields.get("ThrummingHatchet._playedOnTurnNumber")),
+        None
+    );
+
+    // End Turn 1 without playing the Ethereal clone -> clone exhausts, original is in Discard.
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+
+    // Turn 2: original played ThrummingHatchet returns to hand at BeforeHandDraw;
+    // unplayed Ethereal clone stays in Exhaust and is not returned to hand.
+    assert_eq!(state.player.turn_number, 2);
+    assert!(
+        state.player.hand.contains(&hatchet_h),
+        "played ThrummingHatchet must return to hand on turn 2"
+    );
+    assert!(
+        state.player.exhaust.contains(&clone_h),
+        "unplayed Ethereal clone must stay in exhaust on turn 2"
+    );
+    assert!(
+        !state.player.hand.contains(&clone_h),
+        "unplayed Ethereal clone must not return to hand on turn 2"
+    );
+}
+
+#[test]
+fn history_course_replays_mad_science_attack_on_next_turn() {
+    let content = Sts2Content;
+    let deck = [
+        CardId::MadScience,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+    ];
+    let (mut state, _pc, enemy) = build_test_battle(
+        CharacterId::Ironclad,
+        &deck,
+        &[RelicId::HistoryCourse],
+        100,
+    );
+    let ms_h = state.cards[0].handle;
+    let ext_idx = state.card_extensions.len() as u32;
+    let mut ext = sts2_kernel::CardExtension::default();
+    ext.private_fields
+        .insert(std::borrow::Cow::Borrowed("MadScience._type"), FieldValue::String("Attack".to_owned()));
+    ext.private_fields.insert(
+        std::borrow::Cow::Borrowed("MadScience.<Rider>k__BackingField"),
+        FieldValue::String("Choking".to_owned()),
+    );
+    state.card_extensions.push(ext);
+    state.card_mut(ms_h).unwrap().ext_index = Some(ext_idx);
+
+    CombatEngine::start_combat(&mut state, &content).unwrap();
+    let hand_ms = find_hand_card(&state, CardId::MadScience);
+    let mut choices = SmallVec::new();
+    CombatEngine::play_card(&mut state, &content, hand_ms, Some(enemy), &mut choices).unwrap();
+    let hp_after_t1 = state.creature(enemy).unwrap().current_hp;
+    assert_eq!(hp_after_t1, 100 - 12);
+
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert_eq!(state.player.turn_number, 2);
+    // HistoryCourse autoplays MadScience Attack dupe at Turn 2 AutoPrePlay (12 more dmg)
+    assert_eq!(state.creature(enemy).unwrap().current_hp, hp_after_t1 - 12);
 }

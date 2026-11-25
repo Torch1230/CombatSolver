@@ -1331,7 +1331,8 @@ fn replay_solution_trace(
     };
 
     let player_dead = !sim.has_living_player_creature() || sim.player.current_hp <= 0;
-    let all_enemies_dead = sim.won && !player_dead;
+    let is_event_defeat = !player_dead && sim.battleworn_dummy_timed_out;
+    let all_enemies_dead = sim.won && !player_dead && !is_event_defeat;
     let post_root_hp_loss = (sim.player.cumulative_hp_lost - root_initial_cum_hp_lost).max(0);
     let post_root_recovered =
         (sim.player.current_hp - root_initial_hp + post_root_hp_loss).max(0);
@@ -1350,10 +1351,13 @@ fn replay_solution_trace(
     } else {
         0
     };
-    let search_boundary = if all_enemies_dead || player_dead {
+    let search_boundary = if is_event_defeat {
+        "EventDefeat"
+    } else if all_enemies_dead || player_dead {
         "None"
     } else {
         match sol.stats.termination.as_str() {
+            "EventDefeat" => "EventDefeat",
             "TimeLimit" => "TimeLimit",
             "TurnLimit" => "TurnLimit",
             _ => "NodeLimit",
@@ -1361,13 +1365,23 @@ fn replay_solution_trace(
     };
     let confidence = if only_death_routes {
         "DeathOnly"
-    } else if combat_ended_turn.is_some() {
+    } else if combat_ended_turn.is_some() || is_event_defeat {
         "Complete"
     } else {
         "Bounded"
     };
-    let has_risk = !all_enemies_dead && search_boundary != "None";
+    let has_risk = !all_enemies_dead && !is_event_defeat && search_boundary != "None";
     let shuffles_crossed = (sim.run_rngs.get(RunRngType::Shuffle).counter - root_shuffle_counter).max(0);
+    let mut enemy_hp = sum_alive_enemy_hp(&sim);
+    if is_event_defeat {
+        let escaped_hp: i32 = sim
+            .escaped_handles
+            .iter()
+            .filter_map(|&h| sim.creature(h))
+            .map(|c| c.current_hp.max(0))
+            .sum();
+        enemy_hp += escaped_hp;
+    }
 
     let terminal = HostTerminalSnapshotDto {
         player_dead,
@@ -1378,7 +1392,7 @@ fn replay_solution_trace(
         recovered_player_hp: post_root_recovered,
         projected_player_hp: sim.player.current_hp,
         player_block: sim.player.block,
-        enemy_hp: sum_alive_enemy_hp(&sim),
+        enemy_hp,
         alive_enemy_count: count_alive_enemies(&sim),
         energy: sim.player.energy,
         stars: sim.player.stars,

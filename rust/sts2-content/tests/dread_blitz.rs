@@ -199,6 +199,7 @@ fn build_battle(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: (enemies.len() + 1) as u32,
@@ -968,5 +969,64 @@ fn blitz_and_dread_run_models_run_combat_cleanly() {
         )
         .unwrap();
         assert_eq!(res.dec_val, None);
+    }
+}
+
+#[test]
+fn phrog_parasite_infested_wrigglers_ceremonial_dominion_trigger_ritual_and_slot_moves() {
+    let content = Sts2Content;
+    let (mut state, enemies) = build_battle(
+        CharacterId::Necrobinder,
+        &[CardId::StrikeNecrobinder; 5],
+        &[(MonsterId::PhrogParasite, 10)],
+        GameMode::Dread,
+        Some(DominionId::CeremonialBeastDominion),
+        vec![RunModelId::DreadRunModel],
+        "PHROG_PARASITE_ELITE",
+        RoomType::Elite,
+    );
+    let phrog = enemies[0];
+    let pc = state.player.creature_handle;
+    CombatEngine::start_combat(&mut state, &content).unwrap();
+
+    // Kill PhrogParasite during player turn -> InfestedPower spawns 4 start-stunned Wrigglers
+    // and CeremonialBeastDominion grants RitualPower(1) during Player turn.
+    sts2_kernel::commands::damage::damage_targets(
+        &mut state,
+        &content,
+        &[phrog],
+        sts2_types::Dec::from_i32(50),
+        sts2_types::ValueProp::MOVE,
+        Some(pc),
+        None,
+        None,
+    )
+    .unwrap();
+    assert_eq!(state.enemy_handles.len(), 4);
+    for (idx, &wh) in state.enemy_handles.iter().enumerate() {
+        let m = state.creature(wh).unwrap().monster.as_ref().unwrap();
+        assert_eq!(m.next_move_id.as_deref(), Some("SPAWNED_MOVE"), "wriggler {idx}");
+    }
+
+    // Enemy turn runs SPAWNED_MOVE and RitualPower triggers +1 Strength on first enemy turn end.
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert!(state.is_in_progress);
+    let expected_moves = [
+        ("wriggler1", "NASTY_BITE_MOVE"),
+        ("wriggler2", "WRIGGLE_MOVE"),
+        ("wriggler3", "NASTY_BITE_MOVE"),
+        ("wriggler4", "WRIGGLE_MOVE"),
+    ];
+    for (idx, &wh) in state.enemy_handles.iter().enumerate() {
+        let wc = state.creature(wh).unwrap();
+        let m = wc.monster.as_ref().unwrap();
+        assert_eq!(wc.slot_name.as_deref(), Some(expected_moves[idx].0));
+        assert_eq!(m.next_move_id.as_deref(), Some(expected_moves[idx].1));
+        let strength = wc
+            .powers
+            .iter()
+            .find(|p| p.id == PowerId::StrengthPower)
+            .map_or(0, |p| p.amount);
+        assert_eq!(strength, 1, "wriggler {} should gain Ritual strength on first enemy turn end", idx + 1);
     }
 }

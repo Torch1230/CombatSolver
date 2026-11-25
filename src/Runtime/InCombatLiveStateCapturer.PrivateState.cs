@@ -264,8 +264,7 @@ internal static partial class InCombatLiveStateCapturer
                 break;
             case Claw claw:
                 decimal clawIncrease = claw.DynamicVars["Increase"].BaseValue;
-                decimal clawBase = claw.DynamicVars.Damage.BaseValue - claw._extraDamageFromClawPlays;
-                fields["Claw._damage"] = DecimalVal(clawBase);
+                fields["Claw._damage"] = DecimalVal(claw.DynamicVars.Damage.BaseValue);
                 fields["Claw._increase"] = DecimalVal(clawIncrease);
                 break;
             case Disintegration:
@@ -321,8 +320,7 @@ internal static partial class InCombatLiveStateCapturer
                 break;
             case Maul maul:
                 decimal maulIncrease = maul.DynamicVars["Increase"].BaseValue;
-                decimal maulBase = maul.DynamicVars.Damage.BaseValue - maul._extraDamageFromMaulPlays;
-                fields["Maul._damage"] = DecimalVal(maulBase);
+                fields["Maul._damage"] = DecimalVal(maul.DynamicVars.Damage.BaseValue);
                 fields["Maul._increase"] = DecimalVal(maulIncrease);
                 fields["Maul._extraDamageFromMaulPlays"] = DecimalVal(maul._extraDamageFromMaulPlays);
                 break;
@@ -346,7 +344,7 @@ internal static partial class InCombatLiveStateCapturer
                 fields["TheScythe._increasedDamage"] = IntVal(scythe.IncreasedDamage);
                 break;
             case Thrash thrash:
-                fields["Thrash._damage"] = DecimalVal(thrash.DynamicVars.Damage.BaseValue + thrash._extraDamage);
+                fields["Thrash._damage"] = DecimalVal(thrash.DynamicVars.Damage.BaseValue);
                 break;
             case ThrummingHatchet:
                 fields["ThrummingHatchet._playedOnTurnNumber"] = NullableIntVal(FindLastFinishedTurnNumber(card, finishedEntries));

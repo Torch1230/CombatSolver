@@ -1919,14 +1919,33 @@ fn write_pending(w: &mut ByteWriter<'_>, pending: &Option<PendingContinuation>) 
             }
             ContinuationFrame::AfterAutoPrePlayResume {
                 remaining_listeners,
-                is_late,
+                stage,
             } => {
                 w.u8(10);
                 w.var_u32(remaining_listeners.len() as u32);
                 for &l in remaining_listeners {
                     write_hook_listener(w, l);
                 }
-                w.bool(*is_late);
+                w.u8(*stage);
+            }
+            ContinuationFrame::AfterAutoPostPlayResume {
+                remaining_listeners,
+            } => {
+                w.u8(11);
+                w.var_u32(remaining_listeners.len() as u32);
+                for &l in remaining_listeners {
+                    write_hook_listener(w, l);
+                }
+            }
+            ContinuationFrame::AfterAutoPostPlayPowerResume {
+                creature,
+                power_id,
+                remaining_iterations,
+            } => {
+                w.u8(12);
+                w.u32(creature.0);
+                w.u16(*power_id as u16);
+                w.i32(*remaining_iterations);
             }
         }
     }
@@ -2076,10 +2095,30 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
                 for _ in 0..len {
                     remaining_listeners.push(read_hook_listener(r)?);
                 }
-                let is_late = r.bool()?;
+                let stage = r.u8()?;
                 ContinuationFrame::AfterAutoPrePlayResume {
                     remaining_listeners,
-                    is_late,
+                    stage,
+                }
+            }
+            11 => {
+                let len = r.var_u32()? as usize;
+                let mut remaining_listeners = Vec::with_capacity(len);
+                for _ in 0..len {
+                    remaining_listeners.push(read_hook_listener(r)?);
+                }
+                ContinuationFrame::AfterAutoPostPlayResume {
+                    remaining_listeners,
+                }
+            }
+            12 => {
+                let creature = CreatureHandle(r.u32()?);
+                let power_id = decode_power_id(r.u16()?)?;
+                let remaining_iterations = r.i32()?;
+                ContinuationFrame::AfterAutoPostPlayPowerResume {
+                    creature,
+                    power_id,
+                    remaining_iterations,
                 }
             }
             _ => return Err(()),
@@ -2519,7 +2558,8 @@ pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
         | (u8::from(u16_handles) << 2)
         | (u8::from(relics_delta) << 3)
         | (u8::from(combat_cards_delta) << 4)
-        | (u8::from(state.eot_card_cleanup_dirty.0) << 5);
+        | (u8::from(state.eot_card_cleanup_dirty.0) << 5)
+        | (u8::from(state.battleworn_dummy_timed_out) << 6);
 
     // Header scalars (batched direct pointer writes)
     w.ensure(45);
@@ -3884,6 +3924,7 @@ fn unpack_state_inner(
     let relics_delta = (pack_flags & 8) != 0;
     let combat_cards_delta = (pack_flags & 16) != 0;
     out.eot_card_cleanup_dirty = sts2_kernel::state::EotCleanupDirtyFlag((pack_flags & 32) != 0);
+    out.battleworn_dummy_timed_out = (pack_flags & 64) != 0;
     let mut cards_contiguous = true;
     let mut creatures_contiguous = true;
     if seed_matches_root {
@@ -5429,6 +5470,7 @@ pub fn empty_scratch_state(static_ctx: Arc<RootStaticContext>) -> BattleState {
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: 0,
@@ -5669,6 +5711,7 @@ pub fn pack_canonical_key(state: &BattleState, out: &mut Vec<u8>) {
     w.bool(state.won);
     w.bool(state.is_player_extra_turn);
     w.bool(state.gold_was_stolen);
+    w.bool(state.battleworn_dummy_timed_out);
     w.bool(state.end_player_turn_requested);
 
     // 9 combat RNG streams + shuffle + non-combat generation
@@ -6544,6 +6587,7 @@ pub fn hash_canonical_key(state: &BattleState) -> crate::hash::StateHash {
         | (u64::from(state.is_player_extra_turn) << 10)
         | (u64::from(state.gold_was_stolen) << 11)
         | (u64::from(state.end_player_turn_requested) << 12)
+        | (u64::from(state.battleworn_dummy_timed_out) << 13)
         | ((rng_delta_mask as u64) << 16)
         | (u64::from(sctx.has_root_rngs) << 29)
         | ((state.round_number as u32 as u64) << 32);

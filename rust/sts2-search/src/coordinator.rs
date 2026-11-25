@@ -1044,6 +1044,7 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
     dst.won = src.won;
     dst.is_player_extra_turn = src.is_player_extra_turn;
     dst.gold_was_stolen = src.gold_was_stolen;
+    dst.battleworn_dummy_timed_out = src.battleworn_dummy_timed_out;
     dst.end_player_turn_requested = src.end_player_turn_requested;
     dst.card_action_boundary_depth = src.card_action_boundary_depth;
     dst.next_creature_id = src.next_creature_id;
@@ -1328,6 +1329,7 @@ struct BeamRunOutput {
     root_baseline: RootEvalBaseline,
     won: bool,
     survives: bool,
+    is_event_defeat: bool,
     death_save_use_count: i32,
     player_hp: i32,
     end_player_max_hp: i32,
@@ -1784,6 +1786,7 @@ fn prepare_staged_candidate(
     let is_terminal = !scratch.state.is_in_progress
         || fast_eval.won
         || fast_eval.player_dead
+        || fast_eval.is_event_defeat
         || turn - root_baseline.start_turn_number >= policy.max_turns;
 
     let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
@@ -2856,6 +2859,8 @@ fn resolve_choices_recursive(
                 matches!(
                     f,
                     sts2_kernel::continuation::ContinuationFrame::AfterPlayerTurnStartResume { .. }
+                        | sts2_kernel::continuation::ContinuationFrame::AfterAutoPostPlayResume { .. }
+                        | sts2_kernel::continuation::ContinuationFrame::AfterAutoPostPlayPowerResume { .. }
                         | sts2_kernel::continuation::ContinuationFrame::EndTurnResume { .. }
                         | sts2_kernel::continuation::ContinuationFrame::EnemyTurnResume { .. }
                 )
@@ -4830,7 +4835,8 @@ fn run_beam_pass_with_resources_inner(
         growth_rewards: root_fast.growth_rewards,
         relic_eval: root_fast.relic_eval,
     });
-    let root_terminal = !start_state.is_in_progress || root_fast.won || root_fast.player_dead;
+    let root_terminal =
+        !start_state.is_in_progress || root_fast.won || root_fast.player_dead || root_fast.is_event_defeat;
     let mut root_node = SearchNode {
         state_handle: root_state_handle,
         state_hash: root_hash,
@@ -6805,6 +6811,7 @@ fn run_beam_pass_with_resources_inner(
         best_turn,
         won,
         survives,
+        is_event_defeat,
         death_save_use_count,
         player_hp,
         end_player_max_hp,
@@ -6839,6 +6846,7 @@ fn run_beam_pass_with_resources_inner(
                 sel.turn,
                 sel.won,
                 sel.survives,
+                sel.is_event_defeat,
                 sel.death_save_use_count,
                 sel.player_hp,
                 sel.end_player_max_hp,
@@ -6871,6 +6879,7 @@ fn run_beam_pass_with_resources_inner(
             start_state.player.turn_number,
             false,
             false,
+            false,
             0,
             0,
             root_baseline.initial_player_max_hp,
@@ -6899,8 +6908,19 @@ fn run_beam_pass_with_resources_inner(
         ),
     };
 
+    let frontier_exhausted_in_event_defeat =
+        !has_victory && !won && termination == "None" && is_event_defeat;
+    if frontier_exhausted_in_event_defeat {
+        termination = "EventDefeat";
+    }
+
     let (has_completed_turn_ongoing, completed_ongoing_turn) = match best_node {
-        Some(nid) if !won && survives && !latest_completed_turn_nodes.is_empty() => {
+        Some(nid)
+            if !won
+                && survives
+                && !is_event_defeat
+                && !latest_completed_turn_nodes.is_empty() =>
+        {
             (true, arena.get(nid).turn as i32)
         }
         _ => (false, -1),
@@ -6924,6 +6944,7 @@ fn run_beam_pass_with_resources_inner(
         root_baseline,
         won,
         survives,
+        is_event_defeat,
         death_save_use_count,
         player_hp,
         end_player_max_hp,
@@ -6995,7 +7016,8 @@ fn run_novelty_pass(
         growth_rewards: root_fast.growth_rewards,
         relic_eval: root_fast.relic_eval,
     });
-    let root_terminal = !root.is_in_progress || root_fast.won || root_fast.player_dead;
+    let root_terminal =
+        !root.is_in_progress || root_fast.won || root_fast.player_dead || root_fast.is_event_defeat;
     let mut root_node = SearchNode {
         state_handle: main_arena.commit_slice(&scratch.pack_buf),
         state_hash: root_hash,
@@ -7300,6 +7322,7 @@ fn run_novelty_pass(
         best_turn,
         won,
         survives,
+        is_event_defeat,
         death_save_use_count,
         player_hp,
         end_player_max_hp,
@@ -7331,6 +7354,7 @@ fn run_novelty_pass(
             sel.turn,
             sel.won,
             sel.survives,
+            sel.is_event_defeat,
             sel.death_save_use_count,
             sel.player_hp,
             sel.end_player_max_hp,
@@ -7360,6 +7384,7 @@ fn run_novelty_pass(
         None => (
             None,
             root.player.turn_number,
+            false,
             false,
             false,
             0,
@@ -7401,6 +7426,7 @@ fn run_novelty_pass(
         root_baseline,
         won,
         survives,
+        is_event_defeat,
         death_save_use_count,
         player_hp,
         end_player_max_hp,
@@ -7475,7 +7501,8 @@ fn run_boss_tempo_depth_first(
         growth_rewards: root_fast.growth_rewards,
         relic_eval: root_fast.relic_eval,
     });
-    let root_terminal = !root.is_in_progress || root_fast.won || root_fast.player_dead;
+    let root_terminal =
+        !root.is_in_progress || root_fast.won || root_fast.player_dead || root_fast.is_event_defeat;
     let mut root_node = SearchNode {
         state_handle: main_arena.commit_slice(&scratch.pack_buf),
         state_hash: root_hash,
@@ -7685,6 +7712,7 @@ fn run_boss_tempo_depth_first(
         best_turn,
         won,
         survives,
+        is_event_defeat,
         death_save_use_count,
         player_hp,
         end_player_max_hp,
@@ -7716,6 +7744,7 @@ fn run_boss_tempo_depth_first(
             sel.turn,
             sel.won,
             sel.survives,
+            sel.is_event_defeat,
             sel.death_save_use_count,
             sel.player_hp,
             sel.end_player_max_hp,
@@ -7745,6 +7774,7 @@ fn run_boss_tempo_depth_first(
         None => (
             None,
             root.player.turn_number,
+            false,
             false,
             false,
             0,
@@ -7786,6 +7816,7 @@ fn run_boss_tempo_depth_first(
         root_baseline,
         won,
         survives,
+        is_event_defeat,
         death_save_use_count,
         player_hp,
         end_player_max_hp,
@@ -7840,12 +7871,13 @@ fn has_reached_acceptable_battle_hp_loss_raw(
     optional_paid_potion_count: u8,
     explicit_potion_count: u8,
 ) -> bool {
-    let complete_victory = crate::eval::RouteQualityPolicy::is_complete_victory(
-        action_count as usize,
-        f.all_enemies_dead() || f.won(),
-        f.player_dead(),
-        f.projected_player_hp as i32,
-    );
+    let complete_victory = !f.is_event_defeat()
+        && crate::eval::RouteQualityPolicy::is_complete_victory(
+            action_count as usize,
+            f.all_enemies_dead() || f.won(),
+            f.player_dead(),
+            f.projected_player_hp as i32,
+        );
     let check_theft = policy.theft_policy == SolverTheftPolicy::PreserveResources;
     let all_forced_ok =
         (forced_used_mask & root.all_forced_potion_mask) == root.all_forced_potion_mask;
@@ -7977,6 +8009,9 @@ fn is_better_run_output_with_policy(
     }
     if cand.survives != cur.survives {
         return cand.survives;
+    }
+    if cand.is_event_defeat != cur.is_event_defeat {
+        return !cand.is_event_defeat;
     }
     if cand.death_save_use_count != cur.death_save_use_count {
         return cand.death_save_use_count < cur.death_save_use_count;
@@ -8212,6 +8247,7 @@ fn run_adaptive_stage(
                         root_baseline: phase_a.root_baseline.clone(),
                         won: phase_a.won,
                         survives: phase_a.survives,
+                        is_event_defeat: phase_a.is_event_defeat,
                         death_save_use_count: phase_a.death_save_use_count,
                         player_hp: phase_a.player_hp,
                         end_player_max_hp: phase_a.end_player_max_hp,
@@ -8339,6 +8375,7 @@ fn run_adaptive_stage(
                 root_baseline: phase_a.root_baseline.clone(),
                 won: phase_a.won,
                 survives: phase_a.survives,
+                is_event_defeat: phase_a.is_event_defeat,
                 death_save_use_count: phase_a.death_save_use_count,
                 player_hp: phase_a.player_hp,
                 end_player_max_hp: phase_a.end_player_max_hp,

@@ -1561,6 +1561,7 @@ fn clone_detached_card_for_nightmare(state: &mut BattleState, source: CardHandle
     let handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
     let ext_index = if let Some(mut ext) = src_ext {
+        ext.strip_non_cloned_private_fields();
         ext.local_energy_modifiers
             .retain(|m| !m.kind.clears_at_end_of_turn());
         let idx = state.card_extensions.len() as u32;
@@ -1600,15 +1601,21 @@ fn clone_card_for_combat(state: &mut BattleState, source: CardHandle) -> Result<
     let src_ext = state.card_ext(src.ext_index).cloned();
     let handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let ext_index = src_ext.map(|ext| {
+    let ext_index = src_ext.map(|mut ext| {
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         idx
     });
+    let mut temp_flags = src.temp_flags;
+    temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
     state.push_card(CardInst {
         handle,
+        deck_card_handle: sts2_kernel::OptCardHandle::NONE,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source),
+        floor_added_to_deck: sts2_kernel::OptI16::NONE,
         ext_index,
+        temp_flags,
         pile: PileType::None,
         removed_from_state: false,
         transform_into_after_play: None,
@@ -1631,9 +1638,14 @@ fn all_combat_card_handles(state: &BattleState) -> SmallVec<[CardHandle; 32]> {
 }
 
 fn card_type_of(state: &BattleState, card: CardHandle) -> Option<CardType> {
-    state
-        .card(card)
-        .map(|c| generated_card_meta(c.id).card_type)
+    state.card(card).map(|c| {
+        if c.id == CardId::MadScience {
+            crate::cards::colorless_special::resolved_type(state, card)
+                .unwrap_or(CardType::Attack)
+        } else {
+            generated_card_meta(c.id).card_type
+        }
+    })
 }
 
 fn card_tags_of(state: &BattleState, card: CardHandle) -> CardTags {
@@ -1643,9 +1655,13 @@ fn card_tags_of(state: &BattleState, card: CardHandle) -> CardTags {
 }
 
 fn card_target_type_of(state: &BattleState, card: CardHandle) -> TargetType {
-    state
-        .card(card)
-        .map_or(TargetType::None, |c| generated_card_meta(c.id).target_type)
+    state.card(card).map_or(TargetType::None, |c| {
+        if c.id == CardId::MadScience {
+            crate::cards::colorless_special::mad_science_resolved_target_type(state, card)
+        } else {
+            generated_card_meta(c.id).target_type
+        }
+    })
 }
 
 fn card_gains_block(state: &BattleState, card: CardHandle) -> bool {
@@ -1932,7 +1948,8 @@ pub fn on_after_applied(
             }
         }
         PowerId::RitualPower => {
-            let skip = state.creature(creature).is_some_and(|c| c.side == CombatSide::Enemy);
+            let skip = state.current_side == CombatSide::Enemy
+                && state.creature(creature).is_some_and(|c| c.side == CombatSide::Enemy);
             set_bool_field(
                 state,
                 creature,
@@ -5560,41 +5577,13 @@ fn dispatch_hook_cold(
             if slot == HookSlot::AfterAutoPostPlayPhaseEntered
                 && creature == state.player.creature_handle
             {
-                for _ in 0..p.amount {
-                    let hand_snapshot: SmallVec<[CardHandle; 16]> =
-                        SmallVec::from_slice(&state.player.hand);
-                    let mut min_cost = i32::MAX;
-                    let mut lowest_group: SmallVec<[CardHandle; 12]> = SmallVec::new();
-                    for h in hand_snapshot {
-                        if card_pile::card_has_keyword(state, content, h, CardKeywords::UNPLAYABLE)?
-                        {
-                            continue;
-                        }
-                        let cost = resolved_energy_cost_for_comparison(state, content, h)?;
-                        if cost < min_cost {
-                            min_cost = cost;
-                            lowest_group.clear();
-                            lowest_group.push(h);
-                        } else if cost == min_cost {
-                            lowest_group.push(h);
-                        }
-                    }
-                    if lowest_group.is_empty() {
-                        continue;
-                    }
-                    let picked = state
-                        .run_rngs
-                        .get_mut(RunRngType::CombatCardSelection)
-                        .next_item(&lowest_group)
-                        .copied();
-                    if let Some(card) = picked {
-                        if !hooks::is_over_or_ending(state)
-                            && state.creature(creature).is_some_and(|c| c.is_alive())
-                        {
-                            autoplay::from_cards(state, content, &[card], None, false)?;
-                        }
-                    }
-                }
+                run_auto_post_play_power(
+                    content,
+                    state,
+                    creature,
+                    PowerId::SimpletonPower,
+                    p.amount,
+                )?;
             }
             Ok(HookResult::default())
         }
@@ -5898,35 +5887,13 @@ fn dispatch_hook_cold(
             if slot == HookSlot::AfterAutoPostPlayPhaseEntered
                 && creature == state.player.creature_handle
             {
-                for _ in 0..p.amount {
-                    let mut attacks: SmallVec<[CardHandle; 12]> = SmallVec::new();
-                    let hand_snapshot: SmallVec<[CardHandle; 16]> =
-                        SmallVec::from_slice(&state.player.hand);
-                    for h in hand_snapshot {
-                        if card_type_of(state, h) == Some(CardType::Attack)
-                            && !card_pile::card_has_keyword(
-                                state,
-                                content,
-                                h,
-                                CardKeywords::UNPLAYABLE,
-                            )?
-                        {
-                            attacks.push(h);
-                        }
-                    }
-                    let selected = state
-                        .run_rngs
-                        .get_mut(RunRngType::CombatCardSelection)
-                        .next_item(&attacks)
-                        .copied();
-                    if let Some(card) = selected {
-                        if !hooks::is_over_or_ending(state)
-                            && state.creature(creature).is_some_and(|c| c.is_alive())
-                        {
-                            autoplay::from_cards(state, content, &[card], None, false)?;
-                        }
-                    }
-                }
+                run_auto_post_play_power(
+                    content,
+                    state,
+                    creature,
+                    PowerId::StampedePower,
+                    p.amount,
+                )?;
             }
             Ok(HookResult::default())
         }
@@ -7114,6 +7081,117 @@ fn tick_slumber(
         } else {
             let _ = power::remove_by_id(state, content, creature, PowerId::PlatingPower)?;
             set_monster_move_immediate(state, creature, "ROLL_OUT_MOVE", true, None);
+        }
+    }
+    Ok(())
+}
+
+pub fn run_auto_post_play_power(
+    content: &dyn ContentDispatcher,
+    state: &mut BattleState,
+    creature: CreatureHandle,
+    power_id: PowerId,
+    remaining_iterations: i32,
+) -> Result<(), KernelError> {
+    if creature != state.player.creature_handle || remaining_iterations <= 0 {
+        return Ok(());
+    }
+    for iter in 0..remaining_iterations {
+        if hooks::is_over_or_ending_checked(state, content)?
+            || !state.creature(creature).is_some_and(|c| c.is_alive())
+        {
+            break;
+        }
+        let selected = match power_id {
+            PowerId::StampedePower => {
+                let mut attacks: SmallVec<[CardHandle; 12]> = SmallVec::new();
+                let hand_snapshot: SmallVec<[CardHandle; 16]> =
+                    SmallVec::from_slice(&state.player.hand);
+                for h in hand_snapshot {
+                    if content.card_resolved_type(state, h)? == CardType::Attack
+                        && !card_pile::card_has_keyword(
+                            state,
+                            content,
+                            h,
+                            CardKeywords::UNPLAYABLE,
+                        )?
+                    {
+                        attacks.push(h);
+                    }
+                }
+                if attacks.is_empty() {
+                    break;
+                }
+                state
+                    .run_rngs
+                    .get_mut(RunRngType::CombatCardSelection)
+                    .next_item(&attacks)
+                    .copied()
+            }
+            PowerId::SimpletonPower => {
+                let hand_snapshot: SmallVec<[CardHandle; 16]> =
+                    SmallVec::from_slice(&state.player.hand);
+                let mut min_cost = i32::MAX;
+                let mut lowest_group: SmallVec<[CardHandle; 12]> = SmallVec::new();
+                for h in hand_snapshot {
+                    if card_pile::card_has_keyword(state, content, h, CardKeywords::UNPLAYABLE)? {
+                        continue;
+                    }
+                    let is_x = match state.card(h) {
+                        Some(ci) => {
+                            ci.temp_flags.contains(CardTempFlags::COSTS_X_ENERGY)
+                                || state
+                                    .fast_card_meta(content, ci.id)?
+                                    .flags
+                                    .contains(sts2_types::CardStaticFlags::IS_X_ENERGY_COST)
+                        }
+                        None => false,
+                    };
+                    let cost = if is_x {
+                        999_999_999
+                    } else {
+                        resolved_energy_cost_for_comparison(state, content, h)?
+                    };
+                    if cost < min_cost {
+                        min_cost = cost;
+                        lowest_group.clear();
+                        lowest_group.push(h);
+                    } else if cost == min_cost {
+                        lowest_group.push(h);
+                    }
+                }
+                if lowest_group.is_empty() {
+                    break;
+                }
+                state
+                    .run_rngs
+                    .get_mut(RunRngType::CombatCardSelection)
+                    .next_item(&lowest_group)
+                    .copied()
+            }
+            _ => {
+                return Err(KernelError::unsupported(
+                    "AfterAutoPostPlayPowerResume",
+                    power_id.model_id_str().to_owned(),
+                ));
+            }
+        };
+        if let Some(card) = selected {
+            let _ = autoplay::from_cards(state, content, &[card], None, false)?;
+            if let Some(pending) = state.pending.as_mut() {
+                let left = remaining_iterations - iter - 1;
+                if left > 0 {
+                    pending.frames.insert(
+                        0,
+                        sts2_kernel::continuation::ContinuationFrame::AfterAutoPostPlayPowerResume {
+                            creature,
+                            power_id,
+                            remaining_iterations: left,
+                        },
+                    );
+                }
+                return Ok(());
+            }
         }
     }
     Ok(())

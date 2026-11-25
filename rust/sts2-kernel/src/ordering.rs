@@ -66,17 +66,22 @@ pub fn resolve_energy_cost(
 
 #[inline]
 pub fn resolve_local_star_cost_card(card: &CardInst, canonical_star_cost: i32) -> i32 {
-    if let Some(override_turn) = card.temp_star_cost_override_this_turn.get() {
-        return override_turn;
-    }
-    if card.temp_flags.intersects(
+    let local = if let Some(override_turn) = card.temp_star_cost_override_this_turn.get() {
+        override_turn
+    } else if card.temp_flags.intersects(
         crate::state::CardTempFlags::TEMPORARY_FREE_TURN
             | crate::state::CardTempFlags::TEMPORARY_FREE_PLAY
             | crate::state::CardTempFlags::TEMPORARY_FREE_COMBAT,
     ) {
-        return 0;
+        0
+    } else {
+        return canonical_star_cost;
+    };
+    if local == 0 && canonical_star_cost < 0 {
+        canonical_star_cost
+    } else {
+        local
     }
-    canonical_star_cost
 }
 
 #[inline]
@@ -292,6 +297,145 @@ fn local_cmp_cost(state: &BattleState, card: &CardInst, is_x_energy: bool) -> i3
     }
 }
 
+#[inline(always)]
+fn dotnet_swap_if_greater<T>(
+    keys: &mut [T],
+    cmp: &mut impl FnMut(&T, &T) -> Ordering,
+    i: usize,
+    j: usize,
+) {
+    if cmp(&keys[i], &keys[j]) == Ordering::Greater {
+        keys.swap(i, j);
+    }
+}
+
+fn dotnet_insertion_sort<T: Copy>(keys: &mut [T], cmp: &mut impl FnMut(&T, &T) -> Ordering) {
+    if keys.len() <= 1 {
+        return;
+    }
+    for i in 0..keys.len() - 1 {
+        let t = keys[i + 1];
+        let mut j = i as isize;
+        while j >= 0 && cmp(&t, &keys[j as usize]) == Ordering::Less {
+            keys[(j + 1) as usize] = keys[j as usize];
+            j -= 1;
+        }
+        keys[(j + 1) as usize] = t;
+    }
+}
+
+fn dotnet_down_heap<T: Copy>(
+    keys: &mut [T],
+    mut i: usize,
+    n: usize,
+    cmp: &mut impl FnMut(&T, &T) -> Ordering,
+) {
+    let d = keys[i - 1];
+    while i <= (n >> 1) {
+        let mut child = 2 * i;
+        if child < n && cmp(&keys[child - 1], &keys[child]) == Ordering::Less {
+            child += 1;
+        }
+        if cmp(&d, &keys[child - 1]) != Ordering::Less {
+            break;
+        }
+        keys[i - 1] = keys[child - 1];
+        i = child;
+    }
+    keys[i - 1] = d;
+}
+
+fn dotnet_heap_sort<T: Copy>(keys: &mut [T], cmp: &mut impl FnMut(&T, &T) -> Ordering) {
+    let n = keys.len();
+    for i in (1..=(n >> 1)).rev() {
+        dotnet_down_heap(keys, i, n, cmp);
+    }
+    for i in (2..=n).rev() {
+        keys.swap(0, i - 1);
+        dotnet_down_heap(keys, 1, i - 1, cmp);
+    }
+}
+
+fn dotnet_pick_pivot_and_partition<T: Copy>(
+    keys: &mut [T],
+    cmp: &mut impl FnMut(&T, &T) -> Ordering,
+) -> usize {
+    let hi = keys.len() - 1;
+    let mid = hi >> 1;
+    dotnet_swap_if_greater(keys, cmp, 0, mid);
+    dotnet_swap_if_greater(keys, cmp, 0, hi);
+    dotnet_swap_if_greater(keys, cmp, mid, hi);
+    let pivot = keys[mid];
+    keys.swap(mid, hi - 1);
+    let mut left = 0usize;
+    let mut right = hi - 1;
+    while left < right {
+        loop {
+            left += 1;
+            if cmp(&keys[left], &pivot) != Ordering::Less {
+                break;
+            }
+        }
+        loop {
+            right -= 1;
+            if cmp(&pivot, &keys[right]) != Ordering::Less {
+                break;
+            }
+        }
+        if left >= right {
+            break;
+        }
+        keys.swap(left, right);
+    }
+    if left != hi - 1 {
+        keys.swap(left, hi - 1);
+    }
+    left
+}
+
+fn dotnet_intro_sort<T: Copy>(
+    mut keys: &mut [T],
+    mut depth_limit: usize,
+    cmp: &mut impl FnMut(&T, &T) -> Ordering,
+) {
+    let mut partition_size = keys.len();
+    while partition_size > 1 {
+        if partition_size <= 16 {
+            match partition_size {
+                2 => dotnet_swap_if_greater(keys, cmp, 0, 1),
+                3 => {
+                    dotnet_swap_if_greater(keys, cmp, 0, 1);
+                    dotnet_swap_if_greater(keys, cmp, 0, 2);
+                    dotnet_swap_if_greater(keys, cmp, 1, 2);
+                }
+                _ => dotnet_insertion_sort(&mut keys[..partition_size], cmp),
+            }
+            break;
+        }
+        if depth_limit == 0 {
+            dotnet_heap_sort(&mut keys[..partition_size], cmp);
+            break;
+        }
+        depth_limit -= 1;
+        let p = dotnet_pick_pivot_and_partition(&mut keys[..partition_size], cmp);
+        dotnet_intro_sort(&mut keys[p + 1..partition_size], depth_limit, cmp);
+        keys = &mut keys[..p];
+        partition_size = p;
+    }
+}
+
+/// Exact port of .NET 9 `ArraySortHelper<T>.IntrospectiveSort`.
+#[inline]
+pub fn dotnet_introspective_sort<T: Copy>(
+    keys: &mut [T],
+    cmp: &mut impl FnMut(&T, &T) -> Ordering,
+) {
+    if keys.len() > 1 {
+        let depth_limit = 2 * ((keys.len() as u32).ilog2() as usize + 1);
+        dotnet_intro_sort(keys, depth_limit, cmp);
+    }
+}
+
 #[inline]
 fn compare_shuffle_tiebreak(
     state: &mut BattleState,
@@ -372,116 +516,35 @@ fn stable_sort_shuffle_cards_generic(
             orig_idx,
         });
     }
-    keys.sort_unstable_by(|a, b| {
-        a.card_rank
+    let mut cost_cache: SmallVec<[i32; 256]> = SmallVec::new();
+    let mut err: Option<KernelError> = None;
+    dotnet_introspective_sort(&mut keys, &mut |a, b| {
+        if err.is_some() || a.handle == b.handle {
+            return Ordering::Equal;
+        }
+        let cmp = a
+            .card_rank
             .cmp(&b.card_rank)
             .then_with(|| a.upgrade_level.cmp(&b.upgrade_level))
             .then_with(|| a.ench_rank.cmp(&b.ench_rank))
-            .then_with(|| a.aff_rank.cmp(&b.aff_rank))
-            .then_with(|| a.orig_idx.cmp(&b.orig_idx))
+            .then_with(|| a.aff_rank.cmp(&b.aff_rank));
+        if cmp != Ordering::Equal {
+            return cmp;
+        }
+        if cost_cache.is_empty() {
+            cost_cache.resize(n, i32::MIN);
+        }
+        let has_dyn_vars = card_has_dynamic_comparison_values(a.card_id);
+        match compare_shuffle_tiebreak(state, content, a, b, &mut cost_cache, has_dyn_vars) {
+            Ok(ord) => ord,
+            Err(e) => {
+                err = Some(e);
+                Ordering::Equal
+            }
+        }
     });
-    let mut cost_cache: SmallVec<[i32; 256]> = SmallVec::new();
-    let mut start = 0usize;
-    while start < n {
-        let first = keys[start];
-        let mut end = start + 1;
-        while end < n {
-            let cur = keys[end];
-            if cur.card_rank == first.card_rank
-                && cur.upgrade_level == first.upgrade_level
-                && cur.ench_rank == first.ench_rank
-                && cur.aff_rank == first.aff_rank
-            {
-                end += 1;
-            } else {
-                break;
-            }
-        }
-        if end - start > 1 {
-            let has_dyn_vars = card_has_dynamic_comparison_values(first.card_id);
-            let no_energy_hooks = state.hook_cache.dirty_mask == 0
-                && state.hook_cache.cached_tables.is_some()
-                && !state
-                    .hook_cache
-                    .masks
-                    .combat_combined
-                    .contains(HookSlot::TryModifyEnergyCostInCombat)
-                && !state
-                    .hook_cache
-                    .masks
-                    .combat_combined
-                    .contains(HookSlot::TryModifyEnergyCostInCombatLate);
-            if !has_dyn_vars && no_energy_hooks {
-                let is_x = state
-                    .fast_card_meta(content, first.card_id)?
-                    .flags
-                    .contains(CardStaticFlags::IS_X_ENERGY_COST);
-                let first_c = state
-                    .card(first.handle)
-                    .ok_or_else(|| KernelError::InvalidState("missing card handle".to_owned()))?;
-                let c0 = local_cmp_cost(state, first_c, is_x);
-                let r0 = first.base_replay_count;
-                let mut all_equal = true;
-                for k in &keys[(start + 1)..end] {
-                    let c = state
-                        .card(k.handle)
-                        .ok_or_else(|| KernelError::InvalidState("missing card handle".to_owned()))?;
-                    if local_cmp_cost(state, c, is_x) != c0 || k.base_replay_count != r0 {
-                        all_equal = false;
-                        break;
-                    }
-                }
-                if !all_equal {
-                    if cost_cache.is_empty() {
-                        cost_cache.resize(n, i32::MIN);
-                    }
-                    for k in &keys[start..end] {
-                        let c = state.card(k.handle).expect("checked above");
-                        cost_cache[k.orig_idx] = local_cmp_cost(state, c, is_x);
-                    }
-                    for i in (start + 1)..end {
-                        let mut j = i;
-                        while j > start {
-                            let ka = &keys[j - 1];
-                            let kb = &keys[j];
-                            let ord = cost_cache[ka.orig_idx]
-                                .cmp(&cost_cache[kb.orig_idx])
-                                .then_with(|| ka.base_replay_count.cmp(&kb.base_replay_count));
-                            if ord == Ordering::Greater {
-                                keys.swap(j - 1, j);
-                                j -= 1;
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                }
-            } else {
-                if cost_cache.is_empty() {
-                    cost_cache.resize(n, i32::MIN);
-                }
-                for i in (start + 1)..end {
-                    let mut j = i;
-                    while j > start {
-                        if compare_shuffle_tiebreak(
-                            state,
-                            content,
-                            &keys[j - 1],
-                            &keys[j],
-                            &mut cost_cache,
-                            has_dyn_vars,
-                        )? == Ordering::Greater
-                        {
-                            keys.swap(j - 1, j);
-                            j -= 1;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        start = end;
+    if let Some(e) = err {
+        return Err(e);
     }
     for (dst, k) in handles.iter_mut().zip(keys.iter()) {
         *dst = k.handle;
@@ -576,12 +639,11 @@ pub fn stable_shuffle_cards(
                 | ((ench_rank as u64) << 40)
                 | ((aff_rank as u64) << 32)
                 | ((cost as u64) << 24)
-                | ((c.base_replay_count as u64) << 16)
-                | (orig_idx as u64);
+                | ((c.base_replay_count as u64) << 16);
             fast_keys.push((key, h));
         }
         if fast_ok {
-            fast_keys.sort_unstable_by_key(|&(k, _)| k);
+            dotnet_introspective_sort(&mut fast_keys, &mut |a, b| a.0.cmp(&b.0));
             for (dst, &(_, h)) in handles.iter_mut().zip(fast_keys.iter()) {
                 *dst = h;
             }

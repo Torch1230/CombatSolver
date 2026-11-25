@@ -559,11 +559,11 @@ pub fn on_play(
         CardId::EscapePlan => {
             let drawn = card_pile::draw(state, content, 1, false)?;
             if let Some(&drawn_h) = drawn.first() {
-                if let Some(drawn_card) = state.card(drawn_h) {
-                    if content.card_meta(drawn_card.id)?.card_type == CardType::Skill {
-                        let blk = Dec::from_i32(if upg { 5 } else { 3 });
-                        block::gain_block(state, content, owner, blk, ValueProp::MOVE, src, Some(*ctx))?;
-                    }
+                if state.card(drawn_h).is_some()
+                    && content.card_resolved_type(state, drawn_h)? == CardType::Skill
+                {
+                    let blk = Dec::from_i32(if upg { 5 } else { 3 });
+                    block::gain_block(state, content, owner, blk, ValueProp::MOVE, src, Some(*ctx))?;
                 }
             }
             Ok(CardPlayOutcome::default())
@@ -616,10 +616,10 @@ pub fn on_play(
             let dmg = Dec::from_i32(if upg { 7 } else { 5 });
             let mut hits = 0i32;
             for &h in &state.player.hand {
-                if let Some(c) = state.card(h) {
-                    if content.card_meta(c.id)?.card_type == CardType::Skill {
-                        hits += 1;
-                    }
+                if state.card(h).is_some()
+                    && content.card_resolved_type(state, h)? == CardType::Skill
+                {
+                    hits += 1;
                 }
             }
             AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
@@ -658,15 +658,14 @@ pub fn on_play(
             let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let mut candidates: SmallVec<[CardHandle; 16]> = SmallVec::new();
             for h in hand {
-                if let Some(c) = state.card(h) {
-                    if content.card_meta(c.id)?.card_type == CardType::Skill
-                        && !card_pile::card_has_keyword(state, content, h, CardKeywords::SLY)?
-                        && !state
-                            .card(h)
-                            .is_some_and(|ci| ci.temp_flags.contains(CardTempFlags::TEMPORARY_SLY_TURN))
-                    {
-                        candidates.push(h);
-                    }
+                if state.card(h).is_some()
+                    && content.card_resolved_type(state, h)? == CardType::Skill
+                    && !card_pile::card_has_keyword(state, content, h, CardKeywords::SLY)?
+                    && !state
+                        .card(h)
+                        .is_some_and(|ci| ci.temp_flags.contains(CardTempFlags::TEMPORARY_SLY_TURN))
+                {
+                    candidates.push(h);
                 }
             }
             match card_select::select_cards(
@@ -1244,15 +1243,15 @@ pub fn dispatch_hook(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(ctx) = args {
-                        if let Some(played) = state.card(ctx.card) {
-                            if content.card_meta(played.id)?.card_type == CardType::Skill {
-                                add_local_energy_modifier(
-                                    state,
-                                    card,
-                                    LocalEnergyModifierKind::AddThisTurn,
-                                    -1,
-                                );
-                            }
+                        if state.card(ctx.card).is_some()
+                            && content.card_resolved_type(state, ctx.card)? == CardType::Skill
+                        {
+                            add_local_energy_modifier(
+                                state,
+                                card,
+                                LocalEnergyModifierKind::AddThisTurn,
+                                -1,
+                            );
                         }
                     }
                 }

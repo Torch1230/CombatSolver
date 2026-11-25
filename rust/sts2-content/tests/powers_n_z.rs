@@ -647,6 +647,7 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: 2,
@@ -910,7 +911,8 @@ fn plating_regen_ritual_the_bomb_thorns_and_wraith_form() {
     assert_eq!(state.creature(pc).unwrap().current_hp, 63);
     assert_eq!(state.creature(pc).unwrap().powers[0].amount, 2);
 
-    // Ritual on enemy (after_applied sets _skipFirstEnemyTurnEnd = true)
+    // Ritual applied on enemy turn (after_applied sets _skipFirstEnemyTurnEnd = true)
+    state.current_side = CombatSide::Enemy;
     power::apply(&mut state, &content, PowerId::RitualPower, enemy, Dec::from_i32(3), Some(enemy), None).unwrap();
     sts2_kernel::hooks::after_side_turn_end(&mut state, &content, CombatSide::Enemy, &[enemy]).unwrap();
     assert!(!state.creature(enemy).unwrap().powers.iter().any(|p| p.id == PowerId::StrengthPower));
@@ -919,6 +921,7 @@ fn plating_regen_ritual_the_bomb_thorns_and_wraith_form() {
         state.creature(enemy).unwrap().powers.iter().find(|p| p.id == PowerId::StrengthPower).unwrap().amount,
         3
     );
+    state.current_side = CombatSide::Player;
 
     // TheBomb (amount 2 -> 1 -> explode for 40)
     push_power(
@@ -1712,4 +1715,202 @@ fn v0114_nz_powers_no_energy_gain_tune_stretch_unmovable_panache_and_deferred_pa
         .unwrap();
     assert!(s_ps.creature(e_ps).unwrap().is_dead());
     assert!(s_ps.player.discard.iter().any(|&h| s_ps.card(h).unwrap().id == CardId::Wound));
+}
+
+#[test]
+fn ritual_power_player_turn_application_triggers_first_enemy_turn_end() {
+    let content = NzTestDispatcher;
+
+    // 1. Applied during Player turn: does NOT skip the upcoming enemy turn end.
+    let (mut s_player_turn, enemy_pt) = build_battle(CharacterId::Ironclad, &[], 50);
+    s_player_turn.current_side = CombatSide::Player;
+    power::apply(
+        &mut s_player_turn,
+        &content,
+        PowerId::RitualPower,
+        enemy_pt,
+        Dec::from_i32(2),
+        None,
+        None,
+    )
+    .unwrap();
+    sts2_kernel::hooks::after_side_turn_end(
+        &mut s_player_turn,
+        &content,
+        CombatSide::Enemy,
+        &[enemy_pt],
+    )
+    .unwrap();
+    let str_pt = s_player_turn
+        .creature(enemy_pt)
+        .unwrap()
+        .powers
+        .iter()
+        .find(|p| p.id == PowerId::StrengthPower)
+        .map_or(0, |p| p.amount);
+    assert_eq!(str_pt, 2);
+
+    // 2. Applied during Enemy turn: DOES skip that enemy turn end, triggers on the second.
+    let (mut s_enemy_turn, enemy_et) = build_battle(CharacterId::Ironclad, &[], 50);
+    s_enemy_turn.current_side = CombatSide::Enemy;
+    power::apply(
+        &mut s_enemy_turn,
+        &content,
+        PowerId::RitualPower,
+        enemy_et,
+        Dec::from_i32(2),
+        None,
+        None,
+    )
+    .unwrap();
+    sts2_kernel::hooks::after_side_turn_end(
+        &mut s_enemy_turn,
+        &content,
+        CombatSide::Enemy,
+        &[enemy_et],
+    )
+    .unwrap();
+    let str_after_1 = s_enemy_turn
+        .creature(enemy_et)
+        .unwrap()
+        .powers
+        .iter()
+        .find(|p| p.id == PowerId::StrengthPower)
+        .map_or(0, |p| p.amount);
+    assert_eq!(str_after_1, 0);
+    sts2_kernel::hooks::after_side_turn_end(
+        &mut s_enemy_turn,
+        &content,
+        CombatSide::Enemy,
+        &[enemy_et],
+    )
+    .unwrap();
+    let str_after_2 = s_enemy_turn
+        .creature(enemy_et)
+        .unwrap()
+        .powers
+        .iter()
+        .find(|p| p.id == PowerId::StrengthPower)
+        .map_or(0, |p| p.amount);
+    assert_eq!(str_after_2, 2);
+}
+
+#[test]
+fn stampede_pauses_on_headbutt_before_second_iteration_and_simpleton_ranks_x_cost_last() {
+    let content = Sts2Content;
+    let (mut state, enemy) = build_battle(
+        CharacterId::Ironclad,
+        &[CardId::Headbutt, CardId::Headbutt],
+        100,
+    );
+    let pc = state.player.creature_handle;
+    let twin = CardHandle(state.next_card_handle);
+    state.next_card_handle += 1;
+    state.cards.push(make_card(twin.0, CardId::TwinStrike, PileType::Discard));
+    state.player.discard.push(twin);
+    let anger = CardHandle(state.next_card_handle);
+    state.next_card_handle += 1;
+    state.cards.push(make_card(anger.0, CardId::Anger, PileType::Discard));
+    state.player.discard.push(anger);
+    for i in 0..6u32 {
+        let dh = CardHandle(state.next_card_handle);
+        state.next_card_handle += 1;
+        state.cards.push(make_card(
+            dh.0,
+            if i == 0 { CardId::StrikeIronclad } else { CardId::DefendIronclad },
+            PileType::Draw,
+        ));
+        state.player.draw.push(dh);
+    }
+
+    power::apply(
+        &mut state,
+        &content,
+        PowerId::StampedePower,
+        pc,
+        Dec::TWO,
+        Some(pc),
+        None,
+    )
+    .unwrap();
+    power::apply(
+        &mut state,
+        &content,
+        PowerId::AfterimagePower,
+        pc,
+        Dec::TWO,
+        Some(pc),
+        None,
+    )
+    .unwrap();
+    power::apply(
+        &mut state,
+        &content,
+        PowerId::PlatingPower,
+        pc,
+        Dec::TWO,
+        Some(pc),
+        None,
+    )
+    .unwrap();
+
+    let step1 = CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert!(matches!(step1, sts2_kernel::StepOutcome::NeedsChoice(_)));
+    assert_eq!(state.player.turn_number, 1);
+    assert_eq!(state.player.block, 0);
+    assert_eq!(state.card(state.player.draw[0]).unwrap().id, CardId::StrikeIronclad);
+    let pending = state.pending.as_ref().unwrap();
+    assert!(pending.frames.iter().any(|f| matches!(
+        f,
+        sts2_kernel::continuation::ContinuationFrame::AfterAutoPostPlayPowerResume {
+            power_id: PowerId::StampedePower,
+            remaining_iterations: 1,
+            ..
+        }
+    )));
+    assert!(matches!(
+        pending.frames.first(),
+        Some(sts2_kernel::continuation::ContinuationFrame::EndTurnResume { .. })
+    ));
+
+    // Choosing TwinStrike completes Headbutt #0 (AfterImage +2 block, TwinStrike -> Draw[0]),
+    // then immediately starts Headbutt #1 which pauses on Discard choice (first Headbutt).
+    let step2 = CombatEngine::resume_choice(&mut state, &content, &[0]).unwrap();
+    assert!(matches!(step2, sts2_kernel::StepOutcome::NeedsChoice(_)));
+    assert_eq!(state.player.turn_number, 1);
+    assert_eq!(state.player.block, 2);
+    assert_eq!(state.card(state.player.draw[0]).unwrap().id, CardId::TwinStrike);
+
+    let step3 = CombatEngine::resume_choice(&mut state, &content, &[0]).unwrap();
+    assert!(matches!(step3, sts2_kernel::StepOutcome::Completed));
+    assert_eq!(state.player.turn_number, 2);
+    assert!(state.pending.is_none());
+    assert_eq!(state.creature(enemy).unwrap().current_hp, 100 - 18);
+
+    // SimpletonPower ranks X-cost cards (Whirlwind) as 999_999_999, playing 1-cost Strike instead.
+    let (mut s_simp, e_simp) = build_battle(
+        CharacterId::Ironclad,
+        &[CardId::Whirlwind, CardId::StrikeIronclad],
+        50,
+    );
+    let pc_s = s_simp.player.creature_handle;
+    for _ in 0..5 {
+        let dh = CardHandle(s_simp.next_card_handle);
+        s_simp.next_card_handle += 1;
+        s_simp.cards.push(make_card(dh.0, CardId::DefendIronclad, PileType::Draw));
+        s_simp.player.draw.push(dh);
+    }
+    power::apply(
+        &mut s_simp,
+        &content,
+        PowerId::SimpletonPower,
+        pc_s,
+        Dec::ONE,
+        Some(pc_s),
+        None,
+    )
+    .unwrap();
+    let simp_out = CombatEngine::end_player_turn(&mut s_simp, &content).unwrap();
+    assert!(matches!(simp_out, sts2_kernel::StepOutcome::Completed));
+    assert_eq!(s_simp.creature(e_simp).unwrap().current_hp, 50 - 6);
 }

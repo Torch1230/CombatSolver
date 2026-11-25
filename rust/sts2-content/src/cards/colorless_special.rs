@@ -478,7 +478,7 @@ pub fn on_turn_end_in_hand(
                 &[owner],
                 Dec::from_i32(13),
                 ValueProp::UNBLOCKABLE | ValueProp::UNPOWERED | ValueProp::MOVE,
-                Some(owner),
+                None,
                 Some(card),
                 None,
             )?;
@@ -490,7 +490,7 @@ pub fn on_turn_end_in_hand(
                 &[owner],
                 Dec::from_i32(6),
                 ValueProp::UNBLOCKABLE | ValueProp::UNPOWERED | ValueProp::MOVE,
-                Some(owner),
+                None,
                 Some(card),
                 None,
             )?;
@@ -502,7 +502,7 @@ pub fn on_turn_end_in_hand(
                 &[owner],
                 Dec::from_i32(2),
                 ValueProp::UNPOWERED | ValueProp::MOVE,
-                Some(owner),
+                None,
                 Some(card),
                 None,
             )?;
@@ -521,7 +521,7 @@ pub fn on_turn_end_in_hand(
                 &[owner],
                 Dec::from_i32(3),
                 ValueProp::UNPOWERED | ValueProp::MOVE,
-                Some(owner),
+                None,
                 Some(card),
                 None,
             )?;
@@ -534,7 +534,7 @@ pub fn on_turn_end_in_hand(
                 &[owner],
                 Dec::from_i32(cards_in_hand),
                 ValueProp::UNBLOCKABLE | ValueProp::UNPOWERED | ValueProp::MOVE,
-                Some(owner),
+                None,
                 Some(card),
                 None,
             )?;
@@ -550,7 +550,7 @@ pub fn on_turn_end_in_hand(
                 &[owner],
                 Dec::from_i32(5),
                 ValueProp::UNPOWERED | ValueProp::MOVE,
-                Some(owner),
+                None,
                 Some(card),
                 None,
             )?;
@@ -564,7 +564,7 @@ pub fn on_turn_end_in_hand(
                 &[owner],
                 Dec::from_i32(dmg),
                 ValueProp::UNPOWERED | ValueProp::MOVE,
-                Some(owner),
+                None,
                 Some(card),
                 None,
             )?;
@@ -1316,9 +1316,17 @@ pub fn on_play(
                 }
                 if let Some(c) = state.card(h) {
                     let ct = resolved_card_type(state, c);
-                    if !matches!(ct, CardType::Status | CardType::Curse | CardType::Quest)
-                        && c.base_replay_count < 1
-                    {
+                    let base_replay = c.base_replay_count as i32;
+                    let has_ench = state
+                        .card_ext(c.ext_index)
+                        .and_then(|e| e.enchantment.as_ref())
+                        .is_some();
+                    let enchanted_replay = if has_ench {
+                        content.enchantment_play_count(state, h, base_replay)?
+                    } else {
+                        base_replay
+                    };
+                    if !matches!(ct, CardType::Curse | CardType::Quest) && enchanted_replay < 1 {
                         eligible.push(h);
                     }
                 }
@@ -3217,6 +3225,18 @@ pub fn mad_science_on_play(
         .and_then(|e| e.private_fields.get("MadScience.<Rider>k__BackingField"))
         .and_then(|v| match v {
             FieldValue::String(s) => Some(MadScienceRider::from_str(s)),
+            FieldValue::Int(i) => Some(match *i {
+                1 => MadScienceRider::Sapping,
+                2 => MadScienceRider::Violence,
+                3 => MadScienceRider::Choking,
+                4 => MadScienceRider::Energized,
+                5 => MadScienceRider::Wisdom,
+                6 => MadScienceRider::Chaos,
+                7 => MadScienceRider::Expertise,
+                8 => MadScienceRider::Curious,
+                9 => MadScienceRider::Improvement,
+                _ => MadScienceRider::None,
+            }),
             _ => None,
         })
         .unwrap_or(MadScienceRider::None);
@@ -3724,16 +3744,8 @@ fn clone_card_for_combat(state: &mut BattleState, original: CardHandle) -> Resul
 
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let new_ext_idx = if let Some(ext) = state.card_ext(src.ext_index).cloned() {
-        let mut cloned_ext = ext;
-        cloned_ext.private_fields.remove("Bolas._playedOnTurnNumber");
-        cloned_ext
-            .private_fields
-            .remove("ThrummingHatchet._playedOnTurnNumber");
-        cloned_ext.private_fields.remove("Regret._cardsInHand");
-        cloned_ext
-            .private_fields
-            .remove("Abundance._generatedCandidates");
+    let new_ext_idx = if let Some(mut cloned_ext) = state.card_ext(src.ext_index).cloned() {
+        cloned_ext.strip_non_cloned_private_fields();
         let i = state.card_extensions.len();
         state.card_extensions.push(cloned_ext);
         Some(i as u32)
@@ -3743,7 +3755,8 @@ fn clone_card_for_combat(state: &mut BattleState, original: CardHandle) -> Resul
 
     let mut copy = src;
     copy.handle = new_handle;
-    copy.temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY);
+    copy.temp_flags
+        .remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
     copy.deck_card_handle = OptCardHandle::NONE;
     copy.clone_of_handle = OptCardHandle::some(source_handle);
     copy.ext_index = new_ext_idx;

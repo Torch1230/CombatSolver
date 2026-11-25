@@ -1110,6 +1110,19 @@ impl CardExtension {
         }
         self.local_energy_modifiers.push(modifier);
     }
+
+    pub fn strip_non_cloned_private_fields(&mut self) {
+        self.private_fields.remove("Bolas._playedOnTurnNumber");
+        self.private_fields
+            .remove("ThrummingHatchet._playedOnTurnNumber");
+        self.private_fields.remove("Bounce._lastFinishedPlayerTurn");
+        self.private_fields.remove("Fetch._finishedRound");
+        self.private_fields.remove("Fetch._finishedSide");
+        self.private_fields.remove("Fetch._finishedTurnNumbers");
+        self.private_fields.remove("Regret._cardsInHand");
+        self.private_fields
+            .remove("Abundance._generatedCandidates");
+    }
 }
 
 /// Compact 64-byte single-cache-line hot struct for a card instance; infrequent/variable fields spill into `card_extensions`.
@@ -2893,7 +2906,7 @@ const fn mask_at(table: &[HookMask], idx: usize) -> HookMask {
     }
 }
 
-pub const HOOK_SLOT_TABLE_LEN: usize = 138;
+pub const HOOK_SLOT_TABLE_LEN: usize = 139;
 
 pub const ENEMY_POWER_FLAG_GOLD_THEFT: u8 = 1 << 0;
 pub const ENEMY_POWER_FLAG_REVIVING: u8 = 1 << 1;
@@ -3378,6 +3391,7 @@ pub struct BattleState {
     pub won: bool,
     pub is_player_extra_turn: bool,
     pub gold_was_stolen: bool,
+    pub battleworn_dummy_timed_out: bool,
     pub end_player_turn_requested: bool,
     pub card_action_boundary_depth: i32,
     pub next_creature_id: u32,

@@ -217,6 +217,7 @@ fn build_battle_with(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: (enemies.len() + 1) as u32,
@@ -1029,4 +1030,71 @@ fn slumbering_beetle_tunneler_insatiable_and_thieving_hopper() {
     assert!(!state.enemy_handles.contains(&hopper));
     assert!(state.won);
     assert_eq!(state.player.arrows[0].status, ArrowStatus::Retrieved);
+}
+
+#[test]
+fn thieving_hopper_flutter_stun_advances_to_nab_move() {
+    let content = Sts2Content;
+    let deck = [CardId::StrikeIronclad; 5];
+    let (mut state, enemies) = build_battle_with(
+        CharacterId::Ironclad,
+        &deck,
+        &[(MonsterId::ThievingHopper, 200, Some("slot_0"))],
+        0,
+        GameMode::Standard,
+        "HOPPER_FLUTTER_STUN",
+    );
+    let hopper = enemies[0];
+    let pc = state.player.creature_handle;
+    CombatEngine::start_combat(&mut state, &content).unwrap();
+
+    // Turn 1 THIEVERY_MOVE -> Turn 2 FLUTTER_MOVE -> Turn 3 HAT_TRICK_MOVE
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert_eq!(
+        state
+            .creature(hopper)
+            .unwrap()
+            .monster
+            .as_ref()
+            .unwrap()
+            .next_move_id
+            .as_deref(),
+        Some("HAT_TRICK_MOVE")
+    );
+
+    // 5 powered attacks remove FlutterPower(5), stunning ThievingHopper with follow-up NAB_MOVE.
+    for _ in 0..5 {
+        damage::damage_targets(
+            &mut state,
+            &content,
+            &[hopper],
+            Dec::from_i32(4),
+            ValueProp::MOVE,
+            Some(pc),
+            None,
+            None,
+        )
+        .unwrap();
+    }
+    let m_stunned = state.creature(hopper).unwrap().monster.as_ref().unwrap();
+    assert_eq!(m_stunned.next_move_id.as_deref(), Some("STUNNED"));
+    assert_eq!(
+        m_stunned.transient_move_follow_up_state_id.as_deref(),
+        Some("NAB_MOVE")
+    );
+
+    // Ending turn executes STUNNED and prepares Turn 4 with NAB_MOVE (not HAT_TRICK_MOVE).
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert_eq!(
+        state
+            .creature(hopper)
+            .unwrap()
+            .monster
+            .as_ref()
+            .unwrap()
+            .next_move_id
+            .as_deref(),
+        Some("NAB_MOVE")
+    );
 }

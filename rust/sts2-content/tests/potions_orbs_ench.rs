@@ -212,6 +212,7 @@ fn build_battle(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: (enemies.len() + 1) as u32,
@@ -880,4 +881,107 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
         sts2_kernel::ordering::resolve_energy_cost(&mut state, &content, se_h).unwrap(),
         0
     );
+}
+
+#[test]
+fn music_box_clones_swift_and_sown_cards_before_enchantment_disables() {
+    let content = Sts2Content;
+    let deck = [
+        CardId::StrikeIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+    ];
+    for eid in [EnchantmentId::Swift, EnchantmentId::Sown] {
+        let (mut state, enemies) = build_battle(
+            CharacterId::Ironclad,
+            &deck,
+            &[RelicId::MusicBox],
+            [None, None, None],
+            &[(MonsterId::FuzzyWurmCrawler, 80)],
+        );
+        let s_orig = CardHandle(1);
+        for (idx, h) in state
+            .cards
+            .iter()
+            .map(|c| c.handle)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .enumerate()
+        {
+            let pile = if idx == 0 {
+                PileType::Hand
+            } else {
+                PileType::Draw
+            };
+            state.card_mut(h).unwrap().pile = pile;
+            if pile == PileType::Hand {
+                state.player.hand.push(h);
+            } else {
+                state.player.draw.push(h);
+            }
+        }
+        state.player.deck.clear();
+        state.is_in_progress = true;
+        state.player.phase = PlayerTurnPhase::Play;
+        state.card_ext_mut(s_orig).unwrap().enchantment = Some(EnchantmentInst {
+            id: eid,
+            amount: 1,
+            status: EnchantmentStatus::Normal,
+            private_fields: Default::default(),
+        });
+        state.player.energy = 5;
+        state.invalidate_hook_cache();
+
+        let draw_before = state.player.draw.len();
+        let energy_before = state.player.energy;
+        let mut choices = SmallVec::new();
+        CombatEngine::play_card(&mut state, &content, s_orig, Some(enemies[0]), &mut choices)
+            .unwrap();
+
+        if eid == EnchantmentId::Swift {
+            assert_eq!(state.player.draw.len(), draw_before - 1);
+            assert_eq!(state.player.energy, energy_before - 1);
+        } else {
+            assert_eq!(state.player.energy, energy_before);
+        }
+        assert_eq!(
+            state
+                .card_ext(state.card(s_orig).unwrap().ext_index)
+                .unwrap()
+                .enchantment
+                .as_ref()
+                .unwrap()
+                .status,
+            EnchantmentStatus::Disabled
+        );
+        let clone_h = state
+            .player
+            .hand
+            .iter()
+            .copied()
+            .find(|&h| {
+                state
+                    .card(h)
+                    .is_some_and(|c| c.clone_of_handle == sts2_kernel::OptCardHandle::some(s_orig))
+            })
+            .expect("MusicBox clone in hand");
+        assert_eq!(
+            state
+                .card_ext(state.card(clone_h).unwrap().ext_index)
+                .unwrap()
+                .enchantment
+                .as_ref()
+                .unwrap()
+                .status,
+            EnchantmentStatus::Normal
+        );
+        assert!(
+            state
+                .card(clone_h)
+                .unwrap()
+                .has_local_keyword(CardKeywords::ETHEREAL)
+        );
+    }
 }

@@ -372,11 +372,14 @@ impl GrowthOpportunityTargets {
                 Some(FieldValue::String(s)) if s == "Power"
             ) || matches!(
                 ext.private_fields.get("MadScience._type"),
-                Some(FieldValue::Int(2))
+                Some(FieldValue::Int(3))
             );
             let is_improvement = matches!(
                 ext.private_fields.get("MadScience.<Rider>k__BackingField"),
                 Some(FieldValue::String(s)) if s == "Improvement"
+            ) || matches!(
+                ext.private_fields.get("MadScience.<Rider>k__BackingField"),
+                Some(FieldValue::Int(9))
             );
             is_power && is_improvement
         };
@@ -1247,6 +1250,7 @@ impl PowerCardValuationRegistry {
 pub struct RouteQuality {
     pub won: bool,
     pub survives: bool,
+    pub is_event_defeat: bool,
     pub death_save_use_count: i32,
     pub outstanding_stolen_resource: i32,
     pub strategic_hp_deficit: i32,
@@ -1310,6 +1314,10 @@ impl RouteQualityPolicy {
             return cmp;
         }
         let cmp = current.survives.cmp(&candidate.survives);
+        if cmp != Ordering::Equal {
+            return cmp;
+        }
+        let cmp = candidate.is_event_defeat.cmp(&current.is_event_defeat);
         if cmp != Ordering::Equal {
             return cmp;
         }
@@ -1470,6 +1478,7 @@ pub const FAST_FLAG_ALL_ENEMIES_DEAD: u8 = 1 << 1;
 pub const FAST_FLAG_WON: u8 = 1 << 2;
 pub const FAST_FLAG_HAS_PENDING_CHOICE: u8 = 1 << 3;
 pub const FAST_FLAG_FORFEITS_GOLD: u8 = 1 << 4;
+pub const FAST_FLAG_EVENT_DEFEAT: u8 = 1 << 5;
 
 /// Compact 40-byte per-node summary stored inline inside `SearchNode`.
 /// Infrequent `growth_rewards` and `relic_eval` spill to `NodeArena::rare_evals`.
@@ -1552,6 +1561,9 @@ impl From<&FastEvalSummary> for StoredFastEval {
         if f.forfeits_gold {
             flags |= FAST_FLAG_FORFEITS_GOLD;
         }
+        if f.is_event_defeat {
+            flags |= FAST_FLAG_EVENT_DEFEAT;
+        }
         Self {
             enemy_hp: f.enemy_hp,
             player_hp: f.player_hp.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
@@ -1607,6 +1619,11 @@ impl StoredFastEval {
     #[inline(always)]
     pub const fn forfeits_gold(&self) -> bool {
         (self.flags & FAST_FLAG_FORFEITS_GOLD) != 0
+    }
+
+    #[inline(always)]
+    pub const fn is_event_defeat(&self) -> bool {
+        (self.flags & FAST_FLAG_EVENT_DEFEAT) != 0
     }
 
     #[inline(always)]
@@ -1694,6 +1711,7 @@ pub struct FastEvalSummary {
     pub player_dead: bool,
     pub all_enemies_dead: bool,
     pub won: bool,
+    pub is_event_defeat: bool,
     pub has_pending_choice: bool,
     pub death_save_use_count: i32,
     pub death_save_hp_restored: i32,
@@ -2540,9 +2558,23 @@ pub fn evaluate_fast(
     });
 
     let has_pending_choice = state.pending.is_some();
-    let player_dead = pc.is_none_or(|c| c.is_dead()) || (!state.is_in_progress && !state.won);
-    let all_enemies_dead = alive_enemy_count == 0 && reviving_enemy_count == 0;
-    let won = !player_dead && !has_pending_choice && (!state.is_in_progress && state.won || all_enemies_dead);
+    let player_dead = pc.is_none_or(|c| c.is_dead())
+        || (!state.is_in_progress && !state.won && !state.battleworn_dummy_timed_out);
+    let is_event_defeat = !player_dead && state.battleworn_dummy_timed_out;
+    if is_event_defeat {
+        for &eh in &state.escaped_handles {
+            if let Some(ec) = state.creature(eh) {
+                let hp = ec.current_hp.max(0);
+                enemy_hp += hp;
+                raw_enemy_hp += hp;
+            }
+        }
+    }
+    let all_enemies_dead = !is_event_defeat && alive_enemy_count == 0 && reviving_enemy_count == 0;
+    let won = !player_dead
+        && !is_event_defeat
+        && !has_pending_choice
+        && (!state.is_in_progress && state.won || all_enemies_dead);
 
     let projected_player_hp = if won {
         player_hp
@@ -2730,6 +2762,10 @@ pub fn evaluate_fast(
             + state.player.turn_number as f64 * 100_000.0
             - enemy_hp as f64 * 100.0
             - (alive_enemy_count + reviving_enemy_count) as f64 * 50_000.0
+    } else if is_event_defeat {
+        -500_000_000_000.0
+            - enemy_hp as f64 * 10_000.0
+            - cumulative_hp_lost as f64 * 50_000.0
     } else {
         let raw_hp_delta = projected_player_hp - root.initial_player_hp;
         let max_hp_gain = (player_max_hp - root.initial_player_max_hp).max(0);
@@ -2782,6 +2818,7 @@ pub fn evaluate_fast(
         player_dead,
         all_enemies_dead,
         won,
+        is_event_defeat,
         has_pending_choice,
         death_save_use_count: 0,
         death_save_hp_restored: 0,
@@ -4004,6 +4041,13 @@ pub fn compute_beam_rank_score_with_centi(
     if base_score_only || fast.player_dead || fast.projected_player_hp <= 0 {
         return fast.base_score;
     }
+    if fast.is_event_defeat {
+        return -500_000_000_000.0
+            - fast.death_save_use_count as f64 * 500_000_000.0
+            - fast.enemy_hp as f64 * 10_000.0
+            - fast.cumulative_hp_lost as f64 * 50_000.0
+            - net_potion_cost_centi as f64 * 300.0;
+    }
     if fast.won {
         let relic_heal = ActEndingBossPolicy::ranked_post_combat_relic_heal(
             root.post_combat_relic_heal,
@@ -4232,6 +4276,7 @@ pub struct FinalPlanSelection {
     pub turn: i32,
     pub won: bool,
     pub survives: bool,
+    pub is_event_defeat: bool,
     pub death_save_use_count: i32,
     pub player_hp: i32,
     pub end_player_max_hp: i32,
@@ -4299,6 +4344,7 @@ pub(crate) fn cmp_eval_cand(
         .then_with(|| b.forced_use_count.cmp(&a.forced_use_count))
         .then_with(|| b.quality.won.cmp(&a.quality.won))
         .then_with(|| b.quality.survives.cmp(&a.quality.survives))
+        .then_with(|| a.quality.is_event_defeat.cmp(&b.quality.is_event_defeat))
         .then_with(|| a.quality.death_save_use_count.cmp(&b.quality.death_save_use_count))
         .then_with(|| {
             if check_theft {
@@ -4423,12 +4469,13 @@ impl FinalPlanTracker {
         let Some(ref bh) = self.best_hard else {
             return false;
         };
-        let complete_victory = RouteQualityPolicy::is_complete_victory(
-            action_count as usize,
-            f.all_enemies_dead() || f.won(),
-            f.player_dead(),
-            f.projected_player_hp as i32,
-        );
+        let complete_victory = !f.is_event_defeat()
+            && RouteQualityPolicy::is_complete_victory(
+                action_count as usize,
+                f.all_enemies_dead() || f.won(),
+                f.player_dead(),
+                f.projected_player_hp as i32,
+            );
         if bh.quality.won && !complete_victory {
             return true;
         }
@@ -4484,12 +4531,13 @@ impl FinalPlanTracker {
         } else {
             root.initial_player_max_hp.max(1)
         };
-        let complete_victory = RouteQualityPolicy::is_complete_victory(
-            action_count as usize,
-            f.all_enemies_dead() || f.won(),
-            f.player_dead(),
-            f.projected_player_hp as i32,
-        );
+        let complete_victory = !f.is_event_defeat()
+            && RouteQualityPolicy::is_complete_victory(
+                action_count as usize,
+                f.all_enemies_dead() || f.won(),
+                f.player_dead(),
+                f.projected_player_hp as i32,
+            );
         let relic_heal = ActEndingBossPolicy::ranked_post_combat_relic_heal(
             root.post_combat_relic_heal,
             complete_victory,
@@ -4531,6 +4579,7 @@ impl FinalPlanTracker {
         let quality = RouteQuality {
             won: complete_victory,
             survives: !f.player_dead() && f.projected_player_hp > 0,
+            is_event_defeat: f.is_event_defeat(),
             death_save_use_count: f.death_save_use_count as i32,
             outstanding_stolen_resource: f.outstanding_stolen as i32,
             strategic_hp_deficit,
@@ -4662,6 +4711,7 @@ pub fn select_final_plan(
         turn: best.turn,
         won: best.quality.won,
         survives: best.quality.survives,
+        is_event_defeat: best.quality.is_event_defeat,
         death_save_use_count: best.quality.death_save_use_count,
         player_hp: best.player_hp,
         end_player_max_hp: best.end_player_max_hp,

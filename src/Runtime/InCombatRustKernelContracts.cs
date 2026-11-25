@@ -303,6 +303,7 @@ internal sealed record RustKernelLiveStateDto(
     IReadOnlyList<int> PetHandles,
     IReadOnlyList<RustKernelDamageHistoryEntryDto> DamageHistory,
     RustKernelSemanticHistoryDto SemanticHistory,
+    bool BattlewornDummyTimedOut = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? UnlockedCharacterCards = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? UnlockedColorlessCards = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? UnlockedCurseCards = null,

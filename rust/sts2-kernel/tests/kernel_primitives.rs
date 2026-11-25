@@ -534,6 +534,7 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: 2,
@@ -2338,6 +2339,7 @@ fn stable_shuffle_matches_insertion_compare_cards_order() {
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: 2,
@@ -2497,4 +2499,180 @@ fn stable_shuffle_matches_insertion_compare_cards_order() {
     let mut r_fast = Rng::from_seed(999);
     stable_shuffle_cards(&mut state, &content, &mut actual, &mut r_fast).unwrap();
     assert_eq!(actual, expected);
+}
+
+#[test]
+fn stable_shuffle_over_16_cards_matches_dotnet_introsort_fast_and_generic() {
+    use sts2_kernel::ordering::{dotnet_introspective_sort, stable_shuffle_cards};
+
+    let content = TestKernelContent::default();
+    let mut state = BattleState {
+        static_ctx: Arc::new(RootStaticContext {
+            encounter_id: "SHUF23".to_owned(),
+            game_mode: GameMode::Standard,
+            room_type: RoomType::Monster,
+            ..Default::default()
+        }),
+        current_side: CombatSide::Player,
+        round_number: 1,
+        is_in_progress: true,
+        is_starting: false,
+        won: false,
+        is_player_extra_turn: false,
+        gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
+        end_player_turn_requested: false,
+        card_action_boundary_depth: 0,
+        next_creature_id: 2,
+        initial_encounter_monster_count: 1,
+        next_card_handle: 24,
+        next_creature_handle: 2,
+        next_power_handle: 1,
+        next_attack_id: 1,
+        run_rngs: RunRngSet::from_string_seed("SHUF23"),
+        player_rngs: PlayerRngSet::from_seed(1),
+        player: PlayerInst {
+            creature_handle: CreatureHandle(1),
+            current_hp: 80,
+            max_hp: 80,
+            block: 0,
+            cumulative_hp_lost: 0,
+            gold: 0,
+            max_energy: 3,
+            base_orb_slot_count: 0,
+            is_active_for_hooks: true,
+            can_use_or_remove_potions: true,
+            energy: 3,
+            stars: 0,
+            phase: PlayerTurnPhase::Play,
+            turn_number: 1,
+            counters: PlayerCounters::default(),
+            hand: Vec::new(),
+            draw: Vec::new(),
+            discard: Vec::new(),
+            exhaust: Vec::new(),
+            play: Vec::new(),
+            deck: Vec::new(),
+            potion_slots: SmallVec::new(),
+            combat_generated_potion_mask: 0,
+            orb_capacity: 0,
+            orbs: Vec::new(),
+            arrows: Vec::new(),
+            relics: Vec::new(),
+            card_or_potion_effect_depth: 0,
+        },
+        cards: Vec::new(),
+        card_extensions: Vec::new(),
+        creatures: vec![CreatureInst {
+            handle: CreatureHandle(1),
+            combat_id: Some(0),
+            side: CombatSide::Player,
+            slot_name: None,
+            is_player: true,
+            pet_owner_player_index: None,
+            monster_id: None,
+            current_hp: 80,
+            max_hp: 80,
+            block: 0,
+            cumulative_hp_lost: 0,
+            is_detached: false,
+            has_minion_power: false,
+            monster: None,
+            powers: Vec::new(),
+        }],
+        power_extensions: Vec::new(),
+        ally_handles: vec![CreatureHandle(1)],
+        enemy_handles: Vec::new(),
+        escaped_handles: SmallVec::new(),
+        removed_handles: SmallVec::new(),
+        spawned_enemy_handles: SmallVec::new(),
+        pet_handles: SmallVec::new(),
+        attacking_creatures: SmallVec::new(),
+        deferred_death_cleanup: SmallVec::new(),
+        damage_history: Vec::new(),
+        semantic_history: SemanticHistory::default(),
+        pending: None,
+        vakuu_auto_select_depth: 0,
+        hook_cache: Default::default(),
+        deck_dirty: Default::default(),
+        relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
+    };
+
+    let mut handles = Vec::new();
+    for i in 0..23u32 {
+        let h = CardHandle(i + 1);
+        let id = match i % 5 {
+            0 => CardId::Beckon,
+            1 => CardId::StrikeIronclad,
+            2 => CardId::DefendIronclad,
+            3 => CardId::Bash,
+            _ => CardId::StrikeSilent,
+        };
+        let kw = if i % 2 == 0 {
+            CardKeywords::ETHEREAL
+        } else {
+            CardKeywords::empty()
+        };
+        state.cards.push(CardInst {
+            handle: h,
+            id,
+            upgrade_level: 0,
+            canonical_base_energy_cost: 1,
+            base_energy_cost: 1,
+            captured_energy_x_value: 0,
+            base_replay_count: 0,
+            floor_added_to_deck: sts2_kernel::OptI16::NONE,
+            deck_card_handle: sts2_kernel::OptCardHandle::some(h),
+            clone_of_handle: sts2_kernel::OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: sts2_kernel::OptI16::NONE,
+            temp_cost_override_this_combat: sts2_kernel::OptI16::NONE,
+            local_keywords: kw,
+            keywords_added_from_outside: kw,
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags: CardTempFlags::empty(),
+            affliction: None,
+            ext_index: None,
+            pile: PileType::Draw,
+            removed_from_state: false,
+            transform_into_after_play: None,
+        });
+        state.player.draw.push(h);
+        handles.push(h);
+    }
+
+    // Exercise >16 partition sort directly against dotnet_introspective_sort on equal-CompareTo ties.
+    let mut tie_handles = handles.clone();
+    let mut sorted_by_oracle = tie_handles.clone();
+    dotnet_introspective_sort(&mut sorted_by_oracle, &mut |&a, &b| {
+        state.card(a).unwrap().id.compare_model_id(state.card(b).unwrap().id)
+    });
+    let mut r_oracle = Rng::from_seed(12345);
+    r_oracle.unstable_shuffle(&mut sorted_by_oracle);
+
+    let mut r_fast = Rng::from_seed(12345);
+    stable_shuffle_cards(&mut state, &content, &mut tie_handles, &mut r_fast).unwrap();
+    assert_eq!(tie_handles, sorted_by_oracle);
+
+    // Replace card 22 with Wither (dynamic comparison var) so the generic path runs on >16 cards
+    // and verify it matches dotnet_introspective_sort + unstable_shuffle bit-for-bit.
+    state.cards[22].id = CardId::Wither;
+    let mut generic_handles = handles;
+    let mut generic_oracle = generic_handles.clone();
+    dotnet_introspective_sort(&mut generic_oracle, &mut |&a, &b| {
+        let ca = state.card(a).unwrap();
+        let cb = state.card(b).unwrap();
+        ca.id.compare_model_id(cb.id)
+    });
+    let mut r_gen_oracle = Rng::from_seed(54321);
+    r_gen_oracle.unstable_shuffle(&mut generic_oracle);
+
+    let mut r_generic = Rng::from_seed(54321);
+    stable_shuffle_cards(&mut state, &content, &mut generic_handles, &mut r_generic).unwrap();
+    assert_eq!(generic_handles, generic_oracle);
 }

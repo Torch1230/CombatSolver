@@ -687,6 +687,19 @@ pub trait ContentDispatcher {
         selected: &[CardHandle],
     ) -> Result<HookResult, KernelError>;
 
+    fn resume_auto_post_play_power(
+        &self,
+        _state: &mut BattleState,
+        _creature: CreatureHandle,
+        power_id: PowerId,
+        _remaining_iterations: i32,
+    ) -> Result<(), KernelError> {
+        Err(KernelError::unsupported(
+            "AfterAutoPostPlayPowerResume",
+            power_id.model_id_str().to_owned(),
+        ))
+    }
+
     fn enchantment_on_play(
         &self,
         state: &mut BattleState,

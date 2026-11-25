@@ -220,6 +220,7 @@ fn build_combat(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: (enemies.len() + 1) as u32,
@@ -2773,4 +2774,151 @@ fn parallel_stand_pat_dop1_and_dop4_are_identical() {
     assert_eq!(r1.stats.strategic_hp_deficit, r4.stats.strategic_hp_deficit);
     assert_eq!(r1.score, r4.score);
     assert_eq!(r1.actions, r4.actions);
+}
+
+#[test]
+fn battle_friend_v3_timeout_returns_event_defeat_and_roundtrips_pack() {
+    let mut root = build_combat(
+        CharacterId::Ironclad,
+        &[CardId::DefendIronclad; 5],
+        &[],
+        &[],
+        &[(MonsterId::BattleFriendV3, 300)],
+        RoomType::Monster,
+        "BATTLE_FRIEND_SEARCH",
+    );
+    let mut bytes = Vec::new();
+    sts2_search::packer::pack_state(&root, &mut bytes);
+    let mut unpacked = sts2_search::packer::empty_scratch_state(root.static_ctx.clone());
+    sts2_search::packer::unpack_state(&bytes, &root.static_ctx, &mut unpacked).unwrap();
+    assert!(!unpacked.battleworn_dummy_timed_out);
+    let h0 = sts2_search::packer::hash_canonical_key(&root);
+
+    root.battleworn_dummy_timed_out = true;
+    sts2_search::packer::pack_state(&root, &mut bytes);
+    sts2_search::packer::unpack_state(&bytes, &root.static_ctx, &mut unpacked).unwrap();
+    assert!(unpacked.battleworn_dummy_timed_out);
+    assert_ne!(h0, sts2_search::packer::hash_canonical_key(&root));
+    root.battleworn_dummy_timed_out = false;
+
+    let policy = SearchPolicy {
+        beam_width: 16,
+        max_nodes: 2000,
+        time_budget_ms: 0,
+        use_beam_width_portfolio: false,
+        ..Default::default()
+    };
+    let resp = SearchEngine.solve_state(&root, &policy, &Sts2Content).unwrap();
+    assert!(!resp.stats.won);
+    assert_eq!(resp.stats.termination, "EventDefeat");
+}
+
+#[test]
+fn pack_unpack_roundtrips_auto_post_play_and_mad_science_int_growth() {
+    use sts2_kernel::{FieldValue, PowerInst};
+    use sts2_types::PowerId;
+
+    // 1. Pack/unpack round-trip of StampedePower + Headbutt paused in AfterAutoPostPlayPhaseEntered.
+    let mut paused = build_combat(
+        CharacterId::Ironclad,
+        &[
+            CardId::Headbutt,
+            CardId::Headbutt,
+            CardId::DefendIronclad,
+            CardId::DefendIronclad,
+            CardId::DefendIronclad,
+            CardId::DefendIronclad,
+            CardId::DefendIronclad,
+            CardId::DefendIronclad,
+        ],
+        &[],
+        &[],
+        &[(MonsterId::Nibbit, 40)],
+        RoomType::Monster,
+        "PACK_POST_PLAY_RESUME",
+    );
+    let combat_hs: Vec<CardHandle> = paused
+        .cards
+        .iter()
+        .filter(|c| c.pile != PileType::Deck && !c.removed_from_state)
+        .map(|c| c.handle)
+        .collect();
+    paused.player.hand.clear();
+    paused.player.draw.clear();
+    paused.player.discard.clear();
+    paused.player.exhaust.clear();
+    paused.player.play.clear();
+    for h in combat_hs {
+        if paused.card(h).unwrap().id == CardId::Headbutt {
+            paused.card_mut(h).unwrap().pile = PileType::Hand;
+            paused.player.hand.push(h);
+        } else {
+            paused.card_mut(h).unwrap().pile = PileType::Draw;
+            paused.player.draw.push(h);
+        }
+    }
+    for extra_id in [CardId::TwinStrike, CardId::Anger] {
+        let h = CardHandle(paused.next_card_handle);
+        paused.next_card_handle += 1;
+        let mut c = paused.card(paused.player.hand[0]).unwrap().clone();
+        c.handle = h;
+        c.id = extra_id;
+        c.pile = PileType::Discard;
+        c.deck_card_handle = sts2_kernel::OptCardHandle::NONE;
+        paused.cards.push(c);
+        paused.player.discard.push(h);
+    }
+    paused.creatures[0].powers.push(PowerInst {
+        handle: 700,
+        id: PowerId::StampedePower,
+        amount: 2,
+        amount_on_turn_start: 2,
+        skip_next_duration_tick: false,
+        applier_handle: Some(paused.player.creature_handle),
+        ext_index: None,
+    });
+    paused.invalidate_hook_cache();
+
+    let out = CombatEngine::end_player_turn(&mut paused, &Sts2Content).unwrap();
+    assert!(matches!(out, StepOutcome::NeedsChoice(_)));
+
+    let mut bytes = Vec::new();
+    pack_state(&paused, &mut bytes);
+    let mut unpacked = empty_scratch_state(paused.static_ctx.clone());
+    unpack_state(&bytes, &paused.static_ctx, &mut unpacked).unwrap();
+    assert_eq!(unpacked.pending, paused.pending);
+
+    let r1 = CombatEngine::resume_choice(&mut unpacked, &Sts2Content, &[0]).unwrap();
+    assert!(matches!(r1, StepOutcome::NeedsChoice(_)));
+    let r2 = CombatEngine::resume_choice(&mut unpacked, &Sts2Content, &[0]).unwrap();
+    assert!(matches!(r2, StepOutcome::Completed));
+    assert_eq!(unpacked.player.turn_number, 2);
+    assert_eq!(unpacked.creature(unpacked.enemy_handles[0]).unwrap().current_hp, 40 - 18);
+
+    // 2. MadScience encoded with FieldValue::Int(3) (_type = Power) & Int(9) (Rider = Improvement)
+    // is recognized as a growth target by RootEvalBaseline.
+    let mut ms_root = build_combat(
+        CharacterId::Defect,
+        &[CardId::MadScience, CardId::StrikeDefect, CardId::DefendDefect],
+        &[],
+        &[],
+        &[(MonsterId::Nibbit, 20)],
+        RoomType::Monster,
+        "MAD_SCIENCE_INT_GROWTH",
+    );
+    let ms_h = ms_root
+        .cards
+        .iter()
+        .find(|c| c.pile != PileType::Deck && c.id == CardId::MadScience)
+        .unwrap()
+        .handle;
+    let ext = ms_root.card_ext_mut(ms_h).unwrap();
+    ext.private_fields.insert("MadScience._type".to_owned(), FieldValue::Int(3));
+    ext.private_fields.insert(
+        "MadScience.<Rider>k__BackingField".to_owned(),
+        FieldValue::Int(9),
+    );
+    ms_root.invalidate_hook_cache();
+    let rb = RootEvalBaseline::from_state_with_policy(&ms_root, &Sts2Content, &SearchPolicy::default());
+    assert!(rb.effective_has_growth_targets);
 }

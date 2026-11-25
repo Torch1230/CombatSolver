@@ -1026,14 +1026,14 @@ pub(crate) fn dispatch_hook_at(
         RelicId::Nunchaku => {
             if slot == HookSlot::AfterCardPlayed {
                 if let HookArgs::CardPlay(cp) = args {
-                    if let Some(c) = state.card(cp.card) {
-                        if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
-                            let next =
-                                get_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", 0) + 1;
-                            set_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", next);
-                            if next % 10 == 0 {
-                                gold::gain_energy(state, content, Dec::ONE)?;
-                            }
+                    if state.card(cp.card).is_some()
+                        && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                    {
+                        let next =
+                            get_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", 0) + 1;
+                        set_int_at(state, id, relic_idx, "Nunchaku._attacksPlayed", next);
+                        if next % 10 == 0 {
+                            gold::gain_energy(state, content, Dec::ONE)?;
                         }
                     }
                 }
@@ -1197,33 +1197,33 @@ pub(crate) fn dispatch_hook_at(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(c) = state.card(cp.card) {
-                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
-                                let next = get_int_at(
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            let next = get_int_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "OrnamentalFan._attacksThisTurn",
+                                0,
+                            ) + 1;
+                            set_int_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "OrnamentalFan._attacksThisTurn",
+                                next,
+                            );
+                            if next % 3 == 0 {
+                                block::gain_block(
                                     state,
-                                    id,
-                                    relic_idx,
-                                    "OrnamentalFan._attacksThisTurn",
-                                    0,
-                                ) + 1;
-                                set_int_at(
-                                    state,
-                                    id,
-                                    relic_idx,
-                                    "OrnamentalFan._attacksThisTurn",
-                                    next,
-                                );
-                                if next % 3 == 0 {
-                                    block::gain_block(
-                                        state,
-                                        content,
-                                        pc,
-                                        Dec::from_i32(4),
-                                        ValueProp::UNPOWERED,
-                                        None,
-                                        Some(*cp),
-                                    )?;
-                                }
+                                    content,
+                                    pc,
+                                    Dec::from_i32(4),
+                                    ValueProp::UNPOWERED,
+                                    None,
+                                    Some(*cp),
+                                )?;
                             }
                         }
                     }
@@ -1599,28 +1599,27 @@ pub(crate) fn dispatch_hook_at(
             match slot {
                 HookSlot::BeforeCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(c) = state.card(cp.card) {
-                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
-                                let next =
-                                    get_int_at(state, id, relic_idx, "PenNib._attacksPlayed", 0)
-                                        + 1;
-                                set_int_at(state, id, relic_idx, "PenNib._attacksPlayed", next);
-                                if next % 10 == 0 {
-                                    set_int_at(
-                                        state,
-                                        id,
-                                        relic_idx,
-                                        "PenNib._doubleDamagePlayOrdinal",
-                                        cp.play_ordinal,
-                                    );
-                                    set_card_handle_at(
-                                        state,
-                                        id,
-                                        relic_idx,
-                                        "PenNib._doubleDamageCard",
-                                        Some(cp.card),
-                                    );
-                                }
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            let next =
+                                get_int_at(state, id, relic_idx, "PenNib._attacksPlayed", 0) + 1;
+                            set_int_at(state, id, relic_idx, "PenNib._attacksPlayed", next);
+                            if next % 10 == 0 {
+                                set_int_at(
+                                    state,
+                                    id,
+                                    relic_idx,
+                                    "PenNib._doubleDamagePlayOrdinal",
+                                    cp.play_ordinal,
+                                );
+                                set_card_handle_at(
+                                    state,
+                                    id,
+                                    relic_idx,
+                                    "PenNib._doubleDamageCard",
+                                    Some(cp.card),
+                                );
                             }
                         }
                     }
@@ -1724,8 +1723,8 @@ pub(crate) fn dispatch_hook_at(
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
                         if !get_bool(state, id, "Permafrost._triggeredThisCombat", false) {
-                            if let Some(c) = state.card(cp.card) {
-                                if content.card_meta(c.id)?.card_type == CardType::Power {
+                            if state.card(cp.card).is_some() {
+                                if content.card_resolved_type(state, cp.card)? == CardType::Power {
                                     set_bool(state, id, "Permafrost._triggeredThisCombat", true);
                                     block::gain_block(
                                         state,
@@ -2037,8 +2036,8 @@ pub(crate) fn dispatch_hook_at(
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
                         if !get_bool(state, id, "RainbowRing._triggeredThisTurn", false) {
-                            if let Some(c) = state.card(cp.card) {
-                                match content.card_meta(c.id)?.card_type {
+                            if state.card(cp.card).is_some() {
+                                match content.card_resolved_type(state, cp.card)? {
                                     CardType::Attack => {
                                         set_bool(state, id, "RainbowRing._playedAttack", true);
                                     }
@@ -2092,9 +2091,9 @@ pub(crate) fn dispatch_hook_at(
         RelicId::RazorTooth => {
             if slot == HookSlot::AfterCardPlayed {
                 if let HookArgs::CardPlay(cp) = args {
-                    if let Some(c) = state.card(cp.card) {
+                    if state.card(cp.card).is_some() {
                         if matches!(
-                            content.card_meta(c.id)?.card_type,
+                            content.card_resolved_type(state, cp.card)?,
                             CardType::Attack | CardType::Skill
                         ) {
                             card_cmd::upgrade(state, content, cp.card)?;
@@ -2246,10 +2245,10 @@ pub(crate) fn dispatch_hook_at(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(c) = state.card(cp.card) {
-                            if content.card_meta(c.id)?.card_type == CardType::Attack {
-                                set_bool(state, id, "RippleBasin._attackPlayedThisTurn", true);
-                            }
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            set_bool(state, id, "RippleBasin._attackPlayedThisTurn", true);
                         }
                     }
                 }
@@ -2439,27 +2438,27 @@ pub(crate) fn dispatch_hook_at(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(c) = state.card(cp.card) {
-                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
-                                let next = get_int_at(
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            let next = get_int_at(
+                                state,
+                                id,
+                                relic_idx,
+                                "Shuriken._attacksThisTurn",
+                                0,
+                            ) + 1;
+                            set_int_at(state, id, relic_idx, "Shuriken._attacksThisTurn", next);
+                            if next % 3 == 0 {
+                                power::apply(
                                     state,
-                                    id,
-                                    relic_idx,
-                                    "Shuriken._attacksThisTurn",
-                                    0,
-                                ) + 1;
-                                set_int_at(state, id, relic_idx, "Shuriken._attacksThisTurn", next);
-                                if next % 3 == 0 {
-                                    power::apply(
-                                        state,
-                                        content,
-                                        PowerId::StrengthPower,
-                                        pc,
-                                        Dec::ONE,
-                                        Some(pc),
-                                        None,
-                                    )?;
-                                }
+                                    content,
+                                    PowerId::StrengthPower,
+                                    pc,
+                                    Dec::ONE,
+                                    Some(pc),
+                                    None,
+                                )?;
                             }
                         }
                     }
@@ -2628,14 +2627,14 @@ pub(crate) fn dispatch_hook_at(
                 }
                 HookSlot::TryModifyEnergyCostInCombat => {
                     if let HookArgs::CardCost { card, cost } = args {
-                        if let Some(c) = state.card(*card) {
-                            if content.card_meta(c.id)?.card_type == CardType::Power {
-                                return Ok(HookResult {
-                                    dec_val: Some(cost.checked_add(Dec::ONE)?),
-                                    modified: true,
-                                    ..Default::default()
-                                });
-                            }
+                        if state.card(*card).is_some()
+                            && content.card_resolved_type(state, *card)? == CardType::Power
+                        {
+                            return Ok(HookResult {
+                                dec_val: Some(cost.checked_add(Dec::ONE)?),
+                                modified: true,
+                                ..Default::default()
+                            });
                         }
                     }
                 }
@@ -2947,13 +2946,13 @@ pub(crate) fn dispatch_hook_at(
                 if let HookArgs::Attack { info, .. } = args {
                     if info.hit_count > 1 {
                         if let Some(cs) = info.card_source {
-                            if let Some(c) = state.card(cs) {
-                                if content.card_meta(c.id)?.card_type == CardType::Attack {
-                                    return Ok(HookResult {
-                                        int_val: Some(info.hit_count + 1),
-                                        ..Default::default()
-                                    });
-                                }
+                            if state.card(cs).is_some()
+                                && content.card_resolved_type(state, cs)? == CardType::Attack
+                            {
+                                return Ok(HookResult {
+                                    int_val: Some(info.hit_count + 1),
+                                    ..Default::default()
+                                });
                             }
                         }
                     }
@@ -3186,23 +3185,23 @@ pub(crate) fn dispatch_hook_at(
         RelicId::TuningFork => {
             if slot == HookSlot::AfterCardPlayed {
                 if let HookArgs::CardPlay(cp) = args {
-                    if let Some(c) = state.card(cp.card) {
-                        if content.card_meta(c.id)?.card_type == CardType::Skill {
-                            let next = get_int(state, id, "TuningFork._skillsPlayed", 0) + 1;
-                            if next < 10 {
-                                set_int(state, id, "TuningFork._skillsPlayed", next);
-                            } else {
-                                set_int(state, id, "TuningFork._skillsPlayed", next % 10);
-                                block::gain_block(
-                                    state,
-                                    content,
-                                    pc,
-                                    Dec::from_i32(7),
-                                    ValueProp::UNPOWERED,
-                                    None,
-                                    Some(*cp),
-                                )?;
-                            }
+                    if state.card(cp.card).is_some()
+                        && content.card_resolved_type(state, cp.card)? == CardType::Skill
+                    {
+                        let next = get_int(state, id, "TuningFork._skillsPlayed", 0) + 1;
+                        if next < 10 {
+                            set_int(state, id, "TuningFork._skillsPlayed", next);
+                        } else {
+                            set_int(state, id, "TuningFork._skillsPlayed", next % 10);
+                            block::gain_block(
+                                state,
+                                content,
+                                pc,
+                                Dec::from_i32(7),
+                                ValueProp::UNPOWERED,
+                                None,
+                                Some(*cp),
+                            )?;
                         }
                     }
                 }

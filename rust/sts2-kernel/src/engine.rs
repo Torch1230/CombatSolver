@@ -28,7 +28,7 @@ impl CombatEngine {
         if !state.is_in_progress {
             return Ok(true);
         }
-        if hooks::has_lost(state) {
+        if hooks::has_lost(state) || state.battleworn_dummy_timed_out {
             state.is_in_progress = false;
             state.won = false;
             return Ok(true);
@@ -1259,7 +1259,10 @@ impl CombatEngine {
         card_pile::check_for_empty_hand(state, content)?;
         Self::clear_after_play_modifiers(state, card_handle);
         if state.player.card_or_potion_effect_depth > 0
-            || state.player.phase == PlayerTurnPhase::AutoPrePlay
+            || matches!(
+                state.player.phase,
+                PlayerTurnPhase::AutoPrePlay | PlayerTurnPhase::AutoPostPlay
+            )
         {
             if Self::check_win_condition(state, content)? {
                 return Ok(StepOutcome::CombatEnded { won: state.won });
@@ -1948,13 +1951,13 @@ impl CombatEngine {
                 }
                 ContinuationFrame::AfterAutoPrePlayResume {
                     remaining_listeners,
-                    is_late,
+                    stage,
                 } => {
                     if hooks::continue_after_auto_pre_play_phase_entered(
                         state,
                         content,
                         &remaining_listeners,
-                        is_late,
+                        stage,
                     )? {
                         let req = {
                             let p = state.pending.as_mut().ok_or_else(|| {
@@ -1970,6 +1973,70 @@ impl CombatEngine {
                     }
                     if state.player_creature().is_some_and(|c| c.is_alive()) {
                         state.player.phase = PlayerTurnPhase::Play;
+                    }
+                }
+                ContinuationFrame::AfterAutoPostPlayPowerResume {
+                    creature,
+                    power_id,
+                    remaining_iterations,
+                } => {
+                    if Self::check_win_condition(state, content)? {
+                        return Ok(StepOutcome::CombatEnded { won: state.won });
+                    }
+                    content.resume_auto_post_play_power(
+                        state,
+                        creature,
+                        power_id,
+                        remaining_iterations,
+                    )?;
+                    if let Some(p) = state.pending.as_mut() {
+                        Self::prepend_outer_frames(p, outer);
+                        let req = Box::new(p.request.clone());
+                        return Ok(StepOutcome::NeedsChoice(req));
+                    }
+                    if Self::check_win_condition(state, content)? {
+                        return Ok(StepOutcome::CombatEnded { won: state.won });
+                    }
+                }
+                ContinuationFrame::AfterAutoPostPlayResume {
+                    remaining_listeners,
+                } => {
+                    if Self::check_win_condition(state, content)? {
+                        return Ok(StepOutcome::CombatEnded { won: state.won });
+                    }
+                    if hooks::continue_after_auto_post_play_phase_entered(
+                        state,
+                        content,
+                        &remaining_listeners,
+                    )? {
+                        let req = {
+                            let p = state.pending.as_mut().ok_or_else(|| {
+                                KernelError::InvalidState(
+                                    "AfterAutoPostPlayResume paused without pending continuation"
+                                        .to_owned(),
+                                )
+                            })?;
+                            Self::prepend_outer_frames(p, outer);
+                            p.request.clone()
+                        };
+                        return Ok(StepOutcome::NeedsChoice(Box::new(req)));
+                    }
+                    if Self::check_win_condition(state, content)? {
+                        return Ok(StepOutcome::CombatEnded { won: state.won });
+                    }
+                }
+                ContinuationFrame::EndTurnResume { .. } => {
+                    let outcome = Self::continue_end_player_turn(state, content)?;
+                    if matches!(outcome, StepOutcome::NeedsChoice(_)) {
+                        if !outer.is_empty() {
+                            if let Some(p) = state.pending.as_mut() {
+                                Self::prepend_outer_frames(p, outer);
+                            }
+                        }
+                        return Ok(outcome);
+                    }
+                    if !matches!(outcome, StepOutcome::Completed) || outer.is_empty() {
+                        return Ok(outcome);
                     }
                 }
                 ContinuationFrame::CardPlayResume {
@@ -2097,7 +2164,29 @@ impl CombatEngine {
         }
         state.end_player_turn_requested = false;
         state.player.phase = PlayerTurnPhase::AutoPostPlay;
-        hooks::after_auto_post_play_phase_entered(state, content)?;
+        if hooks::after_auto_post_play_phase_entered(state, content)? {
+            let req = {
+                let pending = state.pending.as_mut().ok_or_else(|| {
+                    KernelError::InvalidState(
+                        "after_auto_post_play_phase_entered paused without pending continuation"
+                            .to_owned(),
+                    )
+                })?;
+                pending
+                    .frames
+                    .insert(0, ContinuationFrame::EndTurnResume { stage: 0 });
+                pending.request.clone()
+            };
+            return Ok(StepOutcome::NeedsChoice(Box::new(req)));
+        }
+        Self::continue_end_player_turn(state, content)
+    }
+
+    fn continue_end_player_turn(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+    ) -> Result<StepOutcome, KernelError> {
+        state.end_player_turn_requested = false;
         state.player.phase = PlayerTurnPhase::End;
 
         if Self::check_win_condition(state, content)? {

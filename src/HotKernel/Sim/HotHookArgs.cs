@@ -40,5 +40,6 @@ internal ref struct HotHookArgs
     public int OrbValue;
     public int HealAmount;
     public int EtherealExhaustCount;
+    public uint EnemyParticipantMask;
     public HotCombatSide Side;
 }

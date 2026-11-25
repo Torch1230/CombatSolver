@@ -250,6 +250,7 @@ fn build_battle(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: (enemy_count + 1) as u32,
@@ -806,9 +807,10 @@ fn regent_bombardment_glitterstream_knockout_and_decisions() {
     let ko_h = state.player.hand[4];
     let mut choices = SmallVec::new();
 
-    // Bombardment deals 18 + 18 = 36 on first play
+    // Bombardment deals 18 once on Turn 1 and exhausts, then auto-plays from Exhaust on Turn 2
     CombatEngine::play_card(&mut state, &content, bomb_h, Some(enemies[0]), &mut choices).unwrap();
-    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, 64);
+    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, 82);
+    assert!(state.player.exhaust.contains(&bomb_h));
 
     // Dexterity +2 -> Glitterstream gives 11+2=13 block and BlockNextTurnPower(5+2=7)
     let owner = state.player.creature_handle;
@@ -847,6 +849,11 @@ fn regent_bombardment_glitterstream_knockout_and_decisions() {
     let s_ko = state.player.stars;
     CombatEngine::play_card(&mut state, &content, ko_h, Some(enemies[1]), &mut choices).unwrap();
     assert_eq!(state.player.stars, s_ko + 5);
+
+    // End Turn 1 -> Turn 2 AutoPrePlayPhaseEnteredEarly auto-plays exhausted Bombardment for 18 more dmg!
+    let hp_before_t2 = state.creature(enemies[0]).unwrap().current_hp;
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert_eq!(state.creature(enemies[0]).unwrap().current_hp, hp_before_t2 - 18);
 }
 
 #[test]
@@ -1234,4 +1241,68 @@ fn iam_invincible_autoplays_at_auto_post_play_without_spending_energy_and_trigge
     assert_eq!(state.round_number, 2);
     assert_eq!(state.card(inv_h).unwrap().pile, PileType::Discard);
     assert_eq!(state.card(mis_h).unwrap().pile, PileType::Hand);
+}
+
+#[test]
+fn snap_auto_selects_sole_non_retain_card_and_skips_choice_when_osty_kills_last_enemy() {
+    let content = Sts2Content;
+
+    // 1. Hand has Snap + 1 Retain card + 1 non-Retain card: playing Snap auto-selects the sole non-Retain card.
+    let (mut s1, enemies1) = build_battle(
+        CharacterId::Necrobinder,
+        &[CardId::Snap, CardId::StrikeNecrobinder, CardId::DefendNecrobinder],
+        &[],
+        &[],
+        &[],
+        1,
+        100,
+    );
+    osty::summon(&mut s1, &content, Dec::from_i32(10)).unwrap();
+    let snap1 = s1.player.hand[0];
+    let retain_card = s1.player.hand[1];
+    let non_retain_card = s1.player.hand[2];
+    s1.card_mut(retain_card)
+        .unwrap()
+        .local_keywords
+        .insert(CardKeywords::RETAIN);
+    let mut choices1 = SmallVec::new();
+    let outcome1 =
+        CombatEngine::play_card(&mut s1, &content, snap1, Some(enemies1[0]), &mut choices1)
+            .unwrap();
+    assert!(matches!(outcome1, StepOutcome::Completed));
+    assert!(s1
+        .card(non_retain_card)
+        .unwrap()
+        .local_keywords
+        .contains(CardKeywords::RETAIN));
+
+    // 2. Hand has Snap + 2 non-Retain cards, but Osty attack kills the sole enemy: skips choice.
+    let (mut s2, enemies2) = build_battle(
+        CharacterId::Necrobinder,
+        &[CardId::Snap, CardId::StrikeNecrobinder, CardId::DefendNecrobinder],
+        &[],
+        &[],
+        &[],
+        1,
+        5,
+    );
+    osty::summon(&mut s2, &content, Dec::from_i32(10)).unwrap();
+    let snap2 = s2.player.hand[0];
+    let c2a = s2.player.hand[1];
+    let c2b = s2.player.hand[2];
+    let mut choices2 = SmallVec::new();
+    let outcome2 =
+        CombatEngine::play_card(&mut s2, &content, snap2, Some(enemies2[0]), &mut choices2)
+            .unwrap();
+    assert!(matches!(outcome2, StepOutcome::CombatEnded { won: true }));
+    assert!(!s2
+        .card(c2a)
+        .unwrap()
+        .local_keywords
+        .contains(CardKeywords::RETAIN));
+    assert!(!s2
+        .card(c2b)
+        .unwrap()
+        .local_keywords
+        .contains(CardKeywords::RETAIN));
 }

@@ -201,6 +201,7 @@ fn build_battle(
         won: false,
         is_player_extra_turn: false,
         gold_was_stolen: false,
+        battleworn_dummy_timed_out: false,
         end_player_turn_requested: false,
         card_action_boundary_depth: 0,
         next_creature_id: 1,
@@ -740,7 +741,9 @@ fn axebot_stock_respawn_and_battle_friend_escape_and_gas_bomb() {
         CombatEngine::end_player_turn(&mut bf_state, &content).unwrap();
     }
     assert!(bf_state.escaped_handles.contains(&bf));
-    assert!(bf_state.won);
+    assert!(!bf_state.won);
+    assert!(!bf_state.is_in_progress);
+    assert!(bf_state.battleworn_dummy_timed_out);
 
     // GasBomb self-destructs and removes itself on EXPLODE_MOVE
     let (mut gb_state, gb_enemies) = build_battle(
@@ -935,4 +938,58 @@ fn remaining_special_mechanics_knights_lost_forgotten_egg_owl_frog_shield_wriggl
         wr_state.creature(wr_enemies[1]).unwrap().monster.as_ref().unwrap().next_move_id.as_deref(),
         Some("WRIGGLE_MOVE")
     );
+}
+
+#[test]
+fn battle_friend_v3_nothing_move_timeout_event_defeat_and_kill_victory() {
+    let content = Sts2Content;
+
+    // 1. Timeout path: NOTHING_MOVE -> escapes on Turn 3 -> EventDefeat (not won).
+    let (mut bf3_timeout, enemies_t) =
+        build_battle(&[(MonsterId::BattleFriendV3, None)], 0, GameMode::Standard, &[], &[]);
+    let bf3 = enemies_t[0];
+    CombatEngine::start_combat(&mut bf3_timeout, &content).unwrap();
+    assert_eq!(
+        bf3_timeout
+            .creature(bf3)
+            .unwrap()
+            .monster
+            .as_ref()
+            .unwrap()
+            .next_move_id
+            .as_deref(),
+        Some("NOTHING_MOVE")
+    );
+    for _ in 0..2 {
+        CombatEngine::end_player_turn(&mut bf3_timeout, &content).unwrap();
+        assert!(bf3_timeout.is_in_progress);
+        assert!(!bf3_timeout.battleworn_dummy_timed_out);
+    }
+    CombatEngine::end_player_turn(&mut bf3_timeout, &content).unwrap();
+    assert!(!bf3_timeout.is_in_progress);
+    assert!(!bf3_timeout.won);
+    assert!(bf3_timeout.battleworn_dummy_timed_out);
+    assert!(bf3_timeout.escaped_handles.contains(&bf3));
+
+    // 2. Kill before timeout: won == true, battleworn_dummy_timed_out == false.
+    let (mut bf3_kill, enemies_k) =
+        build_battle(&[(MonsterId::BattleFriendV3, None)], 0, GameMode::Standard, &[], &[]);
+    let bf3_k = enemies_k[0];
+    let pc = bf3_kill.player.creature_handle;
+    CombatEngine::start_combat(&mut bf3_kill, &content).unwrap();
+    damage::damage_targets(
+        &mut bf3_kill,
+        &content,
+        &[bf3_k],
+        Dec::from_i32(400),
+        ValueProp::MOVE,
+        Some(pc),
+        None,
+        None,
+    )
+    .unwrap();
+    CombatEngine::check_win_condition(&mut bf3_kill, &content).unwrap();
+    assert!(!bf3_kill.is_in_progress);
+    assert!(bf3_kill.won);
+    assert!(!bf3_kill.battleworn_dummy_timed_out);
 }

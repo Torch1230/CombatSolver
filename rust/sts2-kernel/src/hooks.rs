@@ -1536,7 +1536,8 @@ pub fn is_over_or_ending(state: &BattleState) -> bool {
 
 #[inline]
 pub fn is_ending(state: &BattleState) -> bool {
-    state.is_in_progress && (has_lost(state) || has_won_raw(state))
+    state.is_in_progress
+        && (has_lost(state) || state.battleworn_dummy_timed_out || has_won_raw(state))
 }
 
 #[cold]
@@ -1574,6 +1575,9 @@ fn is_ending_checked_cache_ready(
         #[cfg(debug_assertions)]
         debug_assert!(state.has_living_player_creature());
     } else if !state.has_living_player_creature() {
+        return Ok(true);
+    }
+    if state.battleworn_dummy_timed_out {
         return Ok(true);
     }
 
@@ -1630,7 +1634,7 @@ pub fn is_ending_checked(
     if state.ally_handles.len() == 1 && state.player.current_hp <= 0 {
         return Ok(true);
     }
-    if has_lost(state) {
+    if has_lost(state) || state.battleworn_dummy_timed_out {
         return Ok(true);
     }
     if !has_won_raw(state) {
@@ -1657,6 +1661,9 @@ pub fn has_lost(state: &BattleState) -> bool {
 
 #[inline(always)]
 pub fn has_won_raw(state: &BattleState) -> bool {
+    if state.battleworn_dummy_timed_out {
+        return false;
+    }
     if (state.hook_cache.dirty_mask & crate::state::HOOK_DIRTY_CREATURES) == 0
         && state.hook_cache.cached_tables.is_some()
     {
@@ -2484,21 +2491,21 @@ pub fn after_auto_pre_play_phase_entered(
     let listeners = collect_combat_hook_listeners_checked_for_mask(
         state,
         content,
-        HookMask::EMPTY.with(HookSlot::AfterAutoPrePlayPhaseEntered),
+        HookMask::EMPTY.with(HookSlot::AfterAutoPrePlayPhaseEnteredEarly),
     )?;
-    continue_after_auto_pre_play_phase_entered(state, content, &listeners, false)
+    continue_after_auto_pre_play_phase_entered(state, content, &listeners, 0)
 }
 
 pub fn continue_after_auto_pre_play_phase_entered(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     remaining: &[HookListener],
-    is_late: bool,
+    stage: u8,
 ) -> Result<bool, KernelError> {
-    let slot = if is_late {
-        HookSlot::AfterAutoPrePlayPhaseEnteredLate
-    } else {
-        HookSlot::AfterAutoPrePlayPhaseEntered
+    let slot = match stage {
+        0 => HookSlot::AfterAutoPrePlayPhaseEnteredEarly,
+        1 => HookSlot::AfterAutoPrePlayPhaseEntered,
+        _ => HookSlot::AfterAutoPrePlayPhaseEnteredLate,
     };
     for (idx, &listener) in remaining.iter().enumerate() {
         let _ = dispatch_if_eligible_known_slot(state, content, listener, slot, &HookArgs::Player)?;
@@ -2507,19 +2514,30 @@ pub fn continue_after_auto_pre_play_phase_entered(
                 0,
                 crate::continuation::ContinuationFrame::AfterAutoPrePlayResume {
                     remaining_listeners: remaining[idx + 1..].to_vec(),
-                    is_late,
+                    stage,
                 },
             );
             return Ok(true);
         }
     }
-    if !is_late {
-        let listeners_late = collect_combat_hook_listeners_checked_for_mask(
+    if stage < 2 {
+        let next_stage = stage + 1;
+        let next_slot = if next_stage == 1 {
+            HookSlot::AfterAutoPrePlayPhaseEntered
+        } else {
+            HookSlot::AfterAutoPrePlayPhaseEnteredLate
+        };
+        let next_listeners = collect_combat_hook_listeners_checked_for_mask(
             state,
             content,
-            HookMask::EMPTY.with(HookSlot::AfterAutoPrePlayPhaseEnteredLate),
+            HookMask::EMPTY.with(next_slot),
         )?;
-        return continue_after_auto_pre_play_phase_entered(state, content, &listeners_late, true);
+        return continue_after_auto_pre_play_phase_entered(
+            state,
+            content,
+            &next_listeners,
+            next_stage,
+        );
     }
     Ok(false)
 }
@@ -2527,14 +2545,50 @@ pub fn continue_after_auto_pre_play_phase_entered(
 pub fn after_auto_post_play_phase_entered(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
-) -> Result<(), KernelError> {
-    dispatch_void_combat_slot(
+) -> Result<bool, KernelError> {
+    if !state.is_in_progress && !state.is_starting {
+        return Ok(false);
+    }
+    let listeners = collect_combat_hook_listeners_checked_for_mask(
         state,
         content,
-        HookSlot::AfterAutoPostPlayPhaseEntered,
-        &HookArgs::Player,
-        true,
-    )
+        HookMask::EMPTY.with(HookSlot::AfterAutoPostPlayPhaseEntered),
+    )?;
+    if listeners.is_empty() {
+        return Ok(false);
+    }
+    continue_after_auto_post_play_phase_entered(state, content, &listeners)
+}
+
+pub fn continue_after_auto_post_play_phase_entered(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    remaining: &[HookListener],
+) -> Result<bool, KernelError> {
+    for (idx, &listener) in remaining.iter().enumerate() {
+        if is_over_or_ending_checked(state, content)? {
+            return Ok(false);
+        }
+        let _ = dispatch_if_eligible_known_slot(
+            state,
+            content,
+            listener,
+            HookSlot::AfterAutoPostPlayPhaseEntered,
+            &HookArgs::Player,
+        )?;
+        if let Some(pending) = state.pending.as_mut() {
+            if idx + 1 < remaining.len() {
+                pending.frames.insert(
+                    0,
+                    crate::continuation::ContinuationFrame::AfterAutoPostPlayResume {
+                        remaining_listeners: remaining[idx + 1..].to_vec(),
+                    },
+                );
+            }
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub fn before_side_turn_end_very_early(

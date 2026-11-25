@@ -268,7 +268,8 @@ fn clone_card_in_combat(
         .ok_or_else(|| KernelError::InvalidState("missing clone source card".to_owned()))?;
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let ext_index = if let Some(ext) = state.card_ext(source.ext_index).cloned() {
+    let ext_index = if let Some(mut ext) = state.card_ext(source.ext_index).cloned() {
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         Some(idx)
@@ -1697,10 +1698,10 @@ pub fn on_play(
                 SmallVec::from_slice(&state.player.draw);
             let mut playable_attacks: Vec<CardHandle> = Vec::new();
             for ch in &draw_snapshot {
-                let Some(ci) = state.card(*ch) else {
+                if state.card(*ch).is_none() {
                     continue;
-                };
-                if content.card_meta(ci.id)?.card_type == CardType::Attack
+                }
+                if content.card_resolved_type(state, *ch)? == CardType::Attack
                     && !card_pile::card_has_keyword(state, content, *ch, CardKeywords::UNPLAYABLE)?
                 {
                     playable_attacks.push(*ch);
@@ -1713,10 +1714,10 @@ pub fn on_play(
             if chosen.is_none() {
                 let mut all_attacks: Vec<CardHandle> = Vec::new();
                 for ch in &draw_snapshot {
-                    let Some(ci) = state.card(*ch) else {
+                    if state.card(*ch).is_none() {
                         continue;
-                    };
-                    if content.card_meta(ci.id)?.card_type == CardType::Attack {
+                    }
+                    if content.card_resolved_type(state, *ch)? == CardType::Attack {
                         all_attacks.push(*ch);
                     }
                 }

@@ -315,6 +315,9 @@ fn hook_mask_expr(hooks: &HookParticipationExport) -> String {
             "AfterPlayerTurnStartEarly" => Some("HookSlot::AfterPlayerTurnStartEarly"),
             "AfterPlayerTurnStart" => Some("HookSlot::AfterPlayerTurnStart"),
             "AfterPlayerTurnStartLate" => Some("HookSlot::AfterPlayerTurnStartLate"),
+            "AfterAutoPrePlayPhaseEnteredEarly" => {
+                Some("HookSlot::AfterAutoPrePlayPhaseEnteredEarly")
+            }
             "AfterAutoPrePlayPhaseEntered" => Some("HookSlot::AfterAutoPrePlayPhaseEntered"),
             "AfterAutoPrePlayPhaseEnteredLate" => Some("HookSlot::AfterAutoPrePlayPhaseEnteredLate"),
             "AfterAutoPostPlayPhaseEntered" => Some("HookSlot::AfterAutoPostPlayPhaseEntered"),

@@ -391,9 +391,7 @@ fn clone_card_in_combat(
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
     let ext_index = if let Some(mut ext) = state.card_ext(source.ext_index).cloned() {
-        ext.private_fields.remove(FETCH_FINISHED_ROUND_KEY);
-        ext.private_fields.remove(FETCH_FINISHED_SIDE_KEY);
-        ext.private_fields.remove(FETCH_FINISHED_TURNS_KEY);
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         Some(idx)
@@ -566,7 +564,7 @@ fn select_from_pile(
     source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
-    if hooks::is_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
+    if hooks::is_over_or_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
         return Ok(SelectResult::Selected(SmallVec::new()));
     }
     let cands: SmallVec<[CardHandle; 16]> = match pile {
@@ -1989,6 +1987,8 @@ pub fn on_play_resume(
             if let Some(&sel) = selected.first() {
                 if let Some(c) = state.card_mut(sel) {
                     c.local_keywords.insert(CardKeywords::ETHEREAL);
+                    c.keywords_added_from_outside.insert(CardKeywords::ETHEREAL);
+                    c.keywords_removed_from_outside.remove(CardKeywords::ETHEREAL);
                 }
             }
             Ok(CardPlayOutcome::default())
@@ -2003,6 +2003,8 @@ pub fn on_play_resume(
             if let Some(&sel) = selected.first() {
                 if let Some(c) = state.card_mut(sel) {
                     c.local_keywords.insert(CardKeywords::RETAIN);
+                    c.keywords_added_from_outside.insert(CardKeywords::RETAIN);
+                    c.keywords_removed_from_outside.remove(CardKeywords::RETAIN);
                 }
             }
             Ok(CardPlayOutcome::default())

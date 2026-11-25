@@ -21,7 +21,6 @@ use sts2_types::{
 
 const REGENT_CARD_COUNT: usize = 91;
 const QUASAR_OFFER_MARKER: &str = "__quasar_offer";
-const BOMBARDMENT_HAS_REPLAYED_KEY: &str = "Bombardment._hasReplayed";
 const KINGLY_PUNCH_DAMAGE_KEY: &str = "KinglyPunch._damage";
 const MONOLOGUE_STRENGTH_KEY: &str = "MonologuePower._strength";
 
@@ -128,6 +127,11 @@ static REGENT_CARD_META: LazyLock<[CardMeta; REGENT_CARD_COUNT]> = LazyLock::new
         let id = CARD_POOL_REGENT[i];
         let mut meta = *generated_card_meta(id);
         match id {
+            CardId::Bombardment => {
+                meta.hook_mask = meta
+                    .hook_mask
+                    .with(HookSlot::AfterAutoPrePlayPhaseEnteredEarly);
+            }
             CardId::ParticleWall | CardId::ShiningStrike => {
                 meta.hook_mask = meta.hook_mask.with(HookSlot::ModifyCardPlayResultLocation);
             }
@@ -302,10 +306,7 @@ fn clone_card_in_combat(
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
     let ext_index = if let Some(mut ext) = state.card_ext(source.ext_index).cloned() {
-        // Fetch's per-turn finished state is not inherited by clones (AfterCloned).
-        ext.private_fields.remove("Fetch._finishedRound");
-        ext.private_fields.remove("Fetch._finishedSide");
-        ext.private_fields.remove("Fetch._finishedTurnNumbers");
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         Some(idx)
@@ -458,7 +459,7 @@ fn select_from_pile(
     source_id: &'static str,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
 ) -> Result<SelectResult, KernelError> {
-    if hooks::is_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
+    if hooks::is_over_or_ending(state) || state.player_creature().is_none_or(|c| c.is_dead()) {
         return Ok(SelectResult::Selected(SmallVec::new()));
     }
     let cands: SmallVec<[CardHandle; 16]> = match pile {
@@ -622,19 +623,6 @@ pub fn on_play(
             let dmg = Dec::from_i32(if upg { 24 } else { 18 });
             AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
                 .execute(state, content)?;
-            let has_replayed = state
-                .card(ctx.card)
-                .and_then(|c| state.card_ext(c.ext_index))
-                .and_then(|ext| ext.private_fields.get(BOMBARDMENT_HAS_REPLAYED_KEY))
-                .is_some_and(|v| matches!(v, FieldValue::Bool(true)));
-            if !has_replayed {
-                if let Some(ext) = state.card_ext_mut(ctx.card) {
-                    ext.private_fields
-                        .insert(Cow::Borrowed(BOMBARDMENT_HAS_REPLAYED_KEY), FieldValue::Bool(true));
-                }
-                AttackBuilder::from_card(owner, ctx.card, *ctx, dmg, AttackTargetSpec::Single(target))
-                    .execute(state, content)?;
-            }
             Ok(CardPlayOutcome::default())
         }
         CardId::Bulwark => {
@@ -870,10 +858,7 @@ pub fn on_play(
                 if h == ctx.card {
                     continue;
                 }
-                let Some(ci) = state.card(h) else {
-                    continue;
-                };
-                if content.card_meta(ci.id)?.card_type == CardType::Skill
+                if content.card_resolved_type(state, h)? == CardType::Skill
                     && !card_pile::card_has_keyword(state, content, h, CardKeywords::UNPLAYABLE)?
                 {
                     cands.push(h);
@@ -1817,10 +1802,8 @@ pub fn dispatch_hook(
         .card(card)
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?;
     match ci.id {
-        CardId::IAmInvincible => {
-            if slot == HookSlot::AfterAutoPostPlayPhaseEntered
-                && state.player.draw.first().copied() == Some(card)
-            {
+        CardId::Bombardment => {
+            if slot == HookSlot::AfterAutoPrePlayPhaseEnteredEarly && ci.pile == PileType::Exhaust {
                 let outcome = autoplay::from_cards(state, content, &[card], None, false)?;
                 if let StepOutcome::NeedsChoice(req) = outcome {
                     return Err(KernelError::unsupported(
@@ -1828,6 +1811,14 @@ pub fn dispatch_hook(
                         req.source_id.into_owned(),
                     ));
                 }
+            }
+            Ok(HookResult::default())
+        }
+        CardId::IAmInvincible => {
+            if slot == HookSlot::AfterAutoPostPlayPhaseEntered
+                && state.player.draw.first().copied() == Some(card)
+            {
+                let _ = autoplay::from_cards(state, content, &[card], None, false)?;
             }
             Ok(HookResult::default())
         }
@@ -1868,17 +1859,15 @@ pub fn dispatch_hook(
                 );
                 if in_non_hand_combat_pile && count > 0 && count % 3 == 0 {
                     if let HookArgs::CardPlay(ctx) = args {
-                        if let Some(played_ci) = state.card(ctx.card) {
-                            if state.fast_card_meta(content, played_ci.id)?.card_type
-                                == CardType::Skill
-                            {
-                                card_pile::add_sync(
-                                    state,
-                                    card,
-                                    PileType::Hand,
-                                    CardPilePosition::Bottom,
-                                );
-                            }
+                        if state.card(ctx.card).is_some()
+                            && content.card_resolved_type(state, ctx.card)? == CardType::Skill
+                        {
+                            card_pile::add_sync(
+                                state,
+                                card,
+                                PileType::Hand,
+                                CardPilePosition::Bottom,
+                            );
                         }
                     }
                 }

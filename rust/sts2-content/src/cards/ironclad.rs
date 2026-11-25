@@ -364,7 +364,8 @@ fn clone_card_in_combat(
         .ok_or_else(|| KernelError::InvalidState("missing clone source card".to_owned()))?;
     let new_handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
-    let ext_index = if let Some(ext) = state.card_ext(source.ext_index).cloned() {
+    let ext_index = if let Some(mut ext) = state.card_ext(source.ext_index).cloned() {
+        ext.strip_non_cloned_private_fields();
         let idx = state.card_extensions.len() as u32;
         state.card_extensions.push(ext);
         Some(idx)
@@ -1136,10 +1137,10 @@ pub fn on_play(
                 let Some(&dh) = drawn.first() else {
                     break;
                 };
-                let Some(dc) = state.card(dh) else {
+                if state.card(dh).is_none() {
                     break;
-                };
-                if content.card_meta(dc.id)?.card_type != CardType::Attack
+                }
+                if content.card_resolved_type(state, dh)? != CardType::Attack
                     || state.player.hand.len() >= card_pile::MAX_CARDS_IN_HAND
                 {
                     break;
@@ -1159,10 +1160,10 @@ pub fn on_play(
             let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             let upg_level = if upg { 1 } else { 0 };
             for h in hand {
-                let Some(ci) = state.card(h) else {
+                if state.card(h).is_none() {
                     continue;
-                };
-                if content.card_meta(ci.id)?.card_type == CardType::Attack {
+                }
+                if content.card_resolved_type(state, h)? == CardType::Attack {
                     let _ = card_cmd::transform_with_upgrade(
                         state,
                         content,
@@ -1201,10 +1202,10 @@ pub fn on_play(
             let blk = Dec::from_i32(if upg { 7 } else { 5 });
             let hand: SmallVec<[CardHandle; 16]> = SmallVec::from_slice(&state.player.hand);
             for h in hand {
-                let Some(ci) = state.card(h) else {
+                if state.card(h).is_none() {
                     continue;
-                };
-                if content.card_meta(ci.id)?.card_type != CardType::Attack {
+                }
+                if content.card_resolved_type(state, h)? != CardType::Attack {
                     card_pile::exhaust(state, content, h, false)?;
                     gain_block(state, content, owner, ctx, blk)?;
                 }
@@ -1324,10 +1325,8 @@ pub fn on_play(
             attack_single(state, content, owner, ctx, target, cur_dmg, 2)?;
             let mut attacks: SmallVec<[CardHandle; 10]> = SmallVec::new();
             for &h in &state.player.hand {
-                if let Some(ci) = state.card(h) {
-                    if content.card_meta(ci.id)?.card_type == CardType::Attack {
-                        attacks.push(h);
-                    }
+                if state.card(h).is_some() && content.card_resolved_type(state, h)? == CardType::Attack {
+                    attacks.push(h);
                 }
             }
             let picked = state
@@ -1666,17 +1665,15 @@ pub fn dispatch_hook(
                 }
                 HookSlot::BeforeCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(played) = state.card(cp.card) {
-                            if state.fast_card_meta(content, played.id)?.card_type
-                                == CardType::Attack
-                            {
-                                add_local_energy_modifier(
-                                    state,
-                                    card,
-                                    LocalEnergyModifierKind::AddThisTurn,
-                                    -1,
-                                );
-                            }
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            add_local_energy_modifier(
+                                state,
+                                card,
+                                LocalEnergyModifierKind::AddThisTurn,
+                                -1,
+                            );
                         }
                     }
                 }

@@ -180,8 +180,8 @@ pub fn dispatch_hook(
                         {
                             return Ok(HookResult::default());
                         }
-                        if let Some(c) = state.card(cp.card) {
-                            let ctype = state.fast_card_meta(content, c.id)?.card_type;
+                        if state.card(cp.card).is_some() {
+                            let ctype = content.card_resolved_type(state, cp.card)?;
                             let flag_key = match ctype {
                                 CardType::Attack => "RainbowRing._playedAttack",
                                 CardType::Skill => "RainbowRing._playedSkill",
@@ -318,8 +318,8 @@ pub fn dispatch_hook(
             match slot {
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        let is_attack = if let Some(c) = state.card(cp.card) {
-                            state.fast_card_meta(content, c.id)?.card_type == CardType::Attack
+                        let is_attack = if state.card(cp.card).is_some() {
+                            content.card_resolved_type(state, cp.card)? == CardType::Attack
                         } else {
                             false
                         };
@@ -366,23 +366,23 @@ pub fn dispatch_hook(
             match slot {
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(c) = state.card(cp.card) {
-                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
-                                state.mark_relic_dirty(relic_idx);
-                                let next = state.player.relics[relic_idx]
-                                    .private_fields
-                                    .inc_int("Shuriken._attacksThisTurn");
-                                if next % 3 == 0 {
-                                    power::apply(
-                                        state,
-                                        content,
-                                        PowerId::StrengthPower,
-                                        pc,
-                                        Dec::ONE,
-                                        Some(pc),
-                                        None,
-                                    )?;
-                                }
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            state.mark_relic_dirty(relic_idx);
+                            let next = state.player.relics[relic_idx]
+                                .private_fields
+                                .inc_int("Shuriken._attacksThisTurn");
+                            if next % 3 == 0 {
+                                power::apply(
+                                    state,
+                                    content,
+                                    PowerId::StrengthPower,
+                                    pc,
+                                    Dec::ONE,
+                                    Some(pc),
+                                    None,
+                                )?;
                             }
                         }
                     }
@@ -411,23 +411,23 @@ pub fn dispatch_hook(
             match slot {
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(c) = state.card(cp.card) {
-                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
-                                state.mark_relic_dirty(relic_idx);
-                                let next = state.player.relics[relic_idx]
-                                    .private_fields
-                                    .inc_int("OrnamentalFan._attacksThisTurn");
-                                if next % 3 == 0 {
-                                    block::gain_block(
-                                        state,
-                                        content,
-                                        pc,
-                                        Dec::from_i32(4),
-                                        ValueProp::UNPOWERED,
-                                        None,
-                                        Some(*cp),
-                                    )?;
-                                }
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            state.mark_relic_dirty(relic_idx);
+                            let next = state.player.relics[relic_idx]
+                                .private_fields
+                                .inc_int("OrnamentalFan._attacksThisTurn");
+                            if next % 3 == 0 {
+                                block::gain_block(
+                                    state,
+                                    content,
+                                    pc,
+                                    Dec::from_i32(4),
+                                    ValueProp::UNPOWERED,
+                                    None,
+                                    Some(*cp),
+                                )?;
                             }
                         }
                     }
@@ -456,23 +456,23 @@ pub fn dispatch_hook(
             match slot {
                 HookSlot::BeforeCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
-                        if let Some(c) = state.card(cp.card) {
-                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Attack {
-                                state.mark_relic_dirty(relic_idx);
-                                let next = state.player.relics[relic_idx]
-                                    .private_fields
-                                    .inc_int("PenNib._attacksPlayed");
-                                if next % 10 == 0 {
-                                    let r = &mut state.player.relics[relic_idx];
-                                    r.private_fields.set_int_inplace(
-                                        "PenNib._doubleDamagePlayOrdinal",
-                                        cp.play_ordinal,
-                                    );
-                                    r.private_fields.insert(
-                                        Cow::Borrowed("PenNib._doubleDamageCard"),
-                                        FieldValue::CardHandle(cp.card.0 as i32),
-                                    );
-                                }
+                        if state.card(cp.card).is_some()
+                            && content.card_resolved_type(state, cp.card)? == CardType::Attack
+                        {
+                            state.mark_relic_dirty(relic_idx);
+                            let next = state.player.relics[relic_idx]
+                                .private_fields
+                                .inc_int("PenNib._attacksPlayed");
+                            if next % 10 == 0 {
+                                let r = &mut state.player.relics[relic_idx];
+                                r.private_fields.set_int_inplace(
+                                    "PenNib._doubleDamagePlayOrdinal",
+                                    cp.play_ordinal,
+                                );
+                                r.private_fields.insert(
+                                    Cow::Borrowed("PenNib._doubleDamageCard"),
+                                    FieldValue::CardHandle(cp.card.0 as i32),
+                                );
                             }
                         }
                     }
@@ -804,25 +804,25 @@ pub fn dispatch_hook(
                 }
                 HookSlot::AfterCardPlayed => {
                     if let HookArgs::CardPlay(ctx) = args {
-                        if let Some(c) = state.card(ctx.card) {
-                            if state.fast_card_meta(content, c.id)?.card_type == CardType::Skill {
-                                state.mark_relic_dirty(relic_idx);
-                                let skills = state.player.relics[relic_idx]
-                                    .private_fields
-                                    .inc_int("LetterOpener._skillsThisTurn");
-                                if skills % 3 == 0 {
-                                    let targets = hittable_enemies_fast(state, content)?;
-                                    damage::damage_targets_void(
-                                        state,
-                                        content,
-                                        &targets,
-                                        Dec::from_i32(5),
-                                        ValueProp::UNPOWERED,
-                                        Some(pc),
-                                        None,
-                                        Some(*ctx),
-                                    )?;
-                                }
+                        if state.card(ctx.card).is_some()
+                            && content.card_resolved_type(state, ctx.card)? == CardType::Skill
+                        {
+                            state.mark_relic_dirty(relic_idx);
+                            let skills = state.player.relics[relic_idx]
+                                .private_fields
+                                .inc_int("LetterOpener._skillsThisTurn");
+                            if skills % 3 == 0 {
+                                let targets = hittable_enemies_fast(state, content)?;
+                                damage::damage_targets_void(
+                                    state,
+                                    content,
+                                    &targets,
+                                    Dec::from_i32(5),
+                                    ValueProp::UNPOWERED,
+                                    Some(pc),
+                                    None,
+                                    Some(*ctx),
+                                )?;
                             }
                         }
                     }
@@ -869,10 +869,10 @@ pub fn dispatch_hook(
                     return Ok(HookResult::default());
                 }
                 if let HookArgs::CardPlay(ctx) = args {
-                    if let Some(c) = state.card(ctx.card) {
-                        if state.fast_card_meta(content, c.id)?.card_type != CardType::Power {
-                            return Ok(HookResult::default());
-                        }
+                    if state.card(ctx.card).is_some()
+                        && content.card_resolved_type(state, ctx.card)? != CardType::Power
+                    {
+                        return Ok(HookResult::default());
                     }
                 }
             }

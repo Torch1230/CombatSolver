@@ -186,6 +186,10 @@ internal static partial class InCombatLiveStateCapturer
             .Select(relic => CaptureRelic(relic, state, player, cardHandles, startedEntries, finishedEntries, allHistory))
             .ToArray();
 
+        var activeAndEscaped = new HashSet<Creature>(
+            state.Allies.Concat(state.Enemies).Concat(state.EscapedCreatures),
+            ReferenceEqualityComparer.Instance);
+
         var creaturesDto = creatureHandles
             .OrderBy(static kv => kv.Value)
             .Select(kv => CaptureCreature(
@@ -193,14 +197,12 @@ internal static partial class InCombatLiveStateCapturer
                 kv.Value,
                 state,
                 concreteRun,
+                !activeAndEscaped.Contains(kv.Key),
                 creatureHandles,
                 cardHandles,
                 startedEntries))
             .ToArray();
 
-        var activeAndEscaped = new HashSet<Creature>(
-            state.Allies.Concat(state.Enemies).Concat(state.EscapedCreatures),
-            ReferenceEqualityComparer.Instance);
         int[] removedHandles = creatureHandles
             .Where(kv => !activeAndEscaped.Contains(kv.Key))
             .OrderBy(static kv => kv.Value)
@@ -341,6 +343,10 @@ internal static partial class InCombatLiveStateCapturer
         }
         string[] unlockedPotions = unlockedPotionList.ToArray();
 
+        bool battlewornDummyTimedOut =
+            state.Encounter is MegaCrit.Sts2.Core.Models.Encounters.BattlewornDummyEventEncounter dummyEnc
+            && dummyEnc.RanOutOfTime;
+
         var liveState = new RustKernelLiveStateDto(
             EncounterId: state.Encounter.Id.Entry,
             RoomType: state.Encounter.RoomType.ToString(),
@@ -366,6 +372,7 @@ internal static partial class InCombatLiveStateCapturer
             PetHandles: pcs.Pets.Select(c => creatureHandles[c]).ToArray(),
             DamageHistory: damageDtos,
             SemanticHistory: semanticDto,
+            BattlewornDummyTimedOut: battlewornDummyTimedOut,
             UnlockedCharacterCards: unlockedCharacterCards,
             UnlockedColorlessCards: unlockedColorlessCards,
             UnlockedCurseCards: unlockedCurseCards,
@@ -460,24 +467,38 @@ internal static partial class InCombatLiveStateCapturer
         }
 
         int? tempStarCost = null;
-        if (c._temporaryStarCosts.Count > 1)
+        bool tempFreeUntilPlayed = false;
+        bool tempFreeThisCombat = false;
+        foreach (TemporaryCardCost starMod in c._temporaryStarCosts)
         {
-            throw new InCombatLiveCaptureUnsupportedException(
-                "live_card_cost_unsupported",
-                $"cards[{c.Id.Entry}].starCost",
-                $"Multiple stacked TemporaryCardCost layers ({c._temporaryStarCosts.Count}) on card '{c.Id.Entry}'.");
-        }
-        if (c._temporaryStarCosts.Count == 1)
-        {
-            TemporaryCardCost starMod = c._temporaryStarCosts[0];
-            if (!starMod.ClearsWhenTurnEnds || !starMod.ClearsWhenCardIsPlayed)
+            if (starMod is null)
+                continue;
+            if (!starMod.ClearsWhenTurnEnds && !starMod.ClearsWhenCardIsPlayed && starMod.Cost == 0)
+            {
+                tempFreeThisCombat = true;
+            }
+            else if (!starMod.ClearsWhenTurnEnds && starMod.ClearsWhenCardIsPlayed && starMod.Cost == 0)
+            {
+                tempFreeUntilPlayed = true;
+            }
+            else if (starMod.ClearsWhenTurnEnds && starMod.ClearsWhenCardIsPlayed)
+            {
+                if (tempStarCost is not null)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_card_cost_unsupported",
+                        $"cards[{c.Id.Entry}].starCost",
+                        $"Multiple stacked Turn-End TemporaryCardCost layers ({c._temporaryStarCosts.Count}) on card '{c.Id.Entry}'.");
+                }
+                tempStarCost = starMod.Cost;
+            }
+            else
             {
                 throw new InCombatLiveCaptureUnsupportedException(
                     "live_card_cost_unsupported",
                     $"cards[{c.Id.Entry}].starCost",
                     $"Unsupported star cost lifetime on card '{c.Id.Entry}'.");
             }
-            tempStarCost = starMod.Cost;
         }
 
         RustKernelEnchantmentDto? enchantment = c.Enchantment is null
@@ -515,8 +536,8 @@ internal static partial class InCombatLiveStateCapturer
             LocalEnergyModifiers: localModifiers,
             TemporaryStarCostOverrideThisTurn: tempStarCost,
             TemporaryFreeThisTurn: false,
-            TemporaryFreeUntilPlayed: false,
-            TemporaryFreeThisCombat: false,
+            TemporaryFreeUntilPlayed: tempFreeUntilPlayed,
+            TemporaryFreeThisCombat: tempFreeThisCombat,
             TemporaryCostOverrideThisTurn: null,
             TemporaryCostOverrideThisTurnOrUntilPlayed: null,
             TemporaryCostOverrideThisCombat: null,
@@ -535,6 +556,7 @@ internal static partial class InCombatLiveStateCapturer
         int handle,
         CombatState state,
         RunState run,
+        bool isRemovedFromCombat,
         IReadOnlyDictionary<Creature, int> creatureHandles,
         IReadOnlyDictionary<CardModel, int> cardHandles,
         CardPlayStartedEntry[] startedEntries)
@@ -555,42 +577,51 @@ internal static partial class InCombatLiveStateCapturer
         RustKernelMonsterDto? monsterDto = null;
         if (creature.Monster is { } m)
         {
-            MonsterMoveStateMachine sm = m.MoveStateMachine
-                ?? throw new InCombatLiveCaptureUnsupportedException(
-                    "live_monster_state_unmapped",
-                    $"creatures[{creature.Monster?.Id.Entry ?? "unknown"}]",
-                    "Monster is missing MoveStateMachine.");
-            string currentStateId = sm._currentState.Id;
-            string? transientFollowUp = sm.States.ContainsKey(currentStateId)
-                ? null
-                : (sm._currentState as MoveState)?.FollowUpState?.Id
-                  ?? (sm._currentState as MoveState)?.FollowUpStateId;
-
-            (IReadOnlyDictionary<string, RustKernelFieldValueDto> setupFields,
-                IReadOnlyDictionary<string, RustKernelFieldValueDto> postFields) =
-                CaptureMonsterPrivateFields(m, creatureHandles);
-
-            MegaCrit.Sts2.Core.Random.Rng? rawMonsterRng = m._rng ?? m.Rng;
-            if (rawMonsterRng is null)
+            MonsterMoveStateMachine? sm = m.MoveStateMachine;
+            if (sm is null)
             {
-                throw new InCombatLiveCaptureUnsupportedException(
-                    "live_monster_state_unmapped",
-                    $"creatures[{m.Id.Entry}].rng",
-                    $"Monster '{m.Id.Entry}' is missing initialized Rng.");
+                if (!isRemovedFromCombat || creature.IsAlive)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_monster_state_unmapped",
+                        $"creatures[{creature.Monster?.Id.Entry ?? "unknown"}]",
+                        "Monster is missing MoveStateMachine.");
+                }
             }
-            SerializableRng monsterRng = rawMonsterRng.ToSerializable();
-            monsterDto = new RustKernelMonsterDto(
-                ToRngDto(monsterRng),
-                m.IsPerformingMove,
-                m.SpawnedThisTurn,
-                currentStateId,
-                CaptureNextMoveId(m),
-                m.NextMove?.CanTransitionAway ?? true,
-                sm._performedFirstMove,
-                sm.StateLog.Select(static s => s.Id).ToArray(),
-                transientFollowUp,
-                setupFields,
-                postFields);
+            else
+            {
+                string currentStateId = sm._currentState.Id;
+                string? transientFollowUp = sm.States.ContainsKey(currentStateId)
+                    ? null
+                    : (sm._currentState as MoveState)?.FollowUpState?.Id
+                      ?? (sm._currentState as MoveState)?.FollowUpStateId;
+
+                (IReadOnlyDictionary<string, RustKernelFieldValueDto> setupFields,
+                    IReadOnlyDictionary<string, RustKernelFieldValueDto> postFields) =
+                    CaptureMonsterPrivateFields(m, creatureHandles);
+
+                MegaCrit.Sts2.Core.Random.Rng? rawMonsterRng = m._rng ?? m.Rng;
+                if (rawMonsterRng is null)
+                {
+                    throw new InCombatLiveCaptureUnsupportedException(
+                        "live_monster_state_unmapped",
+                        $"creatures[{m.Id.Entry}].rng",
+                        $"Monster '{m.Id.Entry}' is missing initialized Rng.");
+                }
+                SerializableRng monsterRng = rawMonsterRng.ToSerializable();
+                monsterDto = new RustKernelMonsterDto(
+                    ToRngDto(monsterRng),
+                    m.IsPerformingMove,
+                    m.SpawnedThisTurn,
+                    currentStateId,
+                    CaptureNextMoveId(m),
+                    m.NextMove?.CanTransitionAway ?? true,
+                    sm._performedFirstMove,
+                    sm.StateLog.Select(static s => s.Id).ToArray(),
+                    transientFollowUp,
+                    setupFields,
+                    postFields);
+            }
         }
 
         var powersDto = creature.Powers.Select(power => new RustKernelPowerDto(
@@ -619,7 +650,7 @@ internal static partial class InCombatLiveStateCapturer
             MaxHp: creature.MaxHp,
             Block: creature.Block,
             CumulativeHpLost: cumulativeHpLost,
-            IsDetached: creature.CombatState is null,
+            IsDetached: creature.CombatState is null || isRemovedFromCombat,
             Monster: monsterDto,
             Powers: powersDto);
     }

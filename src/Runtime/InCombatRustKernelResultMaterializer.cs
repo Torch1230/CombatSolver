@@ -620,7 +620,7 @@ internal static class InCombatRustKernelResultMaterializer
 
             RustKernelChoiceCardTokenDto token = currentPrompt.Cards[cardInPromptIdx];
             HotChoiceKind pendingKind = probeScratch.PendingChoiceKind;
-            if (!TryMatchChoiceToken(in probeState, rules, pendingKind, token, out HotChoiceSelection matchedSelection, out string? matchErr))
+            if (!TryMatchChoiceToken(in probeState, rules, probeScratch, pendingKind, token, out HotChoiceSelection matchedSelection, out string? matchErr))
             {
                 if (cardInPromptIdx == 0 && TryPickForcedPileChoice(in probeState, rules, probeScratch, out HotChoiceSelection forcedMid))
                 {
@@ -678,9 +678,10 @@ internal static class InCombatRustKernelResultMaterializer
         int zoneStart = HotPiles.ZoneStart(in probeState, pile);
         int zoneCount = HotPiles.ZoneCount(in probeState, pile);
         ushort sourceDefId = probeScratch.PendingChoiceSourceCardDefId;
-        if (sourceDefId > 0 && sourceDefId < rules.Cards.Length
-            && rules.Cards[sourceDefId].CardId == HotCustomCardId.KiChant
-            && pile == HotPileKind.Draw)
+        HotCustomCardId filterSource = sourceDefId > 0 && sourceDefId < rules.Cards.Length
+            ? rules.Cards[sourceDefId].CardId
+            : HotCustomCardId.None;
+        if (filterSource == HotCustomCardId.KiChant && pile == HotPileKind.Draw)
         {
             int topLimit = probeScratch.PendingChoiceMax > 0 ? probeScratch.PendingChoiceMax : 3;
             if (zoneCount > topLimit)
@@ -697,7 +698,8 @@ internal static class InCombatRustKernelResultMaterializer
         {
             ref readonly HotCard card = ref probeState.Cards[zoneStart + i];
             bool isAllowed = (allowedUids.IsEmpty || ContainsUid(allowedUids, card.CardUid))
-                && (excludedUids.IsEmpty || !ContainsUid(excludedUids, card.CardUid));
+                && (excludedUids.IsEmpty || !ContainsUid(excludedUids, card.CardUid))
+                && HotCombatEngine.MatchesChoiceFilter(in probeState, in card, rules, filterSource);
             if (!isAllowed)
                 continue;
             if (eligibleCount == 0)
@@ -726,6 +728,7 @@ internal static class InCombatRustKernelResultMaterializer
     private static bool TryMatchChoiceToken(
         in CombatHotState probeState,
         HotRules rules,
+        HotExecScratch probeScratch,
         HotChoiceKind pendingKind,
         RustKernelChoiceCardTokenDto token,
         out HotChoiceSelection selection,
@@ -786,6 +789,16 @@ internal static class InCombatRustKernelResultMaterializer
 
         int zoneStart = HotPiles.ZoneStart(in probeState, pile);
         int zoneCount = HotPiles.ZoneCount(in probeState, pile);
+        ushort sourceDefId = probeScratch.PendingChoiceSourceCardDefId;
+        HotCustomCardId filterSource = sourceDefId > 0 && sourceDefId < rules.Cards.Length
+            ? rules.Cards[sourceDefId].CardId
+            : HotCustomCardId.None;
+        if (filterSource == HotCustomCardId.KiChant && pile == HotPileKind.Draw)
+        {
+            int topLimit = probeScratch.PendingChoiceMax > 0 ? probeScratch.PendingChoiceMax : 3;
+            if (zoneCount > topLimit)
+                zoneCount = topLimit;
+        }
         int sourceOcc = 0;
         int filteredOcc = 0;
         ushort fallbackUid = 0;
@@ -798,7 +811,8 @@ internal static class InCombatRustKernelResultMaterializer
             bool idAndUpgradeMatch = string.Equals(entry, token.CardId, StringComparison.Ordinal)
                 && card.UpgradeLevel == token.UpgradeLevel;
             bool isAllowed = (allowedUids.IsEmpty || ContainsUid(allowedUids, card.CardUid))
-                && (excludedUids.IsEmpty || !ContainsUid(excludedUids, card.CardUid));
+                && (excludedUids.IsEmpty || !ContainsUid(excludedUids, card.CardUid))
+                && HotCombatEngine.MatchesChoiceFilter(in probeState, in card, rules, filterSource);
 
             if (idAndUpgradeMatch)
             {

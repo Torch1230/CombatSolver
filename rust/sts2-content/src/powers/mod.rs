@@ -618,3 +618,27 @@ pub fn resume_hook_choice(
         batch_n_z::resume_hook_choice(content, state, creature, power_idx, slot, selected)
     }
 }
+
+pub fn resume_auto_post_play_power(
+    content: &dyn ContentDispatcher,
+    state: &mut BattleState,
+    creature: CreatureHandle,
+    power_id: PowerId,
+    remaining_iterations: i32,
+) -> Result<(), KernelError> {
+    match power_id {
+        PowerId::StampedePower | PowerId::SimpletonPower => {
+            batch_n_z::run_auto_post_play_power(
+                content,
+                state,
+                creature,
+                power_id,
+                remaining_iterations,
+            )
+        }
+        _ => Err(KernelError::unsupported(
+            "AfterAutoPostPlayPowerResume",
+            power_id.model_id_str().to_owned(),
+        )),
+    }
+}
