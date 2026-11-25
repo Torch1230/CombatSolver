@@ -241,21 +241,18 @@ impl ContentDispatcher for TestKernelContent {
         self.potion_events.borrow_mut().push("on_use");
         if potion_id == PotionId::LiquidMemories && state.player.discard.len() > 1 {
             if choice_queue.is_empty() {
-                return Ok(CardPlayOutcome {
-                    needs_choice: Some((
-                        ChoiceRequest {
-                            timing: ChoiceTiming::Action,
-                            source_id: potion_id.model_id_str().into(),
-                            source_pile: PileType::Discard,
-                            min_count: 1,
-                            max_count: 1,
-                            candidates: state.player.discard.iter().copied().collect(),
-                            can_skip: false,
-                        },
-                        1,
-                    )),
-                    transform_into: None,
-                });
+                return Ok(CardPlayOutcome::with_choice(
+                    Box::new(ChoiceRequest {
+                        timing: ChoiceTiming::Action,
+                        source_id: potion_id.model_id_str().into(),
+                        source_pile: PileType::Discard,
+                        min_count: 1,
+                        max_count: 1,
+                        candidates: state.player.discard.iter().copied().collect(),
+                        can_skip: false,
+                    }),
+                    1,
+                ));
             }
             let sel = choice_queue.remove(0);
             let h = state.player.discard[sel[0]];
@@ -420,9 +417,9 @@ impl ContentDispatcher for TestKernelContent {
     ) -> Result<HookResult, KernelError> {
         match (listener, slot) {
             (HookListener::Dominion(DominionId::KnowledgeDemonDominion), HookSlot::BeforeHandDraw) => {
-                let candidates: SmallVec<[CardHandle; 32]> = state.player.draw.iter().take(2).copied().collect();
+                let candidates: SmallVec<[CardHandle; 16]> = state.player.draw.iter().take(2).copied().collect();
                 Ok(HookResult {
-                    needs_choice: Some(ChoiceRequest {
+                    needs_choice: Some(Box::new(ChoiceRequest {
                         timing: ChoiceTiming::PlayerTurnStart,
                         source_id: "DOMINION.KNOWLEDGE_DEMON_DOMINION".into(),
                         source_pile: PileType::Draw,
@@ -430,7 +427,7 @@ impl ContentDispatcher for TestKernelContent {
                         max_count: 1,
                         candidates,
                         can_skip: false,
-                    }),
+                    })),
                     ..Default::default()
                 })
             }
@@ -651,6 +648,10 @@ fn make_test_battle(dominion: Option<DominionId>, deck_count: usize) -> (BattleS
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     (state, enemy)
 }
@@ -1455,9 +1456,9 @@ impl ContentDispatcher for PartBTestContent {
             }
             HookSlot::AfterShuffle if self.pause_after_shuffle.get() && !state.player.draw.is_empty() => {
                 self.pause_after_shuffle.set(false);
-                let candidates: SmallVec<[CardHandle; 32]> = state.player.draw.iter().take(2).copied().collect();
+                let candidates: SmallVec<[CardHandle; 16]> = state.player.draw.iter().take(2).copied().collect();
                 return Ok(HookResult {
-                    needs_choice: Some(ChoiceRequest {
+                    needs_choice: Some(Box::new(ChoiceRequest {
                         timing: ChoiceTiming::Action,
                         source_id: "POWER.STRATAGEM_POWER".into(),
                         source_pile: PileType::Draw,
@@ -1465,7 +1466,7 @@ impl ContentDispatcher for PartBTestContent {
                         max_count: 1,
                         candidates,
                         can_skip: false,
-                    }),
+                    })),
                     ..Default::default()
                 });
             }
@@ -1473,9 +1474,9 @@ impl ContentDispatcher for PartBTestContent {
                 if self.pause_after_player_turn_start.get() && !state.player.hand.is_empty() =>
             {
                 self.pause_after_player_turn_start.set(false);
-                let candidates: SmallVec<[CardHandle; 32]> = state.player.hand.iter().take(3).copied().collect();
+                let candidates: SmallVec<[CardHandle; 16]> = state.player.hand.iter().take(3).copied().collect();
                 return Ok(HookResult {
-                    needs_choice: Some(ChoiceRequest {
+                    needs_choice: Some(Box::new(ChoiceRequest {
                         timing: ChoiceTiming::PlayerTurnStart,
                         source_id: "POWER.TOOLS_OF_THE_TRADE_POWER".into(),
                         source_pile: PileType::Hand,
@@ -1483,7 +1484,7 @@ impl ContentDispatcher for PartBTestContent {
                         max_count: 1,
                         candidates,
                         can_skip: false,
-                    }),
+                    })),
                     ..Default::default()
                 });
             }
@@ -1806,10 +1807,10 @@ impl ContentDispatcher for FailOnMoveContent {
         _state: &mut BattleState,
         _creature: CreatureHandle,
     ) -> Result<(), KernelError> {
-        Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: "should_not_roll_when_stunned".to_owned(),
-        })
+        Err(KernelError::unsupported(
+            "Monster",
+            "should_not_roll_when_stunned".to_owned(),
+        ))
     }
     fn monster_perform_move(
         &self,
@@ -1823,10 +1824,10 @@ impl ContentDispatcher for FailOnMoveContent {
         if is_stunned {
             return Ok(());
         }
-        Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: "should_only_perform_stunned_move".to_owned(),
-        })
+        Err(KernelError::unsupported(
+            "Monster",
+            "should_only_perform_stunned_move".to_owned(),
+        ))
     }
     fn orb_passive(
         &self,
@@ -2412,6 +2413,10 @@ fn stable_shuffle_matches_insertion_compare_cards_order() {
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
 
     let specs = [
@@ -2432,7 +2437,7 @@ fn stable_shuffle_matches_insertion_compare_cards_order() {
         let ext_index = ench.map(|eid| {
             let idx = state.card_extensions.len() as u32;
             state.card_extensions.push(CardExtension {
-                local_energy_modifiers: SmallVec::new(),
+                local_energy_modifiers: Vec::new(),
                 enchantment: Some(EnchantmentInst {
                     id: eid,
                     amount: 1,

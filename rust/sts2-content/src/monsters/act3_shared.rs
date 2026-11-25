@@ -75,10 +75,7 @@ pub fn monster_meta(id: MonsterId) -> Result<&'static MonsterMeta, KernelError> 
         | MonsterId::Wriggler
         | MonsterId::Wuppy
         | MonsterId::Zapbot => Ok(&EMPTY_MONSTER_META),
-        _ => Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Monster", id.model_id_str().to_owned())),
     }
 }
 
@@ -446,7 +443,7 @@ fn spawn_enemy_with_unique_hp(
         powers: Vec::new(),
     };
 
-    state.creatures.push(creature);
+    state.push_creature(creature);
     state.enemy_handles.push(handle);
     state.spawned_enemy_handles.push(handle);
     state.invalidate_creature_hooks();
@@ -585,10 +582,10 @@ pub fn monster_initial_hp_range(
         }
         MonsterId::Wriggler => Ok((tough(18, 17), tough(22, 21))),
         MonsterId::Wuppy => Ok((50, 50)),
-        _ => Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: monster_id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Monster",
+            monster_id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -720,10 +717,10 @@ pub fn monster_setup_for_combat(
         MonsterId::Zapbot => "ZAP",
         MonsterId::Axebot => unreachable!(),
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "Monster",
-                id: mid.model_id_str().to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "Monster",
+                mid.model_id_str().to_owned(),
+            ));
         }
     };
 
@@ -1536,10 +1533,10 @@ pub fn monster_roll_move(
             },
             MonsterId::Zapbot => "ZAP",
             _ => {
-                return Err(KernelError::Unsupported {
-                    kind: "Monster",
-                    id: mid.model_id_str().to_owned(),
-                });
+                return Err(KernelError::unsupported(
+                    "Monster",
+                    mid.model_id_str().to_owned(),
+                ));
             }
         };
 
@@ -1727,7 +1724,7 @@ pub fn monster_perform_move(
                 .execute(state, content)?;
         }
         (MonsterId::Aeonglass, "INCREASING_INTENSITY_MOVE") => {
-            let wither_handles: Vec<CardHandle> = state
+            let wither_handles: SmallVec<[CardHandle; 64]> = state
                 .player
                 .hand
                 .iter()
@@ -2765,10 +2762,10 @@ pub fn monster_perform_move(
             AttackBuilder::from_monster(creature, dmg).execute(state, content)?;
         }
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "MonsterMove",
-                id: format!("{}:{}", mid.model_id_str(), move_id),
-            });
+            return Err(KernelError::unsupported(
+                "MonsterMove",
+                format!("{}:{}", mid.model_id_str(), move_id),
+            ));
         }
     }
 
@@ -2901,10 +2898,10 @@ pub fn resume_hook_choice(
         .creature(creature)
         .and_then(|c| c.monster_id)
         .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?;
-    Err(KernelError::Unsupported {
-        kind: "MonsterHookChoiceResume",
-        id: format!("{}:{slot:?}", id.model_id_str()),
-    })
+    Err(KernelError::unsupported(
+        "MonsterHookChoiceResume",
+        format!("{}:{slot:?}", id.model_id_str()),
+    ))
 }
 
 pub fn monster_attack_intent_hits(
@@ -3130,9 +3127,9 @@ pub fn monster_attack_intent_hits(
             Ok(smallvec![(Dec::from_i32(deadly(7, 6)), 1)])
         }
         (MonsterId::Zapbot, "ZAP") => Ok(smallvec![(Dec::from_i32(deadly(15, 14)), 1)]),
-        _ => Err(KernelError::Unsupported {
-            kind: "MonsterIntent",
-            id: format!("{}:{}", mid.model_id_str(), move_id),
-        }),
+        _ => Err(KernelError::unsupported(
+            "MonsterIntent",
+            format!("{}:{}", mid.model_id_str(), move_id),
+        )),
     }
 }

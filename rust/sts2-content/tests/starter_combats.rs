@@ -3,8 +3,8 @@ use std::sync::Arc;
 use sts2_content::Sts2Content;
 use sts2_kernel::{
     ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine, CreatureHandle,
-    CreatureInst, KernelError, MonsterInst, PlayerCounters, PlayerInst, RelicInst,
-    RootStaticContext, SemanticHistory, StepOutcome,
+    CreatureInst, MonsterInst, PlayerCounters, PlayerInst, RelicInst, RootStaticContext,
+    SemanticHistory, StepOutcome,
 };
 use sts2_types::{
     ArrowStatus, CardId, CardKeywords, CharacterId, CombatSide, GameMode, MonsterId,
@@ -215,6 +215,10 @@ fn build_starter_battle(
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     (state, enemy_handle)
 }
@@ -532,17 +536,26 @@ fn unsupported_entity_returns_explicit_err() {
         private_fields: Default::default(),
     });
     let relic_err = sts2_kernel::snapshot::import_live_state(&bad_relic, &content).unwrap_err();
-    assert!(matches!(relic_err, KernelError::Unsupported { kind: "Relic", .. }));
+    assert!(matches!(
+        relic_err.kind(),
+        sts2_kernel::KernelErrorKind::Unsupported { kind: "Relic", .. }
+    ));
 
     let mut bad_card = base_dto.clone();
     bad_card.cards[0].card_id = "CARD.MODDED_UNKNOWN".to_owned();
     let card_err = sts2_kernel::snapshot::import_live_state(&bad_card, &content).unwrap_err();
-    assert!(matches!(card_err, KernelError::Unsupported { kind: "Card", .. }));
+    assert!(matches!(
+        card_err.kind(),
+        sts2_kernel::KernelErrorKind::Unsupported { kind: "Card", .. }
+    ));
 
     let mut bad_monster = base_dto;
     bad_monster.creatures[1].monster_id = Some("MONSTER.MODDED_UNKNOWN".to_owned());
     let monster_err = sts2_kernel::snapshot::import_live_state(&bad_monster, &content).unwrap_err();
-    assert!(matches!(monster_err, KernelError::Unsupported { kind: "Monster", .. }));
+    assert!(matches!(
+        monster_err.kind(),
+        sts2_kernel::KernelErrorKind::Unsupported { kind: "Monster", .. }
+    ));
 }
 
 #[test]

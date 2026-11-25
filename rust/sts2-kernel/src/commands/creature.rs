@@ -352,7 +352,7 @@ pub fn resolve_potential_death(
             break;
         };
         if recursion >= 10 {
-            return Err(KernelError::DeathPreventionLoop);
+            return Err(KernelError::death_prevention_loop());
         }
         hooks::after_death(state, content, target, card_source, true)?;
         hooks::after_preventing_death(state, content, preventer, target)?;
@@ -383,7 +383,10 @@ fn resolve_confirmed_death(
     let defer_cleanup = is_performing_move || state.is_creature_attacking(target);
 
     let should_remove = hooks::should_creature_be_removed_after_death(state, content, target)?;
-    if state.creature(target).is_some_and(|c| c.is_pet()) && should_remove {
+    if !state.pet_handles.is_empty()
+        && state.creature(target).is_some_and(|c| c.is_pet())
+        && should_remove
+    {
         state.pet_handles.retain(|h| *h != target);
     }
 
@@ -456,16 +459,17 @@ fn cleanup_confirmed_death_creature(
 ) -> Result<(), KernelError> {
     let powers_snapshot: SmallVec<[PowerInst; 16]> = state
         .creature(target)
-        .map(|c| c.powers.iter().copied().collect())
+        .filter(|c| !c.powers.is_empty())
+        .map(|c| SmallVec::from_slice(&c.powers))
         .unwrap_or_default();
     let mut powers_to_remove: SmallVec<[u32; 16]> = SmallVec::new();
     for p in powers_snapshot {
-        let on_death = hooks::should_power_be_removed_on_death(state, content, target, p)?;
-        let remove_after_owner = content
-            .power_meta(p.id)?
+        let remove_after_owner = state
+            .fast_power_meta(content, p.id)?
             .flags
             .contains(sts2_types::PowerStaticFlags::REMOVE_AFTER_OWNER_DEATH);
-        if on_death && remove_after_owner {
+        if remove_after_owner && hooks::should_power_be_removed_on_death(state, content, target, p)?
+        {
             powers_to_remove.push(p.handle);
         }
     }
@@ -674,7 +678,7 @@ pub fn create_monster_creature(
         powers: Vec::new(),
     };
 
-    state.creatures.push(creature);
+    state.push_creature(creature);
     Ok(handle)
 }
 

@@ -676,6 +676,10 @@ fn build_battle(character: CharacterId, hand_ids: &[CardId], enemy_hp: i32) -> (
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     (state, enemy_handle)
 }
@@ -1623,7 +1627,7 @@ fn v0114_nz_powers_no_energy_gain_tune_stretch_unmovable_panache_and_deferred_pa
             status: sts2_types::EnchantmentStatus::Normal,
             private_fields: Default::default(),
         }),
-        local_energy_modifiers: SmallVec::new(),
+        local_energy_modifiers: Vec::new(),
         private_fields: Default::default(),
     });
     s_blk.cards[0].ext_index = Some(0);
@@ -1649,7 +1653,7 @@ fn v0114_nz_powers_no_energy_gain_tune_stretch_unmovable_panache_and_deferred_pa
             status: sts2_types::EnchantmentStatus::Normal,
             private_fields: Default::default(),
         }),
-        local_energy_modifiers: SmallVec::new(),
+        local_energy_modifiers: Vec::new(),
         private_fields: Default::default(),
     });
     s_unmov.cards[0].ext_index = Some(0);

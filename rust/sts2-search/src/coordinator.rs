@@ -579,6 +579,10 @@ fn reset_scratch_battle_state(s: &mut BattleState, static_ctx: &Arc<RootStaticCo
     s.hook_cache.clear();
     s.deck_dirty.0 = true;
     s.relic_dirty_mask = RelicDirtyMask(u64::MAX);
+    s.handle_layout = Default::default();
+    s.card_meta_dirty = sts2_kernel::state::CardMetaDirtyMask::ALL_DIRTY;
+    s.extra_clutter_hint = sts2_kernel::state::ExtraClutterHintFlag(true);
+    s.eot_card_cleanup_dirty = sts2_kernel::state::EotCleanupDirtyFlag(true);
 }
 
 struct PooledPassResources(Option<PassResources>);
@@ -947,6 +951,7 @@ fn clone_semantic_history_into(src: &SemanticHistory, dst: &mut SemanticHistory)
     dst.prior_player_unblocked_hits = src.prior_player_unblocked_hits;
     dst.prior_player_damaged_turn = src.prior_player_damaged_turn;
     dst.prior_exhaust_count = src.prior_exhaust_count;
+    dst.turn_cache = src.turn_cache;
 }
 
 #[inline]
@@ -965,6 +970,7 @@ fn clone_hook_cache_into(src: &ActiveHookCache, dst: &mut ActiveHookCache) {
     dst.in_combat_mask = src.in_combat_mask;
     dst.in_combat_overflow = src.in_combat_overflow;
     dst.combat_has_player = src.combat_has_player;
+    dst.has_active_history_course_relic = src.has_active_history_course_relic;
     dst.living_check_player_idx = src.living_check_player_idx;
     dst.primary_enemy_indices = src.primary_enemy_indices;
     dst.primary_enemy_count = src.primary_enemy_count;
@@ -1168,7 +1174,7 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
             .iter_mut()
             .zip(src.card_extensions[..ext_keep].iter())
         {
-            copy_smallvec_copy(&se.local_energy_modifiers, &mut de.local_energy_modifiers);
+            copy_vec_copy(&se.local_energy_modifiers, &mut de.local_energy_modifiers);
             if se.enchantment.is_some() || de.enchantment.is_some() {
                 match (&mut de.enchantment, &se.enchantment) {
                     (Some(de_e), Some(se_e)) => {
@@ -1309,6 +1315,10 @@ pub(crate) fn clone_battle_state_into(src: &BattleState, dst: &mut BattleState) 
     clone_hook_cache_into(&src.hook_cache, &mut dst.hook_cache);
     dst.deck_dirty = src.deck_dirty;
     dst.relic_dirty_mask = src.relic_dirty_mask;
+    dst.handle_layout = src.handle_layout;
+    dst.card_meta_dirty = src.card_meta_dirty;
+    dst.extra_clutter_hint = src.extra_clutter_hint;
+    dst.eot_card_cleanup_dirty = src.eot_card_cleanup_dirty;
 }
 
 struct BeamRunOutput {
@@ -2838,6 +2848,19 @@ fn resolve_choices_recursive(
 
     let choice_options = std::mem::take(&mut scratch.choice_enum_bufs[depth]);
     let num_options = choice_options.len();
+    let is_expensive_hook_resume = scratch.choice_paused_states[depth]
+        .pending
+        .as_ref()
+        .is_some_and(|p| {
+            p.frames.iter().any(|f| {
+                matches!(
+                    f,
+                    sts2_kernel::continuation::ContinuationFrame::AfterPlayerTurnStartResume { .. }
+                        | sts2_kernel::continuation::ContinuationFrame::EndTurnResume { .. }
+                        | sts2_kernel::continuation::ContinuationFrame::EnemyTurnResume { .. }
+                )
+            })
+        });
     for (opt_idx, sel) in choice_options.iter().enumerate() {
         if scratch.choice_resolved.len() >= CHOICE_RESOLVED_CAPACITY {
             break;
@@ -2848,7 +2871,9 @@ fn resolve_choices_recursive(
         } else {
             est_total_options > max_branches
         };
-        let defer_pack = if is_turn_setup {
+        let defer_pack = if is_turn_setup
+            || (is_expensive_hook_resume && est_total_options <= max_branches * 2)
+        {
             false
         } else if est_total_options >= max_branches * 2 {
             true
@@ -3319,7 +3344,60 @@ fn commit_resolved_choices(
         let survival_q = if cap >= 3 { ((cap * 15) / 100).max(1) } else { 0 };
         let invest_q = cap.saturating_sub(primary_q + immediate_q + survival_q);
 
-        let mut marks = [false; CHOICE_RESOLVED_CAPACITY];
+        #[cfg(debug_assertions)]
+        let mut dbg_selected = [0usize; CHOICE_RESOLVED_CAPACITY];
+        #[cfg(debug_assertions)]
+        let mut dbg_selected_len = 0usize;
+        #[cfg(debug_assertions)]
+        {
+            let mut marks = [false; CHOICE_RESOLVED_CAPACITY];
+            for &(take, criterion) in &[
+                (primary_q, 0),
+                (immediate_q, 1),
+                (survival_q, 2),
+                (invest_q, 3),
+                (cap, 0),
+            ] {
+                for _ in 0..take {
+                    if dbg_selected_len >= cap {
+                        break;
+                    }
+                    let mut best_i: Option<usize> = None;
+                    for i in 0..resolved_count {
+                        if marks[i] {
+                            continue;
+                        }
+                        if best_i.is_none_or(|bi| {
+                            let ord = compare_choice_sort_key(&keys[i], &keys[bi], criterion);
+                            debug_assert_eq!(
+                                ord,
+                                compare_resolved_choice(
+                                    &scratch.choice_resolved[i],
+                                    &scratch.choice_resolved[bi],
+                                    criterion
+                                )
+                            );
+                            ord.is_lt()
+                        }) {
+                            best_i = Some(i);
+                        }
+                    }
+                    let Some(bi) = best_i else { break };
+                    marks[bi] = true;
+                    dbg_selected[dbg_selected_len] = bi;
+                    dbg_selected_len += 1;
+                }
+            }
+            dbg_selected[..dbg_selected_len].sort_unstable_by(|&ia, &ib| {
+                compare_choice_sort_key(&keys[ia], &keys[ib], 0)
+            });
+        }
+
+        let mut rem = [0usize; CHOICE_RESOLVED_CAPACITY];
+        for i in 0..resolved_count {
+            rem[i] = i;
+        }
+        let mut rem_len = resolved_count;
         for &(take, criterion) in &[
             (primary_q, 0),
             (immediate_q, 1),
@@ -3327,50 +3405,49 @@ fn commit_resolved_choices(
             (invest_q, 3),
             (cap, 0),
         ] {
-            for _ in 0..take {
-                if selected_len >= cap {
-                    break;
-                }
-                let mut best_i: Option<usize> = None;
-                for i in 0..resolved_count {
-                    if marks[i] {
-                        continue;
-                    }
-                    if best_i.is_none_or(|bi| {
-                        let ord = compare_choice_sort_key(&keys[i], &keys[bi], criterion);
-                        #[cfg(debug_assertions)]
-                        debug_assert_eq!(
-                            ord,
-                            compare_resolved_choice(
-                                &scratch.choice_resolved[i],
-                                &scratch.choice_resolved[bi],
-                                criterion
-                            )
-                        );
-                        ord.is_lt()
-                    }) {
-                        best_i = Some(i);
+            let need = take.min(cap - selected_len).min(rem_len);
+            if need == 0 {
+                continue;
+            }
+            if need == 1 {
+                let mut best_pos = 0usize;
+                for p in 1..rem_len {
+                    let ia = rem[p];
+                    let ib = rem[best_pos];
+                    if compare_choice_sort_key(&keys[ia], &keys[ib], criterion)
+                        .then_with(|| ia.cmp(&ib))
+                        .is_lt()
+                    {
+                        best_pos = p;
                     }
                 }
-                let Some(bi) = best_i else { break };
-                marks[bi] = true;
-                selected_indices[selected_len] = bi;
+                selected_indices[selected_len] = rem[best_pos];
                 selected_len += 1;
+                rem_len -= 1;
+                rem[best_pos] = rem[rem_len];
+            } else if need == rem_len {
+                selected_indices[selected_len..selected_len + need].copy_from_slice(&rem[..need]);
+                selected_len += need;
+                break;
+            } else {
+                rem[..rem_len].select_nth_unstable_by(need - 1, |&ia, &ib| {
+                    compare_choice_sort_key(&keys[ia], &keys[ib], criterion)
+                        .then_with(|| ia.cmp(&ib))
+                });
+                selected_indices[selected_len..selected_len + need].copy_from_slice(&rem[..need]);
+                selected_len += need;
+                rem.copy_within(need..rem_len, 0);
+                rem_len -= need;
             }
         }
         selected_indices[..selected_len].sort_unstable_by(|&ia, &ib| {
-            let ord = compare_choice_sort_key(&keys[ia], &keys[ib], 0);
-            #[cfg(debug_assertions)]
-            debug_assert_eq!(
-                ord,
-                compare_resolved_choice(
-                    &scratch.choice_resolved[ia],
-                    &scratch.choice_resolved[ib],
-                    0
-                )
-            );
-            ord
+            compare_choice_sort_key(&keys[ia], &keys[ib], 0).then_with(|| ia.cmp(&ib))
         });
+        #[cfg(debug_assertions)]
+        debug_assert_eq!(
+            &selected_indices[..selected_len],
+            &dbg_selected[..dbg_selected_len]
+        );
     }
 
     for (choice_ord, &idx) in selected_indices[..selected_len].iter().enumerate() {
@@ -4372,7 +4449,7 @@ fn select_stand_pat_candidates(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn record_victory_and_tighten(
+fn record_victory_and_tighten_precomputed(
     root_baseline: &RootEvalBaseline,
     cert: &ClosureCertificate,
     incumbent_table: &PrimaryIncumbentTable,
@@ -4385,45 +4462,15 @@ fn record_victory_and_tighten(
     explicit_potion_count: u16,
     optional_paid_potion_count: u16,
     potion_strategic_cost: i32,
-    optional_paid_potion_cost: i32,
     forced_used_mask: u64,
+    net_hp_delta_centi: i32,
+    net_potion_cost_centi: i32,
+    deficit: i32,
     has_victory: &mut bool,
     best_victory_turn: &mut Option<i32>,
     best_victory_key: &mut Option<(i64, i32, i32)>,
     best_victory_clean_zero_cost: &mut bool,
 ) {
-    let end_max_hp = if fast_eval.player_max_hp > 0 {
-        fast_eval.player_max_hp as i32
-    } else {
-        root_baseline.initial_player_max_hp.max(1)
-    };
-    let relic_heal = ActEndingBossPolicy::ranked_post_combat_relic_heal(
-        root_baseline.post_combat_relic_heal,
-        true,
-        fast_eval.player_hp as i32,
-        end_max_hp,
-    );
-    let net_hp_delta_centi = ActEndingBossPolicy::compute_net_persistent_hp_delta_centi(
-        fast_eval.player_hp as i32,
-        relic_heal,
-        root_baseline.initial_player_hp,
-        end_max_hp,
-        root_baseline.initial_player_max_hp,
-        fast_eval.death_save_hp_restored as i32,
-        fast_eval.strategic_hp_credit as i32,
-        root_baseline.boss_hp_relief,
-        root_baseline.ignore_long_term_rewards,
-        i32::from(fast_eval.feed_count) * root_baseline.feed_max_hp_per_kill,
-    );
-    let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
-        optional_paid_potion_cost,
-        optional_paid_potion_count as i32,
-        fast_eval.alchemize_count as i32,
-        fast_eval.empty_potion_slots as i32,
-        root_baseline,
-    );
-    let deficit = ActEndingBossPolicy::round_centi_to_hp(-net_hp_delta_centi);
-
     incumbent_table.tighten(
         PrimaryIncumbentBucket {
             potions: total_potions,
@@ -4484,6 +4531,82 @@ fn record_victory_and_tighten(
             && net_potion_cost_centi <= 0;
         *best_victory_clean_zero_cost = lossless && !can_heal_or_grow;
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn record_victory_and_tighten(
+    root_baseline: &RootEvalBaseline,
+    cert: &ClosureCertificate,
+    incumbent_table: &PrimaryIncumbentTable,
+    incumbent: &mut FrozenIncumbentBound,
+    policy: &SearchPolicy,
+    allow_paid_optional_potions: bool,
+    fast_eval: &StoredFastEval,
+    win_turn: i32,
+    total_potions: u16,
+    explicit_potion_count: u16,
+    optional_paid_potion_count: u16,
+    potion_strategic_cost: i32,
+    optional_paid_potion_cost: i32,
+    forced_used_mask: u64,
+    has_victory: &mut bool,
+    best_victory_turn: &mut Option<i32>,
+    best_victory_key: &mut Option<(i64, i32, i32)>,
+    best_victory_clean_zero_cost: &mut bool,
+) {
+    let end_max_hp = if fast_eval.player_max_hp > 0 {
+        fast_eval.player_max_hp as i32
+    } else {
+        root_baseline.initial_player_max_hp.max(1)
+    };
+    let relic_heal = ActEndingBossPolicy::ranked_post_combat_relic_heal(
+        root_baseline.post_combat_relic_heal,
+        true,
+        fast_eval.player_hp as i32,
+        end_max_hp,
+    );
+    let net_hp_delta_centi = ActEndingBossPolicy::compute_net_persistent_hp_delta_centi(
+        fast_eval.player_hp as i32,
+        relic_heal,
+        root_baseline.initial_player_hp,
+        end_max_hp,
+        root_baseline.initial_player_max_hp,
+        fast_eval.death_save_hp_restored as i32,
+        fast_eval.strategic_hp_credit as i32,
+        root_baseline.boss_hp_relief,
+        root_baseline.ignore_long_term_rewards,
+        i32::from(fast_eval.feed_count) * root_baseline.feed_max_hp_per_kill,
+    );
+    let net_potion_cost_centi = PotionUsePolicy::compute_net_potion_opportunity_cost_centi(
+        optional_paid_potion_cost,
+        optional_paid_potion_count as i32,
+        fast_eval.alchemize_count as i32,
+        fast_eval.empty_potion_slots as i32,
+        root_baseline,
+    );
+    let deficit = ActEndingBossPolicy::round_centi_to_hp(-net_hp_delta_centi);
+    record_victory_and_tighten_precomputed(
+        root_baseline,
+        cert,
+        incumbent_table,
+        incumbent,
+        policy,
+        allow_paid_optional_potions,
+        fast_eval,
+        win_turn,
+        total_potions,
+        explicit_potion_count,
+        optional_paid_potion_count,
+        potion_strategic_cost,
+        forced_used_mask,
+        net_hp_delta_centi,
+        net_potion_cost_centi,
+        deficit,
+        has_victory,
+        best_victory_turn,
+        best_victory_key,
+        best_victory_clean_zero_cost,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -4741,7 +4864,14 @@ fn run_beam_pass_with_resources_inner(
 
     let mut current_turn_frontier: Vec<NodeId> = Vec::new();
     let mut completed: Vec<NodeId> = Vec::new();
+    let mut terminal_tracker = crate::eval::FinalPlanTracker::new(
+        &root_baseline,
+        policy.potion_policy,
+        Some(policy.theft_policy),
+        root_baseline.minimum_required_potion_uses,
+    );
     if arena.get(root_id).is_terminal() {
+        terminal_tracker.observe_node(arena, root_id, &root_baseline);
         completed.push(root_id);
     } else {
         current_turn_frontier.push(root_id);
@@ -4854,47 +4984,95 @@ fn run_beam_pass_with_resources_inner(
                 PowerRoutePriority::Low,
             )
         };
-        let node = SearchNode {
-            state_hash: cand.state_hash,
-            forced_used_mask: cand.forced_used_mask,
-            beam_rank_score,
-            rollout_score,
-            por_key: cand.por_key,
-            fast_eval: cand.fast_eval,
-            state_handle,
-            action: cand.action,
-            parent_raw: cand.parent_id.0,
-            choices_offset,
-            rare_eval_idx,
-            effective_defense,
-            board_investment,
-            persistent_buff_value,
-            max_dark_evoke,
-            total_poison_and_doom,
-            turn: cand.turn.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
-            action_count: cand.action_count,
-            used_potion_slot_mask: cand.used_potion_slot_mask,
-            potion_strategic_cost: cand.potion_strategic_cost.clamp(i16::MIN as i32, i16::MAX as i32)
-                as i16,
-            optional_paid_potion_cost: cand
-                .optional_paid_potion_cost
-                .clamp(i16::MIN as i32, i16::MAX as i32)
-                as i16,
-            setup_score,
-            reachable_hand_value,
-            optionality_cards,
-            choices_len,
-            potion_count: cand.potion_count.min(u8::MAX as u16) as u8,
-            explicit_potion_count: cand.explicit_potion_count.min(u8::MAX as u16) as u8,
-            optional_paid_potion_count: cand.optional_paid_potion_count.min(u8::MAX as u16) as u8,
-            automatic_potion_count: cand.automatic_potion_count.min(u8::MAX as u16) as u8,
-            ambergris_count: cand.ambergris_count.min(u8::MAX as u16) as u8,
-            forced_ambergris_count: cand.forced_ambergris_count.min(u8::MAX as u16) as u8,
-            boundary_rank: 0,
-            best_power_priority,
-            node_flags,
+        const _: fn(&SearchNode) = |n| {
+            let SearchNode {
+                state_hash: _,
+                forced_used_mask: _,
+                beam_rank_score: _,
+                rollout_score: _,
+                por_key: _,
+                fast_eval: _,
+                state_handle: _,
+                action: _,
+                parent_raw: _,
+                choices_offset: _,
+                rare_eval_idx: _,
+                effective_defense: _,
+                board_investment: _,
+                persistent_buff_value: _,
+                max_dark_evoke: _,
+                total_poison_and_doom: _,
+                turn: _,
+                action_count: _,
+                used_potion_slot_mask: _,
+                potion_strategic_cost: _,
+                optional_paid_potion_cost: _,
+                setup_score: _,
+                reachable_hand_value: _,
+                optionality_cards: _,
+                choices_len: _,
+                potion_count: _,
+                explicit_potion_count: _,
+                optional_paid_potion_count: _,
+                automatic_potion_count: _,
+                ambergris_count: _,
+                forced_ambergris_count: _,
+                boundary_rank: _,
+                best_power_priority: _,
+                node_flags: _,
+            } = *n;
         };
-        arena.push_node(node)
+        let turn = cand.turn.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+        let potion_strategic_cost =
+            cand.potion_strategic_cost.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+        let optional_paid_potion_cost = cand
+            .optional_paid_potion_cost
+            .clamp(i16::MIN as i32, i16::MAX as i32)
+            as i16;
+        let potion_count = cand.potion_count.min(u8::MAX as u16) as u8;
+        let explicit_potion_count = cand.explicit_potion_count.min(u8::MAX as u16) as u8;
+        let optional_paid_potion_count =
+            cand.optional_paid_potion_count.min(u8::MAX as u16) as u8;
+        let automatic_potion_count = cand.automatic_potion_count.min(u8::MAX as u16) as u8;
+        let ambergris_count = cand.ambergris_count.min(u8::MAX as u16) as u8;
+        let forced_ambergris_count = cand.forced_ambergris_count.min(u8::MAX as u16) as u8;
+        arena.push_node_with(|dst| unsafe {
+            use core::ptr::addr_of_mut;
+            addr_of_mut!((*dst).state_hash).write(cand.state_hash);
+            addr_of_mut!((*dst).forced_used_mask).write(cand.forced_used_mask);
+            addr_of_mut!((*dst).beam_rank_score).write(beam_rank_score);
+            addr_of_mut!((*dst).rollout_score).write(rollout_score);
+            addr_of_mut!((*dst).por_key).write(cand.por_key);
+            addr_of_mut!((*dst).fast_eval).write(cand.fast_eval);
+            addr_of_mut!((*dst).state_handle).write(state_handle);
+            addr_of_mut!((*dst).action).write(cand.action);
+            addr_of_mut!((*dst).parent_raw).write(cand.parent_id.0);
+            addr_of_mut!((*dst).choices_offset).write(choices_offset);
+            addr_of_mut!((*dst).rare_eval_idx).write(rare_eval_idx);
+            addr_of_mut!((*dst).effective_defense).write(effective_defense);
+            addr_of_mut!((*dst).board_investment).write(board_investment);
+            addr_of_mut!((*dst).persistent_buff_value).write(persistent_buff_value);
+            addr_of_mut!((*dst).max_dark_evoke).write(max_dark_evoke);
+            addr_of_mut!((*dst).total_poison_and_doom).write(total_poison_and_doom);
+            addr_of_mut!((*dst).turn).write(turn);
+            addr_of_mut!((*dst).action_count).write(cand.action_count);
+            addr_of_mut!((*dst).used_potion_slot_mask).write(cand.used_potion_slot_mask);
+            addr_of_mut!((*dst).potion_strategic_cost).write(potion_strategic_cost);
+            addr_of_mut!((*dst).optional_paid_potion_cost).write(optional_paid_potion_cost);
+            addr_of_mut!((*dst).setup_score).write(setup_score);
+            addr_of_mut!((*dst).reachable_hand_value).write(reachable_hand_value);
+            addr_of_mut!((*dst).optionality_cards).write(optionality_cards);
+            addr_of_mut!((*dst).choices_len).write(choices_len);
+            addr_of_mut!((*dst).potion_count).write(potion_count);
+            addr_of_mut!((*dst).explicit_potion_count).write(explicit_potion_count);
+            addr_of_mut!((*dst).optional_paid_potion_count).write(optional_paid_potion_count);
+            addr_of_mut!((*dst).automatic_potion_count).write(automatic_potion_count);
+            addr_of_mut!((*dst).ambergris_count).write(ambergris_count);
+            addr_of_mut!((*dst).forced_ambergris_count).write(forced_ambergris_count);
+            addr_of_mut!((*dst).boundary_rank).write(0);
+            addr_of_mut!((*dst).best_power_priority).write(best_power_priority);
+            addr_of_mut!((*dst).node_flags).write(node_flags);
+        })
     }
 
     #[inline]
@@ -4916,6 +5094,7 @@ fn run_beam_pass_with_resources_inner(
         arena: &mut NodeArena,
         turn_arena: &mut MainStateArena,
         completed: &mut Vec<NodeId>,
+        terminal_tracker: &mut crate::eval::FinalPlanTracker,
         next_step_candidates: &mut Vec<NodeId>,
         next_turn_candidates: &mut Vec<NodeId>,
         defer_mid_turn: Option<&mut Vec<AcceptedMidTurn>>,
@@ -4927,49 +5106,60 @@ fn run_beam_pass_with_resources_inner(
         best_victory_clean_zero_cost: &mut bool,
         hp_target_reached: &mut bool,
     ) {
-        if !cand.is_terminal && !cand.turn_completed {
-            if let Some(buf) = defer_mid_turn {
-                let beam_score = cand
-                    .full_eval
-                    .as_ref()
-                    .map_or(cand.base_score, |f| f.beam_rank_score);
-                buf.push(AcceptedMidTurn {
-                    w_idx: w_idx as u16,
-                    potion_count: cand.potion_count.min(u8::MAX as u16) as u8,
-                    explicit_potion_count: cand.explicit_potion_count.min(u8::MAX as u16) as u8,
-                    c_idx: c_idx as u32,
-                    beam_score,
-                });
+        if cand.is_terminal {
+            let turn = cand.turn.clamp(i16::MIN as i32, i16::MAX as i32);
+            let optional_paid_potion_cost = cand
+                .optional_paid_potion_cost
+                .clamp(i16::MIN as i32, i16::MAX as i32)
+                as i16;
+            let potion_count = cand.potion_count.min(u8::MAX as u16) as u8;
+            let explicit_potion_count = cand.explicit_potion_count.min(u8::MAX as u16) as u8;
+            let optional_paid_potion_count =
+                cand.optional_paid_potion_count.min(u8::MAX as u16) as u8;
+            let ambergris_count = cand.ambergris_count.min(u8::MAX as u16) as u8;
+            let forced_ambergris_count = cand.forced_ambergris_count.min(u8::MAX as u16) as u8;
+            if !cand.fast_eval.won()
+                && terminal_tracker.can_fast_reject_non_victory(
+                    &cand.fast_eval,
+                    cand.action_count,
+                    cand.forced_used_mask,
+                    explicit_potion_count,
+                    optional_paid_potion_count,
+                    root_baseline,
+                )
+            {
                 return;
             }
-        }
-        let state_handle = if cand.is_terminal {
-            PackedHandle::default()
-        } else if cand.turn_completed {
-            let state_bytes = slab.get(cand.state_slab_idx, cand.state_off, cand.state_len);
-            *packed_state_bytes_total += state_bytes.len() as u64;
-            turn_arena.commit_slice(state_bytes)
-        } else {
-            PackedHandle {
-                slab: w_idx as u32,
-                offset: c_idx as u32,
-                len: 0,
-            }
-        };
-        let (choices_offset, choices_len) = arena.choices.extend_from_arena_slice(
-            staged_choices,
-            cand.choices_offset,
-            cand.choices_len,
-        );
-        let nid = push_worker_candidate_node(arena, cand, state_handle, choices_offset, choices_len);
-
-        if cand.is_terminal {
+            let rare = cand.rare_eval.unwrap_or_default();
+            let beam_rank_score = cand
+                .full_eval
+                .as_ref()
+                .map_or(cand.base_score, |f| f.beam_rank_score);
+            let (eval_cand, satisfies_hard) = terminal_tracker.evaluate_raw(
+                NodeId(0),
+                &cand.fast_eval,
+                rare,
+                cand.action_count,
+                turn,
+                potion_count,
+                explicit_potion_count,
+                optional_paid_potion_count,
+                optional_paid_potion_cost,
+                ambergris_count,
+                cand.forced_used_mask,
+                forced_ambergris_count,
+                cand.used_potion_slot_mask,
+                0,
+                beam_rank_score,
+                cand.state_hash,
+                root_baseline,
+            );
             if cand.fast_eval.won() {
                 *best_won_hp_lost = Some(match *best_won_hp_lost {
                     Some(cur) => cur.min(cand.fast_eval.cumulative_hp_lost as i32),
                     None => cand.fast_eval.cumulative_hp_lost as i32,
                 });
-                record_victory_and_tighten(
+                record_victory_and_tighten_precomputed(
                     root_baseline,
                     cert,
                     incumbent_table,
@@ -4982,16 +5172,28 @@ fn run_beam_pass_with_resources_inner(
                     cand.explicit_potion_count,
                     cand.optional_paid_potion_count,
                     cand.potion_strategic_cost,
-                    cand.optional_paid_potion_cost,
                     cand.forced_used_mask,
+                    eval_cand.net_persistent_hp_delta_centi,
+                    eval_cand.net_potion_opportunity_cost_centi,
+                    eval_cand.quality.strategic_hp_deficit,
                     has_victory,
                     best_victory_turn,
                     best_victory_key,
                     best_victory_clean_zero_cost,
                 );
-                if options.early_turn_scout_depth == 0
+                if !*hp_target_reached
+                    && options.early_turn_scout_depth == 0
                     && options.boss_tempo_scout_turns == 0
-                    && has_reached_acceptable_battle_hp_loss_node(root_baseline, policy, arena, nid)
+                    && has_reached_acceptable_battle_hp_loss_raw(
+                        root_baseline,
+                        policy,
+                        &cand.fast_eval,
+                        &rare,
+                        cand.action_count,
+                        cand.forced_used_mask,
+                        optional_paid_potion_count,
+                        explicit_potion_count,
+                    )
                     && (!options.allow_paid_optional_potions
                         || !PotionUsePolicy::can_any_paid_potion_improve_on(
                             true,
@@ -5009,8 +5211,59 @@ fn run_beam_pass_with_resources_inner(
                     *hp_target_reached = true;
                 }
             }
-            completed.push(nid);
-        } else if cand.turn_completed {
+            if terminal_tracker.would_improve(&eval_cand, satisfies_hard) {
+                let (choices_offset, choices_len) = arena.choices.extend_from_arena_slice(
+                    staged_choices,
+                    cand.choices_offset,
+                    cand.choices_len,
+                );
+                let nid = push_worker_candidate_node(
+                    arena,
+                    cand,
+                    PackedHandle::default(),
+                    choices_offset,
+                    choices_len,
+                );
+                terminal_tracker.record(nid, eval_cand, satisfies_hard);
+                completed.push(nid);
+            }
+            return;
+        }
+        if !cand.turn_completed {
+            if let Some(buf) = defer_mid_turn {
+                let beam_score = cand
+                    .full_eval
+                    .as_ref()
+                    .map_or(cand.base_score, |f| f.beam_rank_score);
+                buf.push(AcceptedMidTurn {
+                    w_idx: w_idx as u16,
+                    potion_count: cand.potion_count.min(u8::MAX as u16) as u8,
+                    explicit_potion_count: cand.explicit_potion_count.min(u8::MAX as u16) as u8,
+                    c_idx: c_idx as u32,
+                    beam_score,
+                });
+                return;
+            }
+        }
+        let state_handle = if cand.turn_completed {
+            let state_bytes = slab.get(cand.state_slab_idx, cand.state_off, cand.state_len);
+            *packed_state_bytes_total += state_bytes.len() as u64;
+            turn_arena.commit_slice(state_bytes)
+        } else {
+            PackedHandle {
+                slab: w_idx as u32,
+                offset: c_idx as u32,
+                len: 0,
+            }
+        };
+        let (choices_offset, choices_len) = arena.choices.extend_from_arena_slice(
+            staged_choices,
+            cand.choices_offset,
+            cand.choices_len,
+        );
+        let nid = push_worker_candidate_node(arena, cand, state_handle, choices_offset, choices_len);
+
+        if cand.turn_completed {
             next_turn_candidates.push(nid);
         } else {
             next_step_candidates.push(nid);
@@ -5024,6 +5277,7 @@ fn run_beam_pass_with_resources_inner(
          turn_arena: &mut MainStateArena,
          incumbent: &mut FrozenIncumbentBound,
          completed: &mut Vec<NodeId>,
+         terminal_tracker: &mut crate::eval::FinalPlanTracker,
          next_step_candidates: &mut Vec<NodeId>,
          next_turn_candidates: &mut Vec<NodeId>,
          mut defer_mid_turn: Option<&mut Vec<AcceptedMidTurn>>,
@@ -5159,6 +5413,7 @@ fn run_beam_pass_with_resources_inner(
                                     arena,
                                     turn_arena,
                                     completed,
+                                    terminal_tracker,
                                     next_step_candidates,
                                     next_turn_candidates,
                                     defer_mid_turn.as_deref_mut(),
@@ -5226,6 +5481,7 @@ fn run_beam_pass_with_resources_inner(
                                 arena,
                                 turn_arena,
                                 completed,
+                                terminal_tracker,
                                 next_step_candidates,
                                 next_turn_candidates,
                                 defer_mid_turn.as_deref_mut(),
@@ -5300,6 +5556,7 @@ fn run_beam_pass_with_resources_inner(
                                 arena,
                                 turn_arena,
                                 completed,
+                                terminal_tracker,
                                 next_step_candidates,
                                 next_turn_candidates,
                                 defer_mid_turn.as_deref_mut(),
@@ -5343,6 +5600,7 @@ fn run_beam_pass_with_resources_inner(
                             arena,
                             turn_arena,
                             completed,
+                            terminal_tracker,
                             next_step_candidates,
                             next_turn_candidates,
                             defer_mid_turn.as_deref_mut(),
@@ -5439,6 +5697,7 @@ fn run_beam_pass_with_resources_inner(
             turn_staging_arena,
             incumbent,
             &mut completed,
+            &mut terminal_tracker,
             &mut next_step_candidates,
             &mut turn_setup_ended_turn,
             None,
@@ -5646,6 +5905,7 @@ fn run_beam_pass_with_resources_inner(
                                 None => pv.final_fast.cumulative_hp_lost,
                             });
                         }
+                        terminal_tracker.observe_node(arena, final_nid, &root_baseline);
                         completed.push(final_nid);
                     }
                 }
@@ -5805,6 +6065,7 @@ fn run_beam_pass_with_resources_inner(
                 turn_staging_arena,
                 incumbent,
                 &mut completed,
+                &mut terminal_tracker,
                 &mut next_step_candidates,
                 &mut next_turn_candidates,
                 Some(accepted_mid_turn),
@@ -6106,6 +6367,7 @@ fn run_beam_pass_with_resources_inner(
                     turn_staging_arena,
                     incumbent,
                     &mut completed,
+                    &mut terminal_tracker,
                     &mut sp_mid_unused,
                     &mut next_turn_candidates,
                     None,
@@ -6410,6 +6672,7 @@ fn run_beam_pass_with_resources_inner(
                             None => pv.final_fast.cumulative_hp_lost,
                         });
                     }
+                    terminal_tracker.observe_node(arena, final_nid, &root_baseline);
                     completed.push(final_nid);
                 }
             }
@@ -7565,24 +7828,27 @@ fn run_boss_tempo_depth_first(
     })
 }
 
-fn has_reached_acceptable_battle_hp_loss_node(
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+fn has_reached_acceptable_battle_hp_loss_raw(
     root: &RootEvalBaseline,
     policy: &SearchPolicy,
-    arena: &NodeArena,
-    nid: NodeId,
+    f: &StoredFastEval,
+    rare: &RareNodeEval,
+    action_count: u16,
+    forced_used_mask: u64,
+    optional_paid_potion_count: u8,
+    explicit_potion_count: u8,
 ) -> bool {
-    let node = arena.get(nid);
-    let f = &node.fast_eval;
-    let rare = arena.rare_eval(nid);
     let complete_victory = crate::eval::RouteQualityPolicy::is_complete_victory(
-        node.action_count as usize,
+        action_count as usize,
         f.all_enemies_dead() || f.won(),
         f.player_dead(),
         f.projected_player_hp as i32,
     );
     let check_theft = policy.theft_policy == SolverTheftPolicy::PreserveResources;
     let all_forced_ok =
-        (node.forced_used_mask & root.all_forced_potion_mask) == root.all_forced_potion_mask;
+        (forced_used_mask & root.all_forced_potion_mask) == root.all_forced_potion_mask;
     root.can_stop_at_hp_target
         && complete_victory
         && !f.player_dead()
@@ -7592,10 +7858,30 @@ fn has_reached_acceptable_battle_hp_loss_node(
         && all_forced_ok
         && root.growth_target_satisfied(&rare.growth_rewards)
         && root.relic_targets_satisfied(&rare.relic_eval)
-        && node.optional_paid_potion_count == 0
+        && optional_paid_potion_count == 0
         && (root.effective_potion_policy != SolverPotionPolicy::RequireAtLeastOne
-            || (node.explicit_potion_count as usize) >= root.minimum_required_potion_uses)
+            || (explicit_potion_count as usize) >= root.minimum_required_potion_uses)
         && root.prior_battle_hp_lost + (f.cumulative_hp_lost as i32) <= policy.acceptable_battle_hp_loss
+}
+
+fn has_reached_acceptable_battle_hp_loss_node(
+    root: &RootEvalBaseline,
+    policy: &SearchPolicy,
+    arena: &NodeArena,
+    nid: NodeId,
+) -> bool {
+    let node = arena.get(nid);
+    let rare = arena.rare_eval(nid);
+    has_reached_acceptable_battle_hp_loss_raw(
+        root,
+        policy,
+        &node.fast_eval,
+        &rare,
+        node.action_count,
+        node.forced_used_mask,
+        node.optional_paid_potion_count,
+        node.explicit_potion_count,
+    )
 }
 
 fn has_reached_acceptable_battle_hp_loss(
@@ -8121,10 +8407,11 @@ fn solve_beam_or_portfolio(
     total_tt_pruned: &mut u64,
     total_incumbent_pruned: &mut u64,
     total_por_pruned: &mut u64,
+    resources: &mut PassResources,
 ) -> Result<BeamRunOutput, KernelError> {
     if !policy.use_beam_width_portfolio {
         let mut incumbent = FrozenIncumbentBound::default();
-        let out = run_beam_pass(
+        let out = run_beam_pass_with_resources(
             root,
             content,
             policy,
@@ -8137,6 +8424,7 @@ fn solve_beam_or_portfolio(
             progress_cb,
             PassSearchOptions::default(),
             None,
+            resources,
         )?;
         *total_expanded += out.expanded_nodes;
         *total_transitions += out.transition_count;
@@ -8198,7 +8486,7 @@ fn solve_beam_or_portfolio(
 
         let mut shared_incumbent = FrozenIncumbentBound::default();
         if cancel.load(Ordering::Relaxed) {
-            return run_beam_pass(
+            return run_beam_pass_with_resources(
                 root,
                 content,
                 policy,
@@ -8211,18 +8499,10 @@ fn solve_beam_or_portfolio(
                 progress_cb,
                 PassSearchOptions::default(),
                 None,
+                resources,
             );
         }
 
-        let dop = policy
-            .max_degree_of_parallelism
-            .clamp(1, crate::eval::weights::MAXIMUM_SEARCH_MAX_DEGREE_OF_PARALLELISM);
-        let worker_count = if dop > 1 && pool.is_some() { dop } else { 1 };
-        let mut resources = PassResources::acquire(
-            &root.static_ctx,
-            worker_count,
-            policy.transposition_entry_limit,
-        );
         let mut baseline_zero_potion: Option<BeamRunOutput> = None;
         let mut selected_best: Option<BeamRunOutput> = None;
 
@@ -8252,7 +8532,7 @@ fn solve_beam_or_portfolio(
             total_por_pruned,
             &mut baseline_zero_potion,
             &mut selected_best,
-            &mut resources,
+            resources,
         )?;
 
         let Some(stage1_out) = selected_best.as_ref() else {
@@ -8269,7 +8549,7 @@ fn solve_beam_or_portfolio(
                 progress_cb,
                 PassSearchOptions::default(),
                 None,
-                &mut resources,
+                resources,
             );
         };
         let stage1_clean = stage1_out.won
@@ -8336,7 +8616,7 @@ fn solve_beam_or_portfolio(
                 total_por_pruned,
                 &mut baseline_zero_potion,
                 &mut selected_best,
-                &mut resources,
+                resources,
             )?;
 
             let stage2_out = selected_best.as_ref().expect("Stage 2 produced no output");
@@ -8407,7 +8687,7 @@ fn solve_beam_or_portfolio(
                     total_por_pruned,
                     &mut baseline_zero_potion,
                     &mut selected_best,
-                    &mut resources,
+                    resources,
                 )?;
             }
         }
@@ -8430,24 +8710,9 @@ fn solve_beam_or_portfolio(
     let best_incumbent_target_hit: parking_lot::Mutex<bool> = parking_lot::Mutex::new(false);
     let pass_error: parking_lot::Mutex<Option<KernelError>> = parking_lot::Mutex::new(None);
 
-    let run_member_cb = |member_profile: &SolverSearchProfile,
-                         cb: Option<&(dyn Fn(&SearchProgress) + Sync)>| {
-        let m_start = Instant::now();
-        let mut member_incumbent = FrozenIncumbentBound::default();
-        let res = run_beam_pass(
-            root,
-            content,
-            policy,
-            member_profile,
-            cert,
-            incumbent_table,
-            &mut member_incumbent,
-            pool,
-            cancel,
-            cb,
-            PassSearchOptions::default(),
-            None,
-        );
+    let record_member_res = |beam_width: usize,
+                             m_start: Instant,
+                             res: Result<BeamRunOutput, KernelError>| {
         match res {
             Ok(out) => {
                 {
@@ -8462,7 +8727,7 @@ fn solve_beam_or_portfolio(
                                 && cert.healing_certified,
                             elapsed_ms: m_start.elapsed().as_millis() as u64,
                             expanded_nodes: out.expanded_nodes,
-                            beam_width: member_profile.beam_width,
+                            beam_width,
                         });
                     }
                 }
@@ -8550,7 +8815,25 @@ fn solve_beam_or_portfolio(
             profile,
             policy.portfolio_scheduling_mode,
             policy.max_degree_of_parallelism,
-            |member_profile| run_member_cb(member_profile, None),
+            |member_profile| {
+                let m_start = Instant::now();
+                let mut member_incumbent = FrozenIncumbentBound::default();
+                let res = run_beam_pass(
+                    root,
+                    content,
+                    policy,
+                    member_profile,
+                    cert,
+                    incumbent_table,
+                    &mut member_incumbent,
+                    pool,
+                    cancel,
+                    None,
+                    PassSearchOptions::default(),
+                    None,
+                );
+                record_member_res(member_profile.beam_width, m_start, res)
+            },
             compare_fn,
             reject_fn,
         )
@@ -8559,7 +8842,26 @@ fn solve_beam_or_portfolio(
             &specs,
             profile.max_expanded_nodes,
             profile,
-            |member_profile| run_member_cb(member_profile, progress_cb),
+            |member_profile| {
+                let m_start = Instant::now();
+                let mut member_incumbent = FrozenIncumbentBound::default();
+                let res = run_beam_pass_with_resources(
+                    root,
+                    content,
+                    policy,
+                    member_profile,
+                    cert,
+                    incumbent_table,
+                    &mut member_incumbent,
+                    pool,
+                    cancel,
+                    progress_cb,
+                    PassSearchOptions::default(),
+                    None,
+                    resources,
+                );
+                record_member_res(member_profile.beam_width, m_start, res)
+            },
             compare_fn,
             reject_fn,
         )
@@ -8594,13 +8896,42 @@ impl CombatSearchCoordinator {
         let need_clutter_indices = !root.static_ctx.has_root_clutter_indices
             && !root.cards.is_empty()
             && root.cards.len() <= u16::MAX as usize;
+        let need_initial_cards = root.static_ctx.root_combat_delta_len == 0
+            && !root.cards.is_empty()
+            && root.cards.len() <= 512
+            && root.cards_are_contiguous();
+        let need_card_hook_mask = (root.static_ctx.root_combat_delta_len > 0 || need_initial_cards)
+            && !root.static_ctx.has_root_card_hook_mask
+            && content.hook_mask_tables().is_some();
+        let need_handle_layout = (!root.handle_layout.cards && root.cards_are_contiguous())
+            || (!root.handle_layout.creatures && root.creatures_are_contiguous());
+        let need_extra_clutter_clear = root.extra_clutter_hint.0
+            && !root.cards.is_empty()
+            && root.cards.len() <= u16::MAX as usize
+            && (!root.static_ctx.has_root_clutter_indices
+                || root.cards.len() == root.static_ctx.root_initial_cards_len);
+        let need_turn_cache = !root.semantic_history.turn_cache.valid;
+        let need_eot_clear = root.eot_card_cleanup_dirty.0
+            && !root.cards.iter().any(|c| {
+                BattleState::card_has_eot_cleanup_state(c, &root.card_extensions)
+            });
         let root = if !root.static_ctx.compact_turn_history
             || !root.static_ctx.has_root_rngs
             || !root.static_ctx.has_root_relics
             || need_card_floors
             || need_clutter_indices
+            || need_initial_cards
+            || need_card_hook_mask
+            || need_handle_layout
+            || need_extra_clutter_clear
+            || need_turn_cache
+            || need_eot_clear
         {
             compacted_root = root.clone();
+            if need_eot_clear {
+                compacted_root.eot_card_cleanup_dirty =
+                    sts2_kernel::state::EotCleanupDirtyFlag(false);
+            }
             let mut ctx = (*root.static_ctx).clone();
             ctx.compact_turn_history = true;
             if !ctx.has_root_rngs {
@@ -8629,6 +8960,38 @@ impl CombatSearchCoordinator {
                     });
                 }
             }
+            if ctx.has_root_clutter_indices
+                && compacted_root.cards.len() == ctx.root_initial_cards_len
+            {
+                compacted_root.extra_clutter_hint = sts2_kernel::state::ExtraClutterHintFlag(false);
+            }
+            ctx.root_deck_contiguous = ctx
+                .root_deck_cards
+                .iter()
+                .enumerate()
+                .all(|(i, c)| c.handle.0 == (i + 1) as u32);
+            if ctx.root_combat_delta_len == 0 && !root.cards.is_empty() && root.cards.len() <= 512 {
+                ctx.set_root_initial_cards(&root.cards, &root.player);
+                if ctx.root_combat_delta_len > 0 {
+                    compacted_root.card_meta_dirty = sts2_kernel::state::CardMetaDirtyMask::CLEAN;
+                }
+            }
+            if ctx.root_combat_delta_len > 0 && !ctx.has_root_card_hook_mask {
+                if let Some(tables) = content.hook_mask_tables() {
+                    ctx.set_root_card_hook_mask(|c| {
+                        !c.removed_from_state
+                            && (tables.card_has_hook(c.id)
+                                || c.ext_index.is_some()
+                                || (!tables.afflictions_self_card_entered_only
+                                    && c.affliction.is_some()))
+                    });
+                }
+            }
+            if !compacted_root.semantic_history.turn_cache.valid {
+                let tk = compacted_root.current_turn_key();
+                compacted_root.semantic_history.refresh_turn_cache(&tk);
+            }
+            compacted_root.recompute_handle_layout();
             compacted_root.static_ctx = Arc::new(ctx);
             &compacted_root
         } else {
@@ -8642,6 +9005,16 @@ impl CombatSearchCoordinator {
             .max_degree_of_parallelism
             .clamp(1, crate::eval::weights::MAXIMUM_SEARCH_MAX_DEGREE_OF_PARALLELISM);
         let pool_ref = shared_search_pool(dop);
+        let worker_count = if dop > 1 && pool_ref.is_some() {
+            dop
+        } else {
+            1
+        };
+        let mut resources = PassResources::acquire(
+            &root.static_ctx,
+            worker_count,
+            policy.transposition_entry_limit,
+        );
 
         let base_profile = SolverSearchProfile {
             beam_width: policy.beam_width.max(1),
@@ -8719,6 +9092,7 @@ impl CombatSearchCoordinator {
                         &mut total_tt_pruned,
                         &mut total_incumbent_pruned,
                         &mut total_por_pruned,
+                        &mut resources,
                     )?;
                     if is_better_run_output(&exp_out, &beam_out) {
                         exp_out
@@ -8743,6 +9117,7 @@ impl CombatSearchCoordinator {
                     &mut total_tt_pruned,
                     &mut total_incumbent_pruned,
                     &mut total_por_pruned,
+                    &mut resources,
                 )?
             }
         } else if policy.adaptive_novelty_refinement {
@@ -8763,6 +9138,7 @@ impl CombatSearchCoordinator {
                 &mut total_tt_pruned,
                 &mut total_incumbent_pruned,
                 &mut total_por_pruned,
+                &mut resources,
             )?;
             let baseline_ms = b_start.elapsed().as_millis() as u64;
             let elapsed_ms = started.elapsed().as_millis() as u64;
@@ -8824,6 +9200,7 @@ impl CombatSearchCoordinator {
                 &mut total_tt_pruned,
                 &mut total_incumbent_pruned,
                 &mut total_por_pruned,
+                &mut resources,
             )?
         };
 
@@ -8846,7 +9223,7 @@ impl CombatSearchCoordinator {
             scout_profile.max_expanded_nodes = base_profile.max_expanded_nodes.min(150_000);
             scout_profile.soft_time_budget_ms = etc_remaining_ms().max(1);
             let mut etc_incumbent = FrozenIncumbentBound::default();
-            if let Ok(scout) = run_beam_pass(
+            if let Ok(scout) = run_beam_pass_with_resources(
                 root,
                 content,
                 policy,
@@ -8862,6 +9239,7 @@ impl CombatSearchCoordinator {
                     ..Default::default()
                 },
                 None,
+                &mut resources,
             ) {
                 total_expanded += scout.expanded_nodes;
                 total_transitions += scout.transition_count;
@@ -8898,7 +9276,7 @@ impl CombatSearchCoordinator {
                         cont_profile.max_expanded_nodes =
                             cont_budget.min(base_profile.max_expanded_nodes);
                         cont_profile.soft_time_budget_ms = rem_ms;
-                        if let Ok(cont) = run_beam_pass(
+                        if let Ok(cont) = run_beam_pass_with_resources(
                             root,
                             content,
                             policy,
@@ -8911,6 +9289,7 @@ impl CombatSearchCoordinator {
                             None,
                             PassSearchOptions::default(),
                             Some(&cand.actions),
+                            &mut resources,
                         ) {
                             cont_budget = cont_budget.saturating_sub(cont.expanded_nodes);
                             total_expanded += cont.expanded_nodes;
@@ -8942,7 +9321,7 @@ impl CombatSearchCoordinator {
                 policy.time_budget_ms.max(1000),
             );
             let mut tempo_incumbent = FrozenIncumbentBound::default();
-            if let Ok(scout) = run_beam_pass(
+            if let Ok(scout) = run_beam_pass_with_resources(
                 root,
                 content,
                 policy,
@@ -8958,6 +9337,7 @@ impl CombatSearchCoordinator {
                     ..Default::default()
                 },
                 None,
+                &mut resources,
             ) {
                 total_expanded += scout.expanded_nodes;
                 total_transitions += scout.transition_count;
@@ -8970,7 +9350,7 @@ impl CombatSearchCoordinator {
                     if cancel.load(Ordering::Relaxed) {
                         break;
                     }
-                    if let Ok(cont) = run_beam_pass(
+                    if let Ok(cont) = run_beam_pass_with_resources(
                         root,
                         content,
                         policy,
@@ -8983,6 +9363,7 @@ impl CombatSearchCoordinator {
                         None,
                         PassSearchOptions::default(),
                         Some(&prefix.actions),
+                        &mut resources,
                     ) {
                         total_expanded += cont.expanded_nodes;
                         total_transitions += cont.transition_count;

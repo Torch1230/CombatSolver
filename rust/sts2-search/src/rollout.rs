@@ -16,14 +16,18 @@ use std::time::Instant;
 use sts2_kernel::ordering::{
     resolve_local_energy_cost_card, resolve_local_star_cost_card,
 };
-use sts2_kernel::content_dispatch::CachedHookListener;
-use sts2_kernel::state::{BattleState, CardHandle, CreatureHandle, RootStaticContext};
+use sts2_kernel::content_dispatch::{
+    CachedHookListener, CardRolloutProfile, GenericChoiceQualityEntry,
+};
+use sts2_kernel::state::{
+    hot_keys, BattleState, CardHandle, CreatureHandle, RootStaticContext,
+};
 use sts2_kernel::{
     rollout_meta_flags as mf, rollout_op_flags as op, CombatEngine, ContentDispatcher, StepOutcome,
 };
 use sts2_types::{
-    CardId, CardKeywords, CardRarity, CardStaticFlags, CardTags, CardType, Dec, HookSlot,
-    MonsterId, OrbId, PileType, PlayerTurnPhase, PowerId, PowerType, TargetType,
+    AfflictionId, CardId, CardKeywords, CardRarity, CardStaticFlags, CardTags, CardType, Dec,
+    HookSlot, MonsterId, OrbId, PileType, PlayerTurnPhase, PowerId, PowerType, TargetType,
 };
 
 const MAX_ROLLOUT_ACTIONS_PER_TURN: usize = 24;
@@ -260,12 +264,20 @@ pub(crate) struct ChoiceProbeResult {
 }
 
 const CHOICE_PROBE_SHARDS: usize = 256;
-const CHOICE_PROBE_SETS_PER_SHARD: usize = 512;
+const CHOICE_PROBE_SETS_PER_SHARD: usize = 1024;
 const CHOICE_PROBE_WAYS: usize = 4;
 const CHOICE_PROBE_SLOTS_PER_SHARD: usize = CHOICE_PROBE_SETS_PER_SHARD * CHOICE_PROBE_WAYS;
 const CHOICE_PROBE_L1_SETS: usize = 512;
 const CHOICE_PROBE_L1_WAYS: usize = 2;
 const CHOICE_PROBE_L1_SLOTS: usize = CHOICE_PROBE_L1_SETS * CHOICE_PROBE_L1_WAYS;
+
+#[inline(always)]
+fn choice_probe_slot_tag(exact_state_hash: StateHash, cfg_hash: u64, epoch: u32) -> u64 {
+    let fp32 = ((exact_state_hash.0 >> 64) as u32)
+        ^ (cfg_hash as u32)
+        ^ ((cfg_hash >> 32) as u32);
+    (fp32 as u64) | ((epoch as u64) << 32)
+}
 const CHOICE_PROBE_FLAG_SOME: u8 = 1 << 0;
 const CHOICE_PROBE_FLAG_NONE: u8 = 1 << 1;
 const CHOICE_PROBE_FLAG_VICTORY: u8 = 1 << 2;
@@ -283,8 +295,7 @@ fn mix_cfg_u64(acc: u64, v: u64) -> u64 {
 #[inline]
 fn choice_probe_cfg_hash(profile: &SolverSearchProfile, max_turns_ahead: u8) -> u64 {
     let flags_word = ((max_turns_ahead as u64) << 4)
-        | (u64::from(profile.base_score_only) << 12)
-        | (u64::from(profile.boss_tempo_hp_pricing) << 13);
+        | (u64::from(profile.base_score_only) << 12);
     let (pert_term, pert_scale) = match profile.beam_weight_perturbation {
         None => (0u64, 0u64),
         Some(p) => {
@@ -389,19 +400,36 @@ impl ChoiceProbeSlot {
     }
 }
 
-struct ChoiceProbeShard {
-    slots: Option<Box<[ChoiceProbeSlot; CHOICE_PROBE_SLOTS_PER_SHARD]>>,
-    victim_cursor: [u8; CHOICE_PROBE_SETS_PER_SHARD],
+struct ChoiceProbeShardTable {
+    tags: Box<[[u64; CHOICE_PROBE_WAYS]; CHOICE_PROBE_SETS_PER_SHARD]>,
+    slots: Box<[ChoiceProbeSlot; CHOICE_PROBE_SLOTS_PER_SHARD]>,
+    victim_cursor: Box<[u8; CHOICE_PROBE_SETS_PER_SHARD]>,
 }
 
-impl Default for ChoiceProbeShard {
-    #[inline]
-    fn default() -> Self {
+impl ChoiceProbeShardTable {
+    #[cold]
+    #[inline(never)]
+    fn alloc() -> Self {
         Self {
-            slots: None,
-            victim_cursor: [0; CHOICE_PROBE_SETS_PER_SHARD],
+            tags: vec![[0u64; CHOICE_PROBE_WAYS]; CHOICE_PROBE_SETS_PER_SHARD]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
+            slots: vec![ChoiceProbeSlot::EMPTY; CHOICE_PROBE_SLOTS_PER_SHARD]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
+            victim_cursor: vec![0u8; CHOICE_PROBE_SETS_PER_SHARD]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
         }
     }
+}
+
+#[derive(Default)]
+struct ChoiceProbeShard {
+    table: Option<ChoiceProbeShardTable>,
 }
 
 pub(crate) struct ChoiceProbeCache {
@@ -433,13 +461,14 @@ impl ChoiceProbeCache {
             next = 1;
             for shard in self.shards.iter() {
                 let mut s = shard.lock();
-                if let Some(slots) = s.slots.as_mut() {
-                    for slot in slots.iter_mut() {
+                if let Some(tbl) = s.table.as_mut() {
+                    tbl.tags.fill([0u64; CHOICE_PROBE_WAYS]);
+                    for slot in tbl.slots.iter_mut() {
                         slot.flags = 0;
                         slot.epoch = 0;
                     }
+                    tbl.victim_cursor.fill(0);
                 }
-                s.victim_cursor.fill(0);
             }
         }
         self.epoch.store(next, Ordering::Relaxed);
@@ -454,6 +483,77 @@ impl ChoiceProbeCache {
         (shard_idx, set_idx)
     }
 
+    #[inline(always)]
+    fn table_get(
+        tbl: &ChoiceProbeShardTable,
+        set_idx: usize,
+        want_tag: u64,
+        exact_state_hash: StateHash,
+        cfg_hash: u64,
+        epoch: u32,
+    ) -> Option<Option<CachedProbeEntry>> {
+        let tag_row = tbl.tags[set_idx];
+        let base = set_idx * CHOICE_PROBE_WAYS;
+        for w in 0..CHOICE_PROBE_WAYS {
+            if tag_row[w] == want_tag {
+                let s = &tbl.slots[base + w];
+                if s.state_hash == exact_state_hash
+                    && s.epoch == epoch
+                    && s.flags != 0
+                    && s.cfg_hash == cfg_hash
+                {
+                    if (s.flags & CHOICE_PROBE_FLAG_NONE) != 0 {
+                        return Some(None);
+                    }
+                    return Some(Some(s.into_entry()));
+                }
+            }
+        }
+        None
+    }
+
+    #[inline(always)]
+    fn table_insert(
+        tbl: &mut ChoiceProbeShardTable,
+        set_idx: usize,
+        want_tag: u64,
+        exact_state_hash: StateHash,
+        cfg_hash: u64,
+        epoch: u32,
+        slot: ChoiceProbeSlot,
+    ) {
+        debug_assert_ne!(slot.flags, 0);
+        let base = set_idx * CHOICE_PROBE_WAYS;
+        let tag_row = &mut tbl.tags[set_idx];
+        let slots = &mut tbl.slots;
+        let mut empty_way: Option<usize> = None;
+        for w in 0..CHOICE_PROBE_WAYS {
+            let t = tag_row[w];
+            if t == want_tag {
+                let cur = &slots[base + w];
+                if cur.epoch == epoch
+                    && cur.flags != 0
+                    && cur.cfg_hash == cfg_hash
+                    && cur.state_hash == exact_state_hash
+                {
+                    slots[base + w] = slot;
+                    return;
+                }
+            } else if empty_way.is_none() && (t >> 32) as u32 != epoch {
+                empty_way = Some(w);
+            }
+        }
+        let way = if let Some(w) = empty_way {
+            w
+        } else {
+            let w = usize::from(tbl.victim_cursor[set_idx]) & (CHOICE_PROBE_WAYS - 1);
+            tbl.victim_cursor[set_idx] = tbl.victim_cursor[set_idx].wrapping_add(1);
+            w
+        };
+        tag_row[way] = want_tag;
+        slots[base + way] = slot;
+    }
+
     #[inline]
     pub(crate) fn get(
         &self,
@@ -462,25 +562,10 @@ impl ChoiceProbeCache {
     ) -> Option<Option<CachedProbeEntry>> {
         let epoch = self.epoch.load(Ordering::Relaxed);
         let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let want_tag = choice_probe_slot_tag(exact_state_hash, cfg_hash, epoch);
         let shard = self.shards[shard_idx].lock();
-        let Some(slots) = shard.slots.as_ref() else {
-            return None;
-        };
-        let base = set_idx * CHOICE_PROBE_WAYS;
-        for w in 0..CHOICE_PROBE_WAYS {
-            let s = &slots[base + w];
-            if s.state_hash == exact_state_hash
-                && s.epoch == epoch
-                && s.flags != 0
-                && s.cfg_hash == cfg_hash
-            {
-                if (s.flags & CHOICE_PROBE_FLAG_NONE) != 0 {
-                    return Some(None);
-                }
-                return Some(Some(s.into_entry()));
-            }
-        }
-        None
+        let tbl = shard.table.as_ref()?;
+        Self::table_get(tbl, set_idx, want_tag, exact_state_hash, cfg_hash, epoch)
     }
 
     #[inline]
@@ -492,33 +577,11 @@ impl ChoiceProbeCache {
     ) {
         let epoch = self.epoch.load(Ordering::Relaxed);
         let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let want_tag = choice_probe_slot_tag(exact_state_hash, cfg_hash, epoch);
         let slot = Self::build_slot(exact_state_hash, cfg_hash, epoch, res);
         let shard = &mut *self.shards[shard_idx].lock();
-        let slots = shard
-            .slots
-            .get_or_insert_with(|| Box::new([ChoiceProbeSlot::EMPTY; CHOICE_PROBE_SLOTS_PER_SHARD]));
-        let base = set_idx * CHOICE_PROBE_WAYS;
-        for w in 0..CHOICE_PROBE_WAYS {
-            let cur = &slots[base + w];
-            if cur.epoch == epoch
-                && cur.flags != 0
-                && cur.cfg_hash == cfg_hash
-                && cur.state_hash == exact_state_hash
-            {
-                slots[base + w] = slot;
-                return;
-            }
-        }
-        for w in 0..CHOICE_PROBE_WAYS {
-            let cur = &slots[base + w];
-            if cur.epoch != epoch || cur.flags == 0 {
-                slots[base + w] = slot;
-                return;
-            }
-        }
-        let way = usize::from(shard.victim_cursor[set_idx]) & (CHOICE_PROBE_WAYS - 1);
-        shard.victim_cursor[set_idx] = shard.victim_cursor[set_idx].wrapping_add(1);
-        slots[base + way] = slot;
+        let tbl = shard.table.get_or_insert_with(ChoiceProbeShardTable::alloc);
+        Self::table_insert(tbl, set_idx, want_tag, exact_state_hash, cfg_hash, epoch, slot);
     }
 
     #[inline]
@@ -529,25 +592,10 @@ impl ChoiceProbeCache {
     ) -> Option<Option<CachedProbeEntry>> {
         let epoch = *self.epoch.get_mut();
         let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let want_tag = choice_probe_slot_tag(exact_state_hash, cfg_hash, epoch);
         let shard = self.shards[shard_idx].get_mut();
-        let Some(slots) = shard.slots.as_ref() else {
-            return None;
-        };
-        let base = set_idx * CHOICE_PROBE_WAYS;
-        for w in 0..CHOICE_PROBE_WAYS {
-            let s = &slots[base + w];
-            if s.state_hash == exact_state_hash
-                && s.epoch == epoch
-                && s.flags != 0
-                && s.cfg_hash == cfg_hash
-            {
-                if (s.flags & CHOICE_PROBE_FLAG_NONE) != 0 {
-                    return Some(None);
-                }
-                return Some(Some(s.into_entry()));
-            }
-        }
-        None
+        let tbl = shard.table.as_ref()?;
+        Self::table_get(tbl, set_idx, want_tag, exact_state_hash, cfg_hash, epoch)
     }
 
     #[inline]
@@ -559,33 +607,11 @@ impl ChoiceProbeCache {
     ) {
         let epoch = *self.epoch.get_mut();
         let (shard_idx, set_idx) = Self::slot_indices(exact_state_hash, cfg_hash);
+        let want_tag = choice_probe_slot_tag(exact_state_hash, cfg_hash, epoch);
         let slot = Self::build_slot(exact_state_hash, cfg_hash, epoch, res);
         let shard = self.shards[shard_idx].get_mut();
-        let slots = shard
-            .slots
-            .get_or_insert_with(|| Box::new([ChoiceProbeSlot::EMPTY; CHOICE_PROBE_SLOTS_PER_SHARD]));
-        let base = set_idx * CHOICE_PROBE_WAYS;
-        for w in 0..CHOICE_PROBE_WAYS {
-            let cur = &slots[base + w];
-            if cur.epoch == epoch
-                && cur.flags != 0
-                && cur.cfg_hash == cfg_hash
-                && cur.state_hash == exact_state_hash
-            {
-                slots[base + w] = slot;
-                return;
-            }
-        }
-        for w in 0..CHOICE_PROBE_WAYS {
-            let cur = &slots[base + w];
-            if cur.epoch != epoch || cur.flags == 0 {
-                slots[base + w] = slot;
-                return;
-            }
-        }
-        let way = usize::from(shard.victim_cursor[set_idx]) & (CHOICE_PROBE_WAYS - 1);
-        shard.victim_cursor[set_idx] = shard.victim_cursor[set_idx].wrapping_add(1);
-        slots[base + way] = slot;
+        let tbl = shard.table.get_or_insert_with(ChoiceProbeShardTable::alloc);
+        Self::table_insert(tbl, set_idx, want_tag, exact_state_hash, cfg_hash, epoch, slot);
     }
 
     #[inline(always)]
@@ -647,45 +673,50 @@ impl ChoiceProbeCache {
         cfg_hash: u64,
         res: Option<CachedProbeEntry>,
     ) {
-        let l1_slots = l1.slots.get_or_insert_with(|| {
-            vec![ChoiceProbeSlot::EMPTY; CHOICE_PROBE_L1_SLOTS]
-                .into_boxed_slice()
-                .try_into()
-                .unwrap_or_else(|_| unreachable!())
-        });
+        let tbl = l1.table.get_or_insert_with(ChoiceProbeL1Table::alloc);
         if l1.epoch != epoch {
-            if epoch == 1 && l1.epoch == u32::MAX {
-                for slot in l1_slots.iter_mut() {
+            if epoch < l1.epoch {
+                tbl.tags.fill([0u64; CHOICE_PROBE_L1_WAYS]);
+                for slot in tbl.slots.iter_mut() {
                     slot.flags = 0;
                     slot.epoch = 0;
                 }
-                l1.cursor.fill(0);
+                tbl.cursor.fill(0);
             }
             l1.epoch = epoch;
         }
         let set_idx = Self::l1_set_index(exact_state_hash, cfg_hash);
+        let want_tag = choice_probe_slot_tag(exact_state_hash, cfg_hash, epoch);
         let base = set_idx * CHOICE_PROBE_L1_WAYS;
         let slot = Self::build_slot(exact_state_hash, cfg_hash, epoch, res);
+        debug_assert_ne!(slot.flags, 0);
+        let tag_row = &mut tbl.tags[set_idx];
+        let l1_slots = &mut tbl.slots;
+        let mut empty_way: Option<usize> = None;
         for w in 0..CHOICE_PROBE_L1_WAYS {
-            let cur = &l1_slots[base + w];
-            if cur.epoch == epoch
-                && cur.flags != 0
-                && cur.cfg_hash == cfg_hash
-                && cur.state_hash == exact_state_hash
-            {
-                l1_slots[base + w] = slot;
-                return;
+            let t = tag_row[w];
+            if t == want_tag {
+                let cur = &l1_slots[base + w];
+                if cur.epoch == epoch
+                    && cur.flags != 0
+                    && cur.cfg_hash == cfg_hash
+                    && cur.state_hash == exact_state_hash
+                {
+                    l1_slots[base + w] = slot;
+                    return;
+                }
+            } else if empty_way.is_none() && (t >> 32) as u32 != epoch {
+                empty_way = Some(w);
             }
         }
-        for w in 0..CHOICE_PROBE_L1_WAYS {
-            let cur = &l1_slots[base + w];
-            if cur.epoch != epoch || cur.flags == 0 {
-                l1_slots[base + w] = slot;
-                return;
-            }
-        }
-        let way = usize::from(l1.cursor[set_idx]) & (CHOICE_PROBE_L1_WAYS - 1);
-        l1.cursor[set_idx] = l1.cursor[set_idx].wrapping_add(1);
+        let way = if let Some(w) = empty_way {
+            w
+        } else {
+            let w = usize::from(tbl.cursor[set_idx]) & (CHOICE_PROBE_L1_WAYS - 1);
+            tbl.cursor[set_idx] = tbl.cursor[set_idx].wrapping_add(1);
+            w
+        };
+        tag_row[way] = want_tag;
         l1_slots[base + way] = slot;
     }
 
@@ -700,35 +731,26 @@ impl ChoiceProbeCache {
             return self.get(exact_state_hash, cfg_hash);
         }
         let epoch = self.epoch.load(Ordering::Relaxed);
-        let l1_slots = l1.slots.get_or_insert_with(|| {
-            vec![ChoiceProbeSlot::EMPTY; CHOICE_PROBE_L1_SLOTS]
-                .into_boxed_slice()
-                .try_into()
-                .unwrap_or_else(|_| unreachable!())
-        });
-        if l1.epoch != epoch {
-            if epoch == 1 && l1.epoch == u32::MAX {
-                for slot in l1_slots.iter_mut() {
-                    slot.flags = 0;
-                    slot.epoch = 0;
-                }
-                l1.cursor.fill(0);
-            }
-            l1.epoch = epoch;
-        } else {
-            let set_idx = Self::l1_set_index(exact_state_hash, cfg_hash);
-            let base = set_idx * CHOICE_PROBE_L1_WAYS;
-            for w in 0..CHOICE_PROBE_L1_WAYS {
-                let s = &l1_slots[base + w];
-                if s.state_hash == exact_state_hash
-                    && s.epoch == epoch
-                    && s.flags != 0
-                    && s.cfg_hash == cfg_hash
-                {
-                    if (s.flags & CHOICE_PROBE_FLAG_NONE) != 0 {
-                        return Some(None);
+        if l1.epoch == epoch {
+            if let Some(tbl) = l1.table.as_ref() {
+                let set_idx = Self::l1_set_index(exact_state_hash, cfg_hash);
+                let want_tag = choice_probe_slot_tag(exact_state_hash, cfg_hash, epoch);
+                let tag_row = tbl.tags[set_idx];
+                let base = set_idx * CHOICE_PROBE_L1_WAYS;
+                for w in 0..CHOICE_PROBE_L1_WAYS {
+                    if tag_row[w] == want_tag {
+                        let s = &tbl.slots[base + w];
+                        if s.state_hash == exact_state_hash
+                            && s.epoch == epoch
+                            && s.flags != 0
+                            && s.cfg_hash == cfg_hash
+                        {
+                            if (s.flags & CHOICE_PROBE_FLAG_NONE) != 0 {
+                                return Some(None);
+                            }
+                            return Some(Some(s.into_entry()));
+                        }
                     }
-                    return Some(Some(s.into_entry()));
                 }
             }
         }
@@ -806,8 +828,7 @@ const ROLLOUT_PILOT_LINEAR_ADJ: u8 = 1 << 2;
 #[inline]
 fn turn_rollout_cfg_hash(profile: &SolverSearchProfile, horizon_turns: usize) -> u64 {
     let flags_word = (horizon_turns as u64)
-        | (u64::from(profile.base_score_only) << 16)
-        | (u64::from(profile.boss_tempo_hp_pricing) << 17);
+        | (u64::from(profile.base_score_only) << 16);
     let (pert_term, pert_scale) = match profile.beam_weight_perturbation {
         None => (0u64, 0u64),
         Some(p) => {
@@ -1136,20 +1157,45 @@ pub(crate) struct PlayableRolloutCard {
     is_retained: bool,
 }
 
+struct ChoiceProbeL1Table {
+    tags: Box<[[u64; CHOICE_PROBE_L1_WAYS]; CHOICE_PROBE_L1_SETS]>,
+    slots: Box<[ChoiceProbeSlot; CHOICE_PROBE_L1_SLOTS]>,
+    cursor: Box<[u8; CHOICE_PROBE_L1_SETS]>,
+}
+
+impl ChoiceProbeL1Table {
+    #[cold]
+    #[inline(never)]
+    fn alloc() -> Self {
+        Self {
+            tags: vec![[0u64; CHOICE_PROBE_L1_WAYS]; CHOICE_PROBE_L1_SETS]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
+            slots: vec![ChoiceProbeSlot::EMPTY; CHOICE_PROBE_L1_SLOTS]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
+            cursor: vec![0u8; CHOICE_PROBE_L1_SETS]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
+        }
+    }
+}
+
 pub(crate) struct ChoiceProbeL1 {
     pub(crate) use_l1: bool,
-    slots: Option<Box<[ChoiceProbeSlot; CHOICE_PROBE_L1_SLOTS]>>,
+    table: Option<ChoiceProbeL1Table>,
     epoch: u32,
-    cursor: [u8; CHOICE_PROBE_L1_SETS],
 }
 
 impl ChoiceProbeL1 {
     pub(crate) fn new() -> Self {
         Self {
             use_l1: false,
-            slots: None,
+            table: None,
             epoch: 0,
-            cursor: [0; CHOICE_PROBE_L1_SETS],
         }
     }
 }
@@ -1165,6 +1211,7 @@ pub(crate) struct ChoiceProbeWorkspace {
     pub(crate) playable_buf: Vec<PlayableRolloutCard>,
     pub(crate) hand_buf: Vec<CardHandle>,
     pub(crate) seen_keys: Vec<RolloutDedupKey>,
+    pub(crate) choice_scored_buf: Vec<(usize, i32, u32)>,
     pub(crate) l1: ChoiceProbeL1,
 }
 
@@ -1181,6 +1228,7 @@ impl ChoiceProbeWorkspace {
             playable_buf: Vec::with_capacity(16),
             hand_buf: Vec::with_capacity(16),
             seen_keys: Vec::with_capacity(16),
+            choice_scored_buf: Vec::with_capacity(32),
             l1: ChoiceProbeL1::new(),
         }
     }
@@ -1200,6 +1248,7 @@ pub(crate) struct RolloutWorkspace {
     pub(crate) playable_buf: Vec<PlayableRolloutCard>,
     pub(crate) hand_buf: Vec<CardHandle>,
     pub(crate) seen_keys: Vec<RolloutDedupKey>,
+    pub(crate) choice_scored_buf: Vec<(usize, i32, u32)>,
     pub(crate) results_buf: Vec<(usize, Option<RolloutResult>)>,
 }
 
@@ -1225,9 +1274,20 @@ impl RolloutWorkspace {
             playable_buf: Vec::with_capacity(16),
             hand_buf: Vec::with_capacity(16),
             seen_keys: Vec::with_capacity(16),
+            choice_scored_buf: Vec::with_capacity(32),
             results_buf: Vec::with_capacity(32),
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct FastEnemySlot {
+    handle: CreatureHandle,
+    hp: i32,
+    eff_hp: i32,
+    incoming: i32,
+    target_bonus: i32,
+    vuln: bool,
 }
 
 struct FastTurnContext {
@@ -1238,25 +1298,89 @@ struct FastTurnContext {
     player_dex: i32,
     player_weak: bool,
     player_frail: bool,
+    player_has_fan_of_knives: bool,
+    player_has_seeking_edge: bool,
     has_active_scaling: bool,
+    any_enemy_vuln: bool,
     unblocked_incoming: i32,
     alive_enemies: i32,
     reviving_enemies: i32,
     enemy_count: usize,
-    enemy_handles: [CreatureHandle; MAX_FAST_ENEMIES],
-    enemy_hp: [i32; MAX_FAST_ENEMIES],
-    enemy_block: [i32; MAX_FAST_ENEMIES],
-    enemy_incoming: [i32; MAX_FAST_ENEMIES],
-    enemy_vuln: [bool; MAX_FAST_ENEMIES],
+    best_non_attack_enemy_slot: Option<usize>,
+    best_debuff_enemy_slot: Option<usize>,
+    enemies: [std::mem::MaybeUninit<FastEnemySlot>; MAX_FAST_ENEMIES],
 }
 
+impl FastTurnContext {
+    #[inline(always)]
+    fn enemy_slot(&self, slot: usize) -> FastEnemySlot {
+        debug_assert!(slot < self.enemy_count);
+        unsafe { self.enemies.get_unchecked(slot).assume_init() }
+    }
+
+    #[inline(always)]
+    fn enemy_handle(&self, slot: usize) -> CreatureHandle {
+        self.enemy_slot(slot).handle
+    }
+
+    #[inline(always)]
+    fn enemy_hp(&self, slot: usize) -> i32 {
+        self.enemy_slot(slot).hp
+    }
+
+    #[inline(always)]
+    fn enemy_incoming(&self, slot: usize) -> i32 {
+        self.enemy_slot(slot).incoming
+    }
+
+    #[inline(always)]
+    fn enemy_target_bonus(&self, slot: usize) -> i32 {
+        self.enemy_slot(slot).target_bonus
+    }
+
+    #[inline(always)]
+    fn enemy_vuln(&self, slot: usize) -> bool {
+        self.enemy_slot(slot).vuln
+    }
+}
+
+#[inline(always)]
 fn compute_fast_turn_context<const IS_SETUP: bool>(
     state: &BattleState,
     content: &dyn ContentDispatcher,
     root: &RootEvalBaseline,
     intent_cache: &mut IntentHitsCache,
 ) -> FastTurnContext {
-    let pc = state.player_creature();
+    let mut out = std::mem::MaybeUninit::<FastTurnContext>::uninit();
+    compute_fast_turn_context_into::<IS_SETUP>(state, content, root, intent_cache, &mut out);
+    unsafe { out.assume_init() }
+}
+
+fn compute_fast_turn_context_into<'a, const IS_SETUP: bool>(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+    root: &RootEvalBaseline,
+    intent_cache: &mut IntentHitsCache,
+    out: &'a mut std::mem::MaybeUninit<FastTurnContext>,
+) -> &'a FastTurnContext {
+    let creatures_slice = state.creatures.as_slice();
+    let creatures_contiguous = state.handle_layout.creatures;
+    let get_creature = |h: CreatureHandle| -> Option<&sts2_kernel::state::CreatureInst> {
+        let idx = h.0.wrapping_sub(1) as usize;
+        if creatures_contiguous {
+            if idx < creatures_slice.len() {
+                let c = unsafe { creatures_slice.get_unchecked(idx) };
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(c.handle, h);
+                Some(c)
+            } else {
+                None
+            }
+        } else {
+            state.creature(h)
+        }
+    };
+    let pc = get_creature(state.player.creature_handle);
     let player_hp = pc.map_or(state.player.current_hp, |c| c.current_hp);
     let player_max_hp = pc.map_or(state.player.max_hp, |c| c.max_hp);
     let player_block = pc.map_or(state.player.block, |c| c.block).max(0);
@@ -1267,6 +1391,8 @@ fn compute_fast_turn_context<const IS_SETUP: bool>(
     let mut player_vuln = 0i32;
     let mut player_weak = false;
     let mut player_frail = false;
+    let mut player_has_fan_of_knives = false;
+    let mut player_has_seeking_edge = false;
     let mut player_intangible = false;
     let mut player_accelerant = 0i32;
     let mut player_end_turn_block = 0i32;
@@ -1289,6 +1415,8 @@ fn compute_fast_turn_context<const IS_SETUP: bool>(
                 PowerId::VulnerablePower if p.amount > 0 => player_vuln += p.amount,
                 PowerId::WeakPower if p.amount > 0 => player_weak = true,
                 PowerId::FrailPower if p.amount > 0 => player_frail = true,
+                PowerId::FanOfKnivesPower if p.amount > 0 => player_has_fan_of_knives = true,
+                PowerId::SeekingEdgePower if p.amount > 0 => player_has_seeking_edge = true,
                 PowerId::IntangiblePower if p.amount > 0 => player_intangible = true,
                 PowerId::AccelerantPower => player_accelerant += p.amount,
                 PowerId::PlatingPower if p.amount > 0 => player_end_turn_block += p.amount,
@@ -1326,49 +1454,39 @@ fn compute_fast_turn_context<const IS_SETUP: bool>(
     } else {
         let osty = state
             .osty_handle()
-            .and_then(|h| state.creature(h))
+            .and_then(get_creature)
             .filter(|c| c.is_alive())
             .map_or(0, |c| c.current_hp.max(0));
         let wuppy: i32 = state
             .pet_handles
             .iter()
-            .filter_map(|&h| state.creature(h))
+            .filter_map(|&h| get_creature(h))
             .filter(|c| c.is_alive() && c.monster_id == Some(MonsterId::Wuppy))
             .map(|c| c.current_hp.max(0))
             .sum();
         (osty, wuppy)
     };
 
-    let mut ctx = FastTurnContext {
-        player_hp,
-        missing_hp: (player_max_hp - player_hp).max(0),
-        player_energy: state.player.energy,
-        player_str,
-        player_dex,
-        player_weak,
-        player_frail,
-        has_active_scaling,
-        unblocked_incoming: 0,
-        alive_enemies: 0,
-        reviving_enemies: 0,
-        enemy_count: 0,
-        enemy_handles: [CreatureHandle(0); MAX_FAST_ENEMIES],
-        enemy_hp: [0; MAX_FAST_ENEMIES],
-        enemy_block: [0; MAX_FAST_ENEMIES],
-        enemy_incoming: [0; MAX_FAST_ENEMIES],
-        enemy_vuln: [false; MAX_FAST_ENEMIES],
-    };
+    let ptr = out.as_mut_ptr();
+    let mut any_enemy_vuln = false;
+    let mut alive_enemies = 0i32;
+    let mut reviving_enemies = 0i32;
+    let mut enemy_count = 0usize;
+    let mut best_non_attack_enemy_slot: Option<usize> = None;
+    let mut best_debuff_enemy_slot: Option<usize> = None;
 
     let mut total_incoming = 0i32;
-    let mut dynamic_hits: SmallVec<[(i32, i32); 2]> = SmallVec::new();
+    let mut best_non_atk_bonus = i32::MIN;
+    let mut best_deb_score = i32::MIN;
+    let multi_enemy_target_cache = !IS_SETUP && state.enemy_handles.len() > 1;
 
     for &eh in &state.enemy_handles {
-        let Some(ec) = state.creature(eh) else {
+        let Some(ec) = get_creature(eh) else {
             continue;
         };
         if ec.is_dead() {
             if is_creature_reviving(state, ec) {
-                ctx.reviving_enemies += 1;
+                reviving_enemies += 1;
             }
             continue;
         }
@@ -1376,7 +1494,7 @@ fn compute_fast_turn_context<const IS_SETUP: bool>(
             continue;
         }
 
-        ctx.alive_enemies += 1;
+        alive_enemies += 1;
         let cur_hp = ec.current_hp.max(0);
         let cur_block = ec.block.max(0);
         let mut enemy_str = 0i32;
@@ -1415,7 +1533,7 @@ fn compute_fast_turn_context<const IS_SETUP: bool>(
         let poison_lethal = cur_hp > 0 && poison_dmg >= cur_hp && !has_reattach && !has_damage_cap;
         let mut inc = 0i32;
         if !poison_lethal {
-            let hits = intent_cache.lookup_i32(state, content, eh, ec, &mut dynamic_hits);
+            let hits = intent_cache.lookup_i32(state, content, eh, ec);
             for &(base_dmg, count) in hits {
                 let mut per_hit = (base_dmg + enemy_str).max(0);
                 if enemy_weak {
@@ -1449,20 +1567,65 @@ fn compute_fast_turn_context<const IS_SETUP: bool>(
         }
         total_incoming += inc;
 
-        if ctx.enemy_count < MAX_FAST_ENEMIES {
-            let idx = ctx.enemy_count;
-            ctx.enemy_handles[idx] = eh;
-            ctx.enemy_hp[idx] = cur_hp;
-            ctx.enemy_block[idx] = cur_block;
-            ctx.enemy_incoming[idx] = inc;
-            ctx.enemy_vuln[idx] = enemy_vuln;
-            ctx.enemy_count += 1;
+        if enemy_count < MAX_FAST_ENEMIES {
+            let idx = enemy_count;
+            let t_bonus = if cur_hp > 0 {
+                (200 - cur_hp.min(200)).max(0) + if inc > 0 { 60 } else { 0 }
+            } else {
+                0
+            };
+            unsafe {
+                core::ptr::addr_of_mut!((*ptr).enemies)
+                    .cast::<std::mem::MaybeUninit<FastEnemySlot>>()
+                    .add(idx)
+                    .write(std::mem::MaybeUninit::new(FastEnemySlot {
+                        handle: eh,
+                        hp: cur_hp,
+                        eff_hp: cur_hp + cur_block,
+                        incoming: inc,
+                        target_bonus: t_bonus,
+                        vuln: enemy_vuln,
+                    }));
+            }
+            any_enemy_vuln |= enemy_vuln;
+            if multi_enemy_target_cache && cur_hp > 0 {
+                if t_bonus > best_non_atk_bonus {
+                    best_non_atk_bonus = t_bonus;
+                    best_non_attack_enemy_slot = Some(idx);
+                }
+                let deb_sc = (if inc > 0 { 420 } else { 180 }) + t_bonus;
+                if deb_sc > best_deb_score {
+                    best_deb_score = deb_sc;
+                    best_debuff_enemy_slot = Some(idx);
+                }
+            }
+            enemy_count += 1;
         }
     }
 
     let defense = player_block + player_end_turn_block + frost_passive_block + osty_hp + wuppy_hp;
-    ctx.unblocked_incoming = (total_incoming - defense).max(0);
-    ctx
+    let unblocked_incoming = (total_incoming - defense).max(0);
+    unsafe {
+        use core::ptr::addr_of_mut;
+        addr_of_mut!((*ptr).player_hp).write(player_hp);
+        addr_of_mut!((*ptr).missing_hp).write((player_max_hp - player_hp).max(0));
+        addr_of_mut!((*ptr).player_energy).write(state.player.energy);
+        addr_of_mut!((*ptr).player_str).write(player_str);
+        addr_of_mut!((*ptr).player_dex).write(player_dex);
+        addr_of_mut!((*ptr).player_weak).write(player_weak);
+        addr_of_mut!((*ptr).player_frail).write(player_frail);
+        addr_of_mut!((*ptr).player_has_fan_of_knives).write(player_has_fan_of_knives);
+        addr_of_mut!((*ptr).player_has_seeking_edge).write(player_has_seeking_edge);
+        addr_of_mut!((*ptr).has_active_scaling).write(has_active_scaling);
+        addr_of_mut!((*ptr).any_enemy_vuln).write(any_enemy_vuln);
+        addr_of_mut!((*ptr).unblocked_incoming).write(unblocked_incoming);
+        addr_of_mut!((*ptr).alive_enemies).write(alive_enemies);
+        addr_of_mut!((*ptr).reviving_enemies).write(reviving_enemies);
+        addr_of_mut!((*ptr).enemy_count).write(enemy_count);
+        addr_of_mut!((*ptr).best_non_attack_enemy_slot).write(best_non_attack_enemy_slot);
+        addr_of_mut!((*ptr).best_debuff_enemy_slot).write(best_debuff_enemy_slot);
+        out.assume_init_ref()
+    }
 }
 
 #[inline]
@@ -1498,6 +1661,547 @@ fn count_non_empty_potion_slots(state: &BattleState) -> usize {
     n
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FastEnergyHook {
+    None,
+    BorrowedTime(i32),
+    Veilpiercer,
+    Corruption,
+    FreeAttack,
+    FreeSkill,
+    FreePower,
+    Fallback,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FastShouldPlayHook {
+    None,
+    ChainsOfBinding { bound_played: bool },
+    Fallback,
+}
+
+#[inline]
+fn resolve_sole_player_power_in_slot<'a>(
+    state: &'a BattleState,
+    slot: HookSlot,
+) -> Option<&'a sts2_kernel::state::PowerInst> {
+    let words = state.hook_cache.flat_slot_words as usize;
+    if words == 0 {
+        return None;
+    }
+    let mut single_listener: Option<CachedHookListener> = None;
+    for lw in 0..words {
+        let bits = state.hook_cache.slot_listener_mask_word(slot as usize, lw);
+        if bits == 0 {
+            continue;
+        }
+        if (bits & (bits - 1)) != 0 || single_listener.is_some() {
+            return None;
+        }
+        let idx = (lw << 6) + bits.trailing_zeros() as usize;
+        single_listener = Some(state.hook_cache.flat_listeners[idx]);
+    }
+    if let Some(CachedHookListener::Power {
+        creature,
+        creature_idx,
+        power_idx,
+        ..
+    }) = single_listener
+    {
+        if creature == state.player.creature_handle
+            && creature_idx != u16::MAX
+            && power_idx != u16::MAX
+        {
+            return state
+                .creatures
+                .get(creature_idx as usize)
+                .and_then(|c| c.powers.get(power_idx as usize));
+        }
+    }
+    None
+}
+
+#[inline(always)]
+fn resolve_fast_query_and_hooks(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+) -> (bool, sts2_types::HookMask, FastEnergyHook, FastShouldPlayHook) {
+    let cache_ready = state.hook_cache.masks_are_valid();
+    let comb = state.hook_cache.masks.combat_combined;
+    let kw_ok = !comb.contains(HookSlot::TryModifyKeywordsInCombat)
+        || state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.keywords_in_combat_known_only);
+    if !cache_ready || !kw_ok || comb.contains(HookSlot::TryModifyStarCostInCombat) {
+        return (
+            false,
+            comb,
+            FastEnergyHook::Fallback,
+            FastShouldPlayHook::Fallback,
+        );
+    }
+    let has_should_play = comb.contains(HookSlot::ShouldPlay);
+    let has_early = comb.contains(HookSlot::TryModifyEnergyCostInCombat);
+    let has_late = comb.contains(HookSlot::TryModifyEnergyCostInCombatLate);
+    if !has_should_play && !has_early && !has_late {
+        return (
+            true,
+            comb,
+            FastEnergyHook::None,
+            FastShouldPlayHook::None,
+        );
+    }
+    if state.hook_cache.dirty_mask != 0 {
+        let _ = state.ensure_hook_cache(content);
+    }
+    let comb = state.hook_cache.masks.combat_combined;
+    let fast_should_play = if !comb.contains(HookSlot::ShouldPlay) {
+        FastShouldPlayHook::None
+    } else if let Some(pw) = resolve_sole_player_power_in_slot(state, HookSlot::ShouldPlay) {
+        if pw.id == PowerId::ChainsOfBindingPower {
+            let bound_played = pw
+                .ext_index
+                .and_then(|e| state.power_extensions.get(e as usize))
+                .and_then(|ext| ext.private_fields.get_bool_static(hot_keys::CHAINS_OF_BINDING_BOUND_PLAYED))
+                .unwrap_or(false);
+            FastShouldPlayHook::ChainsOfBinding { bound_played }
+        } else {
+            return (
+                false,
+                comb,
+                FastEnergyHook::Fallback,
+                FastShouldPlayHook::Fallback,
+            );
+        }
+    } else {
+        return (
+            false,
+            comb,
+            FastEnergyHook::Fallback,
+            FastShouldPlayHook::Fallback,
+        );
+    };
+
+    let has_early = comb.contains(HookSlot::TryModifyEnergyCostInCombat);
+    let has_late = comb.contains(HookSlot::TryModifyEnergyCostInCombatLate);
+    let fast_energy_hook = if !has_early && !has_late {
+        FastEnergyHook::None
+    } else if has_early && !has_late {
+        if let Some(pw) =
+            resolve_sole_player_power_in_slot(state, HookSlot::TryModifyEnergyCostInCombat)
+        {
+            if pw.id == PowerId::BorrowedTimePower {
+                FastEnergyHook::BorrowedTime(pw.amount)
+            } else {
+                FastEnergyHook::Fallback
+            }
+        } else {
+            FastEnergyHook::Fallback
+        }
+    } else if !has_early && has_late {
+        if let Some(pw) =
+            resolve_sole_player_power_in_slot(state, HookSlot::TryModifyEnergyCostInCombatLate)
+        {
+            match pw.id {
+                PowerId::VeilpiercerPower => FastEnergyHook::Veilpiercer,
+                PowerId::CorruptionPower => FastEnergyHook::Corruption,
+                PowerId::FreeAttackPower => FastEnergyHook::FreeAttack,
+                PowerId::FreeSkillPower => FastEnergyHook::FreeSkill,
+                PowerId::FreePowerPower => FastEnergyHook::FreePower,
+                _ => FastEnergyHook::Fallback,
+            }
+        } else {
+            FastEnergyHook::Fallback
+        }
+    } else {
+        FastEnergyHook::Fallback
+    };
+    (true, comb, fast_energy_hook, fast_should_play)
+}
+
+#[inline(never)]
+fn resolve_fast_energy_hook_cost(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    comb: sts2_types::HookMask,
+    ch: CardHandle,
+    local_e: i32,
+    card_type: CardType,
+    kw_base: CardKeywords,
+    has_hex_power: bool,
+    aff_id: Option<AfflictionId>,
+    fast_energy_hook: FastEnergyHook,
+) -> i32 {
+    let cost = match fast_energy_hook {
+        FastEnergyHook::None => local_e,
+        FastEnergyHook::BorrowedTime(delta) => (local_e + delta).max(0),
+        FastEnergyHook::Veilpiercer => {
+            let is_ethereal = kw_base.contains(CardKeywords::ETHEREAL)
+                || (has_hex_power && aff_id == Some(AfflictionId::Hexed));
+            if is_ethereal { 0 } else { local_e }
+        }
+        FastEnergyHook::Corruption | FastEnergyHook::FreeSkill => {
+            if card_type == CardType::Skill { 0 } else { local_e }
+        }
+        FastEnergyHook::FreeAttack => {
+            if card_type == CardType::Attack { 0 } else { local_e }
+        }
+        FastEnergyHook::FreePower => {
+            if card_type == CardType::Power { 0 } else { local_e }
+        }
+        FastEnergyHook::Fallback => unreachable!(),
+    };
+    #[cfg(debug_assertions)]
+    if fast_energy_hook != FastEnergyHook::None {
+        let expected = match sts2_kernel::hooks::modify_energy_cost_in_combat_cached_ready(
+            state,
+            content,
+            ch,
+            Dec::from_i32(local_e),
+            comb,
+        ) {
+            Ok((m, true)) => m.max(Dec::ZERO).to_i32_trunc().unwrap_or(cost),
+            _ => local_e,
+        };
+        debug_assert_eq!(cost, expected);
+    }
+    #[cfg(not(debug_assertions))]
+    let _ = (state, content, comb, ch);
+    cost
+}
+
+#[cold]
+#[inline(never)]
+fn has_living_other_ally(state: &BattleState) -> bool {
+    state.ally_handles.iter().any(|&h| {
+        h != state.player.creature_handle && state.creature(h).is_some_and(|c| c.is_alive())
+    })
+}
+
+#[cold]
+#[inline(never)]
+fn spill_seen_fast_to_keys(
+    seen_fast: &[u64; 16],
+    seen_fast_len: usize,
+    seen_keys: &mut Vec<RolloutDedupKey>,
+) {
+    seen_keys.clear();
+    for &existing in &seen_fast[..seen_fast_len] {
+        seen_keys.push(RolloutDedupKey::from_fast_u64(existing));
+    }
+}
+
+struct ExtractedFastPlayableCard {
+    handle: CardHandle,
+    card_id: CardId,
+    energy_cost: i32,
+    star_cost: i32,
+    upg: bool,
+    exhausts: bool,
+    is_retained: bool,
+    prof: &'static CardRolloutProfile,
+}
+
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+fn try_extract_fast_playable_hand_card(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    comb: sts2_types::HookMask,
+    fast_energy_hook: FastEnergyHook,
+    tables: &'static sts2_kernel::content_dispatch::HookMaskTableView,
+    full_profiles: bool,
+    cards_contiguous: bool,
+    player_energy: i32,
+    player_stars: i32,
+    has_hex_power: bool,
+    bound_blocked: bool,
+    ch: CardHandle,
+    seen_fast: &mut [u64; 16],
+    seen_fast_len: &mut usize,
+    use_seen_keys: &mut bool,
+    seen_keys: &mut Vec<RolloutDedupKey>,
+) -> Option<ExtractedFastPlayableCard> {
+    let card_idx = if cards_contiguous {
+        let idx = ch.0.wrapping_sub(1) as usize;
+        if idx < state.cards.len() {
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(state.cards[idx].handle, ch);
+            idx
+        } else {
+            return None;
+        }
+    } else {
+        state.card_index(ch)?
+    };
+    let (
+        card_id,
+        upgrade_level,
+        is_x_e,
+        local_e,
+        local_s,
+        has_ext,
+        aff_id,
+        kw_base,
+        temp_flags,
+        target_type,
+        has_custom_play,
+        prof,
+    ) = {
+        let card = unsafe { state.cards.get_unchecked(card_idx) };
+        if card.pile != PileType::Hand {
+            return None;
+        }
+        let kw_base = if card.keywords_added_from_outside.is_empty()
+            && card.keywords_removed_from_outside.is_empty()
+        {
+            card.local_keywords
+        } else {
+            card.effective_keywords_base()
+        };
+        if kw_base.contains(CardKeywords::UNPLAYABLE) {
+            return None;
+        }
+        let card_id = card.id;
+        let prof: &'static CardRolloutProfile = if full_profiles {
+            unsafe { tables.card_rollout_profiles.get_unchecked(card_id as usize) }
+        } else {
+            tables.card_rollout_profiles.get(card_id as usize)?
+        };
+        let mflags = prof.meta_flags;
+        let is_x_s = (mflags & mf::IS_X_STAR_COST) != 0;
+        let canonical_s = prof.canonical_star_cost as i32;
+        let local_s = if is_x_s {
+            player_stars
+        } else if card.temp_star_cost_override_this_turn.is_none() && card.temp_flags.is_empty() {
+            canonical_s
+        } else {
+            resolve_local_star_cost_card(card, canonical_s)
+        };
+        if player_stars < local_s {
+            return None;
+        }
+        let is_x_e = (mflags & mf::IS_X_ENERGY_COST) != 0;
+        let local_e =
+            if card.ext_index.is_none() && !is_x_e && card.canonical_base_energy_cost >= 0 {
+                (card.base_energy_cost as i32).max(0)
+            } else {
+                resolve_local_energy_cost_card(state, card, is_x_e)
+            };
+        (
+            card_id,
+            card.upgrade_level,
+            is_x_e,
+            local_e,
+            local_s,
+            card.ext_index.is_some(),
+            card.affliction.map(|a| a.id),
+            kw_base,
+            card.temp_flags,
+            prof.target_type,
+            (mflags & mf::HAS_CUSTOM_PLAYABILITY) != 0,
+            prof,
+        )
+    };
+    let card_type = prof.card_type;
+    let energy_cost = if is_x_e || fast_energy_hook == FastEnergyHook::None {
+        local_e
+    } else {
+        resolve_fast_energy_hook_cost(
+            state,
+            content,
+            comb,
+            ch,
+            local_e,
+            card_type,
+            kw_base,
+            has_hex_power,
+            aff_id,
+            fast_energy_hook,
+        )
+    };
+    if player_energy < energy_cost {
+        return None;
+    }
+    if bound_blocked && aff_id == Some(AfflictionId::Bound) {
+        #[cfg(debug_assertions)]
+        debug_assert!(
+            !sts2_kernel::hooks::should_play_unchecked_active(state, content, ch).unwrap_or(true)
+        );
+        return None;
+    }
+    let fast_k =
+        RolloutDedupKey::try_fast_u64(card_id, upgrade_level, energy_cost, local_s, has_ext, aff_id);
+    #[cfg(debug_assertions)]
+    if let Some(fk) = fast_k {
+        debug_assert_eq!(
+            RolloutDedupKey::from_fast_u64(fk),
+            RolloutDedupKey::new(card_id, upgrade_level, energy_cost, local_s, has_ext, aff_id)
+        );
+    }
+    if !*use_seen_keys {
+        if let Some(fk) = fast_k {
+            for idx in 0..*seen_fast_len {
+                if unsafe { *seen_fast.get_unchecked(idx) } == fk {
+                    return None;
+                }
+            }
+        }
+    } else {
+        let key =
+            RolloutDedupKey::new(card_id, upgrade_level, energy_cost, local_s, has_ext, aff_id);
+        if seen_keys.contains(&key) {
+            return None;
+        }
+    }
+    if target_type == TargetType::AnyAlly && !has_living_other_ally(state) {
+        return None;
+    }
+    if has_custom_play && !content.card_is_playable(state, ch).unwrap_or(false) {
+        return None;
+    }
+    let exhausts = kw_base.contains(CardKeywords::EXHAUST)
+        || temp_flags.contains(sts2_kernel::state::CardTempFlags::EXHAUST_ON_NEXT_PLAY);
+    let is_retained = kw_base.contains(CardKeywords::RETAIN)
+        || temp_flags.contains(sts2_kernel::state::CardTempFlags::TEMPORARY_RETAIN_TURN);
+    let upg = upgrade_level > 0;
+    if !*use_seen_keys {
+        if let Some(fk) = fast_k {
+            if *seen_fast_len < 16 {
+                unsafe {
+                    *seen_fast.get_unchecked_mut(*seen_fast_len) = fk;
+                }
+                *seen_fast_len += 1;
+                return Some(ExtractedFastPlayableCard {
+                    handle: ch,
+                    card_id,
+                    energy_cost,
+                    star_cost: local_s,
+                    upg,
+                    exhausts,
+                    is_retained,
+                    prof,
+                });
+            }
+        }
+        spill_seen_fast_to_keys(seen_fast, *seen_fast_len, seen_keys);
+        *seen_fast_len = 0;
+        *use_seen_keys = true;
+    }
+    let key = RolloutDedupKey::new(card_id, upgrade_level, energy_cost, local_s, has_ext, aff_id);
+    if seen_keys.contains(&key) {
+        return None;
+    }
+    seen_keys.push(key);
+    Some(ExtractedFastPlayableCard {
+        handle: ch,
+        card_id,
+        energy_cost,
+        star_cost: local_s,
+        upg,
+        exhausts,
+        is_retained,
+        prof,
+    })
+}
+
+#[inline(always)]
+fn resolve_fast_scan_meta(
+    state: &BattleState,
+    comb: sts2_types::HookMask,
+    fast_energy_hook: FastEnergyHook,
+    fast_should_play: FastShouldPlayHook,
+) -> (
+    &'static sts2_kernel::content_dispatch::HookMaskTableView,
+    bool,
+    bool,
+    bool,
+    bool,
+) {
+    let tables = state
+        .hook_cache
+        .cached_tables
+        .expect("cache_ready implies cached_tables");
+    let full_profiles = CardId::COUNT <= tables.card_rollout_profiles.len();
+    let cards_contiguous = state.handle_layout.cards;
+    let has_hex_power = fast_energy_hook == FastEnergyHook::Veilpiercer
+        && comb.contains(HookSlot::TryModifyKeywordsInCombat)
+        && state.player.is_active_for_hooks
+        && state.player_creature().is_some_and(|c| {
+            !c.is_detached
+                && state.contains_creature(c.handle)
+                && c.powers.iter().any(|p| p.id == PowerId::HexPower)
+        });
+    let bound_blocked = matches!(
+        fast_should_play,
+        FastShouldPlayHook::ChainsOfBinding { bound_played: true }
+    );
+    (
+        tables,
+        full_profiles,
+        cards_contiguous,
+        has_hex_power,
+        bound_blocked,
+    )
+}
+
+fn collect_fast_playable_hand_cards(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    comb: sts2_types::HookMask,
+    fast_energy_hook: FastEnergyHook,
+    fast_should_play: FastShouldPlayHook,
+    hand_buf: &mut Vec<CardHandle>,
+    seen_keys: &mut Vec<RolloutDedupKey>,
+    playable_buf: &mut Vec<PlayableRolloutCard>,
+) {
+    let (tables, full_profiles, cards_contiguous, has_hex_power, bound_blocked) =
+        resolve_fast_scan_meta(state, comb, fast_energy_hook, fast_should_play);
+    hand_buf.clear();
+    hand_buf.extend_from_slice(&state.player.hand);
+    let player_energy = state.player.energy;
+    let player_stars = state.player.stars;
+    let mut seen_fast = [0u64; 16];
+    let mut seen_fast_len = 0usize;
+    let mut use_seen_keys = false;
+    for i in 0..hand_buf.len() {
+        let ch = hand_buf[i];
+        #[cfg(debug_assertions)]
+        if fast_should_play != FastShouldPlayHook::None {
+            let _ = sts2_kernel::hooks::should_play_unchecked_active(state, content, ch);
+        }
+        if let Some(c) = try_extract_fast_playable_hand_card(
+            state,
+            content,
+            comb,
+            fast_energy_hook,
+            tables,
+            full_profiles,
+            cards_contiguous,
+            player_energy,
+            player_stars,
+            has_hex_power,
+            bound_blocked,
+            ch,
+            &mut seen_fast,
+            &mut seen_fast_len,
+            &mut use_seen_keys,
+            seen_keys,
+        ) {
+            playable_buf.push(PlayableRolloutCard {
+                handle: c.handle,
+                card_id: c.card_id,
+                energy_cost: c.energy_cost,
+                star_cost: c.star_cost,
+                upg: c.upg,
+                exhausts: c.exhausts,
+                is_retained: c.is_retained,
+            });
+        }
+    }
+}
+
 fn collect_rollout_playable_cards(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
@@ -1515,406 +2219,39 @@ fn collect_rollout_playable_cards(
     if sts2_kernel::hooks::is_over_or_ending_checked(state, content).unwrap_or(true) {
         return;
     }
-    seen_keys.clear();
 
-    let cache_ready = state.hook_cache.masks_are_valid();
-    let comb = state.hook_cache.masks.combat_combined;
-    let fast_query_safe = cache_ready
-        && !comb.contains(HookSlot::ShouldPlay)
-        && !comb.contains(HookSlot::TryModifyKeywordsInCombat)
-        && !comb.contains(HookSlot::TryModifyStarCostInCombat);
-    let has_energy_hooks = comb.contains(HookSlot::TryModifyEnergyCostInCombat)
-        || comb.contains(HookSlot::TryModifyEnergyCostInCombatLate);
-
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    enum FastLateEnergyHook {
-        None,
-        Veilpiercer,
-        Corruption,
-        FreeAttack,
-        FreeSkill,
-        FreePower,
-        Fallback,
-    }
+    let (fast_query_safe, comb, fast_energy_hook, fast_should_play) =
+        resolve_fast_query_and_hooks(state, content);
 
     if fast_query_safe {
-        let fast_energy_hook = if !has_energy_hooks {
-            FastLateEnergyHook::None
-        } else {
-            if state.hook_cache.dirty_mask != 0 {
-                let _ = state.ensure_hook_cache(content);
-            }
-            if !state
-                .hook_cache
-                .masks
-                .combat_combined
-                .contains(HookSlot::TryModifyEnergyCostInCombat)
-                && state.hook_cache.flat_slot_words != 0
-            {
-                let words = state.hook_cache.flat_slot_words as usize;
-                let mut single_listener: Option<CachedHookListener> = None;
-                let mut multi = false;
-                for lw in 0..words {
-                    let bits = state.hook_cache.slot_listener_mask_word(
-                        HookSlot::TryModifyEnergyCostInCombatLate as usize,
-                        lw,
-                    );
-                    if bits == 0 {
-                        continue;
-                    }
-                    if (bits & (bits - 1)) != 0 || single_listener.is_some() {
-                        multi = true;
-                        break;
-                    }
-                    let idx = (lw << 6) + bits.trailing_zeros() as usize;
-                    single_listener = Some(state.hook_cache.flat_listeners[idx]);
-                }
-                if multi {
-                    FastLateEnergyHook::Fallback
-                } else if let Some(listener) = single_listener {
-                    if let CachedHookListener::Power {
-                        creature,
-                        creature_idx,
-                        power_idx,
-                        ..
-                    } = listener
-                    {
-                        let ci = creature_idx as usize;
-                        let pi = power_idx as usize;
-                        if creature == state.player.creature_handle
-                            && creature_idx != u16::MAX
-                            && power_idx != u16::MAX
-                        {
-                            if let Some(pw) = state
-                                .creatures
-                                .get(ci)
-                                .and_then(|c| c.powers.get(pi))
-                            {
-                                match pw.id {
-                                    PowerId::VeilpiercerPower => FastLateEnergyHook::Veilpiercer,
-                                    PowerId::CorruptionPower => FastLateEnergyHook::Corruption,
-                                    PowerId::FreeAttackPower => FastLateEnergyHook::FreeAttack,
-                                    PowerId::FreeSkillPower => FastLateEnergyHook::FreeSkill,
-                                    PowerId::FreePowerPower => FastLateEnergyHook::FreePower,
-                                    _ => FastLateEnergyHook::Fallback,
-                                }
-                            } else {
-                                FastLateEnergyHook::Fallback
-                            }
-                        } else {
-                            FastLateEnergyHook::Fallback
-                        }
-                    } else {
-                        FastLateEnergyHook::Fallback
-                    }
-                } else {
-                    FastLateEnergyHook::Fallback
-                }
-            } else {
-                FastLateEnergyHook::Fallback
-            }
-        };
         let tables = state
             .hook_cache
             .cached_tables
             .expect("cache_ready implies cached_tables");
         let full_profiles = CardId::COUNT <= tables.card_rollout_profiles.len();
 
-        if fast_energy_hook != FastLateEnergyHook::Fallback {
-            #[cfg(debug_assertions)]
-            {
-                hand_buf.clear();
-                hand_buf.extend_from_slice(&state.player.hand);
-            }
-            let player_energy = state.player.energy;
-            let player_stars = state.player.stars;
-            let mut seen_fast = [0u64; 16];
-            let mut seen_fast_len = 0usize;
-            let mut use_seen_keys = false;
-            #[cfg(not(debug_assertions))]
-            let hand_slice = state.player.hand.as_slice();
-            #[cfg(debug_assertions)]
-            let hand_slice = hand_buf.as_slice();
-            for (hi, &ch) in hand_slice.iter().enumerate() {
-                #[cfg(target_arch = "x86_64")]
-                if hi + 2 < hand_slice.len() {
-                    let ahead = unsafe { *hand_slice.get_unchecked(hi + 2) }
-                        .0
-                        .wrapping_sub(1) as usize;
-                    if ahead < state.cards.len() {
-                        unsafe {
-                            core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
-                                state.cards.as_ptr().add(ahead).cast::<i8>(),
-                            );
-                        }
-                    }
-                }
-                let _ = hi;
-                let Some(card_idx) = state.card_index(ch) else {
-                    continue;
-                };
-                let card = unsafe { state.cards.get_unchecked(card_idx) };
-                if card.pile != PileType::Hand {
-                    continue;
-                }
-                let kw_base = if card.keywords_added_from_outside.is_empty()
-                    && card.keywords_removed_from_outside.is_empty()
-                {
-                    card.local_keywords
-                } else {
-                    card.effective_keywords_base()
-                };
-                if kw_base.contains(CardKeywords::UNPLAYABLE) {
-                    continue;
-                }
-                let card_id = card.id;
-                let prof = if full_profiles {
-                    unsafe { tables.card_rollout_profiles.get_unchecked(card_id as usize) }
-                } else if let Some(p) = tables.card_rollout_profiles.get(card_id as usize) {
-                    p
-                } else {
-                    continue;
-                };
-                let mflags = prof.meta_flags;
-                let is_x_s = (mflags & mf::IS_X_STAR_COST) != 0;
-                let canonical_s = prof.canonical_star_cost as i32;
-                let local_s = if is_x_s {
-                    player_stars
-                } else if card.temp_star_cost_override_this_turn.is_none()
-                    && card.temp_flags.is_empty()
-                {
-                    canonical_s
-                } else {
-                    resolve_local_star_cost_card(card, canonical_s)
-                };
-                if player_stars < local_s {
-                    continue;
-                }
-                let is_x_e = (mflags & mf::IS_X_ENERGY_COST) != 0;
-                let local_e = if card.ext_index.is_none()
-                    && !is_x_e
-                    && card.canonical_base_energy_cost >= 0
-                {
-                    (card.base_energy_cost as i32).max(0)
-                } else {
-                    resolve_local_energy_cost_card(state, card, is_x_e)
-                };
-                let upgrade_level = card.upgrade_level;
-                let has_ext = card.ext_index.is_some();
-                let aff_id = card.affliction.map(|a| a.id);
-                let target_type = prof.target_type;
-                let card_type = prof.card_type;
-                let has_custom_play = (mflags & mf::HAS_CUSTOM_PLAYABILITY) != 0;
-                let is_ethereal = kw_base.contains(CardKeywords::ETHEREAL);
-                let exhausts = kw_base.contains(CardKeywords::EXHAUST)
-                    || card
-                        .temp_flags
-                        .contains(sts2_kernel::state::CardTempFlags::EXHAUST_ON_NEXT_PLAY);
-                let is_retained = kw_base.contains(CardKeywords::RETAIN)
-                    || card
-                        .temp_flags
-                        .contains(sts2_kernel::state::CardTempFlags::TEMPORARY_RETAIN_TURN);
-
-                let energy_cost = if is_x_e {
-                    local_e
-                } else {
-                    match fast_energy_hook {
-                        FastLateEnergyHook::None => local_e,
-                        FastLateEnergyHook::Veilpiercer => {
-                            let cost = if is_ethereal { 0 } else { local_e };
-                            #[cfg(debug_assertions)]
-                            {
-                                let expected = match sts2_kernel::hooks::modify_energy_cost_in_combat_cached_ready(
-                                    state,
-                                    content,
-                                    ch,
-                                    Dec::from_i32(local_e),
-                                    comb,
-                                ) {
-                                    Ok((m, true)) => m.max(Dec::ZERO).to_i32_trunc().unwrap_or(cost),
-                                    _ => local_e,
-                                };
-                                debug_assert_eq!(cost, expected);
-                            }
-                            cost
-                        }
-                        FastLateEnergyHook::Corruption => {
-                            let cost = if card_type == CardType::Skill { 0 } else { local_e };
-                            #[cfg(debug_assertions)]
-                            {
-                                let expected = match sts2_kernel::hooks::modify_energy_cost_in_combat_cached_ready(
-                                    state,
-                                    content,
-                                    ch,
-                                    Dec::from_i32(local_e),
-                                    comb,
-                                ) {
-                                    Ok((m, true)) => m.max(Dec::ZERO).to_i32_trunc().unwrap_or(cost),
-                                    _ => local_e,
-                                };
-                                debug_assert_eq!(cost, expected);
-                            }
-                            cost
-                        }
-                        FastLateEnergyHook::FreeAttack => {
-                            let cost = if card_type == CardType::Attack { 0 } else { local_e };
-                            #[cfg(debug_assertions)]
-                            {
-                                let expected = match sts2_kernel::hooks::modify_energy_cost_in_combat_cached_ready(
-                                    state,
-                                    content,
-                                    ch,
-                                    Dec::from_i32(local_e),
-                                    comb,
-                                ) {
-                                    Ok((m, true)) => m.max(Dec::ZERO).to_i32_trunc().unwrap_or(cost),
-                                    _ => local_e,
-                                };
-                                debug_assert_eq!(cost, expected);
-                            }
-                            cost
-                        }
-                        FastLateEnergyHook::FreeSkill => {
-                            let cost = if card_type == CardType::Skill { 0 } else { local_e };
-                            #[cfg(debug_assertions)]
-                            {
-                                let expected = match sts2_kernel::hooks::modify_energy_cost_in_combat_cached_ready(
-                                    state,
-                                    content,
-                                    ch,
-                                    Dec::from_i32(local_e),
-                                    comb,
-                                ) {
-                                    Ok((m, true)) => m.max(Dec::ZERO).to_i32_trunc().unwrap_or(cost),
-                                    _ => local_e,
-                                };
-                                debug_assert_eq!(cost, expected);
-                            }
-                            cost
-                        }
-                        FastLateEnergyHook::FreePower => {
-                            let cost = if card_type == CardType::Power { 0 } else { local_e };
-                            #[cfg(debug_assertions)]
-                            {
-                                let expected = match sts2_kernel::hooks::modify_energy_cost_in_combat_cached_ready(
-                                    state,
-                                    content,
-                                    ch,
-                                    Dec::from_i32(local_e),
-                                    comb,
-                                ) {
-                                    Ok((m, true)) => m.max(Dec::ZERO).to_i32_trunc().unwrap_or(cost),
-                                    _ => local_e,
-                                };
-                                debug_assert_eq!(cost, expected);
-                            }
-                            cost
-                        }
-                        FastLateEnergyHook::Fallback => unreachable!(),
-                    }
-                };
-                if player_energy < energy_cost {
-                    continue;
-                }
-                let fast_k = RolloutDedupKey::try_fast_u64(
-                    card_id,
-                    upgrade_level,
-                    energy_cost,
-                    local_s,
-                    has_ext,
-                    aff_id,
-                );
-                #[cfg(debug_assertions)]
-                if let Some(fk) = fast_k {
-                    debug_assert_eq!(
-                        RolloutDedupKey::from_fast_u64(fk),
-                        RolloutDedupKey::new(card_id, upgrade_level, energy_cost, local_s, has_ext, aff_id)
-                    );
-                }
-                if !use_seen_keys {
-                    if let Some(fk) = fast_k {
-                        let mut dup = false;
-                        for idx in 0..seen_fast_len {
-                            if unsafe { *seen_fast.get_unchecked(idx) } == fk {
-                                dup = true;
-                                break;
-                            }
-                        }
-                        if dup {
-                            continue;
-                        }
-                    }
-                } else {
-                    let key = RolloutDedupKey::new(
-                        card_id,
-                        upgrade_level,
-                        energy_cost,
-                        local_s,
-                        has_ext,
-                        aff_id,
-                    );
-                    if seen_keys.contains(&key) {
-                        continue;
-                    }
-                }
-                if target_type == TargetType::AnyAlly {
-                    let has_ally = state.ally_handles.iter().any(|&h| {
-                        h != state.player.creature_handle
-                            && state.creature(h).is_some_and(|c| c.is_alive())
-                    });
-                    if !has_ally {
-                        continue;
-                    }
-                }
-                if !has_custom_play
-                    || content.card_is_playable(state, ch).unwrap_or(false)
-                {
-                    let entry = PlayableRolloutCard {
-                        handle: ch,
-                        card_id,
-                        energy_cost,
-                        star_cost: local_s,
-                        upg: upgrade_level > 0,
-                        exhausts,
-                        is_retained,
-                    };
-                    if !use_seen_keys {
-                        if let Some(fk) = fast_k {
-                            if seen_fast_len < 16 {
-                                unsafe {
-                                    *seen_fast.get_unchecked_mut(seen_fast_len) = fk;
-                                }
-                                seen_fast_len += 1;
-                                playable_buf.push(entry);
-                                continue;
-                            }
-                        }
-                        for &existing in &seen_fast[..seen_fast_len] {
-                            seen_keys.push(RolloutDedupKey::from_fast_u64(existing));
-                        }
-                        seen_fast_len = 0;
-                        use_seen_keys = true;
-                    }
-                    let key = RolloutDedupKey::new(
-                        card_id,
-                        upgrade_level,
-                        energy_cost,
-                        local_s,
-                        has_ext,
-                        aff_id,
-                    );
-                    if !seen_keys.contains(&key) {
-                        seen_keys.push(key);
-                        playable_buf.push(entry);
-                    }
-                }
-            }
+        if fast_energy_hook != FastEnergyHook::Fallback {
+            collect_fast_playable_hand_cards(
+                state,
+                content,
+                comb,
+                fast_energy_hook,
+                fast_should_play,
+                hand_buf,
+                seen_keys,
+                playable_buf,
+            );
             return;
         }
+        seen_keys.clear();
 
         if state.hook_cache.dirty_mask != 0 {
             let _ = state.ensure_hook_cache(content);
         }
+        let bound_blocked = matches!(
+            fast_should_play,
+            FastShouldPlayHook::ChainsOfBinding { bound_played: true }
+        );
         let hand_len = state.player.hand.len();
         let mut seen_fast = [0u64; 16];
         let mut seen_fast_len = 0usize;
@@ -2025,6 +2362,9 @@ fn collect_rollout_playable_cards(
             if state.player.energy < energy_cost {
                 continue;
             }
+            if bound_blocked && aff_id == Some(AfflictionId::Bound) {
+                continue;
+            }
             let fast_k = RolloutDedupKey::try_fast_u64(
                 card_id,
                 upgrade_level,
@@ -2102,6 +2442,7 @@ fn collect_rollout_playable_cards(
         return;
     }
 
+    seen_keys.clear();
     let mut seen_fast = [0u64; 16];
     let mut seen_fast_len = 0usize;
     hand_buf.clear();
@@ -2252,12 +2593,37 @@ fn fast_generic_choice_card_quality(
     state: &BattleState,
     content: &dyn ContentDispatcher,
     cards: &[sts2_kernel::state::CardInst],
-    qtable: Option<&[(i16, u8)]>,
+    cards_contiguous: bool,
+    qtable: Option<&[GenericChoiceQualityEntry]>,
+    root_choice_q: &[i16],
     ch: CardHandle,
 ) -> i32 {
+    if cards_contiguous && !root_choice_q.is_empty() {
+        let idx = ch.0.wrapping_sub(1) as usize;
+        if idx < root_choice_q.len() && !state.is_card_meta_dirty(idx) {
+            let q = unsafe { *root_choice_q.get_unchecked(idx) };
+            if q != i16::MIN {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(
+                    q as i32,
+                    compute_generic_choice_card_quality(state, content, ch)
+                );
+                return q as i32;
+            }
+        }
+    }
     if let Some(qt) = qtable {
         let idx = ch.0.wrapping_sub(1) as usize;
-        let card = if idx < cards.len() && cards[idx].handle == ch {
+        let card = if cards_contiguous {
+            if idx < cards.len() {
+                let c = unsafe { cards.get_unchecked(idx) };
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(c.handle, ch);
+                Some(c)
+            } else {
+                None
+            }
+        } else if idx < cards.len() && cards[idx].handle == ch {
             Some(&cards[idx])
         } else {
             state.card(ch)
@@ -2270,32 +2636,50 @@ fn fast_generic_choice_card_quality(
         }
         let cid_idx = card.id as usize;
         if cid_idx < qt.len() {
-            let (base_q, qflags) = qt[cid_idx];
-            if (qflags & 1) != 0 {
+            let e = unsafe { qt.get_unchecked(cid_idx) };
+            if (e.flags & 1) != 0 {
                 return -400;
             }
-            let mut quality = base_q as i32;
-            if (qflags & 2) == 0 {
-                let base_cost = card.base_energy_cost;
-                if base_cost == 0 {
-                    quality += 40;
-                } else if base_cost == 1 {
-                    quality += 15;
-                }
-            }
-            if card.upgrade_level > 0 {
-                quality += 35;
-            }
-            if (qflags & 4) == 0 {
-                let cost_is_zero = if card.ext_index.is_none() && card.canonical_base_energy_cost >= 0 {
-                    card.base_energy_cost <= 0
+            let quality = if card.ext_index.is_none()
+                && card.canonical_base_energy_cost >= 0
+                && card.base_energy_cost >= 0
+            {
+                let base_q = match card.base_energy_cost {
+                    0 => e.q_cost0,
+                    1 => e.q_cost1,
+                    _ => e.q_cost2p,
+                } as i32;
+                base_q + if card.upgrade_level > 0 {
+                    e.upg_bonus as i32
                 } else {
-                    resolve_local_energy_cost_card(state, card, false) == 0
-                };
-                if cost_is_zero {
-                    quality += 30;
+                    0
                 }
-            }
+            } else {
+                let mut q = e.q_cost2p as i32;
+                if (e.flags & 2) == 0 {
+                    let base_cost = card.base_energy_cost;
+                    if base_cost == 0 {
+                        q += 40;
+                    } else if base_cost == 1 {
+                        q += 15;
+                    }
+                }
+                if card.upgrade_level > 0 {
+                    q += 35;
+                }
+                if (e.flags & 4) == 0 {
+                    let cost_is_zero =
+                        if card.ext_index.is_none() && card.canonical_base_energy_cost >= 0 {
+                            card.base_energy_cost <= 0
+                        } else {
+                            resolve_local_energy_cost_card(state, card, false) == 0
+                        };
+                    if cost_is_zero {
+                        q += 30;
+                    }
+                }
+                q
+            };
             #[cfg(debug_assertions)]
             debug_assert_eq!(
                 quality,
@@ -2307,10 +2691,22 @@ fn fast_generic_choice_card_quality(
     compute_generic_choice_card_quality(state, content, ch)
 }
 
+#[inline(always)]
+const fn choice_min_key_lowest(q: i32, h: u32) -> u64 {
+    (((q as i64 - i32::MIN as i64) as u64) << 32) | (h as u64)
+}
+
+#[inline(always)]
+const fn choice_min_key_highest(q: i32, h: u32) -> u64 {
+    (((i32::MAX as i64 - q as i64) as u64) << 32) | (h as u64)
+}
+
 fn pick_rollout_choice(
     state: &BattleState,
     content: &dyn ContentDispatcher,
+    root_choice_q: &[i16],
     req: &sts2_kernel::continuation::ChoiceRequest,
+    scored: &mut Vec<(usize, i32, u32)>,
     sel_out: &mut SmallVec<[usize; 16]>,
 ) -> bool {
     sel_out.clear();
@@ -2323,38 +2719,88 @@ fn pick_rollout_choice(
         .cached_tables
         .map(|t| t.card_generic_choice_quality);
     let cards = &state.cards;
+    let cards_contiguous = state.handle_layout.cards;
     let prefer_lowest = req.source_pile == PileType::Hand;
     if req.min_count <= 1 {
-        let mut best: Option<(usize, i32, u32)> = None;
-        for (idx, &ch) in req.candidates.iter().enumerate() {
-            #[cfg(target_arch = "x86_64")]
-            if idx + 4 < req.candidates.len() {
-                let ahead = unsafe { *req.candidates.get_unchecked(idx + 4) }
-                    .0
-                    .wrapping_sub(1) as usize;
-                if ahead < cards.len() {
-                    unsafe {
-                        core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
-                            cards.as_ptr().add(ahead).cast::<i8>(),
-                        );
+        let ch0 = req.candidates[0];
+        let q0 = fast_generic_choice_card_quality(
+            state,
+            content,
+            cards,
+            cards_contiguous,
+            qtable,
+            root_choice_q,
+            ch0,
+        );
+        let do_prefetch = !cards_contiguous || root_choice_q.is_empty();
+        let (mut best_idx, mut best_q) = (0usize, q0);
+        if prefer_lowest {
+            let mut best_key = choice_min_key_lowest(q0, ch0.0);
+            for idx in 1..req.candidates.len() {
+                #[cfg(target_arch = "x86_64")]
+                if do_prefetch && idx + 4 < req.candidates.len() {
+                    let ahead = unsafe { *req.candidates.get_unchecked(idx + 4) }
+                        .0
+                        .wrapping_sub(1) as usize;
+                    if ahead < cards.len() {
+                        unsafe {
+                            core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
+                                cards.as_ptr().add(ahead).cast::<i8>(),
+                            );
+                        }
                     }
                 }
-            }
-            let q = fast_generic_choice_card_quality(state, content, cards, qtable, ch);
-            let better = match best {
-                None => true,
-                Some((bi, bq, bch)) => {
-                    let ord = if prefer_lowest { q.cmp(&bq) } else { bq.cmp(&q) };
-                    ord.then_with(|| ch.0.cmp(&bch))
-                        .then_with(|| idx.cmp(&bi))
-                        .is_lt()
+                let ch = unsafe { *req.candidates.get_unchecked(idx) };
+                let q = fast_generic_choice_card_quality(
+                    state,
+                    content,
+                    cards,
+                    cards_contiguous,
+                    qtable,
+                    root_choice_q,
+                    ch,
+                );
+                let key = choice_min_key_lowest(q, ch.0);
+                if key < best_key {
+                    best_key = key;
+                    best_idx = idx;
+                    best_q = q;
                 }
-            };
-            if better {
-                best = Some((idx, q, ch.0));
+            }
+        } else {
+            let mut best_key = choice_min_key_highest(q0, ch0.0);
+            for idx in 1..req.candidates.len() {
+                #[cfg(target_arch = "x86_64")]
+                if do_prefetch && idx + 4 < req.candidates.len() {
+                    let ahead = unsafe { *req.candidates.get_unchecked(idx + 4) }
+                        .0
+                        .wrapping_sub(1) as usize;
+                    if ahead < cards.len() {
+                        unsafe {
+                            core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
+                                cards.as_ptr().add(ahead).cast::<i8>(),
+                            );
+                        }
+                    }
+                }
+                let ch = unsafe { *req.candidates.get_unchecked(idx) };
+                let q = fast_generic_choice_card_quality(
+                    state,
+                    content,
+                    cards,
+                    cards_contiguous,
+                    qtable,
+                    root_choice_q,
+                    ch,
+                );
+                let key = choice_min_key_highest(q, ch.0);
+                if key < best_key {
+                    best_key = key;
+                    best_idx = idx;
+                    best_q = q;
+                }
             }
         }
-        let (best_idx, best_q, _) = best.expect("candidates non-empty");
         #[cfg(debug_assertions)]
         {
             let mut scored_dbg: SmallVec<[(usize, i32, u32); 32]> = req
@@ -2381,11 +2827,12 @@ fn pick_rollout_choice(
         return true;
     }
 
-    let mut scored: SmallVec<[(usize, i32, u32); 32]> =
-        SmallVec::with_capacity(req.candidates.len());
+    let do_prefetch = !cards_contiguous || root_choice_q.is_empty();
+    scored.clear();
+    scored.reserve(req.candidates.len().saturating_sub(scored.capacity()));
     for (idx, &ch) in req.candidates.iter().enumerate() {
         #[cfg(target_arch = "x86_64")]
-        if idx + 4 < req.candidates.len() {
+        if do_prefetch && idx + 4 < req.candidates.len() {
             let ahead = unsafe { *req.candidates.get_unchecked(idx + 4) }
                 .0
                 .wrapping_sub(1) as usize;
@@ -2399,7 +2846,15 @@ fn pick_rollout_choice(
         }
         scored.push((
             idx,
-            fast_generic_choice_card_quality(state, content, cards, qtable, ch),
+            fast_generic_choice_card_quality(
+                state,
+                content,
+                cards,
+                cards_contiguous,
+                qtable,
+                root_choice_q,
+                ch,
+            ),
             ch.0,
         ));
     }
@@ -2425,15 +2880,19 @@ fn pick_rollout_choice(
 fn resolve_step_choices(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
+    root_choice_q: &[i16],
     mut outcome: StepOutcome,
     choice_slab: &mut RolloutChoiceSlab,
+    scored_buf: &mut Vec<(usize, i32, u32)>,
     sel_buf: &mut SmallVec<[usize; 16]>,
 ) -> Option<(u32, u16)> {
     let meta_start = choice_slab.steps_meta.len();
     let idx_start = choice_slab.indices.len();
     let mut depth = 0usize;
     while let StepOutcome::NeedsChoice(ref req) = outcome {
-        if depth >= 4 || !pick_rollout_choice(state, content, req, sel_buf) {
+        if depth >= 4
+            || !pick_rollout_choice(state, content, root_choice_q, req, scored_buf, sel_buf)
+        {
             choice_slab.truncate_to(meta_start, idx_start);
             return None;
         }
@@ -2549,10 +3008,10 @@ fn select_best_pilot_move(
 #[allow(clippy::too_many_arguments)]
 fn pilot_finish_score<const IS_SETUP: bool, const IS_ANY_ENEMY: bool>(
     ctx: &FastTurnContext,
+    pre: &MoveScorePrecomp,
     energy_cost: i32,
     has_self_hp_loss: bool,
     common_prio: i32,
-    lethal_threat: bool,
     has_enemy_debuff: bool,
     eff_target: TargetType,
     retained_penalty_applies: bool,
@@ -2565,7 +3024,7 @@ fn pilot_finish_score<const IS_SETUP: bool, const IS_ANY_ENEMY: bool>(
     if kills_count > 0 && kills_count >= ctx.alive_enemies && ctx.reviving_enemies == 0 {
         return 1_000_000 + est_total_dmg * 10 - energy_cost;
     }
-    if has_self_hp_loss && ctx.player_hp <= 3 {
+    if has_self_hp_loss && pre.low_hp {
         return -500;
     }
 
@@ -2573,15 +3032,14 @@ fn pilot_finish_score<const IS_SETUP: bool, const IS_ANY_ENEMY: bool>(
     if kills_count > 0 {
         prio += kills_count * 1_600;
         if killed_incoming > 0 {
-            prio += killed_incoming.min(ctx.unblocked_incoming + 10)
-                * if lethal_threat { 260 } else { 140 };
+            prio += killed_incoming.min(pre.unblocked_plus_10) * pre.kill_inc_mult;
         }
     }
 
     if !IS_SETUP {
-        if ctx.unblocked_incoming > 0 && has_enemy_debuff {
+        if pre.has_unblocked && has_enemy_debuff {
             let targets_attacker =
-                IS_ANY_ENEMY && target_slot.is_some_and(|s| ctx.enemy_incoming[s] > 0);
+                IS_ANY_ENEMY && target_slot.is_some_and(|s| ctx.enemy_incoming(s) > 0);
             prio += if targets_attacker || (!IS_ANY_ENEMY && eff_target == TargetType::AllEnemies)
             {
                 420
@@ -2594,13 +3052,7 @@ fn pilot_finish_score<const IS_SETUP: bool, const IS_ANY_ENEMY: bool>(
         }
         if IS_ANY_ENEMY {
             if let Some(slot) = target_slot {
-                let hp = ctx.enemy_hp[slot];
-                if hp > 0 {
-                    prio += (200 - hp.min(200)).max(0);
-                    if ctx.enemy_incoming[slot] > 0 {
-                        prio += 60;
-                    }
-                }
+                prio += ctx.enemy_target_bonus(slot);
             }
         }
     } else {
@@ -2612,7 +3064,7 @@ fn pilot_finish_score<const IS_SETUP: bool, const IS_ANY_ENEMY: bool>(
         }
         if IS_ANY_ENEMY {
             if let Some(slot) = target_slot {
-                let hp = ctx.enemy_hp[slot];
+                let hp = ctx.enemy_hp(slot);
                 if hp > 0 {
                     if has_enemy_debuff && !has_attack_op {
                         prio += hp.min(250);
@@ -2624,6 +3076,738 @@ fn pilot_finish_score<const IS_SETUP: bool, const IS_ANY_ENEMY: bool>(
         }
     }
     prio
+}
+
+#[derive(Clone, Copy)]
+struct MoveScorePrecomp {
+    unblocked: i32,
+    unblocked_plus_10: i32,
+    kill_inc_mult: i32,
+    has_unblocked: bool,
+    lethal_threat: bool,
+    low_hp: bool,
+    block_mult: i32,
+    heal_bonus: i32,
+    power_non_setup_base: i32,
+    setup_retained_check: bool,
+}
+
+impl MoveScorePrecomp {
+    #[inline(always)]
+    fn new<const IS_SETUP: bool>(ctx: &FastTurnContext, has_non_retained: bool) -> Self {
+        let unblocked = ctx.unblocked_incoming;
+        let has_unblocked = unblocked > 0;
+        let lethal_threat = unblocked >= ctx.player_hp;
+        Self {
+            unblocked,
+            unblocked_plus_10: unblocked + 10,
+            kill_inc_mult: if lethal_threat { 260 } else { 140 },
+            has_unblocked,
+            lethal_threat,
+            low_hp: ctx.player_hp <= 3,
+            block_mult: if lethal_threat { 260 } else { 135 },
+            heal_bonus: if ctx.missing_hp > 0 {
+                ctx.missing_hp.min(20) * 35
+            } else {
+                0
+            },
+            power_non_setup_base: if !has_unblocked {
+                520
+            } else if lethal_threat {
+                100
+            } else {
+                240
+            },
+            setup_retained_check: IS_SETUP && (has_non_retained || ctx.has_active_scaling),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct BestPilotMove {
+    score: i32,
+    card: CardHandle,
+    target: u32,
+}
+
+impl BestPilotMove {
+    const EMPTY: Self = Self {
+        score: 0,
+        card: CardHandle(0),
+        target: u32::MAX,
+    };
+
+    #[inline(always)]
+    fn to_option(self) -> Option<(CardHandle, Option<CreatureHandle>)> {
+        if self.score > 0 {
+            Some((
+                self.card,
+                if self.target == u32::MAX {
+                    None
+                } else {
+                    Some(CreatureHandle(self.target))
+                },
+            ))
+        } else {
+            None
+        }
+    }
+}
+
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+fn score_any_enemy_slot<const IS_SETUP: bool>(
+    ctx: &FastTurnContext,
+    pre: &MoveScorePrecomp,
+    energy_cost: i32,
+    has_self_hp_loss: bool,
+    common_prio: i32,
+    has_enemy_debuff: bool,
+    eff_target: TargetType,
+    retained_penalty_applies: bool,
+    has_attack_op: bool,
+    base_dmg: i32,
+    single_dmg: i32,
+    slot: usize,
+    ch: CardHandle,
+    best: &mut BestPilotMove,
+) {
+    let es = ctx.enemy_slot(slot);
+    if es.hp <= 0 {
+        return;
+    }
+    let (est_total_dmg, kills_count, killed_incoming) = if has_attack_op {
+        if base_dmg > 0 {
+            let mut kills = 0i32;
+            let mut kill_inc = 0i32;
+            if single_dmg >= es.eff_hp {
+                kills = 1;
+                kill_inc = es.incoming;
+            }
+            (single_dmg, kills, kill_inc)
+        } else {
+            (6, 0, 0)
+        }
+    } else {
+        (0, 0, 0)
+    };
+    let sc = pilot_finish_score::<IS_SETUP, true>(
+        ctx,
+        pre,
+        energy_cost,
+        has_self_hp_loss,
+        common_prio,
+        has_enemy_debuff,
+        eff_target,
+        retained_penalty_applies,
+        has_attack_op,
+        est_total_dmg,
+        kills_count,
+        killed_incoming,
+        Some(slot),
+    );
+    if sc > best.score {
+        debug_assert_ne!(es.handle.0, u32::MAX);
+        *best = BestPilotMove {
+            score: sc,
+            card: ch,
+            target: es.handle.0,
+        };
+    }
+}
+
+#[cold]
+#[inline(never)]
+#[allow(clippy::too_many_arguments)]
+fn score_status_or_curse_card(
+    state: &BattleState,
+    ctx: &FastTurnContext,
+    pre: &MoveScorePrecomp,
+    ch: CardHandle,
+    eff_target: TargetType,
+    energy_cost: i32,
+    star_cost: i32,
+    exhausts: bool,
+    has_self_hp_loss: bool,
+    best: &mut BestPilotMove,
+) {
+    let status_prio = if exhausts && !has_self_hp_loss && energy_cost == 0 && star_cost == 0 {
+        80
+    } else if exhausts
+        && !has_self_hp_loss
+        && !pre.has_unblocked
+        && ctx.player_energy > energy_cost
+    {
+        25
+    } else {
+        -200
+    };
+    if status_prio > best.score {
+        match eff_target {
+            TargetType::AnyEnemy => {
+                if let Some(slot) = (0..ctx.enemy_count).find(|&s| ctx.enemy_hp(s) > 0) {
+                    let h = ctx.enemy_handle(slot);
+                    debug_assert_ne!(h.0, u32::MAX);
+                    *best = BestPilotMove {
+                        score: status_prio,
+                        card: ch,
+                        target: h.0,
+                    };
+                }
+            }
+            TargetType::AnyAlly => {
+                if let Some(ah) = state.ally_handles.iter().copied().find(|&ah| {
+                    ah != state.player.creature_handle
+                        && state.creature(ah).is_some_and(|c| c.is_alive())
+                }) {
+                    debug_assert_ne!(ah.0, u32::MAX);
+                    *best = BestPilotMove {
+                        score: status_prio,
+                        card: ch,
+                        target: ah.0,
+                    };
+                }
+            }
+            TargetType::AnyPlayer => {
+                if state.player_creature().is_some_and(|c| c.is_alive()) {
+                    let h = state.player.creature_handle;
+                    debug_assert_ne!(h.0, u32::MAX);
+                    *best = BestPilotMove {
+                        score: status_prio,
+                        card: ch,
+                        target: h.0,
+                    };
+                }
+            }
+            _ => {
+                *best = BestPilotMove {
+                    score: status_prio,
+                    card: ch,
+                    target: u32::MAX,
+                };
+            }
+        }
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn read_genetic_algorithm_block(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+    ch: CardHandle,
+    upg: bool,
+    profile: &CardRolloutProfile,
+) -> i32 {
+    read_comparison_var(state, content, ch, "Block").unwrap_or_else(|| {
+        if upg {
+            profile.upg_block as i32
+        } else {
+            profile.base_block as i32
+        }
+    })
+}
+
+const DEFENSIVE_FLAG_BONUS: [i32; 8] = [0, 320, 340, 660, 280, 600, 620, 940];
+
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+fn eval_and_update_best_pilot_card<const IS_SETUP: bool>(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+    ctx: &FastTurnContext,
+    pre: &MoveScorePrecomp,
+    ch: CardHandle,
+    card_id: CardId,
+    energy_cost: i32,
+    star_cost: i32,
+    upg: bool,
+    exhausts: bool,
+    is_retained: bool,
+    profile: &CardRolloutProfile,
+    best: &mut BestPilotMove,
+) {
+    let flags = profile.op_flags;
+    let mflags = profile.meta_flags;
+    let card_type = profile.card_type;
+    let base_target_type = profile.target_type;
+    let has_draw = (flags & op::HAS_DRAW) != 0;
+    let has_energy_or_star_gain = (flags & op::HAS_ENERGY_OR_STAR_GAIN) != 0;
+    let has_engine_op = (flags & op::HAS_ENGINE_OP) != 0;
+    let has_self_buff = (flags & op::HAS_SELF_BUFF) != 0;
+    let has_enemy_debuff = (flags & op::HAS_ENEMY_DEBUFF) != 0;
+    let has_heal = (mflags & mf::MAY_HEAL) != 0;
+    let has_self_hp_loss = (flags & op::HAS_SELF_HP_LOSS) != 0;
+    let has_block_op = (flags & op::HAS_BLOCK) != 0 || (mflags & mf::GAINS_BLOCK) != 0;
+    let has_attack_op = (flags & op::HAS_ATTACK) != 0 || card_type == CardType::Attack;
+
+    let eff_target = match card_id {
+        CardId::Shiv => {
+            let resolved = if ctx.player_has_fan_of_knives {
+                TargetType::AllEnemies
+            } else {
+                TargetType::AnyEnemy
+            };
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                resolved,
+                content
+                    .card_resolved_target_type(state, ch)
+                    .unwrap_or(base_target_type)
+            );
+            resolved
+        }
+        CardId::SovereignBlade => {
+            let resolved = if ctx.player_has_seeking_edge {
+                TargetType::AllEnemies
+            } else {
+                TargetType::AnyEnemy
+            };
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                resolved,
+                content
+                    .card_resolved_target_type(state, ch)
+                    .unwrap_or(base_target_type)
+            );
+            resolved
+        }
+        CardId::MadScience => content
+            .card_resolved_target_type(state, ch)
+            .unwrap_or(base_target_type),
+        _ => base_target_type,
+    };
+
+    // Avoid wasting energy on non-helpful Status/Curse cards.
+    if matches!(card_type, CardType::Status | CardType::Curse) {
+        score_status_or_curse_card(
+            state,
+            ctx,
+            pre,
+            ch,
+            eff_target,
+            energy_cost,
+            star_cost,
+            exhausts,
+            has_self_hp_loss,
+            best,
+        );
+        return;
+    }
+
+    let est_block = if has_block_op {
+        let raw_block = if card_id == CardId::GeneticAlgorithm {
+            read_genetic_algorithm_block(state, content, ch, upg, profile)
+        } else if upg {
+            profile.upg_block as i32
+        } else {
+            profile.base_block as i32
+        };
+        if raw_block > 0 {
+            let mut b = (raw_block + ctx.player_dex).max(0);
+            if ctx.player_frail {
+                let scaled = (b * 3) >> 2;
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(scaled, (b * 75) / 100);
+                b = scaled;
+            }
+            b
+        } else {
+            5
+        }
+    } else {
+        0
+    };
+
+    let (base_dmg, hits, per_hit) = if has_attack_op {
+        let base_dmg = if upg {
+            profile.upg_damage as i32
+        } else {
+            profile.base_damage as i32
+        };
+        let hits = (if upg {
+            profile.upg_hits
+        } else {
+            profile.hits
+        })
+        .max(1) as i32;
+        let mut per_hit = (base_dmg + ctx.player_str).max(0);
+        if base_dmg > 0 && ctx.player_weak {
+            let scaled = (per_hit * 3) >> 2;
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(scaled, (per_hit * 75) / 100);
+            per_hit = scaled;
+        }
+        (base_dmg, hits, per_hit)
+    } else {
+        (0, 1, 0)
+    };
+
+    if has_self_hp_loss && pre.low_hp {
+        if eff_target != TargetType::AnyEnemy && !(has_attack_op && base_dmg > 0) {
+            return;
+        }
+    }
+
+    let mut common_prio = 50i32 + if has_heal { pre.heal_bonus } else { 0 };
+    if energy_cost == 0 && star_cost == 0 {
+        if has_energy_or_star_gain {
+            common_prio += 2_400;
+        } else if has_draw && !has_self_hp_loss {
+            common_prio += 1_800;
+        } else if card_type == CardType::Power {
+            common_prio += 2_200;
+        } else {
+            common_prio += 250;
+        }
+    } else if has_energy_or_star_gain && energy_cost <= 1 {
+        common_prio += 1_300;
+    }
+
+    let useful_block = if pre.has_unblocked {
+        est_block.min(pre.unblocked)
+    } else {
+        0
+    };
+    let retained_penalty_applies = pre.setup_retained_check && is_retained;
+    if !IS_SETUP {
+        if pre.has_unblocked {
+            if useful_block > 0 {
+                common_prio += useful_block * pre.block_mult + 450;
+            } else if est_block > 0 {
+                common_prio += est_block * 15;
+            }
+        } else if est_block > 0 {
+            common_prio += est_block.min(15) * 6;
+        }
+        if card_type == CardType::Power {
+            common_prio += if !pre.has_unblocked {
+                pre.power_non_setup_base + (profile.setup_weight as i32) * 15
+            } else {
+                pre.power_non_setup_base
+            };
+        }
+        let lut_idx = ((flags & 1) | ((flags >> 1) & 6)) as usize;
+        let lut_bonus = unsafe { *DEFENSIVE_FLAG_BONUS.get_unchecked(lut_idx) };
+        #[cfg(debug_assertions)]
+        {
+            let expected = if has_draw { 320 } else { 0 }
+                + if has_engine_op { 340 } else { 0 }
+                + if has_self_buff { 280 } else { 0 };
+            debug_assert_eq!(lut_bonus, expected);
+        }
+        common_prio += lut_bonus;
+        if !pre.has_unblocked && energy_cost > 0 {
+            common_prio += energy_cost * 90;
+        }
+    } else {
+        if pre.lethal_threat && useful_block > 0 {
+            common_prio += useful_block * 240 + 1_200;
+        }
+        if card_type == CardType::Power {
+            common_prio += 1_550 + (profile.setup_weight as i32).clamp(0, 30) * 25;
+        }
+        if has_engine_op {
+            common_prio += 950;
+        }
+        if has_self_buff {
+            common_prio += 900;
+        }
+        if has_draw {
+            common_prio += 820;
+        }
+        if has_enemy_debuff {
+            common_prio += 800;
+        }
+        if pre.has_unblocked && useful_block > 0 && !pre.lethal_threat {
+            common_prio += useful_block * 70 + 220;
+        }
+    }
+    if has_self_hp_loss && !pre.lethal_threat {
+        common_prio -= 180;
+    }
+
+    match eff_target {
+        TargetType::AnyEnemy => {
+            if ctx.enemy_count == 1 {
+                let single = if has_attack_op && base_dmg > 0 {
+                    let h = if ctx.enemy_vuln(0) {
+                        let vh = (per_hit * 3) >> 1;
+                        #[cfg(debug_assertions)]
+                        debug_assert_eq!(vh, (per_hit * 150) / 100);
+                        vh
+                    } else {
+                        per_hit
+                    };
+                    h * hits
+                } else {
+                    0
+                };
+                score_any_enemy_slot::<IS_SETUP>(
+                    ctx,
+                    pre,
+                    energy_cost,
+                    has_self_hp_loss,
+                    common_prio,
+                    has_enemy_debuff,
+                    eff_target,
+                    retained_penalty_applies,
+                    has_attack_op,
+                    base_dmg,
+                    single,
+                    0,
+                    ch,
+                    best,
+                );
+            } else if !IS_SETUP && !has_attack_op {
+                let best_slot = if pre.has_unblocked && has_enemy_debuff {
+                    ctx.best_debuff_enemy_slot
+                } else {
+                    ctx.best_non_attack_enemy_slot
+                };
+                #[cfg(debug_assertions)]
+                let mut dbg_best = *best;
+                if let Some(slot) = best_slot {
+                    score_any_enemy_slot::<IS_SETUP>(
+                        ctx,
+                        pre,
+                        energy_cost,
+                        has_self_hp_loss,
+                        common_prio,
+                        has_enemy_debuff,
+                        eff_target,
+                        retained_penalty_applies,
+                        false,
+                        0,
+                        0,
+                        slot,
+                        ch,
+                        best,
+                    );
+                }
+                #[cfg(debug_assertions)]
+                {
+                    for slot in 0..ctx.enemy_count {
+                        score_any_enemy_slot::<IS_SETUP>(
+                            ctx,
+                            pre,
+                            energy_cost,
+                            has_self_hp_loss,
+                            common_prio,
+                            has_enemy_debuff,
+                            eff_target,
+                            retained_penalty_applies,
+                            false,
+                            0,
+                            0,
+                            slot,
+                            ch,
+                            &mut dbg_best,
+                        );
+                    }
+                    debug_assert_eq!(*best, dbg_best);
+                }
+            } else if !IS_SETUP && has_attack_op && base_dmg > 0 {
+                if has_self_hp_loss && pre.low_hp {
+                    return;
+                }
+                debug_assert!(ctx.alive_enemies >= 2);
+                let dmg_normal = per_hit * hits;
+                let dmg_vuln = if ctx.any_enemy_vuln {
+                    let vuln_hit = (per_hit * 3) >> 1;
+                    #[cfg(debug_assertions)]
+                    debug_assert_eq!(vuln_hit, (per_hit * 150) / 100);
+                    vuln_hit * hits
+                } else {
+                    dmg_normal
+                };
+                #[cfg(debug_assertions)]
+                let mut dbg_best = *best;
+                let debuff_unblocked = pre.has_unblocked && has_enemy_debuff;
+                let mut local_best_sc = best.score;
+                let mut local_best_handle: u32 = u32::MAX;
+                for slot in 0..ctx.enemy_count {
+                    let es = ctx.enemy_slot(slot);
+                    if es.hp <= 0 {
+                        continue;
+                    }
+                    let single = if es.vuln { dmg_vuln } else { dmg_normal };
+                    let mut sc = common_prio + single * 45 + es.target_bonus;
+                    if single >= es.eff_hp {
+                        sc += 1_600;
+                        if es.incoming > 0 {
+                            sc += es.incoming.min(pre.unblocked_plus_10) * pre.kill_inc_mult;
+                        }
+                    }
+                    if debuff_unblocked {
+                        sc += if es.incoming > 0 { 420 } else { 180 };
+                    }
+                    if sc > local_best_sc {
+                        local_best_sc = sc;
+                        local_best_handle = es.handle.0;
+                    }
+                }
+                if local_best_handle != u32::MAX {
+                    *best = BestPilotMove {
+                        score: local_best_sc,
+                        card: ch,
+                        target: local_best_handle,
+                    };
+                }
+                #[cfg(debug_assertions)]
+                {
+                    for slot in 0..ctx.enemy_count {
+                        let single = if ctx.enemy_vuln(slot) {
+                            dmg_vuln
+                        } else {
+                            dmg_normal
+                        };
+                        score_any_enemy_slot::<IS_SETUP>(
+                            ctx,
+                            pre,
+                            energy_cost,
+                            has_self_hp_loss,
+                            common_prio,
+                            has_enemy_debuff,
+                            eff_target,
+                            retained_penalty_applies,
+                            has_attack_op,
+                            base_dmg,
+                            single,
+                            slot,
+                            ch,
+                            &mut dbg_best,
+                        );
+                    }
+                    debug_assert_eq!(*best, dbg_best);
+                }
+            } else {
+                let (dmg_normal, dmg_vuln) = if has_attack_op && base_dmg > 0 {
+                    let dn = per_hit * hits;
+                    let dv = if ctx.any_enemy_vuln {
+                        let vuln_hit = (per_hit * 3) >> 1;
+                        #[cfg(debug_assertions)]
+                        debug_assert_eq!(vuln_hit, (per_hit * 150) / 100);
+                        vuln_hit * hits
+                    } else {
+                        dn
+                    };
+                    (dn, dv)
+                } else {
+                    (0, 0)
+                };
+                for slot in 0..ctx.enemy_count {
+                    let single = if ctx.enemy_vuln(slot) {
+                        dmg_vuln
+                    } else {
+                        dmg_normal
+                    };
+                    score_any_enemy_slot::<IS_SETUP>(
+                        ctx,
+                        pre,
+                        energy_cost,
+                        has_self_hp_loss,
+                        common_prio,
+                        has_enemy_debuff,
+                        eff_target,
+                        retained_penalty_applies,
+                        has_attack_op,
+                        base_dmg,
+                        single,
+                        slot,
+                        ch,
+                        best,
+                    );
+                }
+            }
+        }
+        _ => {
+            let target_handle = match eff_target {
+                TargetType::AnyAlly => {
+                    let Some(ah) = state.ally_handles.iter().copied().find(|&ah| {
+                        ah != state.player.creature_handle
+                            && state.creature(ah).is_some_and(|c| c.is_alive())
+                    }) else {
+                        return;
+                    };
+                    ah.0
+                }
+                TargetType::AnyPlayer => {
+                    if !state.player_creature().is_some_and(|c| c.is_alive()) {
+                        return;
+                    }
+                    state.player.creature_handle.0
+                }
+                _ => u32::MAX,
+            };
+
+            let (est_total_dmg, kills_count, killed_incoming) = if has_attack_op {
+                if base_dmg > 0 {
+                    if eff_target == TargetType::AllEnemies {
+                        let mut total = 0i32;
+                        let mut kills = 0i32;
+                        let mut kill_inc = 0i32;
+                        let dmg_normal = per_hit * hits;
+                        let dmg_vuln = if ctx.any_enemy_vuln {
+                            let vuln_hit = (per_hit * 3) >> 1;
+                            #[cfg(debug_assertions)]
+                            debug_assert_eq!(vuln_hit, (per_hit * 150) / 100);
+                            vuln_hit * hits
+                        } else {
+                            dmg_normal
+                        };
+                        for slot in 0..ctx.enemy_count {
+                            let es = ctx.enemy_slot(slot);
+                            if es.hp <= 0 {
+                                continue;
+                            }
+                            let dmg = if es.vuln { dmg_vuln } else { dmg_normal };
+                            total += dmg;
+                            if dmg >= es.eff_hp {
+                                kills += 1;
+                                kill_inc += es.incoming;
+                            }
+                        }
+                        (total, kills, kill_inc)
+                    } else {
+                        (per_hit * hits, 0, 0)
+                    }
+                } else {
+                    let total = if eff_target == TargetType::AllEnemies {
+                        6 * ctx.alive_enemies.max(1)
+                    } else {
+                        6
+                    };
+                    (total, 0, 0)
+                }
+            } else {
+                (0, 0, 0)
+            };
+
+            let sc = pilot_finish_score::<IS_SETUP, false>(
+                ctx,
+                pre,
+                energy_cost,
+                has_self_hp_loss,
+                common_prio,
+                has_enemy_debuff,
+                eff_target,
+                retained_penalty_applies,
+                has_attack_op,
+                est_total_dmg,
+                kills_count,
+                killed_incoming,
+                None,
+            );
+            if sc > best.score {
+                *best = BestPilotMove {
+                    score: sc,
+                    card: ch,
+                    target: target_handle,
+                };
+            }
+        }
+    }
 }
 
 fn select_best_pilot_move_impl<const IS_SETUP: bool>(
@@ -2682,25 +3866,8 @@ fn select_best_pilot_move_impl<const IS_SETUP: bool>(
         }
     }
 
-    let unblocked = ctx.unblocked_incoming;
-    let has_unblocked = unblocked > 0;
-    let lethal_threat = unblocked >= ctx.player_hp;
-    let low_hp = ctx.player_hp <= 3;
-    let block_mult = if lethal_threat { 260 } else { 135 };
-    let heal_bonus = if ctx.missing_hp > 0 {
-        ctx.missing_hp.min(20) * 35
-    } else {
-        0
-    };
-    let power_non_setup_base = if !has_unblocked {
-        520
-    } else if lethal_threat {
-        100
-    } else {
-        240
-    };
-    let setup_retained_check = IS_SETUP && (has_non_retained || ctx.has_active_scaling);
-    let mut best: Option<(i32, CardHandle, Option<CreatureHandle>)> = None;
+    let pre = MoveScorePrecomp::new::<IS_SETUP>(ctx, has_non_retained);
+    let mut best = BestPilotMove::EMPTY;
 
     for (p_idx, p) in playable.iter().enumerate() {
         let ch = p.handle;
@@ -2715,371 +3882,383 @@ fn select_best_pilot_move_impl<const IS_SETUP: bool>(
         }
         let card_id = p.card_id;
         let cidx = card_id as usize;
-        let profile = if full_tables {
-            unsafe { *card_rollout_profiles.unwrap_unchecked().get_unchecked(cidx) }
+        let fallback_profile;
+        let profile: &CardRolloutProfile = if full_tables {
+            unsafe { card_rollout_profiles.unwrap_unchecked().get_unchecked(cidx) }
+        } else if let Some(pr) = card_rollout_profiles.and_then(|rp| rp.get(cidx)) {
+            pr
         } else {
-            match card_rollout_profiles.and_then(|pr| pr.get(cidx)) {
-                Some(&pr) => pr,
-                None => content.card_rollout_profile(card_id),
-            }
+            fallback_profile = content.card_rollout_profile(card_id);
+            &fallback_profile
         };
-        let energy_cost = p.energy_cost.max(0);
-        let star_cost = p.star_cost.max(0);
-        let exhausts = p.exhausts;
-        let is_retained = p.is_retained;
-
-        let flags = profile.op_flags;
-        let mflags = profile.meta_flags;
-        let card_type = profile.card_type;
-        let base_target_type = profile.target_type;
-        let has_draw = (flags & op::HAS_DRAW) != 0;
-        let has_energy_or_star_gain = (flags & op::HAS_ENERGY_OR_STAR_GAIN) != 0;
-        let has_engine_op = (flags & op::HAS_ENGINE_OP) != 0;
-        let has_self_buff = (flags & op::HAS_SELF_BUFF) != 0;
-        let has_enemy_debuff = (flags & op::HAS_ENEMY_DEBUFF) != 0;
-        let has_heal = (mflags & mf::MAY_HEAL) != 0;
-        let has_self_hp_loss = (flags & op::HAS_SELF_HP_LOSS) != 0;
-        let has_block_op = (flags & op::HAS_BLOCK) != 0 || (mflags & mf::GAINS_BLOCK) != 0;
-        let has_attack_op = (flags & op::HAS_ATTACK) != 0 || card_type == CardType::Attack;
-
-        let eff_target = if matches!(
+        eval_and_update_best_pilot_card::<IS_SETUP>(
+            state,
+            content,
+            ctx,
+            &pre,
+            ch,
             card_id,
-            CardId::Shiv | CardId::SovereignBlade | CardId::MadScience
-        ) {
-            content
-                .card_resolved_target_type(state, ch)
-                .unwrap_or(base_target_type)
-        } else {
-            base_target_type
-        };
+            p.energy_cost.max(0),
+            p.star_cost.max(0),
+            p.upg,
+            p.exhausts,
+            p.is_retained,
+            profile,
+            &mut best,
+        );
+    }
 
-        // Avoid wasting energy on non-helpful Status/Curse cards.
-        if matches!(card_type, CardType::Status | CardType::Curse) {
-            let status_prio =
-                if exhausts && !has_self_hp_loss && energy_cost == 0 && star_cost == 0 {
-                    80
-                } else if exhausts
-                    && !has_self_hp_loss
-                    && !has_unblocked
-                    && ctx.player_energy > energy_cost
-                {
-                    25
-                } else {
-                    -200
-                };
-            if status_prio > 0 && best.is_none_or(|(bsc, _, _)| status_prio > bsc) {
-                match eff_target {
-                    TargetType::AnyEnemy => {
-                        if let Some(slot) = (0..ctx.enemy_count).find(|&s| ctx.enemy_hp[s] > 0) {
-                            best = Some((status_prio, ch, Some(ctx.enemy_handles[slot])));
-                        }
-                    }
-                    TargetType::AnyAlly => {
-                        if let Some(ah) = state.ally_handles.iter().copied().find(|&ah| {
-                            ah != state.player.creature_handle
-                                && state.creature(ah).is_some_and(|c| c.is_alive())
-                        }) {
-                            best = Some((status_prio, ch, Some(ah)));
-                        }
-                    }
-                    TargetType::AnyPlayer => {
-                        if state.player_creature().is_some_and(|c| c.is_alive()) {
-                            best = Some((status_prio, ch, Some(state.player.creature_handle)));
-                        }
-                    }
-                    _ => {
-                        best = Some((status_prio, ch, None));
-                    }
-                }
-            }
-            continue;
-        }
+    best.to_option()
+}
 
-        let upg = p.upg;
-        let est_block = if has_block_op {
-            let raw_block = match card_id {
-                CardId::GeneticAlgorithm => read_comparison_var(state, content, ch, "Block")
-                    .unwrap_or_else(|| {
-                        if upg {
-                            profile.upg_block as i32
-                        } else {
-                            profile.base_block as i32
-                        }
-                    }),
-                _ => {
-                    if upg {
-                        profile.upg_block as i32
-                    } else {
-                        profile.base_block as i32
-                    }
-                }
-            };
-            if raw_block > 0 {
-                let mut b = (raw_block + ctx.player_dex).max(0);
-                if ctx.player_frail {
-                    let scaled = (b * 3) >> 2;
-                    #[cfg(debug_assertions)]
-                    debug_assert_eq!(scaled, (b * 75) / 100);
-                    b = scaled;
-                }
-                b
-            } else {
-                5
-            }
-        } else {
-            0
-        };
+#[derive(Clone, Copy)]
+struct FirstDefensiveCand {
+    handle: CardHandle,
+    card_id: CardId,
+    energy_cost: i32,
+    star_cost: i32,
+    upg: bool,
+    exhausts: bool,
+    is_retained: bool,
+    prof: &'static CardRolloutProfile,
+}
 
-        let (base_dmg, hits, per_hit) = if has_attack_op {
-            let base_dmg = if upg {
-                profile.upg_damage as i32
-            } else {
-                profile.base_damage as i32
-            };
-            let hits = (if upg {
-                profile.upg_hits
-            } else {
-                profile.hits
-            })
-            .max(1) as i32;
-            let mut per_hit = (base_dmg + ctx.player_str).max(0);
-            if base_dmg > 0 && ctx.player_weak {
-                let scaled = (per_hit * 3) >> 2;
-                #[cfg(debug_assertions)]
-                debug_assert_eq!(scaled, (per_hit * 75) / 100);
-                per_hit = scaled;
-            }
-            (base_dmg, hits, per_hit)
-        } else {
-            (0, 1, 0)
-        };
+#[inline(never)]
+#[allow(clippy::too_many_arguments)]
+fn init_defensive_ctx_and_eval_first(
+    state: &BattleState,
+    content: &dyn ContentDispatcher,
+    root_baseline: &RootEvalBaseline,
+    intent_cache: &mut IntentHitsCache,
+    ctx_buf: &mut std::mem::MaybeUninit<FastTurnContext>,
+    pre_buf: &mut std::mem::MaybeUninit<MoveScorePrecomp>,
+    first: FirstDefensiveCand,
+    best: &mut BestPilotMove,
+) {
+    let ctx = compute_fast_turn_context_into::<false>(
+        state,
+        content,
+        root_baseline,
+        intent_cache,
+        ctx_buf,
+    );
+    let pre = pre_buf.write(MoveScorePrecomp::new::<false>(ctx, false));
+    eval_and_update_best_pilot_card::<false>(
+        state,
+        content,
+        ctx,
+        pre,
+        first.handle,
+        first.card_id,
+        first.energy_cost.max(0),
+        first.star_cost.max(0),
+        first.upg,
+        first.exhausts,
+        first.is_retained,
+        first.prof,
+        best,
+    );
+}
 
-        // Precompute non-target-dependent priority components once per card.
-        if has_self_hp_loss && low_hp {
-            // Check lethal for AnyEnemy below only if base_dmg > 0; otherwise -500 <= 0.
-            if eff_target != TargetType::AnyEnemy && !(has_attack_op && base_dmg > 0) {
-                continue;
-            }
-        }
+#[inline]
+#[allow(clippy::too_many_arguments)]
+fn select_best_defensive_tempo_move_fast(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    root_baseline: &RootEvalBaseline,
+    intent_cache: &mut IntentHitsCache,
+    hand_buf: &mut Vec<CardHandle>,
+    seen_keys: &mut Vec<RolloutDedupKey>,
+) -> Option<Option<(CardHandle, Option<CreatureHandle>)>> {
+    if state.player.hand.is_empty() || !state.is_in_progress {
+        return Some(None);
+    }
+    if !state.hook_cache.masks_are_valid() {
+        let _ = state.ensure_hook_cache(content);
+    }
+    if sts2_kernel::hooks::is_over_or_ending_checked(state, content).unwrap_or(true) {
+        return Some(None);
+    }
+    let (fast_query_safe, comb, fast_energy_hook, fast_should_play) =
+        resolve_fast_query_and_hooks(state, content);
+    if !fast_query_safe || fast_energy_hook == FastEnergyHook::Fallback {
+        return None;
+    }
 
-        let mut common_prio = 50i32 + if has_heal { heal_bonus } else { 0 };
-        if energy_cost == 0 && star_cost == 0 {
-            if has_energy_or_star_gain {
-                common_prio += 2_400;
-            } else if has_draw && !has_self_hp_loss {
-                common_prio += 1_800;
-            } else if card_type == CardType::Power {
-                common_prio += 2_200;
-            } else {
-                common_prio += 250;
-            }
-        } else if has_energy_or_star_gain && energy_cost <= 1 {
-            common_prio += 1_300;
-        }
+    let (tables, full_profiles, cards_contiguous, has_hex_power, bound_blocked) =
+        resolve_fast_scan_meta(state, comb, fast_energy_hook, fast_should_play);
+    let player_energy = state.player.energy;
+    let player_stars = state.player.stars;
+    let mut seen_fast = [0u64; 16];
+    let mut seen_fast_len = 0usize;
+    let mut use_seen_keys = false;
 
-        let useful_block = if has_unblocked {
-            est_block.min(unblocked)
-        } else {
-            0
-        };
-        let retained_penalty_applies = setup_retained_check && is_retained;
-        if !IS_SETUP {
-            if has_unblocked {
-                if useful_block > 0 {
-                    common_prio += useful_block * block_mult + 450;
-                } else if est_block > 0 {
-                    common_prio += est_block * 15;
-                }
-            } else if est_block > 0 {
-                common_prio += est_block.min(15) * 6;
-            }
-            if card_type == CardType::Power {
-                common_prio += if !has_unblocked {
-                    power_non_setup_base + (profile.setup_weight as i32) * 15
-                } else {
-                    power_non_setup_base
-                };
-            }
-            if has_draw {
-                common_prio += 320;
-            }
-            if has_engine_op {
-                common_prio += 340;
-            }
-            if has_self_buff {
-                common_prio += 280;
-            }
-            if !has_unblocked && energy_cost > 0 {
-                common_prio += energy_cost * 90;
-            }
-        } else {
-            if lethal_threat && useful_block > 0 {
-                common_prio += useful_block * 240 + 1_200;
-            }
-            if card_type == CardType::Power {
-                common_prio += 1_550 + (profile.setup_weight as i32).clamp(0, 30) * 25;
-            }
-            if has_engine_op {
-                common_prio += 950;
-            }
-            if has_self_buff {
-                common_prio += 900;
-            }
-            if has_draw {
-                common_prio += 820;
-            }
-            if has_enemy_debuff {
-                common_prio += 800;
-            }
-            if has_unblocked && useful_block > 0 && !lethal_threat {
-                common_prio += useful_block * 70 + 220;
-            }
-        }
-        if has_self_hp_loss && !lethal_threat {
-            common_prio -= 180;
-        }
+    hand_buf.clear();
+    hand_buf.extend_from_slice(&state.player.hand);
 
-        match eff_target {
-            TargetType::AnyEnemy => {
-                let (dmg_normal, dmg_vuln) = if has_attack_op && base_dmg > 0 {
-                    let vuln_hit = (per_hit * 3) >> 1;
-                    #[cfg(debug_assertions)]
-                    debug_assert_eq!(vuln_hit, (per_hit * 150) / 100);
-                    (per_hit * hits, vuln_hit * hits)
-                } else {
-                    (0, 0)
-                };
-                for slot in 0..ctx.enemy_count {
-                    let hp = ctx.enemy_hp[slot];
-                    if hp <= 0 {
-                        continue;
-                    }
-                    let (est_total_dmg, kills_count, killed_incoming) = if has_attack_op {
-                        if base_dmg > 0 {
-                            let single = if ctx.enemy_vuln[slot] {
-                                dmg_vuln
-                            } else {
-                                dmg_normal
-                            };
-                            let mut kills = 0i32;
-                            let mut kill_inc = 0i32;
-                            if single >= hp + ctx.enemy_block[slot] {
-                                kills = 1;
-                                kill_inc = ctx.enemy_incoming[slot];
-                            }
-                            (single, kills, kill_inc)
-                        } else {
-                            (6, 0, 0)
-                        }
-                    } else {
-                        (0, 0, 0)
-                    };
-                    let sc = pilot_finish_score::<IS_SETUP, true>(
-                        ctx,
-                        energy_cost,
-                        has_self_hp_loss,
-                        common_prio,
-                        lethal_threat,
-                        has_enemy_debuff,
-                        eff_target,
-                        retained_penalty_applies,
-                        has_attack_op,
-                        est_total_dmg,
-                        kills_count,
-                        killed_incoming,
-                        Some(slot),
+    let mut first_cand: Option<FirstDefensiveCand> = None;
+    let mut has_ctx = false;
+    let mut ctx_buf = std::mem::MaybeUninit::<FastTurnContext>::uninit();
+    let mut pre_buf = std::mem::MaybeUninit::<MoveScorePrecomp>::uninit();
+    let mut best = BestPilotMove::EMPTY;
+
+    let hand_len = hand_buf.len();
+    #[cfg(target_arch = "x86_64")]
+    if hand_len >= 4 {
+        for &ahead_ch in &hand_buf[..3] {
+            let ahead = ahead_ch.0.wrapping_sub(1) as usize;
+            if ahead < state.cards.len() {
+                unsafe {
+                    core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
+                        state.cards.as_ptr().add(ahead).cast::<i8>(),
                     );
-                    if sc > 0 && best.is_none_or(|(bsc, _, _)| sc > bsc) {
-                        best = Some((sc, ch, Some(ctx.enemy_handles[slot])));
-                    }
-                }
-            }
-            _ => {
-                let target_opt = match eff_target {
-                    TargetType::AnyAlly => {
-                        let Some(ah) = state.ally_handles.iter().copied().find(|&ah| {
-                            ah != state.player.creature_handle
-                                && state.creature(ah).is_some_and(|c| c.is_alive())
-                        }) else {
-                            continue;
-                        };
-                        Some(ah)
-                    }
-                    TargetType::AnyPlayer => {
-                        if !state.player_creature().is_some_and(|c| c.is_alive()) {
-                            continue;
-                        }
-                        Some(state.player.creature_handle)
-                    }
-                    _ => None,
-                };
-
-                let (est_total_dmg, kills_count, killed_incoming) = if has_attack_op {
-                    if base_dmg > 0 {
-                        if eff_target == TargetType::AllEnemies {
-                            let mut total = 0i32;
-                            let mut kills = 0i32;
-                            let mut kill_inc = 0i32;
-                            let vuln_hit = (per_hit * 3) >> 1;
-                            #[cfg(debug_assertions)]
-                            debug_assert_eq!(vuln_hit, (per_hit * 150) / 100);
-                            let dmg_normal = per_hit * hits;
-                            let dmg_vuln = vuln_hit * hits;
-                            for slot in 0..ctx.enemy_count {
-                                let hp = ctx.enemy_hp[slot];
-                                if hp <= 0 {
-                                    continue;
-                                }
-                                let dmg = if ctx.enemy_vuln[slot] {
-                                    dmg_vuln
-                                } else {
-                                    dmg_normal
-                                };
-                                total += dmg;
-                                if dmg >= hp + ctx.enemy_block[slot] {
-                                    kills += 1;
-                                    kill_inc += ctx.enemy_incoming[slot];
-                                }
-                            }
-                            (total, kills, kill_inc)
-                        } else {
-                            (per_hit * hits, 0, 0)
-                        }
-                    } else {
-                        let total = if eff_target == TargetType::AllEnemies {
-                            6 * ctx.alive_enemies.max(1)
-                        } else {
-                            6
-                        };
-                        (total, 0, 0)
-                    }
-                } else {
-                    (0, 0, 0)
-                };
-
-                let sc = pilot_finish_score::<IS_SETUP, false>(
-                    ctx,
-                    energy_cost,
-                    has_self_hp_loss,
-                    common_prio,
-                    lethal_threat,
-                    has_enemy_debuff,
-                    eff_target,
-                    retained_penalty_applies,
-                    has_attack_op,
-                    est_total_dmg,
-                    kills_count,
-                    killed_incoming,
-                    None,
-                );
-                if sc > 0 && best.is_none_or(|(bsc, _, _)| sc > bsc) {
-                    best = Some((sc, ch, target_opt));
                 }
             }
         }
     }
 
-    best.map(|(_, ch, tgt)| (ch, tgt))
+    for hi in 0..hand_len {
+        let ch = hand_buf[hi];
+        #[cfg(target_arch = "x86_64")]
+        if hand_len >= 4 && hi + 3 < hand_len {
+            let ahead = unsafe { *hand_buf.get_unchecked(hi + 3) }
+                .0
+                .wrapping_sub(1) as usize;
+            if ahead < state.cards.len() {
+                unsafe {
+                    core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
+                        state.cards.as_ptr().add(ahead).cast::<i8>(),
+                    );
+                }
+            }
+        }
+        let Some(c) = try_extract_fast_playable_hand_card(
+            state,
+            content,
+            comb,
+            fast_energy_hook,
+            tables,
+            full_profiles,
+            cards_contiguous,
+            player_energy,
+            player_stars,
+            has_hex_power,
+            bound_blocked,
+            ch,
+            &mut seen_fast,
+            &mut seen_fast_len,
+            &mut use_seen_keys,
+            seen_keys,
+        ) else {
+            continue;
+        };
+
+        if !has_ctx {
+            if let Some(first) = first_cand.take() {
+                init_defensive_ctx_and_eval_first(
+                    state,
+                    content,
+                    root_baseline,
+                    intent_cache,
+                    &mut ctx_buf,
+                    &mut pre_buf,
+                    first,
+                    &mut best,
+                );
+                has_ctx = true;
+            } else {
+                first_cand = Some(FirstDefensiveCand {
+                    handle: c.handle,
+                    card_id: c.card_id,
+                    energy_cost: c.energy_cost,
+                    star_cost: c.star_cost,
+                    upg: c.upg,
+                    exhausts: c.exhausts,
+                    is_retained: c.is_retained,
+                    prof: c.prof,
+                });
+                continue;
+            }
+        }
+        let ctx = unsafe { ctx_buf.assume_init_ref() };
+        let pre = unsafe { pre_buf.assume_init_ref() };
+        eval_and_update_best_pilot_card::<false>(
+            state,
+            content,
+            ctx,
+            pre,
+            c.handle,
+            c.card_id,
+            c.energy_cost.max(0),
+            c.star_cost.max(0),
+            c.upg,
+            c.exhausts,
+            c.is_retained,
+            c.prof,
+            &mut best,
+        );
+    }
+
+    if has_ctx {
+        return Some(best.to_option());
+    }
+    let Some(p) = first_cand else {
+        return Some(None);
+    };
+    if p.energy_cost < 1_000_000 {
+        let profile = p.prof;
+        if !matches!(profile.card_type, CardType::Status | CardType::Curse)
+            && (profile.op_flags & op::HAS_SELF_HP_LOSS) == 0
+        {
+            let eff_target = match p.card_id {
+                CardId::Shiv | CardId::SovereignBlade | CardId::MadScience => content
+                    .card_resolved_target_type(state, p.handle)
+                    .unwrap_or(profile.target_type),
+                _ => profile.target_type,
+            };
+            let fast_pick = match eff_target {
+                TargetType::AnyEnemy => {
+                    let mut sole_enemy: Option<CreatureHandle> = None;
+                    let mut living = 0usize;
+                    for &eh in &state.enemy_handles {
+                        if state.creature(eh).is_some_and(|c| c.is_alive()) {
+                            sole_enemy = Some(eh);
+                            living += 1;
+                            if living > 1 {
+                                break;
+                            }
+                        }
+                    }
+                    if living == 1 {
+                        Some((p.handle, sole_enemy))
+                    } else {
+                        None
+                    }
+                }
+                TargetType::AnyAlly => None,
+                TargetType::AnyPlayer => {
+                    if state.player_creature().is_some_and(|c| c.is_alive()) {
+                        Some((p.handle, Some(state.player.creature_handle)))
+                    } else {
+                        None
+                    }
+                }
+                _ => Some((p.handle, None)),
+            };
+            if let Some(pick) = fast_pick {
+                return Some(Some(pick));
+            }
+        }
+    }
+    init_defensive_ctx_and_eval_first(
+        state,
+        content,
+        root_baseline,
+        intent_cache,
+        &mut ctx_buf,
+        &mut pre_buf,
+        p,
+        &mut best,
+    );
+    Some(best.to_option())
+}
+
+#[cold]
+#[inline(never)]
+#[allow(clippy::too_many_arguments)]
+fn collect_and_select_pilot_move_slow(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    root_baseline: &RootEvalBaseline,
+    intent_cache: &mut IntentHitsCache,
+    pilot: PilotKind,
+    blocked_buf: &[CardHandle],
+    playable_buf: &mut Vec<PlayableRolloutCard>,
+    hand_buf: &mut Vec<CardHandle>,
+    seen_keys: &mut Vec<RolloutDedupKey>,
+) -> Option<(CardHandle, Option<CreatureHandle>)> {
+    collect_rollout_playable_cards(state, content, hand_buf, seen_keys, playable_buf);
+    if playable_buf.is_empty() {
+        return None;
+    }
+    let fast_pick = if pilot == PilotKind::DefensiveTempo
+        && playable_buf.len() == 1
+        && blocked_buf.is_empty()
+    {
+        let p = playable_buf[0];
+        if p.energy_cost < 1_000_000 {
+            let profile = state.fast_card_rollout_profile(content, p.card_id);
+            if !matches!(profile.card_type, CardType::Status | CardType::Curse)
+                && (profile.op_flags & op::HAS_SELF_HP_LOSS) == 0
+            {
+                let eff_target = match p.card_id {
+                    CardId::Shiv | CardId::SovereignBlade | CardId::MadScience => content
+                        .card_resolved_target_type(state, p.handle)
+                        .unwrap_or(profile.target_type),
+                    _ => profile.target_type,
+                };
+                match eff_target {
+                    TargetType::AnyEnemy => {
+                        let mut sole_enemy: Option<CreatureHandle> = None;
+                        let mut living = 0usize;
+                        for &eh in &state.enemy_handles {
+                            if state.creature(eh).is_some_and(|c| c.is_alive()) {
+                                sole_enemy = Some(eh);
+                                living += 1;
+                                if living > 1 {
+                                    break;
+                                }
+                            }
+                        }
+                        if living == 1 {
+                            Some((p.handle, sole_enemy))
+                        } else {
+                            None
+                        }
+                    }
+                    TargetType::AnyAlly => None,
+                    TargetType::AnyPlayer => {
+                        if state.player_creature().is_some_and(|c| c.is_alive()) {
+                            Some((p.handle, Some(state.player.creature_handle)))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => Some((p.handle, None)),
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    if let Some(pick) = fast_pick {
+        #[cfg(debug_assertions)]
+        {
+            let dbg_ctx =
+                compute_fast_turn_context::<false>(state, content, root_baseline, intent_cache);
+            debug_assert_eq!(
+                Some(pick),
+                select_best_pilot_move_impl::<false>(
+                    state,
+                    content,
+                    playable_buf,
+                    blocked_buf,
+                    &dbg_ctx,
+                )
+            );
+        }
+        return Some(pick);
+    }
+    let ctx = if pilot == PilotKind::DefensiveTempo {
+        compute_fast_turn_context::<false>(state, content, root_baseline, intent_cache)
+    } else {
+        compute_fast_turn_context::<true>(state, content, root_baseline, intent_cache)
+    };
+    select_best_pilot_move(state, content, playable_buf, blocked_buf, &ctx, pilot)
 }
 
 struct Turn1ProbeCacheHook<'a, 'b> {
@@ -3095,6 +4274,7 @@ fn run_pilot_turns<const TRACK_AUTO_POTIONS: bool, R>(
     state: &mut BattleState,
     compact_steps: &mut Vec<CompactRolloutStep>,
     choice_slab: &mut RolloutChoiceSlab,
+    choice_scored_buf: &mut Vec<(usize, i32, u32)>,
     sel_buf: &mut SmallVec<[usize; 16]>,
     intent_cache: &mut IntentHitsCache,
     mut restore_base: R,
@@ -3152,99 +4332,79 @@ where
             {
                 break;
             }
-            collect_rollout_playable_cards(state, content, hand_buf, seen_keys, playable_buf);
-            if playable_buf.is_empty() {
-                break;
-            }
-            let fast_pick = if pilot == PilotKind::DefensiveTempo
-                && playable_buf.len() == 1
-                && blocked_buf.is_empty()
-            {
-                let p = playable_buf[0];
-                if p.energy_cost < 1_000_000 {
-                    let profile = state.fast_card_rollout_profile(content, p.card_id);
-                    if !matches!(profile.card_type, CardType::Status | CardType::Curse)
-                        && (profile.op_flags & op::HAS_SELF_HP_LOSS) == 0
-                    {
-                        let eff_target = match p.card_id {
-                            CardId::Shiv | CardId::SovereignBlade | CardId::MadScience => content
-                                .card_resolved_target_type(state, p.handle)
-                                .unwrap_or(profile.target_type),
-                            _ => profile.target_type,
-                        };
-                        match eff_target {
-                            TargetType::AnyEnemy => {
-                                let mut sole_enemy: Option<CreatureHandle> = None;
-                                let mut living = 0usize;
-                                for &eh in &state.enemy_handles {
-                                    if state.creature(eh).is_some_and(|c| c.is_alive()) {
-                                        sole_enemy = Some(eh);
-                                        living += 1;
-                                        if living > 1 {
-                                            break;
-                                        }
-                                    }
-                                }
-                                if living == 1 {
-                                    Some((p.handle, sole_enemy))
-                                } else {
-                                    None
-                                }
-                            }
-                            TargetType::AnyAlly => None,
-                            TargetType::AnyPlayer => {
-                                if state.player_creature().is_some_and(|c| c.is_alive()) {
-                                    Some((p.handle, Some(state.player.creature_handle)))
-                                } else {
-                                    None
-                                }
-                            }
-                            _ => Some((p.handle, None)),
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+            let fast_mv_opt = if pilot == PilotKind::DefensiveTempo && blocked_buf.is_empty() {
+                select_best_defensive_tempo_move_fast(
+                    state,
+                    content,
+                    root_baseline,
+                    intent_cache,
+                    hand_buf,
+                    seen_keys,
+                )
             } else {
                 None
             };
-            let (ch, tgt) = if let Some(pick) = fast_pick {
-                #[cfg(debug_assertions)]
-                {
-                    let dbg_ctx =
-                        compute_fast_turn_context::<false>(state, content, root_baseline, intent_cache);
-                    debug_assert_eq!(
-                        Some(pick),
-                        select_best_pilot_move_impl::<false>(
+            let (ch, tgt) = match fast_mv_opt {
+                Some(fast_mv) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        collect_rollout_playable_cards(
+                            state,
+                            content,
+                            hand_buf,
+                            seen_keys,
+                            playable_buf,
+                        );
+                        let dbg_ctx = compute_fast_turn_context::<false>(
+                            state,
+                            content,
+                            root_baseline,
+                            intent_cache,
+                        );
+                        let dbg_mv = select_best_pilot_move_impl::<false>(
                             state,
                             content,
                             playable_buf,
                             blocked_buf,
                             &dbg_ctx,
-                        )
-                    );
+                        );
+                        debug_assert_eq!(fast_mv, dbg_mv);
+                    }
+                    let Some(pick) = fast_mv else {
+                        break;
+                    };
+                    pick
                 }
-                pick
-            } else {
-                let ctx = if pilot == PilotKind::DefensiveTempo {
-                    compute_fast_turn_context::<false>(state, content, root_baseline, intent_cache)
-                } else {
-                    compute_fast_turn_context::<true>(state, content, root_baseline, intent_cache)
-                };
-                let Some(mv) =
-                    select_best_pilot_move(state, content, playable_buf, blocked_buf, &ctx, pilot)
-                else {
-                    break;
-                };
-                mv
+                None => {
+                    let Some(pick) = collect_and_select_pilot_move_slow(
+                        state,
+                        content,
+                        root_baseline,
+                        intent_cache,
+                        pilot,
+                        blocked_buf,
+                        playable_buf,
+                        hand_buf,
+                        seen_keys,
+                    ) else {
+                        break;
+                    };
+                    pick
+                }
             };
 
             empty_q.clear();
             let resolved =
                 match CombatEngine::play_card_prechecked(state, content, ch, tgt, empty_q) {
-                    Ok(outcome) => resolve_step_choices(state, content, outcome, choice_slab, sel_buf),
+                    Ok(outcome) => resolve_step_choices(
+                        state,
+                        content,
+                        &root_baseline.root_card_choice_quality,
+                        outcome,
+                        choice_slab,
+                        choice_scored_buf,
+                        sel_buf,
+                    ),
                     Err(_) => None,
                 };
             let Some((choices_offset, choices_len)) = resolved else {
@@ -3296,9 +4456,15 @@ where
         let Ok(end_out) = CombatEngine::end_player_turn(state, content) else {
             return None;
         };
-        let Some((choices_offset, choices_len)) =
-            resolve_step_choices(state, content, end_out, choice_slab, sel_buf)
-        else {
+        let Some((choices_offset, choices_len)) = resolve_step_choices(
+            state,
+            content,
+            &root_baseline.root_card_choice_quality,
+            end_out,
+            choice_slab,
+            choice_scored_buf,
+            sel_buf,
+        ) else {
             return None;
         };
         if TRACK_AUTO_POTIONS {
@@ -3348,6 +4514,7 @@ fn finish_choice_probe_eval(
                 let mut dbg_state = dbg_s1.clone();
                 let mut dbg_steps = Vec::new();
                 let mut dbg_slab = RolloutChoiceSlab::default();
+                let mut dbg_scored = Vec::new();
                 let mut dbg_sel = SmallVec::new();
                 let mut dbg_intent = IntentHitsCache::new();
                 let mut dbg_blocked = SmallVec::new();
@@ -3359,6 +4526,7 @@ fn finish_choice_probe_eval(
                     &mut dbg_state,
                     &mut dbg_steps,
                     &mut dbg_slab,
+                    &mut dbg_scored,
                     &mut dbg_sel,
                     &mut dbg_intent,
                     |s| {
@@ -3533,6 +4701,7 @@ where
         state,
         &mut ws.compact_steps,
         &mut ws.choice_slab,
+        &mut ws.choice_scored_buf,
         &mut ws.sel_buf,
         &mut ws.intent_cache,
         restore_base,
@@ -3688,6 +4857,7 @@ pub(crate) fn evaluate_choice_probe_packed(
         &mut ws.probe_state,
         &mut ws.compact_steps,
         &mut ws.choice_slab,
+        &mut ws.choice_scored_buf,
         &mut ws.sel_buf,
         &mut ws.intent_cache,
         |s| unpack_state(packed_state, static_ctx, s).is_ok(),
@@ -3776,6 +4946,7 @@ fn run_pilot_from_base(
         &mut ws.pilot_state,
         steps_out,
         choices_out,
+        &mut ws.choice_scored_buf,
         &mut ws.sel_buf,
         &mut ws.intent_cache,
         |s| {
@@ -4251,7 +5422,7 @@ mod tests {
     #[test]
     fn choice_probe_cache_lazy_shards_and_four_way_eviction() {
         let cache = ChoiceProbeCache::new();
-        assert!(cache.shards.iter().all(|s| s.lock().slots.is_none()));
+        assert!(cache.shards.iter().all(|s| s.lock().table.is_none()));
 
         let h0 = StateHash(0x0000_0000_0001_0001u128);
         let cfg_a = choice_probe_cfg_hash(&SolverSearchProfile::default(), 2);
@@ -4305,7 +5476,7 @@ mod tests {
             cache
                 .shards
                 .iter()
-                .filter(|s| s.lock().slots.is_some())
+                .filter(|s| s.lock().table.is_some())
                 .count(),
             1
         );

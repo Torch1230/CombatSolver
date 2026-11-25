@@ -142,10 +142,7 @@ pub fn card_meta(id: CardId) -> Result<&'static CardMeta, KernelError> {
     if card_partition(id) == CardPartition::Ironclad {
         Ok(&IRONCLAD_META_TABLE[id as usize])
     } else {
-        Err(KernelError::Unsupported {
-            kind: "Card",
-            id: id.model_id_str().to_owned(),
-        })
+        Err(KernelError::unsupported("Card", id.model_id_str().to_owned()))
     }
 }
 
@@ -378,7 +375,7 @@ fn clone_card_in_combat(
     temp_flags.remove(
         sts2_kernel::CardTempFlags::EXHAUST_ON_NEXT_PLAY | sts2_kernel::CardTempFlags::IS_DUPE,
     );
-    state.cards.push(sts2_kernel::CardInst {
+    state.push_card(sts2_kernel::CardInst {
         handle: new_handle,
         deck_card_handle: sts2_kernel::OptCardHandle::NONE,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
@@ -401,6 +398,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
         if let Some(ext) = state.card_ext_mut(handle) {
             ext.push_local_energy_modifier(LocalEnergyModifier {
@@ -413,6 +411,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
     }
 }
@@ -627,10 +626,7 @@ pub fn on_play(
                     }
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::AshenStrike => {
@@ -700,10 +696,7 @@ pub fn on_play(
                     apply_power(state, content, PowerId::StrengthPower, owner, str_amt, owner, ctx.card)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::Break => {
@@ -738,10 +731,7 @@ pub fn on_play(
                     let _ = card_pile::draw(state, content, cards, false)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::Cascade => {
@@ -974,10 +964,7 @@ pub fn on_play(
                     }
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::Hellraiser => {
@@ -1400,10 +1387,7 @@ pub fn on_play(
                         }
                         Ok(CardPlayOutcome::default())
                     }
-                    SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                        needs_choice: Some((req, 1)),
-                        transform_into: None,
-                    }),
+                    SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
                 }
             } else {
                 let chosen = state
@@ -1453,10 +1437,10 @@ pub fn on_play(
             attack_all(state, content, owner, ctx, dmg, hits)?;
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "Card",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Card",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1507,10 +1491,10 @@ pub fn on_play_resume(
             }
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardResume",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardResume",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1683,7 +1667,9 @@ pub fn dispatch_hook(
                 HookSlot::BeforeCardPlayed => {
                     if let HookArgs::CardPlay(cp) = args {
                         if let Some(played) = state.card(cp.card) {
-                            if content.card_meta(played.id)?.card_type == CardType::Attack {
+                            if state.fast_card_meta(content, played.id)?.card_type
+                                == CardType::Attack
+                            {
                                 add_local_energy_modifier(
                                     state,
                                     card,
@@ -1698,10 +1684,10 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardHook",
-            id: ci.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardHook",
+            ci.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1718,10 +1704,10 @@ pub fn on_turn_end_in_hand(
         .flags
         .contains(sts2_types::CardStaticFlags::HAS_TURN_END_IN_HAND)
     {
-        return Err(KernelError::Unsupported {
-            kind: "CardTurnEndInHand",
-            id: id.model_id_str().to_owned(),
-        });
+        return Err(KernelError::unsupported(
+            "CardTurnEndInHand",
+            id.model_id_str().to_owned(),
+        ));
     }
     Ok(())
 }

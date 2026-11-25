@@ -14,7 +14,8 @@ use sts2_kernel::snapshot::{
     LiveStateJson, OracleRngStreamsDto, export_live_state, export_rng_streams, import_live_state,
 };
 use sts2_kernel::{
-    BattleState, CardHandle, ChoiceRequest, CombatEngine, CreatureHandle, KernelError, StepOutcome,
+    BattleState, CardHandle, ChoiceRequest, CombatEngine, CreatureHandle, KernelError,
+    KernelErrorKind, StepOutcome,
 };
 use sts2_search::{InCombatSolveRequest, InCombatSolveResponse, SearchEngine, SearchProgress};
 use sts2_types::Dec;
@@ -124,10 +125,12 @@ pub fn step_oracle_json(req_json: &[u8]) -> OracleStepResponse {
     let content = Sts2Content;
     let mut state: BattleState = match import_live_state(&req.state, &content) {
         Ok(s) => s,
-        Err(KernelError::Unsupported { kind, id }) => {
-            return error_response("Unsupported", format!("unsupported {kind}: {id}"));
-        }
-        Err(e) => return error_response("SnapshotImport", e.to_string()),
+        Err(e) => match e.kind() {
+            KernelErrorKind::Unsupported { kind, id } => {
+                return error_response("Unsupported", format!("unsupported {kind}: {id}"));
+            }
+            _ => return error_response("SnapshotImport", e.to_string()),
+        },
     };
 
     let mut last_outcome = StepOutcome::Completed;
@@ -180,10 +183,12 @@ pub fn step_oracle_json(req_json: &[u8]) -> OracleStepResponse {
                     break;
                 }
             }
-            Err(KernelError::Unsupported { kind, id }) => {
-                return error_response("Unsupported", format!("unsupported {kind}: {id}"));
-            }
-            Err(e) => return error_response("ExecutionError", e.to_string()),
+            Err(e) => match e.kind() {
+                KernelErrorKind::Unsupported { kind, id } => {
+                    return error_response("Unsupported", format!("unsupported {kind}: {id}"));
+                }
+                _ => return error_response("ExecutionError", e.to_string()),
+            },
         }
     }
 
@@ -216,7 +221,7 @@ pub fn step_oracle_json(req_json: &[u8]) -> OracleStepResponse {
             won: None,
             state: Some(exported),
             rng_streams: Some(rng_streams),
-            pending_choice: Some(req),
+            pending_choice: Some(*req),
             error_code: None,
             error: None,
         },
@@ -326,19 +331,21 @@ pub fn solve_in_combat_json(req_json: &[u8]) -> SolveInCombatJsonResponse {
             error_code: None,
             error: None,
         },
-        Err(KernelError::Unsupported { kind, id }) => SolveInCombatJsonResponse {
-            abi_version: ABI_VERSION,
-            outcome: "Unsupported".to_owned(),
-            solution: None,
-            error_code: Some("Unsupported".to_owned()),
-            error: Some(format!("unsupported {kind}: {id}")),
-        },
-        Err(e) => SolveInCombatJsonResponse {
-            abi_version: ABI_VERSION,
-            outcome: "Error".to_owned(),
-            solution: None,
-            error_code: Some("SearchError".to_owned()),
-            error: Some(e.to_string()),
+        Err(e) => match e.kind() {
+            KernelErrorKind::Unsupported { kind, id } => SolveInCombatJsonResponse {
+                abi_version: ABI_VERSION,
+                outcome: "Unsupported".to_owned(),
+                solution: None,
+                error_code: Some("Unsupported".to_owned()),
+                error: Some(format!("unsupported {kind}: {id}")),
+            },
+            _ => SolveInCombatJsonResponse {
+                abi_version: ABI_VERSION,
+                outcome: "Error".to_owned(),
+                solution: None,
+                error_code: Some("SearchError".to_owned()),
+                error: Some(e.to_string()),
+            },
         },
     }
 }
@@ -418,24 +425,26 @@ pub fn solve_in_combat_with_controls_json(
     let content = Sts2Content;
     let state = match import_live_state(live_json, &content) {
         Ok(s) => s,
-        Err(KernelError::Unsupported { kind, id }) => {
-            return SolveInCombatJsonResponse {
-                abi_version: ABI_VERSION,
-                outcome: "Unsupported".to_owned(),
-                solution: None,
-                error_code: Some("Unsupported".to_owned()),
-                error: Some(format!("unsupported {kind}: {id}")),
-            };
-        }
-        Err(e) => {
-            return SolveInCombatJsonResponse {
-                abi_version: ABI_VERSION,
-                outcome: "Error".to_owned(),
-                solution: None,
-                error_code: Some("SnapshotImport".to_owned()),
-                error: Some(e.to_string()),
-            };
-        }
+        Err(e) => match e.kind() {
+            KernelErrorKind::Unsupported { kind, id } => {
+                return SolveInCombatJsonResponse {
+                    abi_version: ABI_VERSION,
+                    outcome: "Unsupported".to_owned(),
+                    solution: None,
+                    error_code: Some("Unsupported".to_owned()),
+                    error: Some(format!("unsupported {kind}: {id}")),
+                };
+            }
+            _ => {
+                return SolveInCombatJsonResponse {
+                    abi_version: ABI_VERSION,
+                    outcome: "Error".to_owned(),
+                    solution: None,
+                    error_code: Some("SnapshotImport".to_owned()),
+                    error: Some(e.to_string()),
+                };
+            }
+        },
     };
     match SearchEngine.solve_state_with_controls(&state, &req.policy, &content, cancel, progress_cb) {
         Ok(sol) => SolveInCombatJsonResponse {
@@ -445,19 +454,21 @@ pub fn solve_in_combat_with_controls_json(
             error_code: None,
             error: None,
         },
-        Err(KernelError::Unsupported { kind, id }) => SolveInCombatJsonResponse {
-            abi_version: ABI_VERSION,
-            outcome: "Unsupported".to_owned(),
-            solution: None,
-            error_code: Some("Unsupported".to_owned()),
-            error: Some(format!("unsupported {kind}: {id}")),
-        },
-        Err(e) => SolveInCombatJsonResponse {
-            abi_version: ABI_VERSION,
-            outcome: "Error".to_owned(),
-            solution: None,
-            error_code: Some("SearchError".to_owned()),
-            error: Some(e.to_string()),
+        Err(e) => match e.kind() {
+            KernelErrorKind::Unsupported { kind, id } => SolveInCombatJsonResponse {
+                abi_version: ABI_VERSION,
+                outcome: "Unsupported".to_owned(),
+                solution: None,
+                error_code: Some("Unsupported".to_owned()),
+                error: Some(format!("unsupported {kind}: {id}")),
+            },
+            _ => SolveInCombatJsonResponse {
+                abi_version: ABI_VERSION,
+                outcome: "Error".to_owned(),
+                solution: None,
+                error_code: Some("SearchError".to_owned()),
+                error: Some(e.to_string()),
+            },
         },
     }
 }

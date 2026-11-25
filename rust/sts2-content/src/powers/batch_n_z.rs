@@ -1288,10 +1288,7 @@ pub fn power_meta(id: PowerId) -> Result<&'static PowerMeta, KernelError> {
         PowerId::WuppysLoyaltyPower => Ok(&WUPPYS_LOYALTY_META),
         PowerId::YahPower => Ok(&YAH_META),
         PowerId::YouAreMinePower => Ok(&YOU_ARE_MINE_META),
-        _ => Err(KernelError::Unsupported {
-            kind: "Power",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Power", id.model_id_str().to_owned())),
     }
 }
 
@@ -1579,7 +1576,7 @@ fn clone_detached_card_for_nightmare(state: &mut BattleState, source: CardHandle
             | CardTempFlags::TEMPORARY_SLY_TURN
             | CardTempFlags::EXHAUST_ON_NEXT_PLAY,
     );
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source),
         temp_cost_override_this_turn: sts2_kernel::OptI16::NONE,
@@ -1608,7 +1605,7 @@ fn clone_card_for_combat(state: &mut BattleState, source: CardHandle) -> Result<
         state.card_extensions.push(ext);
         idx
     });
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source),
         ext_index,
@@ -2648,7 +2645,7 @@ pub fn resolve_stratagem_after_shuffle(
     creature: CreatureHandle,
     power_amount: i32,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
-) -> Result<Option<ChoiceRequest>, KernelError> {
+) -> Result<Option<Box<ChoiceRequest>>, KernelError> {
     if creature != state.player.creature_handle {
         return Ok(None);
     }
@@ -2683,7 +2680,7 @@ pub fn resolve_tools_of_the_trade_after_turn_start(
     creature: CreatureHandle,
     power_amount: i32,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
-) -> Result<Option<ChoiceRequest>, KernelError> {
+) -> Result<Option<Box<ChoiceRequest>>, KernelError> {
     if creature != state.player.creature_handle {
         return Ok(None);
     }
@@ -2709,7 +2706,7 @@ pub fn resolve_tyranny_after_turn_start(
     creature: CreatureHandle,
     power_amount: i32,
     choice_queue: &mut SmallVec<[Vec<usize>; 2]>,
-) -> Result<Option<ChoiceRequest>, KernelError> {
+) -> Result<Option<Box<ChoiceRequest>>, KernelError> {
     if creature != state.player.creature_handle {
         return Ok(None);
     }
@@ -2838,10 +2835,10 @@ pub fn resume_hook_choice(
             }
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "PowerHookChoiceResume",
-            id: format!("{}:{slot:?}", id.model_id_str()),
-        }),
+        _ => Err(KernelError::unsupported(
+            "PowerHookChoiceResume",
+            format!("{}:{slot:?}", id.model_id_str()),
+        )),
     }
 }
 
@@ -7081,10 +7078,10 @@ fn dispatch_hook_cold(
             }
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "Power",
-            id: p.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Power",
+            p.id.model_id_str().to_owned(),
+        )),
     }
 }
 

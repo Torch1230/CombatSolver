@@ -1126,7 +1126,7 @@ mod tests {
             make_card(5, CardId::StrikeIronclad, 1),   // S (dup)
         ];
         state.cards.extend_from_slice(&cards);
-        let handles: SmallVec<[CardHandle; 32]> = cards.iter().map(|c| c.handle).collect();
+        let handles: SmallVec<[CardHandle; 16]> = cards.iter().map(|c| c.handle).collect();
         state.player.hand = handles.to_vec();
 
         let req = ChoiceRequest {

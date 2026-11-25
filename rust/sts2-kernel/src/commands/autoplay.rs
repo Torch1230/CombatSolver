@@ -195,7 +195,7 @@ pub fn from_top_of_draw_pile_with_upgrade(
     for _ in 0..count {
         card_pile::shuffle_if_necessary(state, content)?;
         if let Some(pending) = &state.pending {
-            return Ok(StepOutcome::NeedsChoice(pending.request.clone()));
+            return Ok(StepOutcome::NeedsChoice(Box::new(pending.request.clone())));
         }
         let Some(&top) = state.player.draw.first() else {
             break;
@@ -269,6 +269,7 @@ fn play_cards_core(
             if let Some(c) = state.card_mut(card_handle) {
                 if force {
                     c.temp_flags.insert(CardTempFlags::EXHAUST_ON_NEXT_PLAY);
+                    state.mark_eot_card_cleanup_dirty();
                 } else {
                     c.temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY);
                 }

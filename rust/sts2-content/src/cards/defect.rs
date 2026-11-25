@@ -70,10 +70,7 @@ pub fn card_meta(id: CardId) -> Result<&'static CardMeta, KernelError> {
     if card_partition(id) == CardPartition::Defect {
         Ok(&DEFECT_CARD_META[id as usize])
     } else {
-        Err(KernelError::Unsupported {
-            kind: "Card",
-            id: id.model_id_str().to_owned(),
-        })
+        Err(KernelError::unsupported("Card", id.model_id_str().to_owned()))
     }
 }
 
@@ -230,6 +227,7 @@ fn set_to_free_this_turn(
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
         if let Some(ext) = state.card_ext_mut(handle) {
             ext.push_local_energy_modifier(LocalEnergyModifier {
@@ -242,6 +240,7 @@ fn set_to_free_this_turn(
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
     }
     Ok(())
@@ -278,7 +277,7 @@ fn clone_card_in_combat(
     };
     let mut temp_flags = source.temp_flags;
     temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle: new_handle,
         deck_card_handle: sts2_kernel::OptCardHandle::NONE,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
@@ -1053,10 +1052,7 @@ pub fn on_play(
                     }
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
 
@@ -1108,10 +1104,10 @@ pub fn on_play(
                 ));
             }
             if target != owner {
-                return Err(KernelError::Unsupported {
-                    kind: "MultiplayerTarget",
-                    id: card.id.model_id_str().to_owned(),
-                });
+                return Err(KernelError::unsupported(
+                    "MultiplayerTarget",
+                    card.id.model_id_str().to_owned(),
+                ));
             }
             orb::channel(state, content, OrbId::PlasmaOrb)?;
             Ok(CardPlayOutcome::default())
@@ -1430,10 +1426,7 @@ pub fn on_play(
                     )?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
 
@@ -1782,10 +1775,10 @@ pub fn on_play(
             Ok(CardPlayOutcome::default())
         }
 
-        _ => Err(KernelError::Unsupported {
-            kind: "Card",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Card",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1824,10 +1817,10 @@ pub fn on_play_resume(
             )?;
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardResume",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardResume",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1960,10 +1953,10 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardHook",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardHook",
+            id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1980,10 +1973,10 @@ pub fn on_turn_end_in_hand(
         .flags
         .contains(sts2_types::CardStaticFlags::HAS_TURN_END_IN_HAND)
     {
-        return Err(KernelError::Unsupported {
-            kind: "CardTurnEndInHand",
-            id: id.model_id_str().to_owned(),
-        });
+        return Err(KernelError::unsupported(
+            "CardTurnEndInHand",
+            id.model_id_str().to_owned(),
+        ));
     }
     Ok(())
 }

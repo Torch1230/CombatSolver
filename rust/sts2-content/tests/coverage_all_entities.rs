@@ -4,8 +4,8 @@ use std::sync::Arc;
 use sts2_content::{Sts2Content, dread_blitz, orbs_enchantments_afflictions};
 use sts2_kernel::{
     BattleState, CardHandle, CardInst, CardTempFlags, ContentDispatcher, CreatureHandle,
-    CreatureInst, EnchantmentInst, HookArgs, HookListener, KernelError, MonsterInst,
-    PlayerCounters, PlayerInst, RelicInst, RootStaticContext, SemanticHistory,
+    CreatureInst, EnchantmentInst, HookArgs, HookListener, MonsterInst, PlayerCounters, PlayerInst,
+    RelicInst, RootStaticContext, SemanticHistory,
 };
 use sts2_types::{
     AfflictionId, CardId, CardKeywords, CardType, CharacterId, CombatSide, DominionId,
@@ -157,6 +157,10 @@ fn build_probe_state() -> BattleState {
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     }
 }
 
@@ -237,7 +241,10 @@ fn exhaustive_1563_vanilla_entities_zero_unsupported() {
         });
         let res = content.dispatch_hook(&mut s, HookListener::Relic(0), HookSlot::AfterCombatEnd, &HookArgs::None);
         assert!(
-            !matches!(res, Err(KernelError::Unsupported { .. })),
+            !matches!(
+                res.as_ref().map_err(|e| e.kind()),
+                Err(sts2_kernel::KernelErrorKind::Unsupported { .. })
+            ),
             "relic dispatch returned Unsupported for {id:?}: {res:?}"
         );
         total += 1;
@@ -277,7 +284,7 @@ fn exhaustive_1563_vanilla_entities_zero_unsupported() {
                 status: EnchantmentStatus::Normal,
                 private_fields: Default::default(),
             }),
-            local_energy_modifiers: SmallVec::new(),
+            local_energy_modifiers: Vec::new(),
             private_fields: Default::default(),
         });
         s.cards.push(CardInst {
@@ -307,7 +314,10 @@ fn exhaustive_1563_vanilla_entities_zero_unsupported() {
         });
         let res = content.dispatch_hook(&mut s, HookListener::Enchantment(CardHandle(1)), HookSlot::AfterCombatEnd, &HookArgs::None);
         assert!(
-            !matches!(res, Err(KernelError::Unsupported { .. })),
+            !matches!(
+                res.as_ref().map_err(|e| e.kind()),
+                Err(sts2_kernel::KernelErrorKind::Unsupported { .. })
+            ),
             "enchantment dispatch returned Unsupported for {id:?}: {res:?}"
         );
         total += 1;
@@ -329,7 +339,10 @@ fn exhaustive_1563_vanilla_entities_zero_unsupported() {
         let mut s = build_probe_state();
         let res = content.dispatch_hook(&mut s, HookListener::Dominion(id), HookSlot::AfterCombatEnd, &HookArgs::None);
         assert!(
-            !matches!(res, Err(KernelError::Unsupported { .. })),
+            !matches!(
+                res.as_ref().map_err(|e| e.kind()),
+                Err(sts2_kernel::KernelErrorKind::Unsupported { .. })
+            ),
             "dominion dispatch returned Unsupported for {id:?}: {res:?}"
         );
         total += 1;
@@ -343,7 +356,10 @@ fn exhaustive_1563_vanilla_entities_zero_unsupported() {
         let mut s = build_probe_state();
         let res = content.dispatch_hook(&mut s, HookListener::RunModel(id), HookSlot::AfterCombatEnd, &HookArgs::None);
         assert!(
-            !matches!(res, Err(KernelError::Unsupported { .. })),
+            !matches!(
+                res.as_ref().map_err(|e| e.kind()),
+                Err(sts2_kernel::KernelErrorKind::Unsupported { .. })
+            ),
             "run_model dispatch returned Unsupported for {id:?}: {res:?}"
         );
         total += 1;

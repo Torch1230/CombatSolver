@@ -350,7 +350,7 @@ fn create_offer_card_instance(state: &mut BattleState, card_id: CardId) -> CardH
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         id: card_id,
         upgrade_level: 0,
@@ -390,6 +390,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
         if let Some(ext) = state.card_ext_mut(handle) {
             ext.push_local_energy_modifier(LocalEnergyModifier {
@@ -402,6 +403,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
     }
 }
@@ -894,10 +896,9 @@ pub fn potion_on_use(
                     ashwater_resume(content, state, &sel)?;
                     Ok(CardPlayOutcome::default())
                 }
-                card_select::SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    ..Default::default()
-                }),
+                card_select::SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, 1))
+                }
             }
         }
         PotionId::AttackPotion
@@ -921,10 +922,9 @@ pub fn potion_on_use(
                     card_choice_potion_resume(content, state, &cands, &sel)?;
                     Ok(CardPlayOutcome::default())
                 }
-                card_select::SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    ..Default::default()
-                }),
+                card_select::SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, 1))
+                }
             }
         }
         PotionId::BeetleJuice => {
@@ -1117,10 +1117,10 @@ pub fn potion_on_use(
             let _ = require_player_target(state, target, potion_id)?;
             let outcome = autoplay::from_top_of_draw_pile(state, content, 3, false, choice_queue)?;
             if let StepOutcome::NeedsChoice(req) = outcome {
-                return Err(KernelError::Unsupported {
-                    kind: "PotionAutoplayChoice",
-                    id: req.source_id.into_owned(),
-                });
+                return Err(KernelError::unsupported(
+                    "PotionAutoplayChoice",
+                    req.source_id.into_owned(),
+                ));
             }
             Ok(CardPlayOutcome::default())
         }
@@ -1142,10 +1142,9 @@ pub fn potion_on_use(
                     droplet_of_precognition_resume(state, &sel)?;
                     Ok(CardPlayOutcome::default())
                 }
-                card_select::SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    ..Default::default()
-                }),
+                card_select::SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, 1))
+                }
             }
         }
         PotionId::Duplicator => {
@@ -1350,10 +1349,9 @@ pub fn potion_on_use(
                     gamblers_brew_resume(content, state, &sel)?;
                     Ok(CardPlayOutcome::default())
                 }
-                card_select::SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    ..Default::default()
-                }),
+                card_select::SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, 1))
+                }
             }
         }
         PotionId::GhostInAJar => {
@@ -1440,10 +1438,9 @@ pub fn potion_on_use(
                     liquid_memories_resume(state, &sel)?;
                     Ok(CardPlayOutcome::default())
                 }
-                card_select::SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    ..Default::default()
-                }),
+                card_select::SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, 1))
+                }
             }
         }
         PotionId::LuckyTonic => {
@@ -1808,10 +1805,9 @@ pub fn potion_on_use(
                     touch_of_insanity_resume(state, &sel)?;
                     Ok(CardPlayOutcome::default())
                 }
-                card_select::SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    ..Default::default()
-                }),
+                card_select::SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, 1))
+                }
             }
         }
         PotionId::VulnerablePotion => {

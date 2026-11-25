@@ -1,5 +1,7 @@
 use crate::error::KernelError;
-use crate::state::{BattleState, CardHandle, RootPoolCacheInner, RootStaticContext};
+use crate::state::{
+    BattleState, CardHandle, IndexedTransformPool, RootPoolCacheInner, RootStaticContext,
+};
 use smallvec::SmallVec;
 use std::sync::OnceLock;
 use sts2_types::{
@@ -18,7 +20,8 @@ const TRANSFORM_OWNER_ORDER: [CharacterId; 6] = [
 
 static CARD_OWNER_LUT: OnceLock<[(Option<CharacterId>, u8); CardId::COUNT]> = OnceLock::new();
 // [pool_idx 0..9][is_in_combat][is_blitz][allow_special_rarity]
-static VANILLA_TRANSFORM_POOLS: OnceLock<[[[[Vec<CardId>; 2]; 2]; 2]; 9]> = OnceLock::new();
+static VANILLA_TRANSFORM_POOLS: OnceLock<[[[[IndexedTransformPool; 2]; 2]; 2]; 9]> =
+    OnceLock::new();
 
 #[inline]
 fn card_owner_lut() -> &'static [(Option<CharacterId>, u8); CardId::COUNT] {
@@ -66,7 +69,7 @@ fn filter_transform_candidate(
     true
 }
 
-fn vanilla_transform_pools() -> &'static [[[[Vec<CardId>; 2]; 2]; 2]; 9] {
+fn vanilla_transform_pools() -> &'static [[[[IndexedTransformPool; 2]; 2]; 2]; 9] {
     VANILLA_TRANSFORM_POOLS.get_or_init(|| {
         const RAW_POOLS: [&[CardId]; 9] = [
             sts2_types::CARD_POOL_DEFECT,
@@ -87,10 +90,14 @@ fn vanilla_transform_pools() -> &'static [[[[Vec<CardId>; 2]; 2]; 2]; 9] {
                     let is_blitz = is_blitz_i != 0;
                     std::array::from_fn(|allow_spec_i| {
                         let allow_spec = allow_spec_i != 0;
-                        raw.iter()
-                            .copied()
-                            .filter(|&c| filter_transform_candidate(c, allow_spec, in_combat, is_blitz))
-                            .collect()
+                        IndexedTransformPool::from_vec(
+                            raw.iter()
+                                .copied()
+                                .filter(|&c| {
+                                    filter_transform_candidate(c, allow_spec, in_combat, is_blitz)
+                                })
+                                .collect(),
+                        )
                     })
                 })
             })
@@ -102,15 +109,17 @@ fn vanilla_transform_pools() -> &'static [[[[Vec<CardId>; 2]; 2]; 2]; 9] {
 fn filter_transform_pool(
     raw: &[CardId],
     is_blitz: bool,
-) -> [[Vec<CardId>; 2]; 2] {
+) -> [[IndexedTransformPool; 2]; 2] {
     std::array::from_fn(|in_combat_i| {
         let in_combat = in_combat_i != 0;
         std::array::from_fn(|allow_spec_i| {
             let allow_spec = allow_spec_i != 0;
-            raw.iter()
-                .copied()
-                .filter(|&c| filter_transform_candidate(c, allow_spec, in_combat, is_blitz))
-                .collect()
+            IndexedTransformPool::from_vec(
+                raw.iter()
+                    .copied()
+                    .filter(|&c| filter_transform_candidate(c, allow_spec, in_combat, is_blitz))
+                    .collect(),
+            )
         })
     })
 }
@@ -223,7 +232,7 @@ fn resolve_filtered_transform_pool<'a>(
     meta: &'static CardMeta,
     is_in_combat: bool,
     allow_special_rarity: bool,
-) -> Result<&'a [CardId], KernelError> {
+) -> Result<&'a IndexedTransformPool, KernelError> {
     let in_c = usize::from(is_in_combat);
     let spec = usize::from(allow_special_rarity);
     let is_blitz = usize::from(ctx.game_mode == GameMode::Blitz);
@@ -235,18 +244,18 @@ fn resolve_filtered_transform_pool<'a>(
         || meta.flags.contains(CardStaticFlags::IS_COLORLESS)
     {
         if ctx.colorless_card_pool.is_empty() {
-            Ok(vanilla_transform_pools()[6][in_c][is_blitz][spec].as_slice())
+            Ok(&vanilla_transform_pools()[6][in_c][is_blitz][spec])
         } else {
-            Ok(root_pool_cache(ctx).custom_colorless_transform[in_c][spec].as_slice())
+            Ok(&root_pool_cache(ctx).custom_colorless_transform[in_c][spec])
         }
     } else if meta.rarity == CardRarity::Curse {
         if ctx.curse_card_pool.is_empty() {
-            Ok(vanilla_transform_pools()[7][in_c][is_blitz][spec].as_slice())
+            Ok(&vanilla_transform_pools()[7][in_c][is_blitz][spec])
         } else {
-            Ok(root_pool_cache(ctx).custom_curse_transform[in_c][spec].as_slice())
+            Ok(&root_pool_cache(ctx).custom_curse_transform[in_c][spec])
         }
     } else if meta.rarity == CardRarity::Status {
-        Ok(vanilla_transform_pools()[8][in_c][is_blitz][spec].as_slice())
+        Ok(&vanilla_transform_pools()[8][in_c][is_blitz][spec])
     } else {
         let owner_entry = card_owner_lut()[id as usize];
         let char_bit = 1u8 << (ctx.character_id as u8);
@@ -256,13 +265,13 @@ fn resolve_filtered_transform_pool<'a>(
             let in_gen_pool = (owner_entry.1 & char_bit) != 0
                 || ((cache.card_gen_pool_bits[id_idx >> 6] >> (id_idx & 63)) & 1) != 0;
             if in_gen_pool {
-                return Ok(cache.custom_card_gen_transform[in_c][spec].as_slice());
+                return Ok(&cache.custom_card_gen_transform[in_c][spec]);
             }
         }
         if let Some(owner_char) = owner_entry.0 {
-            Ok(vanilla_transform_pools()[owner_char as usize][in_c][is_blitz][spec].as_slice())
+            Ok(&vanilla_transform_pools()[owner_char as usize][in_c][is_blitz][spec])
         } else if !ctx.transformation_pools.is_empty() {
-            Ok(root_pool_cache(ctx).custom_transformation_pool[in_c][spec].as_slice())
+            Ok(&root_pool_cache(ctx).custom_transformation_pool[in_c][spec])
         } else {
             Err(KernelError::InvalidState(format!(
                 "No original card pool is registered for {id:?}"
@@ -506,14 +515,19 @@ pub fn default_transformation_options(
     let meta = sts2_types::generated_card_meta(id);
     let allow_special_rarity = matches!(meta.rarity, CardRarity::Status | CardRarity::Curse);
 
-    let slice = resolve_filtered_transform_pool(
+    let pool = resolve_filtered_transform_pool(
         &state.static_ctx,
         id,
         meta,
         is_in_combat,
         allow_special_rarity,
     )?;
-    let out: Vec<CardId> = slice.iter().copied().filter(|&cand| cand != id).collect();
+    let out: Vec<CardId> = pool
+        .cards
+        .iter()
+        .copied()
+        .filter(|&cand| cand != id)
+        .collect();
 
     if out.is_empty() {
         return Err(KernelError::InvalidState(
@@ -536,14 +550,22 @@ pub fn pick_random_transformation_target(
     let meta = sts2_types::generated_card_meta(id);
     let allow_special_rarity = matches!(meta.rarity, CardRarity::Status | CardRarity::Curse);
 
-    let filtered = resolve_filtered_transform_pool(
+    let pool = resolve_filtered_transform_pool(
         &state.static_ctx,
         id,
         meta,
         is_in_combat,
         allow_special_rarity,
     )?;
-    let excluded = filtered.iter().filter(|&&c| c == id).count();
+    let filtered = pool.cards.as_slice();
+    let lut_val = pool.lookup[id as usize];
+    let excluded = if lut_val == 0 {
+        0
+    } else if lut_val != u16::MAX {
+        1
+    } else {
+        filtered.iter().filter(|&&c| c == id).count()
+    };
 
     let valid_len = filtered.len() - excluded;
     if valid_len == 0 {
@@ -565,10 +587,8 @@ pub fn pick_random_transformation_target(
     let chosen = if excluded == 0 {
         filtered[target_idx]
     } else if excluded == 1 {
-        let pos = filtered
-            .iter()
-            .position(|&c| c == id)
-            .expect("excluded == 1 implies id is in filtered pool");
+        let pos = (lut_val - 1) as usize;
+        debug_assert_eq!(filtered[pos], id);
         if target_idx < pos {
             filtered[target_idx]
         } else {

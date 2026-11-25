@@ -424,7 +424,15 @@ impl WordHasher128 {
         self.len = self.len.wrapping_add(data.len() as u64);
         if data.len() >= 8 {
             if data.len() >= 32 {
-                data = self.mix_bytes_chunks32(data);
+                let x0 = read_u64_le(data, 0);
+                let x1 = read_u64_le(data, 8);
+                let x2 = read_u64_le(data, 16);
+                let x3 = read_u64_le(data, 24);
+                self.absorb_u64x4(x0, x1, x2, x3);
+                data = &data[32..];
+                if data.len() >= 32 {
+                    data = self.mix_bytes_chunks32(data);
+                }
             }
             if data.len() >= 16 {
                 let x0 = read_u64_le(data, 0);

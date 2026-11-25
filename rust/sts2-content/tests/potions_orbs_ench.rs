@@ -242,6 +242,10 @@ fn build_battle(
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     (state, enemy_vec)
 }
@@ -835,6 +839,12 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
     use sts2_types::HookMask;
     let tables = content.hook_mask_tables().expect("hook mask tables");
     assert!(tables.afflictions_self_card_entered_only);
+    assert!(tables.keywords_in_combat_known_only);
+    assert!(tables.unpowered_damage_no_card_surrounded_only);
+    assert!(tables.unpowered_block_no_card_shadowmeld_only);
+    assert!(tables.card_dynamic_type_mad_science_only);
+    assert!(tables.card_custom_result_location_known_only);
+    assert!(tables.modify_result_location_cards_self_only);
     let expected_aff_mask = HookMask::EMPTY.with(HookSlot::AfterCardEnteredCombat);
     for idx in 0..AfflictionId::COUNT {
         let aid: AfflictionId = unsafe { core::mem::transmute(idx as u16) };
@@ -858,7 +868,7 @@ fn enchantments_and_afflictions_kernel_wired_end_to_end() {
             status: EnchantmentStatus::Normal,
             private_fields: Default::default(),
         }),
-        local_energy_modifiers: SmallVec::new(),
+        local_energy_modifiers: Vec::new(),
         private_fields: Default::default(),
     });
     se_card.ext_index = Some(se_ext);

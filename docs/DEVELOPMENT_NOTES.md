@@ -11,6 +11,7 @@
 - 新增 `InCombatRustKernelResultMaterializer`（回传 `ChoiceBranchesEvaluated`）与 `HotPlanMaterializer.MaterializeFromSteps`，在采纳前于 `HotRootBundle` 上逐动作与终局状态回放校验 Rust 最优路线；任一排除、损坏、超时或失配自动回退至 `HotKernel`。
 - 性能设置页新增“战斗内优先使用 Rust 内核”开关，主界面摘要栏新增引擎状态徽章与双语本地化。
 - 完成 STS2 v0.114.0 与上游 1.0.3 行为同步：重新生成全实体元数据（717 张卡牌、303 个 Power、315 个遗物、67 瓶药水、112 种怪物、22 个附魔、7 个灾厄、12 个领域与 3 个跑局模型，FFI 支持版本更新为 `v0.114.0`），补齐 `AfterPlayerTurnStartEarly` / `ModifyEnergyGain` / `AfterModifyingEnergyGain` 钩子槽位、箭矢移除销毁状态与能源、Osty、旋律、`HistoryCourse`、`MinionPower`、`GrandFinale`、`SovereignBlade` 等实体语义，并更新 `ActEndingBossPolicy`、`Feed` 剪枝与估值、`BloodPotion` 成本及 POR 零效果药水规则。
+- 持续实施 Rust 内核与搜索无损性能优化（第 19 至第 27 轮）：收敛 `KernelError` 与 `ChoiceRequest` 为堆装箱句柄以压缩返回值 ABI；协调器引入 `FinalPlanTracker` 在线终局筛选、`NodeArena::push_node_with` 原位初始化及 `ChoiceArena` 单步复制快路径；推演循环去除捕获闭包，整合 `FastEnemySlot` 连续数组、`IntentHitsCache` 最近命中缓存、`BestPilotMove` 与 8 项标志查表；通过 `hot_keys` 静态键预驻留与 `FieldMap` 指针优先归一化合并 `AfterCardPlayed` 属性检索，精简多监听器分支；引入 `EotCleanupDirtyFlag` 跳过无临时状态回合末清理与无钩子牌堆移动缓存更新，并在序列化与 128 位规范哈希中新增 Tag 2/5、`hash_canonical_card_slow` 全子集快路径及干净根卡 4 路批量读取。
 
 1.0.3 的 STS2 v0.114.0 全量适配、发布安全加固与 30s/600s 求解时长调整见[历史卷 36](archive/development/volume-36.md)，玩家说明见[1.0.3 更新日志](releases/1.0.3-RELEASE_NOTES.md)。
 

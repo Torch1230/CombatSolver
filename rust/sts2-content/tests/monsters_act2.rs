@@ -8,8 +8,7 @@ use sts2_kernel::commands::{arrow, block, damage};
 use sts2_kernel::{
     ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, ChoiceTiming, CombatEngine,
     ContentDispatcher, CreatureHandle, CreatureInst, EnchantmentInst, FieldValue, HookArgs,
-    KernelError, MonsterInst, PlayerCounters, PlayerInst, RootStaticContext, SemanticHistory,
-    StepOutcome,
+    MonsterInst, PlayerCounters, PlayerInst, RootStaticContext, SemanticHistory, StepOutcome,
 };
 use sts2_types::{
     ArrowStatus, CardId, CardKeywords, CharacterId, CombatSide, Dec,
@@ -248,6 +247,10 @@ fn build_battle_with(
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     (state, ret_enemies)
 }
@@ -327,12 +330,16 @@ fn all_24_act2_meta_hp_ranges_and_unsupported_hooks() {
 
     let mut s = base_state;
     assert!(matches!(
-        act2::dispatch_hook(&Sts2Content, &mut s, enemy, HookSlot::AfterDeath, &HookArgs::None),
-        Err(KernelError::Unsupported { kind: "MonsterHook", .. })
+        act2::dispatch_hook(&Sts2Content, &mut s, enemy, HookSlot::AfterDeath, &HookArgs::None)
+            .as_ref()
+            .map_err(|e| e.kind()),
+        Err(sts2_kernel::KernelErrorKind::Unsupported { kind: "MonsterHook", .. })
     ));
     assert!(matches!(
-        act2::resume_hook_choice(&Sts2Content, &mut s, enemy, HookSlot::AfterDeath, &[]),
-        Err(KernelError::Unsupported { kind: "MonsterHookChoiceResume", .. })
+        act2::resume_hook_choice(&Sts2Content, &mut s, enemy, HookSlot::AfterDeath, &[])
+            .as_ref()
+            .map_err(|e| e.kind()),
+        Err(sts2_kernel::KernelErrorKind::Unsupported { kind: "MonsterHookChoiceResume", .. })
     ));
 }
 

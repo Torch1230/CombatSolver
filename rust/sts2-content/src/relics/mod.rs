@@ -28,25 +28,79 @@ pub(crate) fn hittable_enemies_fast(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
 ) -> Result<SmallVec<[CreatureHandle; 8]>, KernelError> {
-    if state.hook_cache.dirty_mask == 0
-        && state.hook_cache.cached_tables.is_some()
-        && !state
+    if state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some() {
+        if !state
             .hook_cache
             .masks
             .combat_combined
             .contains(HookSlot::ShouldAllowHitting)
-    {
-        let mut out = SmallVec::new();
-        for &eh in &state.enemy_handles {
-            if state.creature(eh).is_some_and(|c| c.is_alive()) {
-                out.push(eh);
+        {
+            let mut out = SmallVec::new();
+            for &eh in &state.enemy_handles {
+                if state.creature(eh).is_some_and(|c| c.is_alive()) {
+                    out.push(eh);
+                }
             }
+            #[cfg(debug_assertions)]
+            for &eh in &out {
+                debug_assert!(hooks::should_allow_hitting(state, content, eh)?);
+            }
+            return Ok(out);
         }
-        #[cfg(debug_assertions)]
-        for &eh in &out {
-            debug_assert!(hooks::should_allow_hitting(state, content, eh)?);
+        if crate::CONTENT_TABLES.should_allow_hitting_known_only {
+            let over = !state.is_starting && hooks::is_over_or_ending_checked(state, content)?;
+            let mut out = SmallVec::new();
+            for &eh in &state.enemy_handles {
+                if let Some(c) = state.creature(eh) {
+                    if c.is_alive() {
+                        if over {
+                            out.push(eh);
+                        } else {
+                            let mut blocked = false;
+                            for p in &c.powers {
+                                if p.ext_index.is_none() {
+                                    continue;
+                                }
+                                let key = match p.id {
+                                    PowerId::AdaptablePower => "AdaptablePower._isReviving",
+                                    PowerId::IllusionPower => "IllusionPower._isReviving",
+                                    PowerId::ReattachPower => "ReattachPower._isReviving",
+                                    _ => continue,
+                                };
+                                if matches!(
+                                    state
+                                        .power_extensions
+                                        .get(p.ext_index.unwrap() as usize)
+                                        .and_then(|e| e.private_fields.get(key)),
+                                    Some(FieldValue::Bool(true))
+                                ) {
+                                    blocked = true;
+                                    break;
+                                }
+                            }
+                            if !blocked {
+                                out.push(eh);
+                            }
+                        }
+                    }
+                }
+            }
+            #[cfg(debug_assertions)]
+            {
+                let mut exp = SmallVec::<[CreatureHandle; 8]>::new();
+                let enemies: SmallVec<[CreatureHandle; 8]> =
+                    SmallVec::from_slice(&state.enemy_handles);
+                for eh in enemies {
+                    if state.creature(eh).is_some_and(|c| c.is_alive())
+                        && hooks::should_allow_hitting(state, content, eh)?
+                    {
+                        exp.push(eh);
+                    }
+                }
+                debug_assert_eq!(out, exp);
+            }
+            return Ok(out);
         }
-        return Ok(out);
     }
     let mut out = SmallVec::new();
     let enemies: SmallVec<[CreatureHandle; 8]> = SmallVec::from_slice(&state.enemy_handles);
@@ -597,6 +651,37 @@ pub fn dispatch_hook(
         }
         RelicId::Tingsha => {
             if slot == HookSlot::AfterCardDiscarded && state.current_side == CombatSide::Player {
+                if state.enemy_handles.len() == 1
+                    && state.hook_cache.dirty_mask == 0
+                    && state.hook_cache.cached_tables.is_some()
+                    && !state
+                        .hook_cache
+                        .masks
+                        .combat_combined
+                        .contains(HookSlot::ShouldAllowHitting)
+                {
+                    let eh = state.enemy_handles[0];
+                    if state.creature(eh).is_some_and(|c| c.is_alive()) {
+                        let single = [eh];
+                        #[cfg(debug_assertions)]
+                        debug_assert!(hooks::should_allow_hitting(state, content, eh)?);
+                        let _ = state
+                            .run_rngs
+                            .get_mut(RunRngType::CombatTargets)
+                            .next_item(&single);
+                        damage::damage_targets_void(
+                            state,
+                            content,
+                            &single,
+                            Dec::from_i32(3),
+                            ValueProp::UNPOWERED,
+                            Some(pc),
+                            None,
+                            None,
+                        )?;
+                    }
+                    return Ok(HookResult::default());
+                }
                 let enemies = hittable_enemies_fast(state, content)?;
                 if let Some(&target) = state
                     .run_rngs

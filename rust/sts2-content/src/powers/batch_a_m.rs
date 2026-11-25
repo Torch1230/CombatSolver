@@ -87,10 +87,7 @@ pub fn power_meta(id: PowerId) -> Result<&'static PowerMeta, KernelError> {
     if idx < AM_POWER_COUNT {
         Ok(&AM_POWER_META[idx])
     } else {
-        Err(KernelError::Unsupported {
-            kind: "Power",
-            id: id.model_id_str().to_owned(),
-        })
+        Err(KernelError::unsupported("Power", id.model_id_str().to_owned()))
     }
 }
 
@@ -2241,8 +2238,10 @@ fn dispatch_hook_cold(
                         Cow::Borrowed("DampenPower._downgraded"),
                         FieldValue::CardIntMap(map_entries),
                     );
-                    for (ch, _) in upgraded {
-                        card::downgrade(state, content, ch)?;
+                    if !upgraded.is_empty() && !hooks::is_ending_checked(state, content)? {
+                        for (ch, _) in upgraded {
+                            card::downgrade_unchecked_not_ending(state, content, ch)?;
+                        }
                     }
                 }
                 Ok(HookResult::default())
@@ -4718,10 +4717,10 @@ fn dispatch_hook_cold(
             Ok(HookResult::default())
         }
 
-        _ => Err(KernelError::Unsupported {
-            kind: "Power",
-            id: p.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Power",
+            p.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -4811,10 +4810,10 @@ pub fn resume_hook_choice(
             let _ = power::remove_by_handle(state, content, creature, p.handle)?;
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "PowerHookChoiceResume",
-            id: format!("{}:{slot:?}", p.id.model_id_str()),
-        }),
+        _ => Err(KernelError::unsupported(
+            "PowerHookChoiceResume",
+            format!("{}:{slot:?}", p.id.model_id_str()),
+        )),
     }
 }
 
@@ -5082,7 +5081,7 @@ fn clone_card_in_combat(
     };
     let mut temp_flags = source.temp_flags;
     temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle: new_handle,
         deck_card_handle: sts2_kernel::OptCardHandle::NONE,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
@@ -5965,21 +5964,18 @@ fn dampen_after_removed_by_ext(
     let Some(ext_idx) = ext_index else {
         return Ok(());
     };
-    let downgraded = match state.power_extensions[ext_idx as usize]
-        .private_fields
-        .get("DampenPower._downgraded")
-    {
-        Some(FieldValue::CardIntMap(map)) => map.clone(),
-        _ => Vec::new(),
-    };
-    for (card_h, level) in downgraded {
-        for _ in 0..level {
-            card::upgrade(state, content, CardHandle(card_h as u32))?;
-        }
-    }
-    state.power_extensions[ext_idx as usize]
+    let removed = state.power_extensions[ext_idx as usize]
         .private_fields
         .remove("DampenPower._downgraded");
+    if let Some(FieldValue::CardIntMap(downgraded)) = removed {
+        if !downgraded.is_empty() && !hooks::is_ending_checked(state, content)? {
+            for (card_h, level) in downgraded {
+                for _ in 0..level {
+                    card::upgrade_unchecked_not_ending(state, content, CardHandle(card_h as u32))?;
+                }
+            }
+        }
+    }
     Ok(())
 }
 
@@ -6127,15 +6123,29 @@ pub fn chains_of_binding_can_afflict_on_draw(
     }
     let tk = state.current_turn_key();
     let mut count = 0i32;
-    for (kind, turn, _) in &state.semantic_history.actor_events {
-        if kind.as_ref() == "BoundAfflicted" && *turn == tk {
+    for (kind, turn, _) in state.semantic_history.actor_events.iter().rev() {
+        if *turn != tk {
+            break;
+        }
+        if kind.as_ref() == "BoundAfflicted" {
             count += 1;
             if count >= amount {
-                return false;
+                break;
             }
         }
     }
-    true
+    let res = count < amount;
+    #[cfg(debug_assertions)]
+    {
+        let mut forward = 0i32;
+        for (kind, turn, _) in &state.semantic_history.actor_events {
+            if kind.as_ref() == "BoundAfflicted" && *turn == tk {
+                forward += 1;
+            }
+        }
+        debug_assert_eq!(res, forward < amount);
+    }
+    res
 }
 
 pub fn adaptable_do_revive(state: &mut BattleState, creature: CreatureHandle, power_handle: u32) {

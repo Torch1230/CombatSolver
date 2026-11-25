@@ -70,10 +70,7 @@ pub fn monster_meta(id: MonsterId) -> Result<&'static MonsterMeta, KernelError> 
         | MonsterId::TwoTailedRat
         | MonsterId::Vantom
         | MonsterId::VineShambler => Ok(&DEFAULT_MONSTER_META),
-        _ => Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Monster", id.model_id_str().to_owned())),
     }
 }
 
@@ -345,10 +342,10 @@ pub fn monster_initial_hp_range(
             let hp = t(250, 240);
             Ok((hp, hp))
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: monster_id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Monster",
+            monster_id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -511,10 +508,10 @@ pub fn monster_setup_for_combat(
         MonsterId::VineShambler => "SWIPE_MOVE",
         MonsterId::WaterfallGiant => "PRESSURIZE_MOVE",
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "Monster",
-                id: mid.model_id_str().to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "Monster",
+                mid.model_id_str().to_owned(),
+            ));
         }
     };
 
@@ -1365,10 +1362,7 @@ fn next_state_step(
             "ABOUT_TO_BLOW_MOVE" | "EXPLODE_MOVE" => "EXPLODE_MOVE",
             _ => "STOMP_MOVE",
         }),
-        _ => Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: mid.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Monster", mid.model_id_str().to_owned())),
     }
 }
 
@@ -2493,10 +2487,10 @@ pub fn monster_perform_move(
         }
 
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "MonsterMove",
-                id: format!("{}:{}", mid.model_id_str(), move_id),
-            });
+            return Err(KernelError::unsupported(
+                "MonsterMove",
+                format!("{}:{}", mid.model_id_str(), move_id),
+            ));
         }
     }
 
@@ -2582,10 +2576,10 @@ pub fn dispatch_hook(
                 ..Default::default()
             })
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "MonsterHook",
-            id: format!("{}:{slot:?}", mid.model_id_str()),
-        }),
+        _ => Err(KernelError::unsupported(
+            "MonsterHook",
+            format!("{}:{slot:?}", mid.model_id_str()),
+        )),
     }
 }
 
@@ -2600,10 +2594,10 @@ pub fn resume_hook_choice(
         .creature(creature)
         .and_then(|c| c.monster_id)
         .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?;
-    Err(KernelError::Unsupported {
-        kind: "MonsterHookChoiceResume",
-        id: format!("{}:{slot:?}", id.model_id_str()),
-    })
+    Err(KernelError::unsupported(
+        "MonsterHookChoiceResume",
+        format!("{}:{slot:?}", id.model_id_str()),
+    ))
 }
 
 pub fn monster_attack_intent_hits(
@@ -3037,9 +3031,9 @@ pub fn monster_attack_intent_hits(
             Ok(smallvec![(Dec::from_i32(dmg), 1)])
         }
 
-        _ => Err(KernelError::Unsupported {
-            kind: "MonsterIntent",
-            id: format!("{}:{}", mid.model_id_str(), move_id),
-        }),
+        _ => Err(KernelError::unsupported(
+            "MonsterIntent",
+            format!("{}:{}", mid.model_id_str(), move_id),
+        )),
     }
 }

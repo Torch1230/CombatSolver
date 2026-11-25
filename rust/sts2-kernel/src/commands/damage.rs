@@ -9,7 +9,7 @@ use crate::state::{
     BattleState, CardHandle, CreatureHandle, DamageHistoryEntry, DamageResult, InlineI32Vec4,
 };
 use smallvec::SmallVec;
-use sts2_types::{CombatSide, Dec, HookSlot, Rng, ValueProp};
+use sts2_types::{CombatSide, Dec, HookMask, HookSlot, Rng, ValueProp};
 
 #[derive(Clone, Copy, Debug)]
 pub enum AttackTargetSpec {
@@ -131,29 +131,53 @@ impl AttackBuilder {
                 SmallVec::with_capacity(attack_count.max(0) as usize);
             match self.target_spec {
                 AttackTargetSpec::Single(t) => {
-                    let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
-                    for _ in 0..attack_count {
-                        if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
-                            break;
+                    if attack_count == 1 {
+                        if state.creature(self.attacker).is_some_and(|c| !c.is_dead())
+                            && state.creature(t).is_some_and(|c| c.is_alive())
+                        {
+                            let targets_for_hit = [t];
+                            let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
+                            damage_targets_with_hook_mode_into(
+                                state,
+                                content,
+                                &targets_for_hit,
+                                self.damage_per_hit,
+                                self.props,
+                                Some(self.attacker),
+                                self.card_source,
+                                self.card_play,
+                                self.hook_type,
+                                &mut hit_results,
+                            )?;
+                            for &(r, _) in &hit_results {
+                                all_results.push(r);
+                            }
                         }
-                        if !state.creature(t).is_some_and(|c| c.is_alive()) {
-                            break;
+                    } else if attack_count > 1 {
+                        let mut hit_results: SmallVec<[(DamageResult, bool); 8]> = SmallVec::new();
+                        for _ in 0..attack_count {
+                            if state.creature(self.attacker).is_none_or(|c| c.is_dead()) {
+                                break;
+                            }
+                            if !state.creature(t).is_some_and(|c| c.is_alive()) {
+                                break;
+                            }
+                            let targets_for_hit = [t];
+                            hit_results.clear();
+                            damage_targets_with_hook_mode_into(
+                                state,
+                                content,
+                                &targets_for_hit,
+                                self.damage_per_hit,
+                                self.props,
+                                Some(self.attacker),
+                                self.card_source,
+                                self.card_play,
+                                self.hook_type,
+                                &mut hit_results,
+                            )?;
+                            all_results.extend(hit_results.iter().map(|&(r, _)| r));
                         }
-                        let targets_for_hit = [t];
-                        hit_results.clear();
-                        damage_targets_with_hook_mode_into(
-                            state,
-                            content,
-                            &targets_for_hit,
-                            self.damage_per_hit,
-                            self.props,
-                            Some(self.attacker),
-                            self.card_source,
-                            self.card_play,
-                            self.hook_type,
-                            &mut hit_results,
-                        )?;
-                        all_results.extend(hit_results.iter().map(|&(r, _)| r));
                     }
                 }
                 AttackTargetSpec::AllOpponents | AttackTargetSpec::RandomOpponents { .. } => {
@@ -220,9 +244,10 @@ impl AttackBuilder {
                 }
             }
 
-            if state
-                .creature(self.attacker)
-                .is_some_and(|c| c.monster_id == Some(sts2_types::MonsterId::Osty) && c.is_pet())
+            if !state.pet_handles.is_empty()
+                && state
+                    .creature(self.attacker)
+                    .is_some_and(|c| c.monster_id == Some(sts2_types::MonsterId::Osty) && c.is_pet())
             {
                 state.record_actor_event("OstyAttack");
             }
@@ -403,40 +428,62 @@ fn damage_targets_with_hook_mode_into(
         )?;
     }
 
+    const POST_DAMAGE_HOOKS: HookMask = HookMask::EMPTY
+        .with(HookSlot::AfterBlockBroken)
+        .with(HookSlot::AfterCurrentHpChanged)
+        .with(HookSlot::AfterDamageGiven)
+        .with(HookSlot::AfterDamageReceived);
+
     let mut killed: SmallVec<[CreatureHandle; 8]> = SmallVec::new();
-    for (result, prevented) in pending.iter() {
-        if *prevented {
-            continue;
+    if state.hook_cache.masks_are_valid()
+        && !state
+            .hook_cache
+            .masks
+            .run_combat_combined
+            .intersects(POST_DAMAGE_HOOKS)
+    {
+        for (result, prevented) in pending.iter() {
+            if !*prevented
+                && result.was_target_killed
+                && state.creature(result.receiver).is_some_and(|c| c.is_dead())
+            {
+                killed.push(result.receiver);
+            }
         }
-        if result.was_block_broken {
-            hooks::after_block_broken(state, content, result.receiver, dealer)?;
-        }
-        if result.unblocked_damage > 0 {
-            hooks::after_current_hp_changed(
-                state,
-                content,
-                result.receiver,
-                -result.unblocked_damage,
-            )?;
-        }
-        let hook_args = HookArgs::DamageResult {
-            target: result.receiver,
-            dealer,
-            props,
-            blocked_damage: result.blocked_damage,
-            unblocked_damage: result.unblocked_damage,
-            was_target_killed: result.was_target_killed,
-            was_fully_blocked: result.was_fully_blocked,
-            card_source,
-        };
-        hooks::after_damage_given(state, content, &hook_args)?;
-        let is_dead_now = state
-            .creature(result.receiver)
-            .is_some_and(|c| c.is_dead());
-        if !result.was_target_killed || !is_dead_now {
-            hooks::after_damage_received(state, content, &hook_args)?;
-        } else {
-            killed.push(result.receiver);
+    } else {
+        for (result, prevented) in pending.iter() {
+            if *prevented {
+                continue;
+            }
+            if result.was_block_broken {
+                hooks::after_block_broken(state, content, result.receiver, dealer)?;
+            }
+            if result.unblocked_damage > 0 {
+                hooks::after_current_hp_changed(
+                    state,
+                    content,
+                    result.receiver,
+                    -result.unblocked_damage,
+                )?;
+            }
+            let hook_args = HookArgs::DamageResult {
+                target: result.receiver,
+                dealer,
+                props,
+                blocked_damage: result.blocked_damage,
+                unblocked_damage: result.unblocked_damage,
+                was_target_killed: result.was_target_killed,
+                was_fully_blocked: result.was_fully_blocked,
+                card_source,
+            };
+            hooks::after_damage_given(state, content, &hook_args)?;
+            if !result.was_target_killed
+                || !state.creature(result.receiver).is_some_and(|c| c.is_dead())
+            {
+                hooks::after_damage_received(state, content, &hook_args)?;
+            } else {
+                killed.push(result.receiver);
+            }
         }
     }
 
@@ -477,6 +524,15 @@ fn damage_single(
         return Ok(());
     }
 
+    const DAMAGE_PIPELINE_HOOKS: HookMask = HookMask::EMPTY
+        .with(HookSlot::BeforeDamageReceived)
+        .with(HookSlot::ModifyPreBlockDamageTarget)
+        .with(HookSlot::ModifyHpLostBeforeOsty)
+        .with(HookSlot::ModifyHpLostBeforeOstyLate)
+        .with(HookSlot::ModifyUnblockedDamageTarget)
+        .with(HookSlot::ModifyHpLostAfterOsty)
+        .with(HookSlot::ModifyHpLostAfterOstyLate);
+
     let modified_amount = hooks::modify_damage_with_type(
         state,
         content,
@@ -488,6 +544,74 @@ fn damage_single(
         card_play,
         hook_type,
     )?;
+
+    if state.hook_cache.masks_are_valid()
+        && !state
+            .hook_cache
+            .masks
+            .run_combat_combined
+            .intersects(DAMAGE_PIPELINE_HOOKS)
+    {
+        let block_owner = if state.pet_handles.is_empty() {
+            #[cfg(debug_assertions)]
+            if let Some(c) = state.creature(target) {
+                debug_assert!(c.pet_owner_player_index.is_none());
+            }
+            target
+        } else {
+            state
+                .creature(target)
+                .and_then(|c| c.pet_owner_player_index.map(|_| state.player.creature_handle))
+                .unwrap_or(target)
+        };
+        let blocked_damage = damage_block_internal(state, block_owner, modified_amount, props)?;
+        let damage_remaining = if blocked_damage.is_zero() {
+            modified_amount.max(Dec::ZERO)
+        } else {
+            modified_amount.checked_sub(blocked_damage)?.max(Dec::ZERO)
+        };
+        let mut received = lose_hp_internal(state, target, damage_remaining, props)?;
+        let rem_int = damage_remaining.to_i32_trunc()?;
+        let blocked_int = blocked_damage.to_i32_trunc()?;
+        received.intended_hp_loss = rem_int;
+        received.original_target = target;
+        let check_block_after =
+            !blocked_damage.is_zero() || (!props.contains(ValueProp::UNBLOCKABLE) && rem_int == 0);
+        let (block_broken, fully_blocked) = if check_block_after {
+            let target_block_after = state.creature(target).map_or(0, |c| c.block);
+            (
+                target_block_after <= 0 && !blocked_damage.is_zero(),
+                !props.contains(ValueProp::UNBLOCKABLE)
+                    && (!blocked_damage.is_zero() || target_block_after > 0)
+                    && rem_int == 0,
+            )
+        } else {
+            (false, false)
+        };
+        received.blocked_damage = blocked_int;
+        received.was_block_broken = block_broken;
+        received.was_fully_blocked = fully_blocked;
+        results.push((received, false));
+        state.damage_history.push(DamageHistoryEntry {
+            receiver_creature_handle: received.receiver,
+            dealer_creature_handle: dealer,
+            original_target_creature_handle: target,
+            props: received.props,
+            intended_hp_loss: received.intended_hp_loss,
+            blocked_damage: received.blocked_damage,
+            unblocked_damage: received.unblocked_damage,
+            overkill_damage: received.overkill_damage,
+            was_target_killed: received.was_target_killed,
+            was_block_broken: received.was_block_broken,
+            was_fully_blocked: received.was_fully_blocked,
+            card_source_handle: card_source,
+            round_number: state.round_number,
+            current_side: state.current_side,
+            player_turn_numbers: InlineI32Vec4::one(state.player.turn_number),
+        });
+        return Ok(());
+    }
+
     let clean0 = state.hook_cache.masks_are_valid();
     if !clean0
         || state

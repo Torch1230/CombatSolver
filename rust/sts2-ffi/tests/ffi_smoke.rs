@@ -269,6 +269,10 @@ fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     CombatEngine::start_combat(&mut state, &content).unwrap();
     export_live_state(&state).unwrap()
@@ -1004,6 +1008,10 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     CombatEngine::start_combat(&mut death_state, &content).unwrap();
     let death_live = export_live_state(&death_state).unwrap();

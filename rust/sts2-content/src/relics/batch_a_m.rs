@@ -321,10 +321,7 @@ pub fn relic_meta(id: RelicId) -> Result<&'static RelicMeta, KernelError> {
     if idx < AM_RELIC_COUNT {
         Ok(&AM_RELIC_META[idx])
     } else {
-        Err(KernelError::Unsupported {
-            kind: "Relic",
-            id: id.model_id_str().to_owned(),
-        })
+        Err(KernelError::unsupported("Relic", id.model_id_str().to_owned()))
     }
 }
 
@@ -546,7 +543,7 @@ fn create_offer_card_instance(
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         id: card_id,
         upgrade_level: 0,
@@ -613,6 +610,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
         if let Some(ext) = state.card_ext_mut(handle) {
             ext.push_local_energy_modifier(LocalEnergyModifier {
@@ -625,6 +623,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
     }
 }
@@ -670,7 +669,7 @@ fn create_clone(state: &mut BattleState, orig_handle: CardHandle) -> Result<Card
     };
     let mut temp_flags = source.temp_flags;
     temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle: new_handle,
         deck_card_handle: sts2_kernel::OptCardHandle::NONE,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
@@ -711,7 +710,7 @@ fn create_dupe(state: &mut BattleState, orig_handle: CardHandle) -> Result<CardH
     temp_flags.insert(CardTempFlags::IS_DUPE);
     let mut local_kw = source.local_keywords;
     local_kw.remove(CardKeywords::EXHAUST);
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle: new_handle,
         deck_card_handle: sts2_kernel::OptCardHandle::NONE,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
@@ -1752,7 +1751,7 @@ pub(crate) fn dispatch_hook_at(
                     5,
                     RunRngType::CombatCardGeneration,
                 );
-                let mut candidates = SmallVec::<[CardHandle; 32]>::new();
+                let mut candidates = SmallVec::<[CardHandle; 16]>::new();
                 for cid in cids {
                     let h = create_offer_card_instance(state, cid, CHOICES_PARADOX_OFFER_MARKER);
                     if let Some(c) = state.card_mut(h) {
@@ -1762,7 +1761,7 @@ pub(crate) fn dispatch_hook_at(
                 }
                 if !candidates.is_empty() {
                     return Ok(HookResult {
-                        needs_choice: Some(ChoiceRequest {
+                        needs_choice: Some(Box::new(ChoiceRequest {
                             timing: ChoiceTiming::PlayerTurnStart,
                             source_id: id.model_id_str().into(),
                             source_pile: PileType::None,
@@ -1770,7 +1769,7 @@ pub(crate) fn dispatch_hook_at(
                             max_count: 1,
                             candidates,
                             can_skip: false,
-                        }),
+                        })),
                         ..Default::default()
                     });
                 }
@@ -2436,11 +2435,11 @@ pub(crate) fn dispatch_hook_at(
 
         RelicId::GamblingChip => {
             if slot == HookSlot::AfterPlayerTurnStart && state.player.turn_number <= 1 {
-                let candidates: SmallVec<[CardHandle; 32]> =
+                let candidates: SmallVec<[CardHandle; 16]> =
                     state.player.hand.iter().copied().collect();
                 if !candidates.is_empty() {
                     return Ok(HookResult {
-                        needs_choice: Some(ChoiceRequest {
+                        needs_choice: Some(Box::new(ChoiceRequest {
                             timing: ChoiceTiming::PlayerTurnStart,
                             source_id: id.model_id_str().into(),
                             source_pile: PileType::Hand,
@@ -2448,7 +2447,7 @@ pub(crate) fn dispatch_hook_at(
                             max_count: candidates.len(),
                             candidates,
                             can_skip: false,
-                        }),
+                        })),
                         ..Default::default()
                     });
                 }
@@ -3459,10 +3458,7 @@ pub(crate) fn dispatch_hook_at(
         | RelicId::MiniatureTent
         | RelicId::MoltenEgg => Ok(HookResult::default()),
 
-        _ => Err(KernelError::Unsupported {
-            kind: "Relic",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Relic", id.model_id_str().to_owned())),
     }
 }
 
@@ -3516,9 +3512,9 @@ pub fn resume_hook_choice(
             }
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "RelicHookChoiceResume",
-            id: format!("{}:{slot:?}", id.model_id_str()),
-        }),
+        _ => Err(KernelError::unsupported(
+            "RelicHookChoiceResume",
+            format!("{}:{slot:?}", id.model_id_str()),
+        )),
     }
 }

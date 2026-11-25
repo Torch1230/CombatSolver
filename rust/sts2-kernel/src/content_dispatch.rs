@@ -42,9 +42,27 @@ pub struct HookMaskTableView {
     pub monster_has_hook_bits: &'static [u64],
     pub card_has_custom_playability_bits: &'static [u64],
     pub card_is_status_or_curse_bits: &'static [u64],
-    pub card_generic_choice_quality: &'static [(i16, u8)],
+    pub card_generic_choice_quality: &'static [GenericChoiceQualityEntry],
     pub afflictions_self_card_entered_only: bool,
+    pub keywords_in_combat_known_only: bool,
+    pub unpowered_damage_no_card_surrounded_only: bool,
+    pub unpowered_block_no_card_shadowmeld_only: bool,
+    pub card_dynamic_type_mad_science_only: bool,
+    pub card_custom_result_location_known_only: bool,
+    pub modify_result_location_cards_self_only: bool,
 }
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[repr(C)]
+pub struct GenericChoiceQualityEntry {
+    pub q_cost0: i16,
+    pub q_cost1: i16,
+    pub q_cost2p: i16,
+    pub flags: u8,
+    pub upg_bonus: u8,
+}
+
+const _: () = assert!(std::mem::size_of::<GenericChoiceQualityEntry>() == 8);
 
 #[inline(always)]
 const fn bitset_test(bits: &[u64], idx: usize) -> bool {
@@ -436,14 +454,30 @@ pub struct HookResult {
     pub location_val: Option<(PileType, CardPilePosition)>,
     pub modified: bool,
     pub keywords: Option<CardKeywords>,
-    pub needs_choice: Option<ChoiceRequest>,
+    pub needs_choice: Option<Box<ChoiceRequest>>,
 }
+
+const _: () = assert!(std::mem::size_of::<HookResult>() <= 56);
 
 #[derive(Clone, Debug, Default)]
 pub struct CardPlayOutcome {
-    pub needs_choice: Option<(ChoiceRequest, u8)>,
+    pub needs_choice: Option<Box<ChoiceRequest>>,
+    pub needs_choice_step: u8,
     pub transform_into: Option<CardId>,
 }
+
+impl CardPlayOutcome {
+    #[inline(always)]
+    pub fn with_choice(req: Box<ChoiceRequest>, step: u8) -> Self {
+        Self {
+            needs_choice: Some(req),
+            needs_choice_step: step,
+            transform_into: None,
+        }
+    }
+}
+
+const _: () = assert!(std::mem::size_of::<CardPlayOutcome>() == 16);
 
 /// Authoritative bridge from `sts2-kernel` into `sts2-content` (or any custom test dispatcher).
 pub trait ContentDispatcher {
@@ -492,10 +526,10 @@ pub trait ContentDispatcher {
             .flags
             .contains(CardStaticFlags::HAS_TURN_END_IN_HAND)
         {
-            return Err(KernelError::Unsupported {
-                kind: "CardTurnEndInHand",
-                id: id.model_id_str().to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "CardTurnEndInHand",
+                id.model_id_str().to_owned(),
+            ));
         }
         Ok(())
     }
@@ -588,10 +622,10 @@ pub trait ContentDispatcher {
             .and_then(|c| c.monster_id)
             .map(|m| m.model_id_str().to_owned())
             .unwrap_or_else(|| "unknown".to_owned());
-        Err(KernelError::Unsupported {
-            kind: "MonsterMoveChoiceResume",
+        Err(KernelError::unsupported(
+            "MonsterMoveChoiceResume",
             id,
-        })
+        ))
     }
 
     fn monster_attack_intent_hits(

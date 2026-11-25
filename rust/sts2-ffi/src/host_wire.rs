@@ -9,7 +9,7 @@ use sts2_content::Sts2Content;
 use sts2_kernel::snapshot::{LiveStateJson, import_live_state};
 use sts2_kernel::{
     BattleState, CardHandle, ChoiceRequest, ChoiceTiming, CombatEngine, ContentDispatcher,
-    CreatureHandle, KernelError, StepOutcome,
+    CreatureHandle, KernelErrorKind, StepOutcome,
 };
 use sts2_search::eval::{
     BossHpStrategy, PostCombatRelicHealProfile, PotionSlotDirective, PotionValuationRegistry,
@@ -1092,7 +1092,7 @@ fn replay_solution_trace(
                 let Some(pending) = sim.pending.as_ref() else {
                     return Err("TurnSetup action encountered with no pending choice".to_owned());
                 };
-                Ok(StepOutcome::NeedsChoice(pending.request.clone()))
+                Ok(StepOutcome::NeedsChoice(Box::new(pending.request.clone())))
             }
             PlannedAction::PlayCard {
                 card_handle,
@@ -1550,23 +1550,25 @@ pub fn solve_in_combat_host_v1_json(
     let content = Sts2Content;
     let mut root_state = match import_live_state(&req.live_state, &content) {
         Ok(s) => s,
-        Err(KernelError::Unsupported { kind, id }) => {
-            return capability_miss_resp(
-                map_unsupported_code(kind),
-                None,
-                format!("unsupported {kind}: {id}"),
-                dop_i32,
-                started.elapsed().as_secs_f64() * 1000.0,
-            );
-        }
-        Err(e) => {
-            return failed_resp(
-                Some("liveState"),
-                e.to_string(),
-                dop_i32,
-                started.elapsed().as_secs_f64() * 1000.0,
-            );
-        }
+        Err(e) => match e.kind() {
+            KernelErrorKind::Unsupported { kind, id } => {
+                return capability_miss_resp(
+                    map_unsupported_code(kind),
+                    None,
+                    format!("unsupported {kind}: {id}"),
+                    dop_i32,
+                    started.elapsed().as_secs_f64() * 1000.0,
+                );
+            }
+            _ => {
+                return failed_resp(
+                    Some("liveState"),
+                    e.to_string(),
+                    dop_i32,
+                    started.elapsed().as_secs_f64() * 1000.0,
+                );
+            }
+        },
     };
     {
         let ctx = Arc::make_mut(&mut root_state.static_ctx);
@@ -1607,23 +1609,25 @@ pub fn solve_in_combat_host_v1_json(
         progress_ref,
     ) {
         Ok(s) => s,
-        Err(KernelError::Unsupported { kind, id }) => {
-            return capability_miss_resp(
-                map_unsupported_code(kind),
-                None,
-                format!("unsupported {kind}: {id}"),
-                dop_i32,
-                started.elapsed().as_secs_f64() * 1000.0,
-            );
-        }
-        Err(e) => {
-            return failed_resp(
-                None,
-                e.to_string(),
-                dop_i32,
-                started.elapsed().as_secs_f64() * 1000.0,
-            );
-        }
+        Err(e) => match e.kind() {
+            KernelErrorKind::Unsupported { kind, id } => {
+                return capability_miss_resp(
+                    map_unsupported_code(kind),
+                    None,
+                    format!("unsupported {kind}: {id}"),
+                    dop_i32,
+                    started.elapsed().as_secs_f64() * 1000.0,
+                );
+            }
+            _ => {
+                return failed_resp(
+                    None,
+                    e.to_string(),
+                    dop_i32,
+                    started.elapsed().as_secs_f64() * 1000.0,
+                );
+            }
+        },
     };
 
     let is_cancelled = cancel.load(Ordering::Relaxed) || sol.stats.termination == "Cancelled";

@@ -80,6 +80,16 @@ pub fn downgrade(
     if hooks::is_ending_checked(state, content)? {
         return Ok(());
     }
+    downgrade_unchecked_not_ending(state, content, card)
+}
+
+pub fn downgrade_unchecked_not_ending(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card: CardHandle,
+) -> Result<(), KernelError> {
+    #[cfg(debug_assertions)]
+    debug_assert!(!hooks::is_ending_checked(state, content)?);
     let Some(ci) = state.card(card) else {
         return Ok(());
     };
@@ -88,7 +98,7 @@ pub fn downgrade(
             "Card is not upgraded.".to_owned(),
         ));
     }
-    let meta = content.card_meta(ci.id)?;
+    let meta = state.fast_card_meta(content, ci.id)?;
     content.card_on_downgrade(state, card)?;
     if let Some(c) = state.card_mut(card) {
         c.upgrade_level = 0;
@@ -117,6 +127,18 @@ pub fn transform_with_upgrade(
     if state.is_live_combat() && hooks::is_over_or_ending_checked(state, content)? {
         return Ok(None);
     }
+    transform_with_upgrade_checked(state, content, original, replacement_id, upgrade_levels)
+}
+
+fn transform_with_upgrade_checked(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    original: CardHandle,
+    replacement_id: CardId,
+    upgrade_levels: i32,
+) -> Result<Option<CardHandle>, KernelError> {
+    #[cfg(debug_assertions)]
+    debug_assert!(!(state.is_live_combat() && hooks::is_over_or_ending_checked(state, content)?));
     let Some(ci) = state.card(original) else {
         return Ok(None);
     };
@@ -151,7 +173,7 @@ pub fn transform_with_upgrade(
     let _ = old_pile;
 
     let rep = card_pile::create_card_in_combat(state, content, replacement_id, upgrade_levels)?;
-    finish_transform_in_place(state, content, original, rep, pile, original_index)?;
+    finish_transform_in_place(state, content, original, rep, pile, original_index, true)?;
     Ok(Some(rep))
 }
 
@@ -196,7 +218,7 @@ pub fn transform_with_clone(
     }
 
     let rep = clone_card_instance(state, source_to_clone)?;
-    finish_transform_in_place(state, content, original, rep, pile, original_index)?;
+    finish_transform_in_place(state, content, original, rep, pile, original_index, false)?;
     Ok(Some(rep))
 }
 
@@ -224,7 +246,7 @@ fn clone_card_instance(
         state.card_extensions.push(ext);
         idx as u32
     });
-    state.cards.push(cloned);
+    state.push_card(cloned);
     Ok(new_handle)
 }
 
@@ -235,9 +257,21 @@ fn finish_transform_in_place(
     rep: CardHandle,
     pile: PileType,
     original_index: usize,
+    skip_ending_and_new: bool,
 ) -> Result<(), KernelError> {
     if pile != PileType::Deck && state.is_live_combat() {
-        card_pile::enter_combat_at_index(state, content, rep, pile, original_index, true)?;
+        if skip_ending_and_new {
+            card_pile::enter_combat_at_index_unchecked_not_ending_new(
+                state,
+                content,
+                rep,
+                pile,
+                original_index,
+                true,
+            )?;
+        } else {
+            card_pile::enter_combat_at_index(state, content, rep, pile, original_index, true)?;
+        }
     } else {
         if pile == PileType::Deck {
             let floor_idx = state.static_ctx.act_index;
@@ -281,7 +315,7 @@ pub fn transform_to_random(
         state.is_live_combat(),
         rng_type,
     )?;
-    transform(state, content, original, chosen)
+    transform_with_upgrade_checked(state, content, original, chosen, 0)
 }
 
 pub fn upgrade(
@@ -292,10 +326,20 @@ pub fn upgrade(
     if hooks::is_ending_checked(state, content)? {
         return Ok(());
     }
+    upgrade_unchecked_not_ending(state, content, card)
+}
+
+pub fn upgrade_unchecked_not_ending(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card: CardHandle,
+) -> Result<(), KernelError> {
+    #[cfg(debug_assertions)]
+    debug_assert!(!hooks::is_ending_checked(state, content)?);
     let Some(ci) = state.card(card).copied() else {
         return Ok(());
     };
-    let max_upgrade = content.card_meta(ci.id)?.max_upgrade_level;
+    let max_upgrade = state.fast_card_meta(content, ci.id)?.max_upgrade_level;
     if ci.upgrade_level < max_upgrade {
         let costs_x = ci.temp_flags.contains(CardTempFlags::COSTS_X_ENERGY);
         let old_base = ci.base_energy_cost;
@@ -342,12 +386,14 @@ pub fn upgrade(
 pub fn apply_single_turn_retain(state: &mut BattleState, card: CardHandle) {
     if let Some(c) = state.card_mut(card) {
         c.temp_flags.insert(CardTempFlags::TEMPORARY_RETAIN_TURN);
+        state.mark_eot_card_cleanup_dirty();
     }
 }
 
 pub fn apply_single_turn_sly(state: &mut BattleState, card: CardHandle) {
     if let Some(c) = state.card_mut(card) {
         c.temp_flags.insert(CardTempFlags::TEMPORARY_SLY_TURN);
+        state.mark_eot_card_cleanup_dirty();
     }
 }
 

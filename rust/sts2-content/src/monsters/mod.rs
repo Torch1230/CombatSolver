@@ -229,10 +229,10 @@ pub fn monster_resume_move_choice(
         .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?;
     match monster_partition(mid) {
         MonsterPartition::Act2 => act2::monster_resume_move_choice(content, state, creature, selected),
-        _ => Err(KernelError::Unsupported {
-            kind: "MonsterMoveChoiceResume",
-            id: mid.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "MonsterMoveChoiceResume",
+            mid.model_id_str().to_owned(),
+        )),
     }
 }
 

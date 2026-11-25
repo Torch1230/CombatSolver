@@ -215,7 +215,7 @@ fn create_ephemeral_choice_card(state: &mut BattleState, card_id: CardId) -> Car
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         id: card_id,
         upgrade_level: 0,
@@ -414,7 +414,7 @@ pub fn dispatch_dominion_hook(
                 let sloth_h = create_ephemeral_choice_card(state, CardId::Sloth);
                 let amnesia_h = create_ephemeral_choice_card(state, CardId::Amnesia);
                 return Ok(HookResult {
-                    needs_choice: Some(ChoiceRequest {
+                    needs_choice: Some(Box::new(ChoiceRequest {
                         timing: ChoiceTiming::PlayerTurnStart,
                         source_id: DominionId::KnowledgeDemonDominion.model_id_str().into(),
                         source_pile: PileType::None,
@@ -422,7 +422,7 @@ pub fn dispatch_dominion_hook(
                         max_count: 1,
                         candidates: smallvec![sloth_h, amnesia_h],
                         can_skip: false,
-                    }),
+                    })),
                     ..Default::default()
                 });
             }

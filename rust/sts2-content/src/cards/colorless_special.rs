@@ -322,10 +322,7 @@ pub fn card_meta(id: CardId) -> Result<&'static CardMeta, KernelError> {
     if card_partition(id) == CardPartition::ColorlessSpecial {
         Ok(&COLORLESS_SPECIAL_META[id as usize])
     } else {
-        Err(KernelError::Unsupported {
-            kind: "Card",
-            id: id.model_id_str().to_owned(),
-        })
+        Err(KernelError::unsupported("Card", id.model_id_str().to_owned()))
     }
 }
 
@@ -448,10 +445,10 @@ pub fn the_devil_play_top_of_draw_with_upgrade(
         }
         card_pile::shuffle_if_necessary(state, content)?;
         if state.pending.is_some() {
-            return Err(KernelError::Unsupported {
-                kind: "KernelHook",
-                id: "AutoPlayCmd::from_top_of_draw_pile_with_upgrade".to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "KernelHook",
+                "AutoPlayCmd::from_top_of_draw_pile_with_upgrade".to_owned(),
+            ));
         }
         let Some(&top) = state.player.draw.first() else {
             break;
@@ -573,10 +570,10 @@ pub fn on_turn_end_in_hand(
             )?;
         }
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "CardTurnEndInHand",
-                id: ci.id.model_id_str().to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "CardTurnEndInHand",
+                ci.id.model_id_str().to_owned(),
+            ));
         }
     }
     Ok(())
@@ -967,10 +964,9 @@ pub fn on_play(
                     finish_offer_choice(content, state, &cands, &sel, CardTempFlags::DISCOVERY_OFFER)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_DISCOVERY_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_DISCOVERY_SELECT))
+                }
             }
         }
         CardId::Distraction => {
@@ -1026,10 +1022,9 @@ pub fn on_play(
                     apply_dual_wield(content, state, &sel, upg)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_DUAL_WIELD_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_DUAL_WIELD_SELECT))
+                }
             }
         }
         CardId::Enlightenment => {
@@ -1750,10 +1745,9 @@ pub fn on_play(
                     move_selected_to_hand(state, &sel);
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_NEOWS_FURY_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_NEOWS_FURY_SELECT))
+                }
             }
         }
         CardId::Nostalgia => {
@@ -1973,10 +1967,9 @@ pub fn on_play(
                     }
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_PURITY_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_PURITY_SELECT))
+                }
             }
         }
         CardId::Rally => {
@@ -2168,10 +2161,9 @@ pub fn on_play(
                     move_selected_to_hand(state, &sel);
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_SEEKER_STRIKE_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_SEEKER_STRIKE_SELECT))
+                }
             }
         }
         CardId::Shiv => {
@@ -2304,10 +2296,9 @@ pub fn on_play(
                     finish_offer_choice(content, state, &cands, &sel, CardTempFlags::SPLASH_OFFER)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_SPLASH_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_SPLASH_SELECT))
+                }
             }
         }
         CardId::Squash => {
@@ -2560,10 +2551,9 @@ pub fn on_play(
                     apply_the_hermit(content, state, &sel, upg)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_THE_HERMIT_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_THE_HERMIT_SELECT))
+                }
             }
         }
         CardId::TheHierophant => {
@@ -2753,10 +2743,9 @@ pub fn on_play(
                     }
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, STEP_THINKING_AHEAD_SELECT)),
-                    ..Default::default()
-                }),
+                SelectResult::NeedsChoice(req) => {
+                    Ok(CardPlayOutcome::with_choice(req, STEP_THINKING_AHEAD_SELECT))
+                }
             }
         }
         CardId::ThrummingHatchet => {
@@ -2912,10 +2901,10 @@ pub fn on_play(
         | CardId::Wither
         | CardId::Wound
         | CardId::Writhe => Ok(CardPlayOutcome::default()),
-        _ => Err(KernelError::Unsupported {
-            kind: "Card",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Card",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -2972,10 +2961,10 @@ pub fn on_play_resume(
             }
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardResume",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardResume",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -3208,10 +3197,10 @@ pub fn dispatch_hook(
             }
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardHook",
-            id: ci.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardHook",
+            ci.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -3527,6 +3516,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_cost_override_this_turn_or_until_played = OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
         if let Some(ext) = state.card_ext_mut(handle) {
             ext.push_local_energy_modifier(LocalEnergyModifier {
@@ -3539,6 +3529,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_star_cost_override_this_turn = OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
     }
 }
@@ -3626,7 +3617,7 @@ fn create_offer_card_instance(
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         id: card_id,
         upgrade_level: 0,
@@ -3759,7 +3750,7 @@ fn clone_card_for_combat(state: &mut BattleState, original: CardHandle) -> Resul
     copy.pile = PileType::None;
     copy.removed_from_state = false;
     copy.transform_into_after_play = None;
-    state.cards.push(copy);
+    state.push_card(copy);
     Ok(new_handle)
 }
 
@@ -3908,10 +3899,7 @@ where
             move_selected_to_hand(state, &sel);
             Ok(CardPlayOutcome::default())
         }
-        SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-            needs_choice: Some((req, resume_step)),
-            ..Default::default()
-        }),
+        SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, resume_step)),
     }
 }
 

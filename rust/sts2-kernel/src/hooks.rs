@@ -4,8 +4,8 @@ use crate::state::{BattleState, CardHandle, CreatureHandle, DamageResult, PowerI
 use bitflags::bitflags;
 use smallvec::SmallVec;
 use sts2_types::{
-    CardKeywords, CardPilePosition, CombatSide, Dec, HookMask, HookSlot, OrbId, PileType, PowerId,
-    PowerStaticFlags, ValueProp,
+    CardId, CardKeywords, CardPilePosition, CombatSide, Dec, HookMask, HookSlot, OrbId, PileType,
+    PowerId, PowerStaticFlags, ValueProp,
 };
 
 bitflags! {
@@ -958,32 +958,61 @@ fn dispatch_void_combat_slot(
     }
     let (word, bit) = HookMask::slot_parts(slot);
     #[cfg(not(debug_assertions))]
-    if state.hook_cache.masks_are_valid()
-        && !state
+    {
+        if state.hook_cache.dirty_mask == 0 {
+            debug_assert!(state.hook_cache.cached_tables.is_some());
+            if !state
+                .hook_cache
+                .masks
+                .combat_combined
+                .contains_slot_parts(word, bit)
+            {
+                return Ok(());
+            }
+        } else {
+            if state.hook_cache.masks_are_valid()
+                && !state
+                    .hook_cache
+                    .masks
+                    .combat_combined
+                    .contains_slot_parts(word, bit)
+            {
+                return Ok(());
+            }
+            if !ensure_hook_cache_cold(state, content)? {
+                return dispatch_void_combat_slot_uncached_cold(
+                    state,
+                    content,
+                    slot,
+                    args,
+                    check_ending,
+                );
+            }
+            if !state
+                .hook_cache
+                .masks
+                .combat_combined
+                .contains_slot_parts(word, bit)
+            {
+                return Ok(());
+            }
+        }
+    }
+    #[cfg(debug_assertions)]
+    {
+        state.ensure_hook_cache(content)?;
+        let cached_hit = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+        if !cached_hit && !ensure_hook_cache_cold(state, content)? {
+            return dispatch_void_combat_slot_uncached_cold(state, content, slot, args, check_ending);
+        }
+        if !state
             .hook_cache
             .masks
             .combat_combined
             .contains_slot_parts(word, bit)
-    {
-        return Ok(());
-    }
-    #[cfg(not(debug_assertions))]
-    let cached_hit = state.hook_cache.dirty_mask == 0;
-    #[cfg(debug_assertions)]
-    let cached_hit = {
-        state.ensure_hook_cache(content)?;
-        state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some()
-    };
-    if !cached_hit && !ensure_hook_cache_cold(state, content)? {
-        return dispatch_void_combat_slot_uncached_cold(state, content, slot, args, check_ending);
-    }
-    if !state
-        .hook_cache
-        .masks
-        .combat_combined
-        .contains_slot_parts(word, bit)
-    {
-        return Ok(());
+        {
+            return Ok(());
+        }
     }
     if check_ending && !state.is_starting && is_ending_checked_cache_ready(state, content)? {
         return Ok(());
@@ -1033,32 +1062,55 @@ fn dispatch_void_run_combat_slot(
 ) -> Result<(), KernelError> {
     let (word, bit) = HookMask::slot_parts(slot);
     #[cfg(not(debug_assertions))]
-    if state.hook_cache.masks_are_valid()
-        && !state
+    {
+        if state.hook_cache.dirty_mask == 0 {
+            debug_assert!(state.hook_cache.cached_tables.is_some());
+            if !state
+                .hook_cache
+                .masks
+                .run_combat_combined
+                .contains_slot_parts(word, bit)
+            {
+                return Ok(());
+            }
+        } else {
+            if state.hook_cache.masks_are_valid()
+                && !state
+                    .hook_cache
+                    .masks
+                    .run_combat_combined
+                    .contains_slot_parts(word, bit)
+            {
+                return Ok(());
+            }
+            if !ensure_hook_cache_cold(state, content)? {
+                return dispatch_void_run_combat_slot_uncached_cold(state, content, slot, args);
+            }
+            if !state
+                .hook_cache
+                .masks
+                .run_combat_combined
+                .contains_slot_parts(word, bit)
+            {
+                return Ok(());
+            }
+        }
+    }
+    #[cfg(debug_assertions)]
+    {
+        state.ensure_hook_cache(content)?;
+        let cached_hit = state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
+        if !cached_hit && !ensure_hook_cache_cold(state, content)? {
+            return dispatch_void_run_combat_slot_uncached_cold(state, content, slot, args);
+        }
+        if !state
             .hook_cache
             .masks
             .run_combat_combined
             .contains_slot_parts(word, bit)
-    {
-        return Ok(());
-    }
-    #[cfg(not(debug_assertions))]
-    let cached_hit = state.hook_cache.dirty_mask == 0;
-    #[cfg(debug_assertions)]
-    let cached_hit = {
-        state.ensure_hook_cache(content)?;
-        state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some()
-    };
-    if !cached_hit && !ensure_hook_cache_cold(state, content)? {
-        return dispatch_void_run_combat_slot_uncached_cold(state, content, slot, args);
-    }
-    if !state
-        .hook_cache
-        .masks
-        .run_combat_combined
-        .contains_slot_parts(word, bit)
-    {
-        return Ok(());
+        {
+            return Ok(());
+        }
     }
     let mut first_deck: Option<CachedHookListener> = None;
     {
@@ -1514,7 +1566,7 @@ fn is_ending_checked_cache_ready(
     let c_len = creatures.len();
     let pi = state.hook_cache.living_check_player_idx as usize;
     if pi < c_len {
-        if creatures[pi].current_hp <= 0 {
+        if unsafe { creatures.get_unchecked(pi) }.current_hp <= 0 {
             #[cfg(debug_assertions)]
             debug_assert!(!state.has_living_player_creature());
             return Ok(true);
@@ -1526,16 +1578,18 @@ fn is_ending_checked_cache_ready(
     }
 
     let cnt = state.hook_cache.primary_enemy_count;
-    if cnt == 1 {
-        let ei = state.hook_cache.primary_enemy_indices[0] as usize;
-        if ei < c_len && creatures[ei].current_hp > 0 {
+    if cnt != 0 && cnt != u8::MAX {
+        let ei0 = state.hook_cache.primary_enemy_indices[0] as usize;
+        if ei0 < c_len && unsafe { creatures.get_unchecked(ei0) }.current_hp > 0 {
             return Ok(false);
         }
-    } else if cnt != u8::MAX {
-        for &ei in &state.hook_cache.primary_enemy_indices[..cnt as usize] {
-            let ei = ei as usize;
-            if ei < c_len && creatures[ei].current_hp > 0 {
-                return Ok(false);
+        if cnt > 1 {
+            for j in 1..(cnt as usize) {
+                let ei = state.hook_cache.primary_enemy_indices[j] as usize;
+                if ei < c_len && unsafe { creatures.get_unchecked(ei) }.current_hp > 0 {
+                    state.hook_cache.primary_enemy_indices.swap(0, j);
+                    return Ok(false);
+                }
             }
         }
     } else if !has_won_raw(state) {
@@ -1716,36 +1770,45 @@ fn dispatch_if_eligible_known_slot(
     slot: HookSlot,
     args: &HookArgs<'_>,
 ) -> Result<Option<crate::content_dispatch::HookResult>, KernelError> {
-    if let HookListener::Power {
-        creature,
-        power_handle,
-    } = listener
-    {
-        let resolved = state.creature(creature).and_then(|c| {
-            if c.is_detached
-                || !state.contains_creature(creature)
-                || (c.is_player && !state.player.is_active_for_hooks)
-            {
-                return None;
-            }
-            for (idx, &p) in c.powers.iter().enumerate() {
-                if p.handle == power_handle {
-                    return Some((idx, p, c.side));
+    match listener {
+        HookListener::Power {
+            creature,
+            power_handle,
+        } => {
+            let resolved = state.creature(creature).and_then(|c| {
+                if c.is_detached
+                    || !state.contains_creature(creature)
+                    || (c.is_player && !state.player.is_active_for_hooks)
+                {
+                    return None;
                 }
+                for (idx, &p) in c.powers.iter().enumerate() {
+                    if p.handle == power_handle {
+                        return Some((idx, p, c.side));
+                    }
+                }
+                None
+            });
+            if let Some((power_idx, power, owner_side)) = resolved {
+                return Ok(Some(content.dispatch_power_hook_resolved(
+                    state, creature, power_idx, power, owner_side, slot, args,
+                )?));
             }
-            None
-        });
-        if let Some((power_idx, power, owner_side)) = resolved {
-            return Ok(Some(content.dispatch_power_hook_resolved(
-                state, creature, power_idx, power, owner_side, slot, args,
-            )?));
+            Ok(None)
         }
-        return Ok(None);
+        HookListener::Relic(idx) => {
+            if state.player.relics.get(idx).is_some_and(|r| !r.is_melted) {
+                return Ok(Some(content.dispatch_hook(state, listener, slot, args)?));
+            }
+            Ok(None)
+        }
+        _ => {
+            if !is_eligible_hook_listener(state, listener) {
+                return Ok(None);
+            }
+            Ok(Some(content.dispatch_hook(state, listener, slot, args)?))
+        }
     }
-    if !is_eligible_hook_listener(state, listener) {
-        return Ok(None);
-    }
-    Ok(Some(content.dispatch_hook(state, listener, slot, args)?))
 }
 
 #[inline]
@@ -2350,7 +2413,16 @@ pub fn after_player_turn_start_early(
 pub fn after_player_turn_start(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
-) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
+) -> Result<Option<(Box<crate::continuation::ChoiceRequest>, HookListener, Vec<HookListener>)>, KernelError> {
+    if state.hook_cache.masks_are_valid()
+        && !state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::AfterPlayerTurnStart)
+    {
+        return Ok(None);
+    }
     let listeners = collect_combat_hook_listeners_checked_for_mask(
         state,
         content,
@@ -2363,7 +2435,7 @@ pub fn continue_after_player_turn_start(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     remaining: &[HookListener],
-) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
+) -> Result<Option<(Box<crate::continuation::ChoiceRequest>, HookListener, Vec<HookListener>)>, KernelError> {
     for (idx, &listener) in remaining.iter().enumerate() {
         if let Some(res) = dispatch_if_eligible_known_slot(
             state,
@@ -2373,7 +2445,7 @@ pub fn continue_after_player_turn_start(
             &HookArgs::Player,
         )? {
             if let Some(req) = res.needs_choice {
-                let rest = remaining[idx + 1..].iter().copied().collect();
+                let rest = remaining[idx + 1..].to_vec();
                 return Ok(Some((req, listener, rest)));
             }
         }
@@ -2434,7 +2506,7 @@ pub fn continue_after_auto_pre_play_phase_entered(
             pending.frames.insert(
                 0,
                 crate::continuation::ContinuationFrame::AfterAutoPrePlayResume {
-                    remaining_listeners: remaining[idx + 1..].iter().copied().collect(),
+                    remaining_listeners: remaining[idx + 1..].to_vec(),
                     is_late,
                 },
             );
@@ -2673,7 +2745,7 @@ pub fn after_energy_reset(
 pub fn before_hand_draw(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
-) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
+) -> Result<Option<(Box<crate::continuation::ChoiceRequest>, HookListener, Vec<HookListener>)>, KernelError> {
     let listeners = collect_combat_hook_listeners_checked_for_mask(
         state,
         content,
@@ -2688,7 +2760,7 @@ pub fn before_hand_draw(
             &HookArgs::Player,
         )? {
             if let Some(req) = res.needs_choice {
-                let remaining = listeners[idx + 1..].iter().copied().collect();
+                let remaining = listeners[idx + 1..].to_vec();
                 return Ok(Some((req, listener, remaining)));
             }
         }
@@ -2700,7 +2772,7 @@ pub fn continue_before_hand_draw(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     remaining: &[HookListener],
-) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
+) -> Result<Option<(Box<crate::continuation::ChoiceRequest>, HookListener, Vec<HookListener>)>, KernelError> {
     for (idx, &listener) in remaining.iter().enumerate() {
         if let Some(res) = dispatch_if_eligible_known_slot(
             state,
@@ -2710,7 +2782,7 @@ pub fn continue_before_hand_draw(
             &HookArgs::Player,
         )? {
             if let Some(req) = res.needs_choice {
-                let rest = remaining[idx + 1..].iter().copied().collect();
+                let rest = remaining[idx + 1..].to_vec();
                 return Ok(Some((req, listener, rest)));
             }
         }
@@ -3378,6 +3450,13 @@ pub fn modify_damage(
     )
 }
 
+#[inline(always)]
+fn target_has_power(state: &BattleState, target: CreatureHandle, id: PowerId) -> bool {
+    state
+        .creature(target)
+        .is_some_and(|c| c.powers.iter().any(|p| p.id == id))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn modify_damage_with_type(
     state: &mut BattleState,
@@ -3438,6 +3517,28 @@ pub fn modify_damage_with_type(
     if skip_run_combat_hook_mask(state, content, mask)? {
         return Ok(result.max(Dec::ZERO));
     }
+    let fast_unpowered_noop = !props.is_powered_attack()
+        && card_source.is_none()
+        && state.hook_cache.masks_are_valid()
+        && state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.unpowered_damage_no_card_surrounded_only)
+        && !state
+            .hook_cache
+            .masks
+            .run_combat_combined
+            .contains(HookSlot::ModifyDamageCap)
+        && !state
+            .hook_cache
+            .masks
+            .run_combat_combined
+            .contains(HookSlot::ModifyDamageMultiplicativeLate)
+        && target.is_none_or(|t| !target_has_power(state, t, PowerId::SurroundedPower));
+    #[cfg(not(debug_assertions))]
+    if fast_unpowered_noop {
+        return Ok(result.max(Dec::ZERO));
+    }
     if state.hook_cache.dirty_mask == 0
         && state.hook_cache.cached_tables.is_some()
         && state.hook_cache.flat_uses_slot_masks()
@@ -3453,6 +3554,10 @@ pub fn modify_damage_with_type(
             card_play,
             hook_type,
         )? {
+            #[cfg(debug_assertions)]
+            if fast_unpowered_noop {
+                debug_assert_eq!(final_dmg, result.max(Dec::ZERO));
+            }
             return Ok(final_dmg);
         }
     }
@@ -4178,16 +4283,42 @@ pub fn modify_block_and_notify(
         .with(HookSlot::ModifyBlockAdditive)
         .with(HookSlot::ModifyBlockMultiplicative);
     #[cfg(not(debug_assertions))]
-    if state.hook_cache.masks_are_valid()
-        && !state.hook_cache.masks.combat_combined.intersects(MASK)
-    {
-        return Ok(block.max(Dec::ZERO));
+    if state.hook_cache.masks_are_valid() {
+        if !state.hook_cache.masks.combat_combined.intersects(MASK) {
+            return Ok(block.max(Dec::ZERO));
+        }
+        if props.contains(ValueProp::UNPOWERED)
+            && !props.contains(ValueProp::MOVE)
+            && card_source.is_none()
+            && state
+                .hook_cache
+                .cached_tables
+                .is_some_and(|t| t.unpowered_block_no_card_shadowmeld_only)
+            && !target_has_power(state, target, PowerId::ShadowmeldPower)
+        {
+            return Ok(block.max(Dec::ZERO));
+        }
     }
+    #[cfg(debug_assertions)]
+    let fast_unpowered_block_noop = props.contains(ValueProp::UNPOWERED)
+        && !props.contains(ValueProp::MOVE)
+        && card_source.is_none()
+        && state.hook_cache.masks_are_valid()
+        && state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.unpowered_block_no_card_shadowmeld_only)
+        && !target_has_power(state, target, PowerId::ShadowmeldPower);
     #[cfg(debug_assertions)]
     if skip_combat_hook_mask_checked(state, content, MASK)? {
         return Ok(block.max(Dec::ZERO));
     }
-    modify_block_active(state, content, target, block, props, card_source, card_play)
+    let out = modify_block_active(state, content, target, block, props, card_source, card_play)?;
+    #[cfg(debug_assertions)]
+    if fast_unpowered_block_noop {
+        debug_assert_eq!(out, block.max(Dec::ZERO));
+    }
+    Ok(out)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5092,14 +5223,93 @@ pub fn modify_card_play_result_location(
     const MASK: HookMask = HookMask::EMPTY.with(HookSlot::ModifyCardPlayResultLocation);
     let mut result = (pile, position);
     let mut modifiers = SmallVec::new();
+    let card_self_only_skip = state.hook_cache.masks_are_valid()
+        && !state
+            .hook_cache
+            .masks
+            .powers
+            .contains(HookSlot::ModifyCardPlayResultLocation)
+        && state.hook_cache.cached_tables.is_some_and(|t| {
+            t.modify_result_location_cards_self_only
+                && state.card(card).is_some_and(|c| {
+                    !t.cards
+                        .get(c.id as usize)
+                        .is_some_and(|m| m.contains(HookSlot::ModifyCardPlayResultLocation))
+                })
+        });
+    #[cfg(not(debug_assertions))]
+    if card_self_only_skip {
+        return Ok((result.0, result.1, modifiers));
+    }
     if skip_combat_hook_mask_checked(state, content, MASK)? {
         return Ok((result.0, result.1, modifiers));
     }
+    let card_self_only = state
+        .hook_cache
+        .cached_tables
+        .is_some_and(|t| t.modify_result_location_cards_self_only);
     dispatch_cached_query_listeners_slot(
         state,
         content,
         HookSlot::ModifyCardPlayResultLocation,
         |s, c, listener| {
+            if card_self_only {
+                if let CachedHookListener::Card(h) = listener {
+                    if h != card {
+                        #[cfg(debug_assertions)]
+                        {
+                            let res = dispatch_query_known_slot_cached(
+                                s,
+                                c,
+                                listener,
+                                HookSlot::ModifyCardPlayResultLocation,
+                                &HookArgs::CardPlayResultLocation {
+                                    card,
+                                    is_auto_play,
+                                    energy_value,
+                                    pile: result.0,
+                                    position: result.1,
+                                },
+                            )?;
+                            debug_assert!(res.location_val.is_none());
+                        }
+                        return Ok(true);
+                    }
+                    if let Some(card_inst) = s.card(card) {
+                        let fast_next = match card_inst.id {
+                            CardId::ParticleWall => (result.0 == PileType::Discard)
+                                .then_some((PileType::Hand, CardPilePosition::Bottom)),
+                            CardId::ShiningStrike => (result.0 == PileType::Discard)
+                                .then_some((PileType::Draw, CardPilePosition::Top)),
+                            _ => None,
+                        };
+                        #[cfg(debug_assertions)]
+                        {
+                            let exp = dispatch_query_known_slot_cached(
+                                s,
+                                c,
+                                listener,
+                                HookSlot::ModifyCardPlayResultLocation,
+                                &HookArgs::CardPlayResultLocation {
+                                    card,
+                                    is_auto_play,
+                                    energy_value,
+                                    pile: result.0,
+                                    position: result.1,
+                                },
+                            )?;
+                            debug_assert_eq!(exp.location_val, fast_next);
+                        }
+                        if let Some(next) = fast_next {
+                            if next != result {
+                                result = next;
+                                modifiers.push(listener.to_hook_listener());
+                            }
+                        }
+                        return Ok(true);
+                    }
+                }
+            }
             let res = dispatch_query_known_slot_cached(
                 s,
                 c,
@@ -5122,6 +5332,11 @@ pub fn modify_card_play_result_location(
             Ok(true)
         },
     )?;
+    #[cfg(debug_assertions)]
+    if card_self_only_skip {
+        debug_assert_eq!(result, (pile, position));
+        debug_assert!(modifiers.is_empty());
+    }
     Ok((result.0, result.1, modifiers))
 }
 
@@ -5620,7 +5835,7 @@ pub fn after_hand_emptied(
 pub fn after_shuffle(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
-) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
+) -> Result<Option<(Box<crate::continuation::ChoiceRequest>, HookListener, Vec<HookListener>)>, KernelError> {
     let listeners = collect_combat_hook_listeners_checked_for_mask(
         state,
         content,
@@ -5633,7 +5848,7 @@ pub fn continue_after_shuffle(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     remaining: &[HookListener],
-) -> Result<Option<(crate::continuation::ChoiceRequest, HookListener, SmallVec<[HookListener; 16]>)>, KernelError> {
+) -> Result<Option<(Box<crate::continuation::ChoiceRequest>, HookListener, Vec<HookListener>)>, KernelError> {
     for (idx, &listener) in remaining.iter().enumerate() {
         if let Some(res) = dispatch_if_eligible_known_slot(
             state,
@@ -5643,7 +5858,7 @@ pub fn continue_after_shuffle(
             &HookArgs::Player,
         )? {
             if let Some(req) = res.needs_choice {
-                let rest = remaining[idx + 1..].iter().copied().collect();
+                let rest = remaining[idx + 1..].to_vec();
                 return Ok(Some((req, listener, rest)));
             }
         }

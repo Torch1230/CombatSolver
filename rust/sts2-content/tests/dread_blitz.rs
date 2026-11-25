@@ -14,8 +14,8 @@ use sts2_content::dread_blitz::{
 use sts2_kernel::commands::creature as creature_cmd;
 use sts2_kernel::{
     ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, ChoiceTiming, CombatEngine,
-    CreatureHandle, CreatureInst, HookArgs, KernelError, MonsterInst, PlayerCounters, PlayerInst,
-    PowerInst, RootStaticContext, SemanticHistory, StepOutcome,
+    CreatureHandle, CreatureInst, HookArgs, MonsterInst, PlayerCounters, PlayerInst, PowerInst,
+    RootStaticContext, SemanticHistory, StepOutcome,
 };
 use sts2_types::{
     ArrowStatus, AscensionLevel, CardId, CardKeywords, CardStaticFlags, CharacterId, CombatSide,
@@ -229,6 +229,10 @@ fn build_battle(
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     (state, ret_enemies)
 }
@@ -521,7 +525,7 @@ fn knowledge_demon_dominion_before_hand_draw_suspends_and_resumes() {
     let invalid_err =
         apply_knowledge_demon_choice(&content, &mut state, CardId::StrikeIronclad, None)
             .unwrap_err();
-    assert!(matches!(invalid_err, KernelError::InvalidAction(_)));
+    assert!(matches!(invalid_err.kind(), sts2_kernel::KernelErrorKind::InvalidAction(_)));
     let non_choice_res = resume_dominion_hook_choice(
         &content,
         &mut state,

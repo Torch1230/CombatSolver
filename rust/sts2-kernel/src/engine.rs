@@ -12,7 +12,7 @@ use crate::state::{
 };
 use smallvec::SmallVec;
 use sts2_types::{
-    CardKeywords, CardPilePosition, CardStaticFlags, CardTags, CardType, CombatSide, Dec,
+    CardId, CardKeywords, CardPilePosition, CardStaticFlags, CardTags, CardType, CombatSide, Dec,
     HookSlot, PileType, PlayerTurnPhase, RunRngType,
 };
 
@@ -87,7 +87,7 @@ impl CombatEngine {
                 state.card_extensions.push(ext);
                 copy.ext_index = Some(idx);
             }
-            state.cards.push(copy);
+            state.push_card(copy);
             state.player.draw.push(copy_handle);
         }
         // Initial shuffle uses UnstableShuffle on Shuffle RNG
@@ -280,7 +280,7 @@ impl CombatEngine {
             hooks::before_hand_draw(state, content)?
         {
             state.pending = Some(PendingContinuation {
-                request: req.clone(),
+                request: (*req).clone(),
                 frames: smallvec::smallvec![ContinuationFrame::BeforeHandDrawResume {
                     paused_listener,
                     remaining_listeners,
@@ -320,7 +320,7 @@ impl CombatEngine {
             {
                 *resume_turn_start = Some(is_extra_turn);
             }
-            return Ok(StepOutcome::NeedsChoice(pending.request.clone()));
+            return Ok(StepOutcome::NeedsChoice(Box::new(pending.request.clone())));
         }
 
         Self::run_after_player_turn_start(state, content, is_extra_turn)
@@ -339,7 +339,7 @@ impl CombatEngine {
             hooks::after_player_turn_start(state, content)?
         {
             state.pending = Some(PendingContinuation {
-                request: req.clone(),
+                request: (*req).clone(),
                 frames: smallvec::smallvec![ContinuationFrame::AfterPlayerTurnStartResume {
                     paused_listener,
                     remaining_listeners,
@@ -385,7 +385,7 @@ impl CombatEngine {
                     })?
                     .request
                     .clone();
-                return Ok(StepOutcome::NeedsChoice(req));
+                return Ok(StepOutcome::NeedsChoice(Box::new(req)));
             }
             state.player.phase = PlayerTurnPhase::Play;
         }
@@ -517,16 +517,33 @@ impl CombatEngine {
         let cache_ok =
             state.hook_cache.dirty_mask == 0 && state.hook_cache.cached_tables.is_some();
         let comb = state.hook_cache.masks.combat_combined;
-        if (!cache_ok || comb.contains(HookSlot::TryModifyKeywordsInCombat))
-            && hooks::modify_keywords_in_combat_unchecked_active(
+        if comb.contains(HookSlot::TryModifyKeywordsInCombat) || !cache_ok {
+            let skip_for_unplayable = cache_ok
+                && state
+                    .hook_cache
+                    .cached_tables
+                    .is_some_and(|t| t.keywords_in_combat_known_only);
+            if skip_for_unplayable {
+                #[cfg(debug_assertions)]
+                debug_assert!(
+                    !hooks::modify_keywords_in_combat_unchecked_active(
+                        state,
+                        content,
+                        card_handle,
+                        base_kw,
+                    )?
+                    .contains(CardKeywords::UNPLAYABLE)
+                );
+            } else if hooks::modify_keywords_in_combat_unchecked_active(
                 state,
                 content,
                 card_handle,
                 base_kw,
             )?
             .contains(CardKeywords::UNPLAYABLE)
-        {
-            return Ok(None);
+            {
+                return Ok(None);
+            }
         }
 
         let meta = state.fast_card_meta(content, card_id)?;
@@ -957,24 +974,55 @@ impl CombatEngine {
         card_handle: CardHandle,
         is_auto_play: bool,
     ) -> Result<(PileType, CardPilePosition), KernelError> {
-        let card_type = content.card_resolved_type(state, card_handle)?;
-        let (is_dupe, exhaust_next) = {
-            let c = state.card(card_handle).unwrap();
+        let (card_id, is_dupe, exhaust_next, base_kw) = {
+            let c = state
+                .card(card_handle)
+                .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?;
             (
+                c.id,
                 c.temp_flags.contains(CardTempFlags::IS_DUPE),
                 c.temp_flags.contains(CardTempFlags::EXHAUST_ON_NEXT_PLAY),
+                c.effective_keywords_base(),
             )
         };
+        let card_type = state.fast_card_resolved_type(content, card_handle, card_id)?;
         if is_dupe || card_type == CardType::Power {
             return Ok((PileType::None, CardPilePosition::Bottom));
         }
-        if exhaust_next
-            || card_pile::card_has_keyword(state, content, card_handle, CardKeywords::EXHAUST)?
+        let has_exhaust_kw = if state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.keywords_in_combat_known_only)
         {
+            let fast_ex = base_kw.contains(CardKeywords::EXHAUST);
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                fast_ex,
+                card_pile::card_has_keyword(state, content, card_handle, CardKeywords::EXHAUST)?
+            );
+            fast_ex
+        } else {
+            card_pile::card_has_keyword(state, content, card_handle, CardKeywords::EXHAUST)?
+        };
+        if exhaust_next || has_exhaust_kw {
             if let Some(c) = state.card_mut(card_handle) {
                 c.temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY);
             }
             return Ok((PileType::Exhaust, CardPilePosition::Bottom));
+        }
+        if state
+            .hook_cache
+            .cached_tables
+            .is_some_and(|t| t.card_custom_result_location_known_only)
+            && !matches!(card_id, CardId::MourningBlow | CardId::TrickShot)
+        {
+            #[cfg(debug_assertions)]
+            debug_assert!(
+                content
+                    .card_default_result_location(state, card_handle, is_auto_play)?
+                    .is_none()
+            );
+            return Ok((PileType::Discard, CardPilePosition::Bottom));
         }
         if let Some(custom) =
             content.card_default_result_location(state, card_handle, is_auto_play)?
@@ -1056,9 +1104,10 @@ impl CombatEngine {
                         c.transform_into_after_play = Some(tid);
                     }
                 }
-                if let Some((req, next_step)) = play_outcome.needs_choice {
+                if let Some(req) = play_outcome.needs_choice {
+                    let next_step = play_outcome.needs_choice_step;
                     state.pending = Some(PendingContinuation {
-                        request: req.clone(),
+                        request: (*req).clone(),
                         frames: smallvec::smallvec![ContinuationFrame::CardPlayResume {
                             card: card_handle,
                             original_owner_creature,
@@ -1090,7 +1139,7 @@ impl CombatEngine {
                             on_play_resume_step: u8::MAX,
                         },
                     );
-                    return Ok(StepOutcome::NeedsChoice(pending.request.clone()));
+                    return Ok(StepOutcome::NeedsChoice(Box::new(pending.request.clone())));
                 }
             }
             step = 0;
@@ -1135,11 +1184,16 @@ impl CombatEngine {
             return Ok(true);
         }
 
-        let has_ench = state
-            .card(card_handle)
-            .and_then(|c| state.card_ext(c.ext_index))
-            .and_then(|e| e.enchantment.as_ref())
-            .is_some();
+        let (has_ench, mut has_aff) = match state.card(card_handle) {
+            Some(c) => (
+                state
+                    .card_ext(c.ext_index)
+                    .and_then(|e| e.enchantment.as_ref())
+                    .is_some(),
+                c.affliction.is_some(),
+            ),
+            None => (false, false),
+        };
         if has_ench {
             content.enchantment_on_play(state, card_handle, ctx)?;
             if state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -1147,12 +1201,12 @@ impl CombatEngine {
                     (state.player.card_or_potion_effect_depth - 1).max(0);
                 return Ok(true);
             }
+            has_aff = state
+                .card(card_handle)
+                .and_then(|c| c.affliction)
+                .is_some();
         }
 
-        let has_aff = state
-            .card(card_handle)
-            .and_then(|c| c.affliction)
-            .is_some();
         if has_aff {
             content.affliction_on_play(state, card_handle, ctx)?;
             if state.player_creature().is_none_or(|c| c.is_dead()) {
@@ -1233,11 +1287,9 @@ impl CombatEngine {
         content: &dyn ContentDispatcher,
         ctx: &CardPlayContext,
     ) -> Result<(), KernelError> {
-        let card_type = content.card_resolved_type(state, ctx.card)?;
-        let tags = {
-            let c = state.card(ctx.card).unwrap();
-            content.card_meta(c.id)?.base_tags
-        };
+        let card_id = state.card(ctx.card).unwrap().id;
+        let tags = state.fast_card_meta(content, card_id)?.base_tags;
+        let card_type = state.fast_card_resolved_type(content, ctx.card, card_id)?;
         let ctr = &mut state.player.counters;
         ctr.card_plays_started_this_turn += 1;
         if card_type == CardType::Attack {
@@ -1252,22 +1304,24 @@ impl CombatEngine {
         if ctx.play_index == 0 {
             ctr.first_in_series_card_plays_started_this_turn += 1;
         }
-        if tags.contains(CardTags::WAH) {
-            ctr.wah_started_this_turn += 1;
-            if ctr.first_wah_play_ordinal_this_turn == 0 {
-                ctr.first_wah_play_ordinal_this_turn = ctx.play_ordinal;
+        if tags.intersects(CardTags::WAH | CardTags::CHO | CardTags::KI) {
+            if tags.contains(CardTags::WAH) {
+                ctr.wah_started_this_turn += 1;
+                if ctr.first_wah_play_ordinal_this_turn == 0 {
+                    ctr.first_wah_play_ordinal_this_turn = ctx.play_ordinal;
+                }
             }
-        }
-        if tags.contains(CardTags::CHO) {
-            ctr.cho_started_this_turn += 1;
-            if ctr.first_cho_play_ordinal_this_turn == 0 {
-                ctr.first_cho_play_ordinal_this_turn = ctx.play_ordinal;
+            if tags.contains(CardTags::CHO) {
+                ctr.cho_started_this_turn += 1;
+                if ctr.first_cho_play_ordinal_this_turn == 0 {
+                    ctr.first_cho_play_ordinal_this_turn = ctx.play_ordinal;
+                }
             }
-        }
-        if tags.contains(CardTags::KI) {
-            ctr.ki_started_this_turn += 1;
-            if ctr.first_ki_play_ordinal_this_turn == 0 {
-                ctr.first_ki_play_ordinal_this_turn = ctx.play_ordinal;
+            if tags.contains(CardTags::KI) {
+                ctr.ki_started_this_turn += 1;
+                if ctr.first_ki_play_ordinal_this_turn == 0 {
+                    ctr.first_ki_play_ordinal_this_turn = ctx.play_ordinal;
+                }
             }
         }
         Ok(())
@@ -1279,11 +1333,12 @@ impl CombatEngine {
         card_handle: CardHandle,
         is_auto_play: bool,
     ) -> Result<(), KernelError> {
-        let card_type = content.card_resolved_type(state, card_handle)?;
-        let tags = {
+        let (card_id, is_dupe) = {
             let c = state.card(card_handle).unwrap();
-            content.card_meta(c.id)?.base_tags
+            (c.id, c.temp_flags.contains(CardTempFlags::IS_DUPE))
         };
+        let tags = state.fast_card_meta(content, card_id)?.base_tags;
+        let card_type = state.fast_card_resolved_type(content, card_handle, card_id)?;
         let ctr = &mut state.player.counters;
         ctr.cards_played_this_combat += 1;
         ctr.cards_played_this_turn += 1;
@@ -1298,56 +1353,67 @@ impl CombatEngine {
         if tags.contains(CardTags::SHIV) {
             ctr.shivs_played_this_turn += 1;
         }
-        let has_wah = tags.contains(CardTags::WAH);
-        let has_cho = tags.contains(CardTags::CHO);
-        let has_ki = tags.contains(CardTags::KI);
-        if has_wah {
-            ctr.wah_finished_this_turn += 1;
-        }
-        if has_cho {
-            ctr.cho_finished_this_turn += 1;
-        }
-        if has_ki {
-            ctr.ki_finished_this_turn += 1;
-        }
-        if has_wah || has_cho || has_ki {
+        if tags.intersects(CardTags::WAH | CardTags::CHO | CardTags::KI) {
+            let has_wah = tags.contains(CardTags::WAH);
+            let has_cho = tags.contains(CardTags::CHO);
+            let has_ki = tags.contains(CardTags::KI);
+            if has_wah {
+                ctr.wah_finished_this_turn += 1;
+            }
+            if has_cho {
+                ctr.cho_finished_this_turn += 1;
+            }
+            if has_ki {
+                ctr.ki_finished_this_turn += 1;
+            }
             ctr.melody_cards_finished_this_turn += 1;
         }
-        if card_type == CardType::Attack
-            && state
-                .card(card_handle)
-                .is_some_and(|c| !c.temp_flags.contains(CardTempFlags::IS_DUPE))
-        {
-            let turn = state.player.turn_number;
-            for idx in 0..state.player.relics.len() {
-                let r = &mut state.player.relics[idx];
-                if !r.is_melted && r.id == sts2_types::RelicId::HistoryCourse {
-                    let last_turn = match r.private_fields.get("HistoryCourse._lastAttackTurn") {
-                        Some(crate::state::FieldValue::Int(v)) => *v,
-                        _ => 0,
-                    };
-                    if last_turn != turn {
-                        let last_attack =
-                            r.private_fields.get("HistoryCourse._lastAttack").cloned();
+        if card_type == CardType::Attack && !is_dupe {
+            let need_history_scan = state.hook_cache.cached_tables.is_none()
+                || (state.hook_cache.dirty_mask & crate::state::HOOK_DIRTY_RELICS) != 0
+                || state.hook_cache.has_active_history_course_relic;
+            if need_history_scan {
+                let turn = state.player.turn_number;
+                for idx in 0..state.player.relics.len() {
+                    let r = &mut state.player.relics[idx];
+                    if !r.is_melted && r.id == sts2_types::RelicId::HistoryCourse {
+                        let last_turn = match r.private_fields.get("HistoryCourse._lastAttackTurn") {
+                            Some(crate::state::FieldValue::Int(v)) => *v,
+                            _ => 0,
+                        };
+                        if last_turn != turn {
+                            let last_attack =
+                                r.private_fields.get("HistoryCourse._lastAttack").cloned();
+                            r.private_fields.insert(
+                                std::borrow::Cow::Borrowed("HistoryCourse._previousAttack"),
+                                last_attack.unwrap_or(crate::state::FieldValue::NullableInt(None)),
+                            );
+                            r.private_fields.insert(
+                                std::borrow::Cow::Borrowed("HistoryCourse._previousAttackTurn"),
+                                crate::state::FieldValue::Int(last_turn),
+                            );
+                        }
                         r.private_fields.insert(
-                            std::borrow::Cow::Borrowed("HistoryCourse._previousAttack"),
-                            last_attack.unwrap_or(crate::state::FieldValue::NullableInt(None)),
+                            std::borrow::Cow::Borrowed("HistoryCourse._lastAttack"),
+                            crate::state::FieldValue::CardHandle(card_handle.0 as i32),
                         );
                         r.private_fields.insert(
-                            std::borrow::Cow::Borrowed("HistoryCourse._previousAttackTurn"),
-                            crate::state::FieldValue::Int(last_turn),
+                            std::borrow::Cow::Borrowed("HistoryCourse._lastAttackTurn"),
+                            crate::state::FieldValue::Int(turn),
                         );
+                        state.mark_relic_dirty(idx);
                     }
-                    r.private_fields.insert(
-                        std::borrow::Cow::Borrowed("HistoryCourse._lastAttack"),
-                        crate::state::FieldValue::CardHandle(card_handle.0 as i32),
-                    );
-                    r.private_fields.insert(
-                        std::borrow::Cow::Borrowed("HistoryCourse._lastAttackTurn"),
-                        crate::state::FieldValue::Int(turn),
-                    );
-                    state.mark_relic_dirty(idx);
                 }
+            } else {
+                #[cfg(debug_assertions)]
+                debug_assert!(
+                    !state
+                        .player
+                        .relics
+                        .iter()
+                        .any(|r| !r.is_melted && r.id == sts2_types::RelicId::HistoryCourse),
+                    "HistoryCourse skipped while active HistoryCourse relic existed"
+                );
             }
         }
         Ok(())
@@ -1418,8 +1484,9 @@ impl CombatEngine {
                         c.transform_into_after_play = Some(tid);
                     }
                 }
-                if let Some((next_req, next_step)) = outcome.needs_choice {
-                    pending.request = next_req.clone();
+                if let Some(next_req) = outcome.needs_choice {
+                    let next_step = outcome.needs_choice_step;
+                    pending.request = (*next_req).clone();
                     pending.frames.push(ContinuationFrame::CardPlayResume {
                         card,
                         original_owner_creature,
@@ -1452,7 +1519,7 @@ impl CombatEngine {
                         },
                     );
                     Self::prepend_outer_frames(&mut inner, pending.frames);
-                    let req = inner.request.clone();
+                    let req = Box::new(inner.request.clone());
                     state.pending = Some(inner);
                     return Ok(StepOutcome::NeedsChoice(req));
                 }
@@ -1486,22 +1553,34 @@ impl CombatEngine {
                 }
 
                 let outer_frames = pending.frames;
-                let mut empty_choices = SmallVec::new();
-                let outcome = Self::run_card_play_loop(
-                    state,
-                    content,
-                    card,
-                    original_owner_creature,
-                    target,
-                    play_index + 1,
-                    play_count,
-                    is_auto_play,
-                    result_pile,
-                    result_position,
-                    resources,
-                    0,
-                    &mut empty_choices,
-                )?;
+                let outcome = if play_index + 1 < play_count {
+                    let mut empty_choices = SmallVec::new();
+                    Self::run_card_play_loop(
+                        state,
+                        content,
+                        card,
+                        original_owner_creature,
+                        target,
+                        play_index + 1,
+                        play_count,
+                        is_auto_play,
+                        result_pile,
+                        result_position,
+                        resources,
+                        0,
+                        &mut empty_choices,
+                    )?
+                } else {
+                    Self::conclude_card_play(
+                        state,
+                        content,
+                        card,
+                        card,
+                        original_owner_creature,
+                        result_pile,
+                        result_position,
+                    )?
+                };
                 if matches!(outcome, StepOutcome::NeedsChoice(_)) {
                     if !outer_frames.is_empty() {
                         if let Some(p) = state.pending.as_mut() {
@@ -1532,7 +1611,7 @@ impl CombatEngine {
                     resume_step,
                 )? {
                     Self::prepend_outer_frames(&mut next_pending, outer_frames);
-                    let req = next_pending.request.clone();
+                    let req = Box::new(next_pending.request.clone());
                     state.pending = Some(next_pending);
                     return Ok(StepOutcome::NeedsChoice(req));
                 }
@@ -1554,7 +1633,7 @@ impl CombatEngine {
                 )?;
                 if let Some(next_req) = res.needs_choice {
                     state.pending = Some(PendingContinuation {
-                        request: next_req.clone(),
+                        request: (*next_req).clone(),
                         frames: smallvec::smallvec![ContinuationFrame::BeforeHandDrawResume {
                             paused_listener,
                             remaining_listeners,
@@ -1567,7 +1646,7 @@ impl CombatEngine {
                     hooks::continue_before_hand_draw(state, content, &remaining_listeners)?
                 {
                     state.pending = Some(PendingContinuation {
-                        request: next_req.clone(),
+                        request: (*next_req).clone(),
                         frames: smallvec::smallvec![ContinuationFrame::BeforeHandDrawResume {
                             paused_listener: next_paused,
                             remaining_listeners: rest,
@@ -1592,7 +1671,7 @@ impl CombatEngine {
                     &selected,
                 )?;
                 if let Some(next_req) = res.needs_choice {
-                    pending.request = next_req.clone();
+                    pending.request = (*next_req).clone();
                     pending.frames.push(ContinuationFrame::AfterShuffleResume {
                         paused_listener,
                         remaining_listeners,
@@ -1606,7 +1685,7 @@ impl CombatEngine {
                 if let Some((next_req, next_paused, rest)) =
                     hooks::continue_after_shuffle(state, content, &remaining_listeners)?
                 {
-                    pending.request = next_req.clone();
+                    pending.request = (*next_req).clone();
                     pending.frames.push(ContinuationFrame::AfterShuffleResume {
                         paused_listener: next_paused,
                         remaining_listeners: rest,
@@ -1630,7 +1709,7 @@ impl CombatEngine {
                         for (i, outer) in pending.frames.into_iter().enumerate() {
                             inner.frames.insert(i, outer);
                         }
-                        let req = inner.request.clone();
+                        let req = Box::new(inner.request.clone());
                         state.pending = Some(inner);
                         return Ok(StepOutcome::NeedsChoice(req));
                     }
@@ -1742,7 +1821,7 @@ impl CombatEngine {
                 )?;
                 if let Some(next_req) = res.needs_choice {
                     state.pending = Some(PendingContinuation {
-                        request: next_req.clone(),
+                        request: (*next_req).clone(),
                         frames: smallvec::smallvec![ContinuationFrame::AfterPlayerTurnStartResume {
                             paused_listener,
                             remaining_listeners,
@@ -1755,7 +1834,7 @@ impl CombatEngine {
                     hooks::continue_after_player_turn_start(state, content, &remaining_listeners)?
                 {
                     state.pending = Some(PendingContinuation {
-                        request: next_req.clone(),
+                        request: (*next_req).clone(),
                         frames: smallvec::smallvec![ContinuationFrame::AfterPlayerTurnStartResume {
                             paused_listener: next_paused,
                             remaining_listeners: rest,
@@ -1779,7 +1858,7 @@ impl CombatEngine {
                             remaining_enemies,
                         },
                     );
-                    let req = inner.request.clone();
+                    let req = Box::new(inner.request.clone());
                     state.pending = Some(inner);
                     return Ok(StepOutcome::NeedsChoice(req));
                 }
@@ -1799,10 +1878,10 @@ impl CombatEngine {
                 }
                 Self::execute_enemy_turn_from(state, content, remaining_enemies)
             }
-            _ => Err(KernelError::Unsupported {
-                kind: "ContinuationFrame",
-                id: "unsupported_resume_frame".to_owned(),
-            }),
+            _ => Err(KernelError::unsupported(
+                "ContinuationFrame",
+                "unsupported_resume_frame".to_owned(),
+            )),
         }
     }
 
@@ -1827,7 +1906,7 @@ impl CombatEngine {
 
     fn prepend_outer_frames(
         pending: &mut PendingContinuation,
-        outer: SmallVec<[ContinuationFrame; 4]>,
+        outer: SmallVec<[ContinuationFrame; 2]>,
     ) {
         for (i, frame) in outer.into_iter().enumerate() {
             pending.frames.insert(i, frame);
@@ -1837,7 +1916,7 @@ impl CombatEngine {
     fn unwind_outer_frames(
         state: &mut BattleState,
         content: &dyn ContentDispatcher,
-        mut outer: SmallVec<[ContinuationFrame; 4]>,
+        mut outer: SmallVec<[ContinuationFrame; 2]>,
     ) -> Result<StepOutcome, KernelError> {
         while let Some(frame) = outer.pop() {
             match frame {
@@ -1887,7 +1966,7 @@ impl CombatEngine {
                             Self::prepend_outer_frames(p, outer);
                             p.request.clone()
                         };
-                        return Ok(StepOutcome::NeedsChoice(req));
+                        return Ok(StepOutcome::NeedsChoice(Box::new(req)));
                     }
                     if state.player_creature().is_some_and(|c| c.is_alive()) {
                         state.player.phase = PlayerTurnPhase::Play;
@@ -1974,10 +2053,10 @@ impl CombatEngine {
                     }
                 }
                 _ => {
-                    return Err(KernelError::Unsupported {
-                        kind: "ContinuationFrame",
-                        id: "unsupported_outer_unwind_frame".to_owned(),
-                    });
+                    return Err(KernelError::unsupported(
+                        "ContinuationFrame",
+                        "unsupported_outer_unwind_frame".to_owned(),
+                    ));
                 }
             }
         }
@@ -2195,7 +2274,7 @@ impl CombatEngine {
                         remaining_enemies,
                     },
                 );
-                let req = inner.request.clone();
+                let req = Box::new(inner.request.clone());
                 state.pending = Some(inner);
                 return Ok(StepOutcome::NeedsChoice(req));
             }
@@ -2246,37 +2325,177 @@ impl CombatEngine {
     }
 
     fn end_of_turn_cleanup(state: &mut BattleState) {
+        if !state.eot_card_cleanup_dirty.0 {
+            #[cfg(debug_assertions)]
+            for (idx, c) in state.cards.iter().enumerate() {
+                if matches!(
+                    c.pile,
+                    PileType::Hand
+                        | PileType::Draw
+                        | PileType::Discard
+                        | PileType::Exhaust
+                        | PileType::Play
+                ) {
+                    debug_assert!(
+                        !BattleState::card_has_eot_cleanup_state(c, &state.card_extensions),
+                        "end_of_turn_cleanup skipped EOT-dirty card at {idx}: {c:?}"
+                    );
+                }
+            }
+            Self::reset_turn_counters(state);
+            return;
+        }
         let start = if !state.deck_dirty.0 {
             state.static_ctx.root_deck_prefix_len.min(state.cards.len())
         } else {
             0
         };
-        for c in &mut state.cards[start..] {
-            if !matches!(
-                c.pile,
-                PileType::Hand
-                    | PileType::Draw
-                    | PileType::Discard
-                    | PileType::Exhaust
-                    | PileType::Play
-            ) {
-                continue;
+        let delta_len = state.static_ctx.root_combat_delta_len;
+        let total = state.cards.len();
+        let cleanup_flags = CardTempFlags::TEMPORARY_FREE_TURN
+            | CardTempFlags::TEMPORARY_RETAIN_TURN
+            | CardTempFlags::TEMPORARY_SLY_TURN
+            | CardTempFlags::EXHAUST_ON_NEXT_PLAY;
+        let mut skipped_non_combat_dirty = false;
+        if delta_len > 0 && delta_len <= total {
+            let word_count = (delta_len + 63) >> 6;
+            for w in 0..word_count {
+                let base = w << 6;
+                if base + 64 <= start {
+                    continue;
+                }
+                let lo_in_word = start.saturating_sub(base);
+                let hi_in_word = (delta_len - base).min(64);
+                let mut valid_mask = if hi_in_word == 64 {
+                    u64::MAX
+                } else {
+                    (1u64 << hi_in_word) - 1
+                };
+                if lo_in_word > 0 {
+                    valid_mask &= !((1u64 << lo_in_word) - 1);
+                }
+                let active =
+                    (state.card_meta_dirty.0[w] | !state.static_ctx.root_clean_eot_mask[w])
+                        & valid_mask;
+                #[cfg(debug_assertions)]
+                {
+                    let mut s = valid_mask & !active;
+                    while s != 0 {
+                        let idx = base + s.trailing_zeros() as usize;
+                        s &= s - 1;
+                        let c = &state.cards[idx];
+                        debug_assert!(
+                            !c.temp_flags.intersects(cleanup_flags)
+                                && c.temp_cost_override_this_turn.is_none()
+                                && c.temp_cost_override_this_turn_or_until_played.is_none()
+                                && c.temp_star_cost_override_this_turn.is_none()
+                                && c.ext_index.is_none(),
+                            "end_of_turn_cleanup skipped dirty card at {idx}: {c:?}"
+                        );
+                    }
+                }
+                let mut bits = active;
+                while bits != 0 {
+                    let idx = base + bits.trailing_zeros() as usize;
+                    bits &= bits - 1;
+                    let c = &mut state.cards[idx];
+                    if !matches!(
+                        c.pile,
+                        PileType::Hand
+                            | PileType::Draw
+                            | PileType::Discard
+                            | PileType::Exhaust
+                            | PileType::Play
+                    ) {
+                        if BattleState::card_has_eot_cleanup_state(c, &state.card_extensions) {
+                            skipped_non_combat_dirty = true;
+                        }
+                        continue;
+                    }
+                    let changed = c.temp_flags.intersects(cleanup_flags)
+                        || c.temp_cost_override_this_turn.is_some()
+                        || c.temp_cost_override_this_turn_or_until_played.is_some()
+                        || c.temp_star_cost_override_this_turn.is_some();
+                    if changed {
+                        c.temp_flags.remove(cleanup_flags);
+                        c.temp_cost_override_this_turn = OptI16::NONE;
+                        c.temp_cost_override_this_turn_or_until_played = OptI16::NONE;
+                        c.temp_star_cost_override_this_turn = OptI16::NONE;
+                    }
+                    let ext_idx_opt = c.ext_index;
+                    if changed {
+                        state.mark_card_meta_dirty(idx);
+                    }
+                    if let Some(ext_idx) = ext_idx_opt {
+                        state.card_extensions[ext_idx as usize]
+                            .local_energy_modifiers
+                            .retain(|m| !m.kind.clears_at_end_of_turn());
+                    }
+                }
             }
-            c.temp_flags.remove(
-                CardTempFlags::TEMPORARY_FREE_TURN
-                    | CardTempFlags::TEMPORARY_RETAIN_TURN
-                    | CardTempFlags::TEMPORARY_SLY_TURN
-                    | CardTempFlags::EXHAUST_ON_NEXT_PLAY,
-            );
-            c.temp_cost_override_this_turn = OptI16::NONE;
-            c.temp_cost_override_this_turn_or_until_played = OptI16::NONE;
-            c.temp_star_cost_override_this_turn = OptI16::NONE;
-            if let Some(ext_idx) = c.ext_index {
-                state.card_extensions[ext_idx as usize]
-                    .local_energy_modifiers
-                    .retain(|m| !m.kind.clears_at_end_of_turn());
+            for idx in delta_len..total {
+                let c = &mut state.cards[idx];
+                if !matches!(
+                    c.pile,
+                    PileType::Hand
+                        | PileType::Draw
+                        | PileType::Discard
+                        | PileType::Exhaust
+                        | PileType::Play
+                ) {
+                    if BattleState::card_has_eot_cleanup_state(c, &state.card_extensions) {
+                        skipped_non_combat_dirty = true;
+                    }
+                    continue;
+                }
+                c.temp_flags.remove(cleanup_flags);
+                c.temp_cost_override_this_turn = OptI16::NONE;
+                c.temp_cost_override_this_turn_or_until_played = OptI16::NONE;
+                c.temp_star_cost_override_this_turn = OptI16::NONE;
+                if let Some(ext_idx) = c.ext_index {
+                    state.card_extensions[ext_idx as usize]
+                        .local_energy_modifiers
+                        .retain(|m| !m.kind.clears_at_end_of_turn());
+                }
+            }
+        } else {
+            for idx in start..total {
+                let c = &mut state.cards[idx];
+                if !matches!(
+                    c.pile,
+                    PileType::Hand
+                        | PileType::Draw
+                        | PileType::Discard
+                        | PileType::Exhaust
+                        | PileType::Play
+                ) {
+                    if BattleState::card_has_eot_cleanup_state(c, &state.card_extensions) {
+                        skipped_non_combat_dirty = true;
+                    }
+                    continue;
+                }
+                let changed = c.temp_flags.intersects(cleanup_flags)
+                    || c.temp_cost_override_this_turn.is_some()
+                    || c.temp_cost_override_this_turn_or_until_played.is_some()
+                    || c.temp_star_cost_override_this_turn.is_some();
+                if changed {
+                    c.temp_flags.remove(cleanup_flags);
+                    c.temp_cost_override_this_turn = OptI16::NONE;
+                    c.temp_cost_override_this_turn_or_until_played = OptI16::NONE;
+                    c.temp_star_cost_override_this_turn = OptI16::NONE;
+                }
+                let ext_idx_opt = c.ext_index;
+                if changed {
+                    state.mark_card_meta_dirty(idx);
+                }
+                if let Some(ext_idx) = ext_idx_opt {
+                    state.card_extensions[ext_idx as usize]
+                        .local_energy_modifiers
+                        .retain(|m| !m.kind.clears_at_end_of_turn());
+                }
             }
         }
+        state.eot_card_cleanup_dirty.0 = skipped_non_combat_dirty;
         Self::reset_turn_counters(state);
     }
 
@@ -2311,6 +2530,8 @@ impl CombatEngine {
     }
 
     fn notify_side_switch(state: &mut BattleState) {
+        let tk = state.current_turn_key();
+        state.semantic_history.sync_turn_cache_on_turn_change(&tk);
         for c in &mut state.creatures {
             if let Some(m) = &mut c.monster {
                 m.spawned_this_turn = false;

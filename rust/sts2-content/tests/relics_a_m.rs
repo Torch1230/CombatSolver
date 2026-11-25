@@ -6,8 +6,8 @@ use sts2_kernel::commands::{block, creature, damage, gold, orb, osty, potion, po
 use sts2_kernel::{
     hooks, ArrowSlotInst, BattleState, CardHandle, CardInst, CardTempFlags, CombatEngine,
     ContentDispatcher, CreatureHandle, CreatureInst, EnchantmentInst, FieldValue, HookArgs,
-    KernelError, MonsterInst, PlayerCounters, PlayerInst, RelicInst, RootStaticContext,
-    SemanticHistory, StepOutcome,
+    MonsterInst, PlayerCounters, PlayerInst, RelicInst, RootStaticContext, SemanticHistory,
+    StepOutcome,
 };
 use sts2_types::{
     ArrowStatus, CardId, CardKeywords, CharacterId, CombatSide, Dec, EnchantmentId,
@@ -219,6 +219,10 @@ fn build_test_battle(
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
     (state, pc_handle, enemy_handle)
 }
@@ -482,8 +486,8 @@ fn verify_all_169_a_m_variants_explicitly() {
         }
     }
     assert!(matches!(
-        batch_a_m::relic_meta(RelicId::NeowsBones),
-        Err(KernelError::Unsupported { kind: "Relic", .. })
+        batch_a_m::relic_meta(RelicId::NeowsBones).as_ref().map_err(|e| e.kind()),
+        Err(sts2_kernel::KernelErrorKind::Unsupported { kind: "Relic", .. })
     ));
 }
 

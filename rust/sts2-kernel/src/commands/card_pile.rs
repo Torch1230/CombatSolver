@@ -8,7 +8,7 @@ use crate::state::{
     BattleState, CardHandle, CardInst, CardTempFlags, CreatureHandle, OptCardHandle, OptI16,
 };
 use smallvec::SmallVec;
-use sts2_types::{CardId, CardKeywords, CardPilePosition, CardStaticFlags, PileType};
+use sts2_types::{CardId, CardKeywords, CardPilePosition, CardStaticFlags, HookMask, HookSlot, PileType};
 
 pub const MAX_CARDS_IN_HAND: usize = 10;
 
@@ -48,7 +48,25 @@ fn move_card_in_combat_piles_sync(
     if card_idx < state.static_ctx.root_deck_prefix_len {
         state.deck_dirty.0 = true;
     }
-    state.cards[card_idx].pile = dest_pile;
+    let may_have_hook = {
+        let c = &mut state.cards[card_idx];
+        c.pile = dest_pile;
+        !c.removed_from_state
+            && (tables.card_has_hook(c.id)
+                || c.ext_index.is_some()
+                || (!tables.afflictions_self_card_entered_only && c.affliction.is_some()))
+    };
+    if !may_have_hook {
+        #[cfg(debug_assertions)]
+        if state.hook_cache.dirty_mask == 0 && state.hook_cache.combat_has_player {
+            let mut entries = [(crate::content_dispatch::CachedHookListener::Card(card), HookMask::EMPTY); 3];
+            debug_assert_eq!(
+                state.collect_card_hook_entries_at(tables, card_idx, card, &mut entries).0,
+                0
+            );
+        }
+        return;
+    }
     if !state.try_update_hook_cache_for_combat_pile_move(
         card,
         card_idx,
@@ -90,7 +108,25 @@ pub fn add_sync(
                 if card_idx < state.static_ctx.root_deck_prefix_len {
                     state.deck_dirty.0 = true;
                 }
-                state.cards[card_idx].pile = pile;
+                let may_have_hook = {
+                    let c = &mut state.cards[card_idx];
+                    c.pile = pile;
+                    !c.removed_from_state
+                        && (t.card_has_hook(c.id)
+                            || c.ext_index.is_some()
+                            || (!t.afflictions_self_card_entered_only && c.affliction.is_some()))
+                };
+                if !may_have_hook {
+                    #[cfg(debug_assertions)]
+                    if state.hook_cache.combat_has_player {
+                        let mut entries = [(crate::content_dispatch::CachedHookListener::Card(card), HookMask::EMPTY); 3];
+                        debug_assert_eq!(
+                            state.collect_card_hook_entries_at(t, card_idx, card, &mut entries).0,
+                            0
+                        );
+                    }
+                    return;
+                }
                 if !state.try_update_hook_cache_for_combat_pile_move(
                     card,
                     card_idx,
@@ -274,14 +310,14 @@ pub fn create_card_in_combat(
     card_id: CardId,
     upgrade_level: i32,
 ) -> Result<CardHandle, KernelError> {
-    let meta = content.card_meta(card_id)?;
+    let meta = state.fast_card_meta(content, card_id)?;
     let handle = CardHandle(state.next_card_handle);
     state.next_card_handle += 1;
     let mut temp_flags = CardTempFlags::empty();
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         id: card_id,
         upgrade_level: 0,
@@ -316,6 +352,27 @@ pub fn create_card_in_combat(
     Ok(handle)
 }
 
+pub(crate) fn enter_combat_at_index_unchecked_not_ending_new(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    card_handle: CardHandle,
+    pile: PileType,
+    index: usize,
+    record_generated: bool,
+) -> Result<(), KernelError> {
+    enter_combat_internal(
+        state,
+        content,
+        card_handle,
+        pile,
+        CardPilePosition::Bottom,
+        Some(index),
+        record_generated,
+        true,
+        true,
+    )
+}
+
 pub fn enter_combat(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
@@ -324,7 +381,17 @@ pub fn enter_combat(
     pos: CardPilePosition,
     record_generated: bool,
 ) -> Result<(), KernelError> {
-    enter_combat_internal(state, content, card_handle, pile, pos, None, record_generated)
+    enter_combat_internal(
+        state,
+        content,
+        card_handle,
+        pile,
+        pos,
+        None,
+        record_generated,
+        false,
+        false,
+    )
 }
 
 pub fn enter_combat_at_index(
@@ -343,9 +410,12 @@ pub fn enter_combat_at_index(
         CardPilePosition::Bottom,
         Some(index),
         record_generated,
+        false,
+        false,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn enter_combat_internal(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
@@ -354,6 +424,8 @@ fn enter_combat_internal(
     pos: CardPilePosition,
     insertion_index: Option<usize>,
     record_generated: bool,
+    skip_ending_check: bool,
+    is_new_unplaced: bool,
 ) -> Result<(), KernelError> {
     if !matches!(
         pile,
@@ -366,9 +438,13 @@ fn enter_combat_internal(
     let is_sadness = state
         .card(card_handle)
         .is_some_and(|c| c.id == CardId::Sadness);
-    if hooks::is_ending_checked(state, content)?
+    if (!skip_ending_check && hooks::is_ending_checked(state, content)?)
         || (insertion_index.is_none() && state.player_creature().is_none_or(|c| c.is_dead()))
     {
+        #[cfg(debug_assertions)]
+        if skip_ending_check {
+            debug_assert!(!hooks::is_ending_checked(state, content)?);
+        }
         if record_generated {
             state.player.counters.cards_generated_this_combat += 1;
             if is_sadness {
@@ -377,12 +453,29 @@ fn enter_combat_internal(
         }
         return Ok(());
     }
+    let tables = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables());
     if let Some(idx) = insertion_index {
-        state.remove_card_from_current_pile(card_handle);
+        if !is_new_unplaced
+            && state
+                .card(card_handle)
+                .is_some_and(|c| c.pile != PileType::None)
+        {
+            state.remove_card_from_current_pile_with_tables(card_handle, tables);
+        } else {
+            #[cfg(debug_assertions)]
+            debug_assert!(
+                state
+                    .card(card_handle)
+                    .is_some_and(|c| c.pile == PileType::None)
+            );
+        }
         if pile == PileType::Hand && state.player.hand.len() >= MAX_CARDS_IN_HAND {
             pile = PileType::Discard;
         }
-        state.add_card_to_pile_at(card_handle, pile, Some(idx));
+        state.add_card_to_pile_at_with_tables(card_handle, pile, Some(idx), tables);
     } else {
         add_sync(state, card_handle, pile, pos);
     }
@@ -418,7 +511,7 @@ pub fn shuffle(
     if hooks::is_over_or_ending_checked(state, content)? {
         return Ok(());
     }
-    let mut combined: SmallVec<[CardHandle; 64]> = state
+    let mut combined: SmallVec<[CardHandle; 256]> = state
         .player
         .discard
         .iter()
@@ -455,8 +548,11 @@ pub fn shuffle(
     state.player.draw.clear();
     for &c in &combined {
         state.player.draw.push(c);
-        if let Some(card) = state.card_mut(c) {
-            card.pile = PileType::Draw;
+        if let Some(idx) = state.card_index(c) {
+            if idx < state.static_ctx.root_deck_prefix_len || state.cards[idx].pile == PileType::Deck {
+                state.deck_dirty.0 = true;
+            }
+            state.cards[idx].pile = PileType::Draw;
         }
     }
     if had_hooked_cards {
@@ -468,7 +564,7 @@ pub fn shuffle(
         hooks::after_shuffle(state, content)?
     {
         state.pending = Some(PendingContinuation {
-            request: req,
+            request: *req,
             frames: smallvec::smallvec![ContinuationFrame::AfterShuffleResume {
                 paused_listener,
                 remaining_listeners,
@@ -487,7 +583,10 @@ pub fn draw(
     count: i32,
     from_hand_draw: bool,
 ) -> Result<SmallVec<[CardHandle; 10]>, KernelError> {
-    if hooks::is_over_or_ending_checked(state, content)? {
+    const DRAW_HOOK_MASK: HookMask = HookMask::EMPTY
+        .with(HookSlot::AfterCardDrawnEarly)
+        .with(HookSlot::AfterCardDrawn);
+    if count <= 0 || hooks::is_over_or_ending_checked(state, content)? {
         return Ok(SmallVec::new());
     }
     if !hooks::should_draw(state, content, from_hand_draw)? {
@@ -498,9 +597,135 @@ pub fn draw(
         .cached_tables
         .or_else(|| content.hook_mask_tables());
     let mut drawn = SmallVec::new();
-    for i in 0..count {
+    let mut remaining = count as usize;
+
+    if remaining >= 1
+        && state.hook_cache.masks_are_valid()
+        && !state.hook_cache.masks.combat_combined.intersects(DRAW_HOOK_MASK)
+    {
+        let mut need_slow_loop = false;
+        while remaining > 0 && state.player.hand.len() < MAX_CARDS_IN_HAND {
+            if state.player.draw.is_empty() {
+                if state.player.discard.is_empty() {
+                    break;
+                }
+                shuffle(state, content)?;
+                if let Some(pending) = state.pending.as_mut() {
+                    if let Some(ContinuationFrame::AfterShuffleResume {
+                        remaining_draws,
+                        from_hand_draw: fhd,
+                        ..
+                    }) = pending.frames.last_mut()
+                    {
+                        *remaining_draws = remaining as i32;
+                        *fhd = from_hand_draw;
+                    }
+                    break;
+                }
+                if hooks::is_over_or_ending_checked(state, content)? {
+                    break;
+                }
+                if !state.hook_cache.masks_are_valid()
+                    || state.hook_cache.masks.combat_combined.intersects(DRAW_HOOK_MASK)
+                {
+                    need_slow_loop = true;
+                    break;
+                }
+                if state.player.draw.is_empty() || state.player.hand.len() >= MAX_CARDS_IN_HAND {
+                    break;
+                }
+            }
+
+            let hand_space = MAX_CARDS_IN_HAND - state.player.hand.len();
+            let batch_n = remaining.min(hand_space).min(state.player.draw.len());
+            let drawn_start = drawn.len();
+            if batch_n == 1 {
+                let card = state.player.draw.remove(0);
+                drawn.push(card);
+                state.player.hand.push(card);
+            } else {
+                {
+                    let src = &state.player.draw[..batch_n];
+                    drawn.extend_from_slice(src);
+                    state.player.hand.extend_from_slice(src);
+                }
+                let draw_len = state.player.draw.len();
+                state.player.draw.copy_within(batch_n.., 0);
+                state.player.draw.truncate(draw_len - batch_n);
+            }
+
+            let live = state.is_live_combat();
+            let tk = if live {
+                state.semantic_history.card_drawn.reserve(batch_n);
+                Some(state.current_turn_key())
+            } else {
+                None
+            };
+            let drawn_end = drawn_start + batch_n;
+            let mut d_i = drawn_start;
+            while d_i < drawn_end {
+                let card = drawn[d_i];
+                d_i += 1;
+                let card_idx_opt = state.card_index(card);
+                if let Some(ci_idx) = card_idx_opt {
+                    let (card_id, has_ext, has_aff) = {
+                        let ci = &mut state.cards[ci_idx];
+                        if ci_idx < state.static_ctx.root_deck_prefix_len || ci.pile == PileType::Deck
+                        {
+                            state.deck_dirty.0 = true;
+                        }
+                        ci.pile = PileType::Hand;
+                        (ci.id, ci.ext_index.is_some(), ci.affliction.is_some())
+                    };
+                    let may_have_hook = tables.is_none_or(|t| {
+                        t.card_has_hook(card_id)
+                            || has_ext
+                            || (!t.afflictions_self_card_entered_only && has_aff)
+                    });
+                    if may_have_hook {
+                        state.update_drawn_card_hook_cache(card, card_idx_opt, tables);
+                    } else {
+                        #[cfg(debug_assertions)]
+                        if let Some(t) = tables {
+                            let mut entries =
+                                [(crate::content_dispatch::CachedHookListener::Card(card), HookMask::EMPTY); 3];
+                            debug_assert_eq!(
+                                state.collect_card_hook_entries_at(t, ci_idx, card, &mut entries).0,
+                                0
+                            );
+                        }
+                    }
+                    if let Some(tk_val) = tk {
+                        let card_type = state.fast_card_resolved_type(content, card, card_id)?;
+                        state
+                            .semantic_history
+                            .record_card_drawn_tk(tk_val, card_type, from_hand_draw);
+                    }
+                } else {
+                    if let Some(ci) = state.card_mut(card) {
+                        ci.pile = PileType::Hand;
+                    }
+                    state.update_drawn_card_hook_cache(card, None, tables);
+                    if let Some(tk_val) = tk {
+                        let card_type = content.card_resolved_type(state, card)?;
+                        state
+                            .semantic_history
+                            .record_card_drawn_tk(tk_val, card_type, from_hand_draw);
+                    }
+                }
+            }
+            state.player.counters.cards_drawn_this_combat += batch_n as i32;
+            remaining -= batch_n;
+        }
+        if !need_slow_loop || remaining == 0 {
+            return Ok(drawn);
+        }
+    }
+
+    let rem_i32 = remaining as i32;
+    for i in 0..rem_i32 {
         if state.player.hand.len() >= MAX_CARDS_IN_HAND
-            || hooks::is_over_or_ending_checked(state, content)?
+            || (i > 0 && hooks::is_over_or_ending_checked(state, content)?)
         {
             break;
         }
@@ -512,7 +737,7 @@ pub fn draw(
                 ..
             }) = pending.frames.last_mut()
             {
-                *remaining_draws = count - i;
+                *remaining_draws = rem_i32 - i;
                 *fhd = from_hand_draw;
             }
             break;
@@ -526,25 +751,102 @@ pub fn draw(
         let card_idx_opt = state.card_index(card);
         state.player.draw.remove(0);
         state.player.hand.push(card);
-        if let Some(ci_idx) = card_idx_opt {
-            let ci = &mut state.cards[ci_idx];
-            if ci_idx < state.static_ctx.root_deck_prefix_len || ci.pile == PileType::Deck {
-                state.deck_dirty.0 = true;
+        let card_id_opt = if let Some(ci_idx) = card_idx_opt {
+            let (card_id, has_ext, has_aff) = {
+                let ci = &mut state.cards[ci_idx];
+                if ci_idx < state.static_ctx.root_deck_prefix_len || ci.pile == PileType::Deck {
+                    state.deck_dirty.0 = true;
+                }
+                ci.pile = PileType::Hand;
+                (ci.id, ci.ext_index.is_some(), ci.affliction.is_some())
+            };
+            let may_have_hook = tables.is_none_or(|t| {
+                t.card_has_hook(card_id)
+                    || has_ext
+                    || (!t.afflictions_self_card_entered_only && has_aff)
+            });
+            if may_have_hook {
+                state.update_drawn_card_hook_cache(card, card_idx_opt, tables);
+            } else {
+                #[cfg(debug_assertions)]
+                if let Some(t) = tables {
+                    let mut entries =
+                        [(crate::content_dispatch::CachedHookListener::Card(card), HookMask::EMPTY); 3];
+                    debug_assert_eq!(
+                        state.collect_card_hook_entries_at(t, ci_idx, card, &mut entries).0,
+                        0
+                    );
+                }
             }
-            ci.pile = PileType::Hand;
-        } else if let Some(ci) = state.card_mut(card) {
-            ci.pile = PileType::Hand;
-        }
-        state.update_drawn_card_hook_cache(card, card_idx_opt, tables);
+            Some(card_id)
+        } else {
+            if let Some(ci) = state.card_mut(card) {
+                ci.pile = PileType::Hand;
+            }
+            state.update_drawn_card_hook_cache(card, None, tables);
+            None
+        };
         state.player.counters.cards_drawn_this_combat += 1;
         if state.is_live_combat() {
-            let card_type = content.card_resolved_type(state, card)?;
+            let card_type = match card_id_opt {
+                Some(card_id) => state.fast_card_resolved_type(content, card, card_id)?,
+                None => content.card_resolved_type(state, card)?,
+            };
             state.record_card_drawn(card_type, from_hand_draw);
         }
         drawn.push(card);
         hooks::after_card_drawn(state, content, card, from_hand_draw)?;
     }
     Ok(drawn)
+}
+
+#[inline(never)]
+fn card_has_known_combat_keyword(
+    state: &BattleState,
+    tables: &crate::content_dispatch::HookMaskTableView,
+    cid: CardId,
+    aff_id: Option<sts2_types::AfflictionId>,
+    kw: CardKeywords,
+) -> Option<bool> {
+    if !kw.intersects(CardKeywords::ETHEREAL | CardKeywords::RETAIN) {
+        Some(false)
+    } else if kw == CardKeywords::ETHEREAL {
+        if aff_id != Some(sts2_types::AfflictionId::Hexed) {
+            Some(false)
+        } else {
+            Some(
+                state.player.is_active_for_hooks
+                    && state.player_creature().is_some_and(|c| {
+                        !c.is_detached
+                            && state.contains_creature(c.handle)
+                            && c.powers
+                                .iter()
+                                .any(|p| p.id == sts2_types::PowerId::HexPower)
+                    }),
+            )
+        }
+    } else if kw == CardKeywords::RETAIN {
+        if !tables
+            .card_metas
+            .get(cid as usize)
+            .is_some_and(|m| m.base_tags.contains(sts2_types::CardTags::SHIV))
+        {
+            Some(false)
+        } else {
+            Some(
+                state.player.is_active_for_hooks
+                    && state.player_creature().is_some_and(|c| {
+                        !c.is_detached
+                            && state.contains_creature(c.handle)
+                            && c.powers
+                                .iter()
+                                .any(|p| p.id == sts2_types::PowerId::PhantomBladesPower)
+                    }),
+            )
+        }
+    } else {
+        None
+    }
 }
 
 pub fn card_has_keyword(
@@ -567,6 +869,9 @@ pub fn card_has_keyword(
     if base.contains(kw) {
         return Ok(true);
     }
+    if !state.is_in_progress {
+        return Ok(false);
+    }
     #[cfg(not(debug_assertions))]
     if state.hook_cache.masks_are_valid()
         && !state
@@ -576,6 +881,28 @@ pub fn card_has_keyword(
             .contains(sts2_types::HookSlot::TryModifyKeywordsInCombat)
     {
         return Ok(false);
+    }
+    if let Some(tables) = state
+        .hook_cache
+        .cached_tables
+        .or_else(|| content.hook_mask_tables())
+    {
+        if tables.keywords_in_combat_known_only {
+            if let Some(ans) = card_has_known_combat_keyword(
+                state,
+                tables,
+                ci.id,
+                ci.affliction.map(|a| a.id),
+                kw,
+            ) {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(
+                    ans,
+                    hooks::modify_keywords_in_combat(state, content, card, base)?.contains(kw)
+                );
+                return Ok(ans);
+            }
+        }
     }
     let modified = hooks::modify_keywords_in_combat(state, content, card, base)?;
     Ok(modified.contains(kw))

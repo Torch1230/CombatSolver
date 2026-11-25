@@ -176,7 +176,7 @@ fn create_ephemeral_choice_card(state: &mut BattleState, card_id: CardId) -> Car
     if meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         temp_flags |= CardTempFlags::COSTS_X_ENERGY;
     }
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle,
         id: card_id,
         upgrade_level: 0,
@@ -301,10 +301,7 @@ pub fn monster_meta(id: MonsterId) -> Result<&'static MonsterMeta, KernelError> 
         | MonsterId::TheObscura
         | MonsterId::ThievingHopper
         | MonsterId::Tunneler => Ok(&DEFAULT_MONSTER_META),
-        _ => Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Monster", id.model_id_str().to_owned())),
     }
 }
 
@@ -404,10 +401,10 @@ pub fn monster_initial_hp_range(
             let hp = state.ascension_value(AscensionLevel::ToughEnemies, 92, 87);
             Ok((hp, hp))
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "Monster",
-            id: monster_id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Monster",
+            monster_id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -468,10 +465,10 @@ pub fn monster_setup_for_combat(
         MonsterId::ThievingHopper => ("THIEVERY_MOVE", true),
         MonsterId::Tunneler => ("BITE_MOVE", true),
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "Monster",
-                id: mid.model_id_str().to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "Monster",
+                mid.model_id_str().to_owned(),
+            ));
         }
     };
 
@@ -1013,10 +1010,10 @@ pub fn monster_roll_move(
             _ => "FROM_BELOW_MOVE",
         },
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "Monster",
-                id: mid.model_id_str().to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "Monster",
+                mid.model_id_str().to_owned(),
+            ));
         }
     };
 
@@ -1926,10 +1923,10 @@ pub fn monster_perform_move(
             AttackBuilder::from_monster(creature, dmg).execute(state, content)?;
         }
         _ => {
-            return Err(KernelError::Unsupported {
-                kind: "MonsterMove",
-                id: format!("{}:{}", mid.model_id_str(), move_id),
-            });
+            return Err(KernelError::unsupported(
+                "MonsterMove",
+                format!("{}:{}", mid.model_id_str(), move_id),
+            ));
         }
     }
 
@@ -1953,10 +1950,10 @@ pub fn monster_resume_move_choice(
         .and_then(|c| c.monster_id)
         .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?;
     if mid != MonsterId::KnowledgeDemon {
-        return Err(KernelError::Unsupported {
-            kind: "MonsterMoveChoiceResume",
-            id: mid.model_id_str().to_owned(),
-        });
+        return Err(KernelError::unsupported(
+            "MonsterMoveChoiceResume",
+            mid.model_id_str().to_owned(),
+        ));
     }
 
     let mut chosen_power: Option<(CardHandle, PowerId, i32)> = None;
@@ -2048,10 +2045,10 @@ pub fn dispatch_hook(
         .creature(creature)
         .and_then(|c| c.monster_id)
         .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?;
-    Err(KernelError::Unsupported {
-        kind: "MonsterHook",
-        id: id.model_id_str().to_owned(),
-    })
+    Err(KernelError::unsupported(
+        "MonsterHook",
+        id.model_id_str().to_owned(),
+    ))
 }
 
 pub fn resume_hook_choice(
@@ -2065,10 +2062,10 @@ pub fn resume_hook_choice(
         .creature(creature)
         .and_then(|c| c.monster_id)
         .ok_or_else(|| KernelError::InvalidState("missing monster".to_owned()))?;
-    Err(KernelError::Unsupported {
-        kind: "MonsterHookChoiceResume",
-        id: format!("{}:{slot:?}", id.model_id_str()),
-    })
+    Err(KernelError::unsupported(
+        "MonsterHookChoiceResume",
+        format!("{}:{slot:?}", id.model_id_str()),
+    ))
 }
 
 pub fn monster_attack_intent_hits(
@@ -2304,9 +2301,9 @@ pub fn monster_attack_intent_hits(
             Ok(smallvec![(dmg, 1)])
         }
         (MonsterId::Tunneler, "BURROW_MOVE") => Ok(SmallVec::new()),
-        _ => Err(KernelError::Unsupported {
-            kind: "MonsterIntent",
-            id: format!("{}:{}", mid.model_id_str(), move_id),
-        }),
+        _ => Err(KernelError::unsupported(
+            "MonsterIntent",
+            format!("{}:{}", mid.model_id_str(), move_id),
+        )),
     }
 }

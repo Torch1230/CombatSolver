@@ -38,17 +38,75 @@ fn sym_hasher() -> ahash::RandomState {
     )
 }
 
+pub mod hot_keys {
+    pub const KUNAI_ATTACKS_THIS_TURN: &str = "Kunai._attacksThisTurn";
+    pub const SHURIKEN_ATTACKS_THIS_TURN: &str = "Shuriken._attacksThisTurn";
+    pub const ORNAMENTAL_FAN_ATTACKS_THIS_TURN: &str = "OrnamentalFan._attacksThisTurn";
+    pub const NUNCHAKU_ATTACKS_PLAYED: &str = "Nunchaku._attacksPlayed";
+    pub const LETTER_OPENER_SKILLS_THIS_TURN: &str = "LetterOpener._skillsThisTurn";
+    pub const POCKETWATCH_CARDS_PLAYED_THIS_TURN: &str = "Pocketwatch._cardsPlayedThisTurn";
+    pub const POCKETWATCH_CARDS_PLAYED_LAST_TURN: &str = "Pocketwatch._cardsPlayedLastTurn";
+    pub const PEN_NIB_ATTACKS_PLAYED: &str = "PenNib._attacksPlayed";
+    pub const PEN_NIB_DOUBLE_DAMAGE_PLAY_ORDINAL: &str = "PenNib._doubleDamagePlayOrdinal";
+    pub const PEN_NIB_DOUBLE_DAMAGE_CARD: &str = "PenNib._doubleDamageCard";
+    pub const RAINBOW_RING_TRIGGERED_THIS_TURN: &str = "RainbowRing._triggeredThisTurn";
+    pub const WITHERING_PRESENCE_TARGET: &str = "WitheringPresencePower.<Target>k__BackingField";
+    pub const WITHERING_PRESENCE_CARDS_PLAYED: &str = "WitheringPresencePower._cardsPlayed";
+    pub const REATTACH_IS_REVIVING: &str = "ReattachPower._isReviving";
+    pub const ADAPTABLE_IS_REVIVING: &str = "AdaptablePower._isReviving";
+    pub const ILLUSION_IS_REVIVING: &str = "IllusionPower._isReviving";
+    pub const CHAINS_OF_BINDING_BOUND_PLAYED: &str = "ChainsOfBindingPower._boundCardPlayedThisTurn";
+
+    pub const ALL: &[&str] = &[
+        KUNAI_ATTACKS_THIS_TURN,
+        SHURIKEN_ATTACKS_THIS_TURN,
+        ORNAMENTAL_FAN_ATTACKS_THIS_TURN,
+        NUNCHAKU_ATTACKS_PLAYED,
+        LETTER_OPENER_SKILLS_THIS_TURN,
+        POCKETWATCH_CARDS_PLAYED_THIS_TURN,
+        POCKETWATCH_CARDS_PLAYED_LAST_TURN,
+        PEN_NIB_ATTACKS_PLAYED,
+        PEN_NIB_DOUBLE_DAMAGE_PLAY_ORDINAL,
+        PEN_NIB_DOUBLE_DAMAGE_CARD,
+        RAINBOW_RING_TRIGGERED_THIS_TURN,
+        WITHERING_PRESENCE_TARGET,
+        WITHERING_PRESENCE_CARDS_PLAYED,
+        REATTACH_IS_REVIVING,
+        ADAPTABLE_IS_REVIVING,
+        ILLUSION_IS_REVIVING,
+        CHAINS_OF_BINDING_BOUND_PLAYED,
+    ];
+}
+
 struct GlobalSymInner {
     by_id: Vec<&'static str>,
     map: hashbrown::HashMap<&'static str, u16, ahash::RandomState>,
 }
 
+fn insert_preinterned_static(inner: &mut GlobalSymInner, keys: &[&'static str]) {
+    for &key in keys {
+        if !inner.map.contains_key(key) && inner.by_id.len() < SYM_FALLBACK_ID as usize {
+            let id = inner.by_id.len() as u16;
+            inner.by_id.push(key);
+            inner.map.insert(key, id);
+        }
+    }
+}
+
 static GLOBAL_SYMS: LazyLock<parking_lot::RwLock<GlobalSymInner>> = LazyLock::new(|| {
-    parking_lot::RwLock::new(GlobalSymInner {
+    let mut inner = GlobalSymInner {
         by_id: Vec::with_capacity(512),
         map: hashbrown::HashMap::with_capacity_and_hasher(512, sym_hasher()),
-    })
+    };
+    insert_preinterned_static(&mut inner, hot_keys::ALL);
+    parking_lot::RwLock::new(inner)
 });
+
+/// Pre-interns `&'static str` field keys so deserialized maps share `.rodata` pointers.
+pub fn preintern_static_keys(keys: &[&'static str]) {
+    let mut w = GLOBAL_SYMS.write();
+    insert_preinterned_static(&mut w, keys);
+}
 
 struct TlsSymCache {
     by_id: Vec<&'static str>,
@@ -330,16 +388,48 @@ pub enum FieldValue {
     CardPairArray(Vec<(i32, i32)>),
 }
 
+#[inline(always)]
+fn cow_as_str<'a>(c: &'a Cow<'static, str>) -> &'a str {
+    match c {
+        Cow::Borrowed(s) => s,
+        Cow::Owned(s) => s.as_str(),
+    }
+}
+
+#[inline(always)]
+fn str_eq_ptr_first(a: &str, b: &str) -> bool {
+    let ab = a.as_bytes();
+    let bb = b.as_bytes();
+    ab.len() == bb.len() && (ab.as_ptr() == bb.as_ptr() || ab == bb)
+}
+
+#[inline(always)]
+fn cow_str_eq_static(a: &Cow<'static, str>, key: &str) -> bool {
+    str_eq_ptr_first(cow_as_str(a), key)
+}
+
+#[inline(always)]
+fn clone_cow_str_into(dst: &mut Cow<'static, str>, src: &Cow<'static, str>) {
+    match (dst, src) {
+        (Cow::Borrowed(d), Cow::Borrowed(s)) => *d = *s,
+        (Cow::Owned(d), Cow::Owned(s)) => {
+            d.clear();
+            d.push_str(s);
+        }
+        (dst, src) => *dst = src.clone(),
+    }
+}
+
 fn field_borrow_entry<'a>(
     entry: &'a (Cow<'static, str>, FieldValue),
 ) -> (&'a str, &'a FieldValue) {
-    (entry.0.as_ref(), &entry.1)
+    (cow_as_str(&entry.0), &entry.1)
 }
 
 fn field_borrow_entry_mut<'a>(
     entry: &'a mut (Cow<'static, str>, FieldValue),
 ) -> (&'a str, &'a mut FieldValue) {
-    (entry.0.as_ref(), &mut entry.1)
+    (cow_as_str(&entry.0), &mut entry.1)
 }
 
 #[inline(always)]
@@ -389,7 +479,7 @@ fn set_int_field_value(v: &mut FieldValue, val: i32) {
 
 /// Entry handle for `FieldMap::entry`.
 pub struct FieldMapEntry<'a> {
-    entries: &'a mut SmallVec<[(Cow<'static, str>, FieldValue); 1]>,
+    entries: &'a mut Vec<(Cow<'static, str>, FieldValue)>,
     key: Cow<'static, str>,
     pos: Result<usize, usize>,
 }
@@ -412,17 +502,17 @@ impl<'a> FieldMapEntry<'a> {
     }
 }
 
-/// Sorted smallvec-backed field map avoiding heap allocations for empty or 1-entry maps.
+/// Sorted vec-backed field map avoiding per-element inline array waste on empty maps.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FieldMap {
-    entries: SmallVec<[(Cow<'static, str>, FieldValue); 1]>,
+    entries: Vec<(Cow<'static, str>, FieldValue)>,
 }
 
 impl FieldMap {
     #[inline]
     pub fn new() -> Self {
         Self {
-            entries: SmallVec::new(),
+            entries: Vec::new(),
         }
     }
 
@@ -456,8 +546,8 @@ impl FieldMap {
         self.entries[idx].1 = value;
     }
 
-    #[inline]
-    pub fn get(&self, key: &str) -> Option<&FieldValue> {
+    #[inline(always)]
+    pub fn get_bool_static(&self, key: &'static str) -> Option<bool> {
         let len = self.entries.len();
         if len == 0 {
             return None;
@@ -465,23 +555,69 @@ impl FieldMap {
         let kb = key.as_bytes();
         if len == 1 {
             let (k, v) = &self.entries[0];
-            let eb = k.as_bytes();
-            if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+            let eb = cow_as_str(k).as_bytes();
+            if eb.len() == kb.len() && (std::ptr::eq(eb.as_ptr(), kb.as_ptr()) || eb == kb) {
+                return match v {
+                    FieldValue::Bool(b) => Some(*b),
+                    _ => None,
+                };
+            }
+            return None;
+        }
+        if len <= 4 {
+            for (k, v) in &self.entries {
+                let eb = cow_as_str(k).as_bytes();
+                if eb.len() == kb.len() && (std::ptr::eq(eb.as_ptr(), kb.as_ptr()) || eb == kb) {
+                    return match v {
+                        FieldValue::Bool(b) => Some(*b),
+                        _ => None,
+                    };
+                }
+            }
+            return None;
+        }
+        self.entries
+            .binary_search_by(|(k, _)| cow_as_str(k).cmp(key))
+            .ok()
+            .and_then(|idx| match self.entries[idx].1 {
+                FieldValue::Bool(b) => Some(b),
+                _ => None,
+            })
+    }
+
+    #[inline(always)]
+    pub fn entries(&self) -> &[(Cow<'static, str>, FieldValue)] {
+        &self.entries
+    }
+
+    #[inline(always)]
+    pub fn entries_mut(&mut self) -> &mut [(Cow<'static, str>, FieldValue)] {
+        &mut self.entries
+    }
+
+    #[inline]
+    pub fn get(&self, key: &str) -> Option<&FieldValue> {
+        let len = self.entries.len();
+        if len == 0 {
+            return None;
+        }
+        if len == 1 {
+            let (k, v) = &self.entries[0];
+            if cow_str_eq_static(k, key) {
                 return Some(v);
             }
             return None;
         }
         if len <= 4 {
             for (k, v) in &self.entries {
-                let eb = k.as_bytes();
-                if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                if cow_str_eq_static(k, key) {
                     return Some(v);
                 }
             }
             return None;
         }
         self.entries
-            .binary_search_by(|(k, _)| k.as_ref().cmp(key))
+            .binary_search_by(|(k, _)| cow_as_str(k).cmp(key))
             .ok()
             .map(|idx| &self.entries[idx].1)
     }
@@ -492,26 +628,23 @@ impl FieldMap {
         if len == 0 {
             return None;
         }
-        let kb = key.as_bytes();
         if len == 1 {
             let (k, v) = &mut self.entries[0];
-            let eb = k.as_bytes();
-            if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+            if cow_str_eq_static(k, key) {
                 return Some(v);
             }
             return None;
         }
         if len <= 4 {
             for (k, v) in &mut self.entries {
-                let eb = k.as_bytes();
-                if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                if cow_str_eq_static(k, key) {
                     return Some(v);
                 }
             }
             return None;
         }
         self.entries
-            .binary_search_by(|(k, _)| k.as_ref().cmp(key))
+            .binary_search_by(|(k, _)| cow_as_str(k).cmp(key))
             .ok()
             .map(|idx| &mut self.entries[idx].1)
     }
@@ -526,7 +659,7 @@ impl FieldMap {
         let key = key.into();
         let pos = self
             .entries
-            .binary_search_by(|(k, _)| k.as_ref().cmp(key.as_ref()));
+            .binary_search_by(|(k, _)| cow_as_str(k).cmp(cow_as_str(&key)));
         FieldMapEntry {
             entries: &mut self.entries,
             key,
@@ -546,9 +679,9 @@ impl FieldMap {
             self.entries.push((key, value));
             return None;
         }
-        let kb = key.as_bytes();
+        let kb = cow_as_str(&key).as_bytes();
         if len == 1 {
-            let eb = self.entries[0].0.as_bytes();
+            let eb = cow_as_str(&self.entries[0].0).as_bytes();
             if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
                 return Some(std::mem::replace(&mut self.entries[0].1, value));
             }
@@ -561,7 +694,7 @@ impl FieldMap {
         }
         if len <= 4 {
             for i in 0..len {
-                let eb = self.entries[i].0.as_bytes();
+                let eb = cow_as_str(&self.entries[i].0).as_bytes();
                 if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
                     return Some(std::mem::replace(&mut self.entries[i].1, value));
                 }
@@ -569,7 +702,7 @@ impl FieldMap {
         }
         match self
             .entries
-            .binary_search_by(|(k, _)| k.as_ref().cmp(key.as_ref()))
+            .binary_search_by(|(k, _)| cow_as_str(k).cmp(cow_as_str(&key)))
         {
             Ok(idx) => Some(std::mem::replace(&mut self.entries[idx].1, value)),
             Err(idx) => {
@@ -581,7 +714,7 @@ impl FieldMap {
 
     #[inline]
     pub fn set_str(&mut self, key: &str, value: FieldValue) {
-        match self.entries.binary_search_by(|(k, _)| k.as_ref().cmp(key)) {
+        match self.entries.binary_search_by(|(k, _)| cow_as_str(k).cmp(key)) {
             Ok(idx) => self.entries[idx].1 = value,
             Err(idx) => self.entries.insert(idx, (Cow::Owned(key.to_owned()), value)),
         }
@@ -597,8 +730,14 @@ impl FieldMap {
         let kb = key.as_bytes();
         if len == 1 {
             let (k, v) = &mut self.entries[0];
-            let eb = k.as_bytes();
-            if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+            if let Cow::Borrowed(s) = *k {
+                if std::ptr::eq(s.as_ptr(), kb.as_ptr()) && s.len() == kb.len() {
+                    return inc_int_field_value(v);
+                }
+            }
+            let eb = cow_as_str(k).as_bytes();
+            if eb == kb {
+                *k = Cow::Borrowed(key);
                 return inc_int_field_value(v);
             }
             if eb < kb {
@@ -610,14 +749,26 @@ impl FieldMap {
         }
         if len <= 4 {
             for (k, v) in &mut self.entries {
-                let eb = k.as_bytes();
-                if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                if let Cow::Borrowed(s) = *k {
+                    if std::ptr::eq(s.as_ptr(), kb.as_ptr()) && s.len() == kb.len() {
+                        return inc_int_field_value(v);
+                    }
+                }
+                if cow_as_str(k).as_bytes() == kb {
+                    *k = Cow::Borrowed(key);
                     return inc_int_field_value(v);
                 }
             }
         }
-        match self.entries.binary_search_by(|(k, _)| k.as_ref().cmp(key)) {
-            Ok(idx) => inc_int_field_value(&mut self.entries[idx].1),
+        match self.entries.binary_search_by(|(k, _)| cow_as_str(k).cmp(key)) {
+            Ok(idx) => {
+                let (k, v) = &mut self.entries[idx];
+                if !matches!(*k, Cow::Borrowed(s) if std::ptr::eq(s.as_ptr(), kb.as_ptr()) && s.len() == kb.len())
+                {
+                    *k = Cow::Borrowed(key);
+                }
+                inc_int_field_value(v)
+            }
             Err(idx) => {
                 self.entries.insert(idx, (Cow::Borrowed(key), FieldValue::Int(1)));
                 1
@@ -636,8 +787,15 @@ impl FieldMap {
         let kb = key.as_bytes();
         if len == 1 {
             let (k, v) = &mut self.entries[0];
-            let eb = k.as_bytes();
-            if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+            if let Cow::Borrowed(s) = *k {
+                if std::ptr::eq(s.as_ptr(), kb.as_ptr()) && s.len() == kb.len() {
+                    set_int_field_value(v, new_val);
+                    return;
+                }
+            }
+            let eb = cow_as_str(k).as_bytes();
+            if eb == kb {
+                *k = Cow::Borrowed(key);
                 set_int_field_value(v, new_val);
                 return;
             }
@@ -652,15 +810,28 @@ impl FieldMap {
         }
         if len <= 4 {
             for (k, v) in &mut self.entries {
-                let eb = k.as_bytes();
-                if eb.len() == kb.len() && (eb.as_ptr() == kb.as_ptr() || eb == kb) {
+                if let Cow::Borrowed(s) = *k {
+                    if std::ptr::eq(s.as_ptr(), kb.as_ptr()) && s.len() == kb.len() {
+                        set_int_field_value(v, new_val);
+                        return;
+                    }
+                }
+                if cow_as_str(k).as_bytes() == kb {
+                    *k = Cow::Borrowed(key);
                     set_int_field_value(v, new_val);
                     return;
                 }
             }
         }
-        match self.entries.binary_search_by(|(k, _)| k.as_ref().cmp(key)) {
-            Ok(idx) => set_int_field_value(&mut self.entries[idx].1, new_val),
+        match self.entries.binary_search_by(|(k, _)| cow_as_str(k).cmp(key)) {
+            Ok(idx) => {
+                let (k, v) = &mut self.entries[idx];
+                if !matches!(*k, Cow::Borrowed(s) if std::ptr::eq(s.as_ptr(), kb.as_ptr()) && s.len() == kb.len())
+                {
+                    *k = Cow::Borrowed(key);
+                }
+                set_int_field_value(v, new_val);
+            }
             Err(idx) => {
                 self.entries
                     .insert(idx, (Cow::Borrowed(key), FieldValue::Int(new_val)));
@@ -728,7 +899,8 @@ impl FieldMap {
 
     #[inline]
     fn clone_into_map_nonempty(&self, dst: &mut FieldMap) {
-        if self.entries.len() == 1 {
+        let slen = self.entries.len();
+        if slen == 1 {
             let (sk, sv) = &self.entries[0];
             if dst.entries.is_empty() {
                 dst.entries.push((sk.clone(), sv.clone()));
@@ -737,35 +909,27 @@ impl FieldMap {
                     dst.entries.truncate(1);
                 }
                 let (dk, dv) = &mut dst.entries[0];
-                let db = dk.as_bytes();
-                let sb = sk.as_bytes();
-                if !(db.len() == sb.len() && (db.as_ptr() == sb.as_ptr() || db == sb)) {
-                    *dk = sk.clone();
-                }
+                clone_cow_str_into(dk, sk);
                 clone_field_value_into(dv, sv);
             }
             return;
         }
-        if dst.entries.len() == self.entries.len()
-            && dst
-                .entries
-                .iter()
-                .zip(self.entries.iter())
-                .all(|((dk, _), (sk, _))| {
-                    let db = dk.as_bytes();
-                    let sb = sk.as_bytes();
-                    db.len() == sb.len() && (db.as_ptr() == sb.as_ptr() || db == sb)
-                })
+        let dlen = dst.entries.len();
+        let keep = dlen.min(slen);
+        for ((dk, dv), (sk, sv)) in dst.entries[..keep]
+            .iter_mut()
+            .zip(self.entries[..keep].iter())
         {
-            for ((_, dv), (_, sv)) in dst.entries.iter_mut().zip(self.entries.iter()) {
-                clone_field_value_into(dv, sv);
-            }
-        } else {
-            dst.entries.clear();
-            dst.entries.reserve(self.entries.len());
-            for (k, v) in &self.entries {
+            clone_cow_str_into(dk, sk);
+            clone_field_value_into(dv, sv);
+        }
+        if slen > dlen {
+            dst.entries.reserve(slen - dlen);
+            for (k, v) in &self.entries[dlen..] {
                 dst.entries.push((k.clone(), v.clone()));
             }
+        } else if dlen > slen {
+            dst.entries.truncate(slen);
         }
     }
 }
@@ -798,7 +962,7 @@ impl<'a> IntoIterator for &'a mut FieldMap {
 
 impl IntoIterator for FieldMap {
     type Item = (Cow<'static, str>, FieldValue);
-    type IntoIter = smallvec::IntoIter<[(Cow<'static, str>, FieldValue); 1]>;
+    type IntoIter = std::vec::IntoIter<(Cow<'static, str>, FieldValue)>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -924,7 +1088,7 @@ bitflags! {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CardExtension {
-    pub local_energy_modifiers: SmallVec<[LocalEnergyModifier; 2]>,
+    pub local_energy_modifiers: Vec<LocalEnergyModifier>,
     pub enchantment: Option<EnchantmentInst>,
     pub private_fields: FieldMap,
 }
@@ -1019,16 +1183,38 @@ impl CardInst {
         clean
     }
 
+    #[inline(always)]
     pub fn has_local_keyword(&self, kw: CardKeywords) -> bool {
-        if self.keywords_removed_from_outside.contains(kw) {
-            return false;
-        }
-        self.local_keywords.contains(kw) || self.keywords_added_from_outside.contains(kw)
+        #[cfg(debug_assertions)]
+        debug_assert!(kw.bits().is_power_of_two());
+        let added = self.local_keywords.bits() | self.keywords_added_from_outside.bits();
+        ((added & !self.keywords_removed_from_outside.bits()) & kw.bits()) != 0
     }
 
+    #[inline(always)]
     pub fn effective_keywords_base(&self) -> CardKeywords {
         (self.local_keywords | self.keywords_added_from_outside)
             & !self.keywords_removed_from_outside
+    }
+}
+
+pub const ROOT_CARD_FAST_HASH_SLOW: u64 = 1u64 << 14;
+
+#[inline(always)]
+pub fn compute_card_fast_hash_word(card: &CardInst) -> u64 {
+    if card.ext_index.is_none()
+        && card.affliction.is_none()
+        && card.transform_into_after_play.is_none()
+        && card.is_rare_clean()
+        && ((card.upgrade_level.wrapping_add(32768) as u32) & !0xFFFFu32) == 0
+    {
+        debug_assert!((card.id as usize) < 1024);
+        (card.id as u64)
+            | ((card.local_keywords.bits() as u64) << 16)
+            | (((card.base_energy_cost as u16) as u64) << 32)
+            | (((card.upgrade_level as i16 as u16) as u64) << 48)
+    } else {
+        ROOT_CARD_FAST_HASH_SLOW
     }
 }
 
@@ -1604,11 +1790,12 @@ pub struct TurnKey {
 impl PartialEq for TurnKey {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
+        if self.round_number != other.round_number || self.side != other.side {
+            return false;
+        }
         let ptn_a = &self.player_turn_numbers;
         let ptn_b = &other.player_turn_numbers;
-        let diff = (self.round_number ^ other.round_number)
-            | ((self.side as i32) ^ (other.side as i32))
-            | ((ptn_a.len as i32) ^ (ptn_b.len as i32))
+        let diff = ((ptn_a.len as i32) ^ (ptn_b.len as i32))
             | ((ptn_a.some_mask as i32) ^ (ptn_b.some_mask as i32))
             | (ptn_a.data[0] ^ ptn_b.data[0]);
         if diff != 0 {
@@ -1750,6 +1937,91 @@ impl GrowthCounters {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq)]
+pub struct SemanticHistoryTurnCache {
+    pub valid: bool,
+    pub valid_for: TurnKey,
+    pub ex_len: u32,
+    pub ex_cur: u32,
+    pub cbg_len: u32,
+    pub cbg_cur: u32,
+    pub oc_len: u32,
+    pub oc_cur: u32,
+    pub es_len: u32,
+    pub es_cur_sum: i32,
+    pub cd_len: u32,
+    pub cd_cur: u32,
+    pub ae_len: u32,
+    pub ae_start: u32,
+}
+
+impl Default for SemanticHistoryTurnCache {
+    #[inline(always)]
+    fn default() -> Self {
+        Self {
+            valid: false,
+            valid_for: TurnKey {
+                round_number: 0,
+                side: CombatSide::Player,
+                player_turn_numbers: InlineOptI32Vec4::new(),
+            },
+            ex_len: 0,
+            ex_cur: 0,
+            cbg_len: 0,
+            cbg_cur: 0,
+            oc_len: 0,
+            oc_cur: 0,
+            es_len: 0,
+            es_cur_sum: 0,
+            cd_len: 0,
+            cd_cur: 0,
+            ae_len: 0,
+            ae_start: 0,
+        }
+    }
+}
+
+impl PartialEq for SemanticHistoryTurnCache {
+    #[inline(always)]
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl SemanticHistoryTurnCache {
+    #[inline(always)]
+    pub fn lengths_match(
+        &self,
+        ex_len: usize,
+        cbg_len: usize,
+        oc_len: usize,
+        es_len: usize,
+        cd_len: usize,
+        ae_len: usize,
+    ) -> bool {
+        self.ex_len as usize == ex_len
+            && self.cbg_len as usize == cbg_len
+            && self.oc_len as usize == oc_len
+            && self.es_len as usize == es_len
+            && self.cd_len as usize == cd_len
+            && self.ae_len as usize == ae_len
+    }
+
+    #[inline(always)]
+    pub fn matches(&self, cur_tk: &TurnKey, sh: &SemanticHistory) -> bool {
+        self.valid
+            && self.valid_for == *cur_tk
+            && self.lengths_match(
+                sh.exhausts.len(),
+                sh.card_block_gains.len(),
+                sh.orb_channels.len(),
+                sh.energy_spent.len(),
+                sh.card_drawn.len(),
+                sh.actor_events.len(),
+            )
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SemanticHistory {
     pub exhausts: Vec<(TurnKey, usize)>,
@@ -1763,6 +2035,7 @@ pub struct SemanticHistory {
     pub prior_player_unblocked_hits: i32,
     pub prior_player_damaged_turn: i32,
     pub prior_exhaust_count: i32,
+    pub turn_cache: SemanticHistoryTurnCache,
 }
 
 impl Default for SemanticHistory {
@@ -1780,6 +2053,7 @@ impl Default for SemanticHistory {
             prior_player_unblocked_hits: 0,
             prior_player_damaged_turn: -1,
             prior_exhaust_count: 0,
+            turn_cache: SemanticHistoryTurnCache::default(),
         }
     }
 }
@@ -1793,39 +2067,276 @@ impl SemanticHistory {
         }
     }
 
+    #[inline(always)]
+    fn sync_turn_cache_for_push(&mut self, tk: TurnKey) -> bool {
+        let ex_len = self.exhausts.len();
+        let cbg_len = self.card_block_gains.len();
+        let oc_len = self.orb_channels.len();
+        let es_len = self.energy_spent.len();
+        let cd_len = self.card_drawn.len();
+        let ae_len = self.actor_events.len();
+        let c = &mut self.turn_cache;
+        if c.valid {
+            if !c.lengths_match(ex_len, cbg_len, oc_len, es_len, cd_len, ae_len) {
+                c.valid = false;
+                return false;
+            }
+            if c.valid_for != tk {
+                c.valid_for = tk;
+                c.ex_cur = 0;
+                c.cbg_cur = 0;
+                c.oc_cur = 0;
+                c.es_cur_sum = 0;
+                c.cd_cur = 0;
+                c.ae_start = ae_len as u32;
+            }
+            true
+        } else if (ex_len | cbg_len | oc_len | es_len | cd_len | ae_len) == 0 {
+            c.valid = true;
+            c.valid_for = tk;
+            c.ex_len = 0;
+            c.ex_cur = 0;
+            c.cbg_len = 0;
+            c.cbg_cur = 0;
+            c.oc_len = 0;
+            c.oc_cur = 0;
+            c.es_len = 0;
+            c.es_cur_sum = 0;
+            c.cd_len = 0;
+            c.cd_cur = 0;
+            c.ae_len = 0;
+            c.ae_start = 0;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn refresh_turn_cache(&mut self, cur_tk: &TurnKey) {
+        let ex_cur = if self.exhausts.is_empty() || self.exhausts[self.exhausts.len() - 1].0 != *cur_tk {
+            0
+        } else if self.exhausts[0].0 == *cur_tk {
+            self.exhausts.len()
+        } else {
+            let mut n = self.exhausts.len();
+            while n > 0 && self.exhausts[n - 1].0 == *cur_tk {
+                n -= 1;
+            }
+            self.exhausts.len() - n
+        };
+        let cbg_cur = if self.card_block_gains.is_empty()
+            || self.card_block_gains[self.card_block_gains.len() - 1].0 != *cur_tk
+        {
+            0
+        } else if self.card_block_gains[0].0 == *cur_tk {
+            self.card_block_gains.len()
+        } else {
+            let mut n = self.card_block_gains.len();
+            while n > 0 && self.card_block_gains[n - 1].0 == *cur_tk {
+                n -= 1;
+            }
+            self.card_block_gains.len() - n
+        };
+        let oc_cur = if self.orb_channels.is_empty()
+            || self.orb_channels[self.orb_channels.len() - 1].0 != *cur_tk
+        {
+            0
+        } else if self.orb_channels[0].0 == *cur_tk {
+            self.orb_channels.len()
+        } else {
+            let mut n = self.orb_channels.len();
+            while n > 0 && self.orb_channels[n - 1].0 == *cur_tk {
+                n -= 1;
+            }
+            self.orb_channels.len() - n
+        };
+        let es_cur_sum = if self.energy_spent.is_empty()
+            || self.energy_spent[self.energy_spent.len() - 1].0 != *cur_tk
+        {
+            0
+        } else if self.energy_spent[0].0 == *cur_tk {
+            self.energy_spent.iter().map(|e| e.2).sum()
+        } else {
+            let mut sum = 0i32;
+            let mut n = self.energy_spent.len();
+            while n > 0 && self.energy_spent[n - 1].0 == *cur_tk {
+                n -= 1;
+                sum += self.energy_spent[n].2;
+            }
+            sum
+        };
+        let cd_cur = if self.card_drawn.is_empty()
+            || self.card_drawn[self.card_drawn.len() - 1].0 != *cur_tk
+        {
+            0
+        } else if self.card_drawn[0].0 == *cur_tk {
+            self.card_drawn.len()
+        } else {
+            let mut n = self.card_drawn.len();
+            while n > 0 && self.card_drawn[n - 1].0 == *cur_tk {
+                n -= 1;
+            }
+            self.card_drawn.len() - n
+        };
+        let ae_start = if self.actor_events.is_empty()
+            || self.actor_events[self.actor_events.len() - 1].1 != *cur_tk
+        {
+            self.actor_events.len()
+        } else if self.actor_events[0].1 == *cur_tk {
+            0
+        } else {
+            let mut n = self.actor_events.len();
+            while n > 0 && self.actor_events[n - 1].1 == *cur_tk {
+                n -= 1;
+            }
+            n
+        };
+        self.turn_cache = SemanticHistoryTurnCache {
+            valid: true,
+            valid_for: *cur_tk,
+            ex_len: self.exhausts.len() as u32,
+            ex_cur: ex_cur as u32,
+            cbg_len: self.card_block_gains.len() as u32,
+            cbg_cur: cbg_cur as u32,
+            oc_len: self.orb_channels.len() as u32,
+            oc_cur: oc_cur as u32,
+            es_len: self.energy_spent.len() as u32,
+            es_cur_sum,
+            cd_len: self.card_drawn.len() as u32,
+            cd_cur: cd_cur as u32,
+            ae_len: self.actor_events.len() as u32,
+            ae_start: ae_start as u32,
+        };
+    }
+
+    pub fn sync_turn_cache_on_turn_change(&mut self, cur_tk: &TurnKey) {
+        let ex_len = self.exhausts.len();
+        let cbg_len = self.card_block_gains.len();
+        let oc_len = self.orb_channels.len();
+        let es_len = self.energy_spent.len();
+        let cd_len = self.card_drawn.len();
+        let ae_len = self.actor_events.len();
+        if self.turn_cache.valid
+            && self
+                .turn_cache
+                .lengths_match(ex_len, cbg_len, oc_len, es_len, cd_len, ae_len)
+        {
+            if self.turn_cache.valid_for == *cur_tk {
+                return;
+            }
+            if (ex_len == 0 || self.exhausts[ex_len - 1].0 != *cur_tk)
+                && (cbg_len == 0 || self.card_block_gains[cbg_len - 1].0 != *cur_tk)
+                && (oc_len == 0 || self.orb_channels[oc_len - 1].0 != *cur_tk)
+                && (es_len == 0 || self.energy_spent[es_len - 1].0 != *cur_tk)
+                && (cd_len == 0 || self.card_drawn[cd_len - 1].0 != *cur_tk)
+                && (ae_len == 0 || self.actor_events[ae_len - 1].1 != *cur_tk)
+            {
+                self.turn_cache.valid_for = *cur_tk;
+                self.turn_cache.ex_cur = 0;
+                self.turn_cache.cbg_cur = 0;
+                self.turn_cache.oc_cur = 0;
+                self.turn_cache.es_cur_sum = 0;
+                self.turn_cache.cd_cur = 0;
+                self.turn_cache.ae_start = ae_len as u32;
+                return;
+            }
+        }
+        self.refresh_turn_cache(cur_tk);
+    }
+
+    #[inline]
+    pub fn record_exhaust_tk(&mut self, tk: TurnKey) {
+        let synced = self.sync_turn_cache_for_push(tk);
+        self.exhausts.push((tk, 0));
+        if synced {
+            self.turn_cache.ex_len = self.exhausts.len() as u32;
+            self.turn_cache.ex_cur += 1;
+        }
+    }
+
     pub fn record_exhaust(&mut self, state: &BattleState) {
-        self.exhausts.push((Self::current_turn_key(state), 0));
+        self.record_exhaust_tk(Self::current_turn_key(state));
+    }
+
+    #[inline]
+    pub fn record_block_gain_tk(&mut self, tk: TurnKey, props: ValueProp, play_ordinal: Option<i32>) {
+        if props.is_powered_block() {
+            if let Some(ordinal) = play_ordinal {
+                let synced = self.sync_turn_cache_for_push(tk);
+                self.card_block_gains.push((tk, 0, ordinal));
+                if synced {
+                    self.turn_cache.cbg_len = self.card_block_gains.len() as u32;
+                    self.turn_cache.cbg_cur += 1;
+                }
+            }
+        }
     }
 
     pub fn record_block_gain(&mut self, state: &BattleState, props: ValueProp, play_ordinal: Option<i32>) {
         if props.is_powered_block() {
             if let Some(ordinal) = play_ordinal {
-                self.card_block_gains
-                    .push((Self::current_turn_key(state), 0, ordinal));
+                self.record_block_gain_tk(Self::current_turn_key(state), props, Some(ordinal));
             }
         }
     }
 
+    #[inline]
+    pub fn record_orb_channel_tk(&mut self, tk: TurnKey, orb_id: OrbId) {
+        let synced = self.sync_turn_cache_for_push(tk);
+        self.orb_channels.push((tk, 0, orb_id));
+        if synced {
+            self.turn_cache.oc_len = self.orb_channels.len() as u32;
+            self.turn_cache.oc_cur += 1;
+        }
+    }
+
     pub fn record_orb_channel(&mut self, state: &BattleState, orb_id: OrbId) {
-        self.orb_channels
-            .push((Self::current_turn_key(state), 0, orb_id));
+        self.record_orb_channel_tk(Self::current_turn_key(state), orb_id);
+    }
+
+    #[inline]
+    pub fn record_energy_spent_tk(&mut self, tk: TurnKey, amount: i32) {
+        if amount > 0 {
+            let synced = self.sync_turn_cache_for_push(tk);
+            self.energy_spent.push((tk, 0, amount));
+            if synced {
+                self.turn_cache.es_len = self.energy_spent.len() as u32;
+                self.turn_cache.es_cur_sum += amount;
+            }
+        }
     }
 
     pub fn record_energy_spent(&mut self, state: &BattleState, amount: i32) {
         if amount > 0 {
-            self.energy_spent
-                .push((Self::current_turn_key(state), 0, amount));
+            self.record_energy_spent_tk(Self::current_turn_key(state), amount);
+        }
+    }
+
+    #[inline]
+    pub fn record_card_drawn_tk(&mut self, tk: TurnKey, card_type: CardType, from_hand_draw: bool) {
+        let synced = self.sync_turn_cache_for_push(tk);
+        self.card_drawn.push((tk, 0, card_type, from_hand_draw));
+        if synced {
+            self.turn_cache.cd_len = self.card_drawn.len() as u32;
+            self.turn_cache.cd_cur += 1;
         }
     }
 
     pub fn record_card_drawn(&mut self, state: &BattleState, card_type: CardType, from_hand_draw: bool) {
-        self.card_drawn
-            .push((Self::current_turn_key(state), 0, card_type, from_hand_draw));
+        self.record_card_drawn_tk(Self::current_turn_key(state), card_type, from_hand_draw);
+    }
+
+    #[inline]
+    pub fn record_actor_event_tk(&mut self, tk: TurnKey, kind: impl Into<Cow<'static, str>>) {
+        let synced = self.sync_turn_cache_for_push(tk);
+        self.actor_events.push((kind.into(), tk, 0));
+        if synced {
+            self.turn_cache.ae_len = self.actor_events.len() as u32;
+        }
     }
 
     pub fn record_actor_event(&mut self, state: &BattleState, kind: impl Into<Cow<'static, str>>) {
-        self.actor_events
-            .push((kind.into(), Self::current_turn_key(state), 0));
+        self.record_actor_event_tk(Self::current_turn_key(state), kind);
     }
 
     #[inline]
@@ -1852,6 +2363,44 @@ impl PartialEq for DeckDirtyFlag {
 }
 
 impl Eq for DeckDirtyFlag {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ExtraClutterHintFlag(pub bool);
+
+impl Default for ExtraClutterHintFlag {
+    #[inline(always)]
+    fn default() -> Self {
+        Self(true)
+    }
+}
+
+impl PartialEq for ExtraClutterHintFlag {
+    #[inline(always)]
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for ExtraClutterHintFlag {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EotCleanupDirtyFlag(pub bool);
+
+impl Default for EotCleanupDirtyFlag {
+    #[inline(always)]
+    fn default() -> Self {
+        Self(true)
+    }
+}
+
+impl PartialEq for EotCleanupDirtyFlag {
+    #[inline(always)]
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for EotCleanupDirtyFlag {}
 
 #[derive(Clone, Copy, Debug)]
 pub struct RelicDirtyMask(pub u64);
@@ -1917,13 +2466,51 @@ impl RootRelicHeader {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IndexedTransformPool {
+    pub cards: Vec<CardId>,
+    pub lookup: Box<[u16; CardId::COUNT]>,
+}
+
+impl Default for IndexedTransformPool {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            cards: Vec::new(),
+            lookup: vec![0u16; CardId::COUNT]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
+        }
+    }
+}
+
+impl IndexedTransformPool {
+    #[inline]
+    pub fn from_vec(cards: Vec<CardId>) -> Self {
+        let mut lookup: Box<[u16; CardId::COUNT]> = vec![0u16; CardId::COUNT]
+            .into_boxed_slice()
+            .try_into()
+            .unwrap_or_else(|_| unreachable!());
+        for (idx, &cid) in cards.iter().enumerate() {
+            let slot = &mut lookup[cid as usize];
+            if *slot == 0 && idx + 1 < u16::MAX as usize {
+                *slot = (idx + 1) as u16;
+            } else {
+                *slot = u16::MAX;
+            }
+        }
+        Self { cards, lookup }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RootPoolCacheInner {
     pub card_gen_pool_bits: [u64; (CardId::COUNT + 63) / 64],
-    pub custom_card_gen_transform: [[Vec<CardId>; 2]; 2],
-    pub custom_colorless_transform: [[Vec<CardId>; 2]; 2],
-    pub custom_curse_transform: [[Vec<CardId>; 2]; 2],
-    pub custom_transformation_pool: [[Vec<CardId>; 2]; 2],
+    pub custom_card_gen_transform: [[IndexedTransformPool; 2]; 2],
+    pub custom_colorless_transform: [[IndexedTransformPool; 2]; 2],
+    pub custom_curse_transform: [[IndexedTransformPool; 2]; 2],
+    pub custom_transformation_pool: [[IndexedTransformPool; 2]; 2],
     pub character_combat_pool: Vec<CardId>,
     pub other_character_combat_pool: Vec<CardId>,
     pub colorless_combat_pool: Vec<CardId>,
@@ -1954,6 +2541,45 @@ impl PartialEq for RootPoolCache {
 
 impl Eq for RootPoolCache {}
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ContiguousHandlesFlag {
+    pub cards: bool,
+    pub creatures: bool,
+}
+
+impl PartialEq for ContiguousHandlesFlag {
+    #[inline(always)]
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for ContiguousHandlesFlag {}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CardMetaDirtyMask(pub [u64; 8]);
+
+impl CardMetaDirtyMask {
+    pub const CLEAN: Self = Self([0; 8]);
+    pub const ALL_DIRTY: Self = Self([u64::MAX; 8]);
+}
+
+impl Default for CardMetaDirtyMask {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::ALL_DIRTY
+    }
+}
+
+impl PartialEq for CardMetaDirtyMask {
+    #[inline(always)]
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for CardMetaDirtyMask {}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RootStaticContext {
     pub encounter_id: String,
@@ -1980,6 +2606,7 @@ pub struct RootStaticContext {
     pub root_deck_prefix_len: usize,
     pub root_deck_cards: Vec<CardInst>,
     pub root_deck_handles: Vec<CardHandle>,
+    pub root_deck_contiguous: bool,
     pub root_card_floors: Vec<OptI16>,
     pub has_root_relics: bool,
     pub root_relics: Vec<RelicInst>,
@@ -1994,6 +2621,12 @@ pub struct RootStaticContext {
     pub root_initial_cards_len: usize,
     pub root_combat_clutter_indices: Vec<u16>,
     pub root_all_clutter_indices: Vec<u16>,
+    pub root_initial_cards: Vec<CardInst>,
+    pub root_card_fast_hash: Vec<u64>,
+    pub root_combat_delta_len: usize,
+    pub root_clean_eot_mask: [u64; 8],
+    pub has_root_card_hook_mask: bool,
+    pub root_initial_card_hook_mask: [u64; 8],
     pub pool_cache: RootPoolCache,
 }
 
@@ -2051,6 +2684,97 @@ impl RootStaticContext {
             }
         }
     }
+
+    pub fn set_root_initial_cards(&mut self, cards: &[CardInst], player: &PlayerInst) {
+        self.root_deck_contiguous = self
+            .root_deck_cards
+            .iter()
+            .enumerate()
+            .all(|(i, c)| c.handle.0 == (i + 1) as u32);
+        self.root_initial_cards.clear();
+        self.root_card_fast_hash.clear();
+        self.root_combat_delta_len = 0;
+        self.root_clean_eot_mask = [0; 8];
+        self.has_root_card_hook_mask = false;
+        self.root_initial_card_hook_mask = [0; 8];
+
+        let len = cards.len();
+        if len == 0 || len > 512 {
+            return;
+        }
+        let prefix = self.root_deck_prefix_len;
+        if prefix > len {
+            return;
+        }
+        if !cards
+            .iter()
+            .enumerate()
+            .all(|(i, c)| c.handle.0 == (i + 1) as u32)
+        {
+            return;
+        }
+        if !cards[..prefix].iter().all(|c| c.pile == PileType::Deck) {
+            return;
+        }
+        let mut expected_pile = [PileType::None; 512];
+        let mut ok = true;
+        let mut mark_pile = |handles: &[CardHandle], pile: PileType| {
+            for &ch in handles {
+                let idx = ch.0.wrapping_sub(1) as usize;
+                if idx < prefix || idx >= len || expected_pile[idx] != PileType::None {
+                    ok = false;
+                    return;
+                }
+                expected_pile[idx] = pile;
+            }
+        };
+        mark_pile(&player.hand, PileType::Hand);
+        mark_pile(&player.draw, PileType::Draw);
+        mark_pile(&player.discard, PileType::Discard);
+        mark_pile(&player.exhaust, PileType::Exhaust);
+        mark_pile(&player.play, PileType::Play);
+        if !ok {
+            return;
+        }
+        for (i, c) in cards.iter().enumerate().skip(prefix) {
+            if c.pile != expected_pile[i] {
+                return;
+            }
+        }
+        let cleanup_flags = CardTempFlags::TEMPORARY_FREE_TURN
+            | CardTempFlags::TEMPORARY_RETAIN_TURN
+            | CardTempFlags::TEMPORARY_SLY_TURN
+            | CardTempFlags::EXHAUST_ON_NEXT_PLAY;
+        let mut eot_mask = [0u64; 8];
+        for (i, c) in cards.iter().enumerate() {
+            let is_eot_clean = !c.temp_flags.intersects(cleanup_flags)
+                && c.temp_cost_override_this_turn.is_none()
+                && c.temp_cost_override_this_turn_or_until_played.is_none()
+                && c.temp_star_cost_override_this_turn.is_none()
+                && c.ext_index.is_none();
+            if is_eot_clean {
+                eot_mask[i >> 6] |= 1u64 << (i & 63);
+            }
+        }
+        self.root_card_fast_hash = cards.iter().map(compute_card_fast_hash_word).collect();
+        self.root_initial_cards = cards.to_vec();
+        self.root_combat_delta_len = len;
+        self.root_clean_eot_mask = eot_mask;
+    }
+
+    pub fn set_root_card_hook_mask(&mut self, mut may_have_hook: impl FnMut(&CardInst) -> bool) {
+        self.root_initial_card_hook_mask = [0; 8];
+        let len = self
+            .root_combat_delta_len
+            .min(self.root_initial_cards.len())
+            .min(512);
+        for (i, c) in self.root_initial_cards[..len].iter().enumerate() {
+            if may_have_hook(c) {
+                self.root_initial_card_hook_mask[i >> 6] |= 1u64 << (i & 63);
+            }
+        }
+        self.has_root_card_hook_mask = true;
+    }
 }
 
 impl Default for RootStaticContext {
@@ -2080,6 +2804,7 @@ impl Default for RootStaticContext {
             root_deck_prefix_len: 0,
             root_deck_cards: Vec::new(),
             root_deck_handles: Vec::new(),
+            root_deck_contiguous: false,
             root_card_floors: Vec::new(),
             has_root_relics: false,
             root_relics: Vec::new(),
@@ -2094,6 +2819,12 @@ impl Default for RootStaticContext {
             root_initial_cards_len: 0,
             root_combat_clutter_indices: Vec::new(),
             root_all_clutter_indices: Vec::new(),
+            root_initial_cards: Vec::new(),
+            root_card_fast_hash: Vec::new(),
+            root_combat_delta_len: 0,
+            root_clean_eot_mask: [0; 8],
+            has_root_card_hook_mask: false,
+            root_initial_card_hook_mask: [0; 8],
             pool_cache: RootPoolCache::default(),
         }
     }
@@ -2192,6 +2923,7 @@ pub struct ActiveHookCache {
     pub in_combat_mask: u64,
     pub in_combat_overflow: bool,
     pub combat_has_player: bool,
+    pub has_active_history_course_relic: bool,
     pub living_check_player_idx: u16,
     pub primary_enemy_indices: [u16; 8],
     pub primary_enemy_count: u8,
@@ -2229,6 +2961,7 @@ impl Default for ActiveHookCache {
             in_combat_mask: 0,
             in_combat_overflow: false,
             combat_has_player: false,
+            has_active_history_course_relic: false,
             living_check_player_idx: u16::MAX,
             primary_enemy_indices: [0; 8],
             primary_enemy_count: u8::MAX,
@@ -2393,6 +3126,89 @@ impl ActiveHookCache {
     }
 
     #[inline(always)]
+    fn shift_power_indices_from(
+        &mut self,
+        creature_handle: CreatureHandle,
+        removed_power_idx: u16,
+        in_pre: bool,
+        post_idx_removed: usize,
+        flat_pos: usize,
+    ) -> bool {
+        let mut changed = false;
+        let dec = |l: &mut CachedHookListener, changed: &mut bool| {
+            if let CachedHookListener::Power {
+                creature,
+                power_idx,
+                ..
+            } = l
+            {
+                if *creature == creature_handle
+                    && *power_idx != u16::MAX
+                    && *power_idx > removed_power_idx
+                {
+                    *power_idx -= 1;
+                    *changed = true;
+                }
+            }
+        };
+        if in_pre {
+            #[cfg(debug_assertions)]
+            debug_assert!(
+                !self.listener_pre_player[..flat_pos]
+                    .iter()
+                    .chain(self.listener_post_player.iter())
+                    .any(|(l, _)| matches!(
+                        l,
+                        CachedHookListener::Power { creature, power_idx, .. }
+                        if *creature == creature_handle && *power_idx != u16::MAX && *power_idx > removed_power_idx
+                    ))
+            );
+            for (l, _) in &mut self.listener_pre_player[flat_pos..] {
+                dec(l, &mut changed);
+            }
+        } else {
+            #[cfg(debug_assertions)]
+            debug_assert!(
+                !self.listener_pre_player
+                    .iter()
+                    .chain(self.listener_post_player[..post_idx_removed].iter())
+                    .any(|(l, _)| matches!(
+                        l,
+                        CachedHookListener::Power { creature, power_idx, .. }
+                        if *creature == creature_handle && *power_idx != u16::MAX && *power_idx > removed_power_idx
+                    ))
+            );
+            for (l, _) in &mut self.listener_post_player[post_idx_removed..] {
+                dec(l, &mut changed);
+            }
+        }
+        if changed {
+            #[cfg(debug_assertions)]
+            debug_assert!(!self.flat_listeners[..flat_pos].iter().any(|l| matches!(
+                l,
+                CachedHookListener::Power { creature, power_idx, .. }
+                if *creature == creature_handle && *power_idx != u16::MAX && *power_idx > removed_power_idx
+            )));
+            for l in &mut self.flat_listeners[flat_pos..] {
+                if let CachedHookListener::Power {
+                    creature,
+                    power_idx,
+                    ..
+                } = l
+                {
+                    if *creature == creature_handle
+                        && *power_idx != u16::MAX
+                        && *power_idx > removed_power_idx
+                    {
+                        *power_idx -= 1;
+                    }
+                }
+            }
+        }
+        changed
+    }
+
+    #[inline(always)]
     fn shift_power_indices(&mut self, creature_handle: CreatureHandle, removed_power_idx: u16) -> bool {
         let mut changed = false;
         for (l, _) in &mut self.listener_pre_player {
@@ -2456,6 +3272,7 @@ impl ActiveHookCache {
         self.in_combat_mask = 0;
         self.in_combat_overflow = false;
         self.combat_has_player = false;
+        self.has_active_history_course_relic = false;
         self.living_check_player_idx = u16::MAX;
         self.primary_enemy_indices = [0; 8];
         self.primary_enemy_count = u8::MAX;
@@ -2522,11 +3339,16 @@ impl ActiveHookCache {
             && self.in_combat_mask == other.in_combat_mask
             && self.in_combat_overflow == other.in_combat_overflow
             && self.combat_has_player == other.combat_has_player
+            && self.has_active_history_course_relic == other.has_active_history_course_relic
             && self.living_check_player_idx == other.living_check_player_idx
             && self.primary_enemy_count == other.primary_enemy_count
             && (self.primary_enemy_count == u8::MAX
-                || self.primary_enemy_indices[..self.primary_enemy_count as usize]
-                    == other.primary_enemy_indices[..other.primary_enemy_count as usize])
+                || {
+                    let cnt = self.primary_enemy_count as usize;
+                    let a = &self.primary_enemy_indices[..cnt];
+                    let b = &other.primary_enemy_indices[..cnt];
+                    a == b || a.iter().all(|x| b.contains(x))
+                })
             && self.enemy_power_flags == other.enemy_power_flags
             && self.cached_tables.map(std::ptr::from_ref)
                 == other.cached_tables.map(std::ptr::from_ref)
@@ -2586,6 +3408,10 @@ pub struct BattleState {
     pub hook_cache: ActiveHookCache,
     pub deck_dirty: DeckDirtyFlag,
     pub relic_dirty_mask: RelicDirtyMask,
+    pub handle_layout: ContiguousHandlesFlag,
+    pub card_meta_dirty: CardMetaDirtyMask,
+    pub extra_clutter_hint: ExtraClutterHintFlag,
+    pub eot_card_cleanup_dirty: EotCleanupDirtyFlag,
 }
 
 #[inline(always)]
@@ -2628,6 +3454,7 @@ impl BattleState {
     #[inline(always)]
     pub fn invalidate_hook_cache(&mut self) {
         self.hook_cache.dirty_mask = HOOK_DIRTY_ALL;
+        self.hook_cache.has_active_history_course_relic = false;
     }
 
     #[inline(always)]
@@ -2667,6 +3494,113 @@ impl BattleState {
     #[inline(always)]
     pub fn mark_all_relics_dirty(&mut self) {
         self.relic_dirty_mask.0 = u64::MAX;
+    }
+
+    #[inline(always)]
+    pub fn mark_card_meta_dirty(&mut self, idx: usize) {
+        if idx < 512 {
+            self.card_meta_dirty.0[idx >> 6] |= 1u64 << (idx & 63);
+        }
+    }
+
+    #[inline(always)]
+    pub fn is_card_meta_dirty(&self, idx: usize) -> bool {
+        idx >= 512 || ((self.card_meta_dirty.0[idx >> 6] >> (idx & 63)) & 1) != 0
+    }
+
+    #[inline(always)]
+    pub fn mark_eot_card_cleanup_dirty(&mut self) {
+        self.eot_card_cleanup_dirty.0 = true;
+    }
+
+    #[inline]
+    pub fn card_has_eot_cleanup_state(card: &CardInst, exts: &[CardExtension]) -> bool {
+        const CLEANUP_FLAGS: CardTempFlags = CardTempFlags::TEMPORARY_FREE_TURN
+            .union(CardTempFlags::TEMPORARY_RETAIN_TURN)
+            .union(CardTempFlags::TEMPORARY_SLY_TURN)
+            .union(CardTempFlags::EXHAUST_ON_NEXT_PLAY);
+        if card.temp_flags.intersects(CLEANUP_FLAGS)
+            || card.temp_cost_override_this_turn.is_some()
+            || card.temp_cost_override_this_turn_or_until_played.is_some()
+            || card.temp_star_cost_override_this_turn.is_some()
+        {
+            return true;
+        }
+        if let Some(ext_idx) = card.ext_index {
+            if let Some(ext) = exts.get(ext_idx as usize) {
+                if ext
+                    .local_energy_modifiers
+                    .iter()
+                    .any(|m| m.kind.clears_at_end_of_turn())
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[inline(always)]
+    pub fn mark_all_card_meta_dirty(&mut self) {
+        self.card_meta_dirty = CardMetaDirtyMask::ALL_DIRTY;
+    }
+
+    #[inline]
+    pub fn cards_are_contiguous(&self) -> bool {
+        self.cards
+            .iter()
+            .enumerate()
+            .all(|(i, c)| c.handle.0 == (i + 1) as u32)
+    }
+
+    #[inline]
+    pub fn creatures_are_contiguous(&self) -> bool {
+        self.creatures
+            .iter()
+            .enumerate()
+            .all(|(i, c)| c.handle.0 == (i + 1) as u32)
+    }
+
+    #[inline]
+    pub fn recompute_handle_layout(&mut self) {
+        self.handle_layout = ContiguousHandlesFlag {
+            cards: self.cards_are_contiguous(),
+            creatures: self.creatures_are_contiguous(),
+        };
+    }
+
+    #[inline(always)]
+    pub fn push_card(&mut self, card: CardInst) {
+        let idx = self.cards.len();
+        let expected = (idx + 1) as u32;
+        if self.handle_layout.cards && card.handle.0 != expected {
+            self.handle_layout.cards = false;
+        }
+        if !self.extra_clutter_hint.0
+            && (!self.static_ctx.has_root_clutter_indices
+                || (idx >= self.static_ctx.root_initial_cards_len
+                    && self
+                        .hook_cache
+                        .cached_tables
+                        .is_none_or(|t| t.card_is_status_or_curse(card.id))))
+        {
+            self.extra_clutter_hint.0 = true;
+        }
+        if !self.eot_card_cleanup_dirty.0
+            && Self::card_has_eot_cleanup_state(&card, &self.card_extensions)
+        {
+            self.eot_card_cleanup_dirty.0 = true;
+        }
+        self.cards.push(card);
+    }
+
+    #[inline(always)]
+    pub fn push_creature(&mut self, creature: CreatureInst) {
+        let expected = (self.creatures.len() + 1) as u32;
+        if self.handle_layout.creatures && creature.handle.0 != expected {
+            self.handle_layout.creatures = false;
+        }
+        self.creatures.push(creature);
     }
 
     pub fn try_add_power_to_hook_cache(
@@ -2966,6 +3900,11 @@ impl BattleState {
 
         let is_active_player_hooks = self.player.is_active_for_hooks;
         let is_player_creature = creature_handle == self.player.creature_handle;
+        let removed_pm = tables
+            .powers
+            .get(removed.id as usize)
+            .copied()
+            .unwrap_or(HookMask::EMPTY);
         let out = &mut self.hook_cache;
         let match_listener = |&(l, _): &(CachedHookListener, HookMask)| {
             matches!(
@@ -2977,17 +3916,17 @@ impl BattleState {
                 } if creature == creature_handle && power_handle == removed.handle
             )
         };
-        let (in_pre, flat_pos) = if is_player_creature {
+        let (in_pre, flat_pos, post_idx_removed) = if is_player_creature {
             if let Some(pre_idx) = out.listener_pre_player.iter().position(match_listener) {
                 out.listener_pre_player.remove(pre_idx);
-                (true, pre_idx)
+                (true, pre_idx, 0)
             } else if let Some(post_idx) = out.listener_post_player.iter().position(match_listener) {
                 let post_base = out.flat_listeners.len()
                     - out.listener_post_player.len()
                     - out.listener_run_models.len()
                     - usize::from(out.listener_dominion.is_some());
                 out.listener_post_player.remove(post_idx);
-                (false, post_base + post_idx)
+                (false, post_base + post_idx, post_idx)
             } else {
                 return false;
             }
@@ -2997,28 +3936,61 @@ impl BattleState {
                 - out.listener_run_models.len()
                 - usize::from(out.listener_dominion.is_some());
             out.listener_post_player.remove(post_idx);
-            (false, post_base + post_idx)
+            (false, post_base + post_idx, post_idx)
         } else if let Some(pre_idx) = out.listener_pre_player.iter().position(match_listener) {
             out.listener_pre_player.remove(pre_idx);
-            (true, pre_idx)
+            (true, pre_idx, 0)
         } else {
             return false;
         };
 
         out.flat_listeners.remove(flat_pos);
         if shifted_tail {
-            let _ = out.shift_power_indices(creature_handle, removed_power_idx as u16);
+            let _ = out.shift_power_indices_from(
+                creature_handle,
+                removed_power_idx as u16,
+                in_pre,
+                post_idx_removed,
+                flat_pos,
+            );
         }
 
         let Some(slot_masks) = out.slot_listener_masks.as_deref_mut() else {
             return false;
         };
         let old_comb = out.masks.combat_combined;
+        let shift_mask = if in_pre {
+            old_comb
+        } else {
+            let mut sm = removed_pm;
+            for &(_, m) in &out.listener_post_player[post_idx_removed..] {
+                sm = sm.union(m);
+            }
+            for &(_, m) in &out.listener_run_models {
+                sm = sm.union(m);
+            }
+            if let Some((_, m)) = out.listener_dominion {
+                sm = sm.union(m);
+            }
+            sm
+        };
         if words == 1 {
             let lo_mask = (1u64 << flat_pos) - 1;
             let hi_mask = !lo_mask;
+            #[cfg(debug_assertions)]
+            if !in_pre {
+                for w in 0..3 {
+                    let mut cw = old_comb.0[w] & !shift_mask.0[w];
+                    let base = w * 64;
+                    while cw != 0 {
+                        let s = base + cw.trailing_zeros() as usize;
+                        cw &= cw - 1;
+                        debug_assert_eq!(slot_masks[s] & hi_mask, 0);
+                    }
+                }
+            }
             for w in 0..3 {
-                let mut cw = old_comb.0[w];
+                let mut cw = shift_mask.0[w];
                 let base = w * 64;
                 while cw != 0 {
                     let s = base + cw.trailing_zeros() as usize;
@@ -3039,8 +4011,28 @@ impl BattleState {
             let pos_b = flat_pos & 63;
             let lo_mask = (1u64 << pos_b) - 1;
             let hi_mask = !lo_mask;
+            #[cfg(debug_assertions)]
+            if !in_pre {
+                for w in 0..3 {
+                    let mut cw = old_comb.0[w] & !shift_mask.0[w];
+                    let base = w * 64;
+                    while cw != 0 {
+                        let s = base + cw.trailing_zeros() as usize;
+                        cw &= cw - 1;
+                        let mw = if pos_w == 0 {
+                            slot_masks[s]
+                        } else {
+                            slot_masks_ext[pos_w - 1][s]
+                        };
+                        debug_assert_eq!(mw & hi_mask, 0);
+                        for k in (pos_w + 1)..words {
+                            debug_assert_eq!(slot_masks_ext[k - 1][s], 0);
+                        }
+                    }
+                }
+            }
             for w in 0..3 {
-                let mut cw = old_comb.0[w];
+                let mut cw = shift_mask.0[w];
                 let base = w * 64;
                 while cw != 0 {
                     let s = base + cw.trailing_zeros() as usize;
@@ -3194,6 +4186,25 @@ impl BattleState {
             }
         }
         content.card_meta(id)
+    }
+
+    #[inline(always)]
+    pub fn fast_card_resolved_type(
+        &self,
+        content: &dyn ContentDispatcher,
+        card_handle: CardHandle,
+        id: CardId,
+    ) -> Result<CardType, KernelError> {
+        if id != CardId::MadScience {
+            if let Some(t) = self.hook_cache.cached_tables {
+                if t.card_dynamic_type_mad_science_only {
+                    if let Some(meta) = t.card_metas.get(id as usize) {
+                        return Ok(meta.card_type);
+                    }
+                }
+            }
+        }
+        content.card_resolved_type(self, card_handle)
     }
 
     #[inline(always)]
@@ -3538,7 +4549,11 @@ impl BattleState {
             let mut write_idx = 0usize;
             let mut changed = false;
             let mut m_acc = HookMask::EMPTY;
+            let mut has_history_course = false;
             for (i, relic) in player.relics.iter().enumerate() {
+                if !relic.is_melted && relic.id == RelicId::HistoryCourse {
+                    has_history_course = true;
+                }
                 if relic.is_melted || !tables.relic_has_hook(relic.id) {
                     continue;
                 }
@@ -3551,6 +4566,7 @@ impl BattleState {
                 changed = true;
             }
             out.masks.relics = m_acc;
+            out.has_active_history_course_relic = has_history_course;
             if changed {
                 flat_dirty = true;
             }
@@ -4633,6 +5649,14 @@ impl BattleState {
     #[inline(always)]
     pub fn card_index(&self, handle: CardHandle) -> Option<usize> {
         let idx = handle.0.wrapping_sub(1) as usize;
+        if self.handle_layout.cards {
+            if idx < self.cards.len() {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(self.cards[idx].handle, handle);
+                return Some(idx);
+            }
+            return None;
+        }
         if idx < self.cards.len() && self.cards[idx].handle == handle {
             return Some(idx);
         }
@@ -4642,6 +5666,14 @@ impl BattleState {
     #[inline(always)]
     pub fn card(&self, handle: CardHandle) -> Option<&CardInst> {
         let idx = handle.0.wrapping_sub(1) as usize;
+        if self.handle_layout.cards {
+            if idx < self.cards.len() {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(self.cards[idx].handle, handle);
+                return Some(&self.cards[idx]);
+            }
+            return None;
+        }
         if idx < self.cards.len() && self.cards[idx].handle == handle {
             return Some(&self.cards[idx]);
         }
@@ -4657,18 +5689,23 @@ impl BattleState {
     #[inline(always)]
     pub fn card_mut(&mut self, handle: CardHandle) -> Option<&mut CardInst> {
         let idx = handle.0.wrapping_sub(1) as usize;
-        if idx < self.cards.len() && self.cards[idx].handle == handle {
-            if idx < self.static_ctx.root_deck_prefix_len
-                || self.cards[idx].pile == PileType::Deck
-            {
-                self.deck_dirty.0 = true;
+        let pos = if self.handle_layout.cards {
+            if idx < self.cards.len() {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(self.cards[idx].handle, handle);
+                idx
+            } else {
+                return None;
             }
-            return Some(&mut self.cards[idx]);
-        }
-        let pos = Self::find_card_idx_cold(&self.cards, handle)?;
+        } else if idx < self.cards.len() && self.cards[idx].handle == handle {
+            idx
+        } else {
+            Self::find_card_idx_cold(&self.cards, handle)?
+        };
         if pos < self.static_ctx.root_deck_prefix_len || self.cards[pos].pile == PileType::Deck {
             self.deck_dirty.0 = true;
         }
+        self.mark_card_meta_dirty(pos);
         Some(&mut self.cards[pos])
     }
 
@@ -4688,7 +5725,15 @@ impl BattleState {
 
     pub fn card_ext_mut(&mut self, handle: CardHandle) -> Option<&mut CardExtension> {
         let fast_idx = handle.0.wrapping_sub(1) as usize;
-        let idx = if fast_idx < self.cards.len() && self.cards[fast_idx].handle == handle {
+        let idx = if self.handle_layout.cards {
+            if fast_idx < self.cards.len() {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(self.cards[fast_idx].handle, handle);
+                fast_idx
+            } else {
+                return None;
+            }
+        } else if fast_idx < self.cards.len() && self.cards[fast_idx].handle == handle {
             fast_idx
         } else {
             self.cards.iter().position(|c| c.handle == handle)?
@@ -4696,6 +5741,8 @@ impl BattleState {
         if idx < self.static_ctx.root_deck_prefix_len || self.cards[idx].pile == PileType::Deck {
             self.deck_dirty.0 = true;
         }
+        self.mark_card_meta_dirty(idx);
+        self.eot_card_cleanup_dirty.0 = true;
         let ext_idx = match self.cards[idx].ext_index {
             Some(i) => i as usize,
             None => {
@@ -4711,6 +5758,14 @@ impl BattleState {
     #[inline(always)]
     pub fn creature_index(&self, handle: CreatureHandle) -> Option<usize> {
         let idx = handle.0.wrapping_sub(1) as usize;
+        if self.handle_layout.creatures {
+            if idx < self.creatures.len() {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(self.creatures[idx].handle, handle);
+                return Some(idx);
+            }
+            return None;
+        }
         if idx < self.creatures.len() && self.creatures[idx].handle == handle {
             return Some(idx);
         }
@@ -4729,6 +5784,14 @@ impl BattleState {
     #[inline(always)]
     pub fn creature(&self, handle: CreatureHandle) -> Option<&CreatureInst> {
         let idx = handle.0.wrapping_sub(1) as usize;
+        if self.handle_layout.creatures {
+            if idx < self.creatures.len() {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(self.creatures[idx].handle, handle);
+                return Some(&self.creatures[idx]);
+            }
+            return None;
+        }
         if idx < self.creatures.len() && self.creatures[idx].handle == handle {
             return Some(&self.creatures[idx]);
         }
@@ -4747,6 +5810,14 @@ impl BattleState {
     #[inline(always)]
     pub fn creature_mut(&mut self, handle: CreatureHandle) -> Option<&mut CreatureInst> {
         let idx = handle.0.wrapping_sub(1) as usize;
+        if self.handle_layout.creatures {
+            if idx < self.creatures.len() {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(self.creatures[idx].handle, handle);
+                return Some(&mut self.creatures[idx]);
+            }
+            return None;
+        }
         if idx < self.creatures.len() && self.creatures[idx].handle == handle {
             return Some(&mut self.creatures[idx]);
         }
@@ -4861,44 +5932,48 @@ impl BattleState {
         }
     }
 
+    #[inline]
     pub fn record_exhaust(&mut self) {
         let tk = self.current_turn_key();
-        self.semantic_history.exhausts.push((tk, 0));
+        self.semantic_history.record_exhaust_tk(tk);
     }
 
+    #[inline]
     pub fn record_block_gain(&mut self, props: ValueProp, play_ordinal: Option<i32>) {
         if props.is_powered_block() {
             if let Some(ordinal) = play_ordinal {
                 let tk = self.current_turn_key();
-                self.semantic_history.card_block_gains.push((tk, 0, ordinal));
+                self.semantic_history
+                    .record_block_gain_tk(tk, props, Some(ordinal));
             }
         }
     }
 
+    #[inline]
     pub fn record_orb_channel(&mut self, orb_id: OrbId) {
         let tk = self.current_turn_key();
-        self.semantic_history.orb_channels.push((tk, 0, orb_id));
+        self.semantic_history.record_orb_channel_tk(tk, orb_id);
     }
 
+    #[inline]
     pub fn record_energy_spent(&mut self, amount: i32) {
         if amount > 0 {
             let tk = self.current_turn_key();
-            self.semantic_history.energy_spent.push((tk, 0, amount));
+            self.semantic_history.record_energy_spent_tk(tk, amount);
         }
     }
 
+    #[inline]
     pub fn record_card_drawn(&mut self, card_type: CardType, from_hand_draw: bool) {
         let tk = self.current_turn_key();
         self.semantic_history
-            .card_drawn
-            .push((tk, 0, card_type, from_hand_draw));
+            .record_card_drawn_tk(tk, card_type, from_hand_draw);
     }
 
+    #[inline]
     pub fn record_actor_event(&mut self, kind: impl Into<Cow<'static, str>>) {
         let tk = self.current_turn_key();
-        self.semantic_history
-            .actor_events
-            .push((kind.into(), tk, 0));
+        self.semantic_history.record_actor_event_tk(tk, kind);
     }
 
     /// Folds prior-turn history into summary counters and retains only current-turn transient slices.
@@ -4935,32 +6010,78 @@ impl BattleState {
         }
 
         if !self.semantic_history.exhausts.is_empty() {
-            let mut prior_ex = 0i32;
-            for (tk, _) in &self.semantic_history.exhausts {
-                if *tk != cur_tk {
-                    prior_ex += 1;
+            let len = self.semantic_history.exhausts.len();
+            if self.semantic_history.exhausts[len - 1].0 != cur_tk {
+                #[cfg(debug_assertions)]
+                debug_assert!(self
+                    .semantic_history
+                    .exhausts
+                    .iter()
+                    .all(|(tk, _)| *tk != cur_tk));
+                self.semantic_history.prior_exhaust_count += len as i32;
+                self.semantic_history.exhausts.clear();
+            } else {
+                let mut prior_ex = 0i32;
+                for (tk, _) in &self.semantic_history.exhausts {
+                    if *tk != cur_tk {
+                        prior_ex += 1;
+                    }
                 }
-            }
-            if prior_ex > 0 {
-                self.semantic_history.prior_exhaust_count += prior_ex;
-                self.semantic_history.exhausts.retain(|(tk, _)| *tk == cur_tk);
+                if prior_ex > 0 {
+                    self.semantic_history.prior_exhaust_count += prior_ex;
+                    self.semantic_history.exhausts.retain(|(tk, _)| *tk == cur_tk);
+                }
             }
         }
         if !self.semantic_history.card_block_gains.is_empty() {
-            self.semantic_history
-                .card_block_gains
-                .retain(|(tk, _, _)| *tk == cur_tk);
+            let len = self.semantic_history.card_block_gains.len();
+            if self.semantic_history.card_block_gains[len - 1].0 != cur_tk {
+                #[cfg(debug_assertions)]
+                debug_assert!(self
+                    .semantic_history
+                    .card_block_gains
+                    .iter()
+                    .all(|(tk, _, _)| *tk != cur_tk));
+                self.semantic_history.card_block_gains.clear();
+            } else if self.semantic_history.card_block_gains[0].0 != cur_tk {
+                self.semantic_history
+                    .card_block_gains
+                    .retain(|(tk, _, _)| *tk == cur_tk);
+            }
         }
         if !self.semantic_history.energy_spent.is_empty() {
-            self.semantic_history
-                .energy_spent
-                .retain(|(tk, _, _)| *tk == cur_tk);
+            let len = self.semantic_history.energy_spent.len();
+            if self.semantic_history.energy_spent[len - 1].0 != cur_tk {
+                #[cfg(debug_assertions)]
+                debug_assert!(self
+                    .semantic_history
+                    .energy_spent
+                    .iter()
+                    .all(|(tk, _, _)| *tk != cur_tk));
+                self.semantic_history.energy_spent.clear();
+            } else if self.semantic_history.energy_spent[0].0 != cur_tk {
+                self.semantic_history
+                    .energy_spent
+                    .retain(|(tk, _, _)| *tk == cur_tk);
+            }
         }
         if !self.semantic_history.card_drawn.is_empty() {
-            self.semantic_history
-                .card_drawn
-                .retain(|(tk, _, _, _)| *tk == cur_tk);
+            let len = self.semantic_history.card_drawn.len();
+            if self.semantic_history.card_drawn[len - 1].0 != cur_tk {
+                #[cfg(debug_assertions)]
+                debug_assert!(self
+                    .semantic_history
+                    .card_drawn
+                    .iter()
+                    .all(|(tk, _, _, _)| *tk != cur_tk));
+                self.semantic_history.card_drawn.clear();
+            } else if self.semantic_history.card_drawn[0].0 != cur_tk {
+                self.semantic_history
+                    .card_drawn
+                    .retain(|(tk, _, _, _)| *tk == cur_tk);
+            }
         }
+        self.semantic_history.refresh_turn_cache(&cur_tk);
     }
 
     pub fn pile_vec_mut(&mut self, pile: PileType) -> Option<&mut Vec<CardHandle>> {
@@ -4979,7 +6100,7 @@ impl BattleState {
     }
 
     #[inline(always)]
-    fn collect_card_hook_entries_at(
+    pub(crate) fn collect_card_hook_entries_at(
         &self,
         tables: &HookMaskTableView,
         card_idx: usize,
@@ -5138,69 +6259,84 @@ impl BattleState {
         }
     }
 
+    #[inline]
     pub fn remove_card_from_pile_vec_only(&mut self, handle: CardHandle, pile: PileType) -> u8 {
-        let remove_from = |vec: &mut Vec<CardHandle>| -> u8 {
-            let pos = if vec.last() == Some(&handle) {
-                vec.pop();
-                1u8
-            } else if vec.first() == Some(&handle) {
-                vec.remove(0);
-                0u8
-            } else if let Some(pos) = vec.iter().position(|&h| h == handle) {
-                vec.remove(pos);
+        let vec = match pile {
+            PileType::Hand => &mut self.player.hand,
+            PileType::Draw => &mut self.player.draw,
+            PileType::Discard => &mut self.player.discard,
+            PileType::Exhaust => &mut self.player.exhaust,
+            PileType::Play => &mut self.player.play,
+            PileType::Deck => {
+                self.deck_dirty.0 = true;
+                &mut self.player.deck
+            }
+            PileType::None => return 3u8,
+        };
+        let raw = handle.0;
+        let len = vec.len();
+        let pos = if len == 0 {
+            3u8
+        } else if vec[len - 1].0 == raw {
+            vec.pop();
+            1u8
+        } else if len > 1 && vec[0].0 == raw {
+            vec.remove(0);
+            0u8
+        } else if len > 2 {
+            let mut found = None;
+            let mut i = 1;
+            while i + 1 < len {
+                if vec[i].0 == raw {
+                    found = Some(i);
+                    break;
+                }
+                i += 1;
+            }
+            if let Some(p) = found {
+                vec.remove(p);
                 2u8
             } else {
                 3u8
-            };
-            #[cfg(debug_assertions)]
-            debug_assert!(!vec.contains(&handle), "duplicate card handle in pile");
-            pos
-        };
-        match pile {
-            PileType::Hand => remove_from(&mut self.player.hand),
-            PileType::Draw => remove_from(&mut self.player.draw),
-            PileType::Discard => remove_from(&mut self.player.discard),
-            PileType::Exhaust => remove_from(&mut self.player.exhaust),
-            PileType::Play => remove_from(&mut self.player.play),
-            PileType::Deck => {
-                self.deck_dirty.0 = true;
-                remove_from(&mut self.player.deck)
             }
-            PileType::None => 3u8,
-        }
+        } else {
+            3u8
+        };
+        #[cfg(debug_assertions)]
+        debug_assert!(!vec.contains(&handle), "duplicate card handle in pile");
+        pos
     }
 
+    #[inline]
     pub fn insert_card_into_pile_vec_only(
         &mut self,
         handle: CardHandle,
         pile: PileType,
         index: Option<usize>,
     ) -> (usize, usize) {
-        let insert_into = |vec: &mut Vec<CardHandle>| -> (usize, usize) {
-            let old_len = vec.len();
-            let idx = match index {
-                Some(i) if i <= old_len => i,
-                _ => old_len,
-            };
-            if idx == old_len {
-                vec.push(handle);
-            } else {
-                vec.insert(idx, handle);
-            }
-            (idx, old_len)
-        };
-        match pile {
-            PileType::Hand => insert_into(&mut self.player.hand),
-            PileType::Draw => insert_into(&mut self.player.draw),
-            PileType::Discard => insert_into(&mut self.player.discard),
-            PileType::Exhaust => insert_into(&mut self.player.exhaust),
-            PileType::Play => insert_into(&mut self.player.play),
+        let vec = match pile {
+            PileType::Hand => &mut self.player.hand,
+            PileType::Draw => &mut self.player.draw,
+            PileType::Discard => &mut self.player.discard,
+            PileType::Exhaust => &mut self.player.exhaust,
+            PileType::Play => &mut self.player.play,
             PileType::Deck => {
                 self.deck_dirty.0 = true;
-                insert_into(&mut self.player.deck)
+                &mut self.player.deck
             }
-            PileType::None => (0, 0),
+            PileType::None => return (0, 0),
+        };
+        let old_len = vec.len();
+        let idx = match index {
+            Some(i) if i <= old_len => i,
+            _ => old_len,
+        };
+        if idx == old_len {
+            vec.push(handle);
+        } else {
+            vec.insert(idx, handle);
         }
+        (idx, old_len)
     }
 
     #[allow(clippy::too_many_arguments)]

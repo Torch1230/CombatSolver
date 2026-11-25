@@ -435,10 +435,10 @@ impl SearchEngine {
         content: &(dyn ContentDispatcher + Sync),
     ) -> Result<InCombatSolveResponse, KernelError> {
         let Some(ref live_json) = request.root_state_json else {
-            return Err(KernelError::Unsupported {
-                kind: "SearchEngine",
-                id: "missing_root_state_json".to_owned(),
-            });
+            return Err(KernelError::unsupported(
+                "SearchEngine",
+                "missing_root_state_json".to_owned(),
+            ));
         };
         let state = import_live_state(live_json, content)?;
         self.solve_state(&state, &request.policy, content)

@@ -17,17 +17,17 @@ pub use continuation::{
 };
 pub use hooks::ModifyDamageHookType;
 pub use engine::CombatEngine;
-pub use error::KernelError;
+pub use error::{KernelError, KernelErrorKind};
 pub use snapshot::{
     CanonicalOracleStateDto, OracleRngStreamsDto, export_canonical_oracle_state,
     export_live_state, import_live_state, LiveStateJson,
 };
 pub use state::{
-    ActiveHookCache, ActiveHookMasks, ArrowSlotInst, BattleState, CardExtension, CardHandle,
-    CardInst, CardTempFlags, CreatureHandle, CreatureInst, DamageHistoryEntry, DamageResult,
-    DeckDirtyFlag, EnchantmentInst, FieldMap, FieldValue, GrowthCounters, GrowthSource,
-    InlineI32Vec4, InlineOptI32Vec4, LocalEnergyModifier, MonsterInst, OptCardHandle, OptI16,
-    OrbInst, PlayerCounters, PlayerInst, PowerExtension, PowerInst, RelicDirtyMask, RelicInst,
-    RootStaticContext, SYM_FALLBACK_ID, SemanticHistory, intern_static, intern_str, sym_cow,
-    sym_str,
+    hot_keys, intern_static, intern_str, preintern_static_keys, sym_cow, sym_str, ActiveHookCache,
+    ActiveHookMasks, ArrowSlotInst, BattleState, CardExtension, CardHandle, CardInst, CardTempFlags,
+    CreatureHandle, CreatureInst, DamageHistoryEntry, DamageResult, DeckDirtyFlag, EnchantmentInst,
+    EotCleanupDirtyFlag, FieldMap, FieldValue, GrowthCounters, GrowthSource, InlineI32Vec4,
+    InlineOptI32Vec4, LocalEnergyModifier, MonsterInst, OptCardHandle, OptI16, OrbInst,
+    PlayerCounters, PlayerInst, PowerExtension, PowerInst, RelicDirtyMask, RelicInst,
+    RootStaticContext, SemanticHistory, SYM_FALLBACK_ID,
 };

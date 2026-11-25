@@ -636,6 +636,7 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
             if idx < state.static_ctx.root_deck_prefix_len || state.cards[idx].pile == PileType::Deck {
                 state.deck_dirty.0 = true;
             }
+            state.mark_card_meta_dirty(idx);
             state.cards[idx].ext_index = Some(ext_idx);
         }
     }
@@ -645,8 +646,10 @@ fn set_to_free_this_turn(state: &mut BattleState, handle: CardHandle) {
     {
         if let Some(c) = state.card_mut(handle) {
             c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
     }
+    state.mark_eot_card_cleanup_dirty();
 }
 
 fn generate_existing_card_into_pile(
@@ -924,10 +927,7 @@ pub fn relic_meta(id: RelicId) -> Result<&'static RelicMeta, KernelError> {
         RelicId::WhittlingKnife => Ok(&WHITTLING_KNIFE_META),
         RelicId::WongosMysteryTicket => Ok(&WONGOS_MYSTERY_TICKET_META),
         RelicId::Wuppy => Ok(&WUPPY_META),
-        _ => Err(KernelError::Unsupported {
-            kind: "Relic",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Relic", id.model_id_str().to_owned())),
     }
 }
 
@@ -3713,10 +3713,7 @@ pub(crate) fn dispatch_hook_at(
             Ok(HookResult::default())
         }
 
-        _ => Err(KernelError::Unsupported {
-            kind: "Relic",
-            id: id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported("Relic", id.model_id_str().to_owned())),
     }
 }
 
@@ -3777,9 +3774,9 @@ pub fn resume_hook_choice(
             }
             Ok(HookResult::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "RelicHookChoiceResume",
-            id: format!("{}:{slot:?}", id.model_id_str()),
-        }),
+        _ => Err(KernelError::unsupported(
+            "RelicHookChoiceResume",
+            format!("{}:{slot:?}", id.model_id_str()),
+        )),
     }
 }

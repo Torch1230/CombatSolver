@@ -225,6 +225,10 @@ fn build_bench_combat() -> BattleState {
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
 
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -481,6 +485,10 @@ fn build_custom_bench_combat(
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
 
     CombatEngine::start_combat(&mut state, &content).unwrap();

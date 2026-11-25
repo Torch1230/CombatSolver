@@ -429,6 +429,7 @@ pub fn remove_by_index(
     owner: CreatureHandle,
     power_idx: usize,
 ) -> Result<Option<PowerInst>, KernelError> {
+    let player_is_active = state.player.is_active_for_hooks;
     let removed = state.creature_mut(owner).and_then(|c| {
         if power_idx < c.powers.len() {
             let p = c.powers.remove(power_idx);
@@ -436,16 +437,35 @@ pub fn remove_by_index(
             if p.id == PowerId::MinionPower {
                 c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
             }
-            Some((power_idx, p, shifted_tail))
+            let in_hook_cache = !c.is_detached && !(c.is_player && !player_is_active);
+            Some((power_idx, p, shifted_tail, in_hook_cache))
         } else {
             None
         }
     });
-    if let Some((idx, p, shifted_tail)) = removed {
-        if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
-            && (shifted_tail || invalidates_creature_hooks(state, p.id))
-        {
-            state.invalidate_creature_hooks();
+    if let Some((idx, p, shifted_tail, in_hook_cache)) = removed {
+        if in_hook_cache {
+            if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
+                && (shifted_tail || invalidates_creature_hooks(state, p.id))
+            {
+                state.invalidate_creature_hooks();
+            }
+        } else {
+            #[cfg(debug_assertions)]
+            if state.hook_cache.dirty_mask == 0 {
+                debug_assert!(
+                    !state
+                        .hook_cache
+                        .listener_pre_player
+                        .iter()
+                        .chain(state.hook_cache.listener_post_player.iter())
+                        .any(|(l, _)| matches!(
+                            l,
+                            crate::CachedHookListener::Power { creature, .. } if *creature == owner
+                        )),
+                    "detached/inactive creature still present in hook_cache"
+                );
+            }
         }
         hooks::after_power_removed(state, content, owner, p)?;
         return Ok(Some(p));
@@ -459,6 +479,7 @@ pub fn remove_by_id(
     owner: CreatureHandle,
     power_id: PowerId,
 ) -> Result<Option<PowerInst>, KernelError> {
+    let player_is_active = state.player.is_active_for_hooks;
     let removed = state.creature_mut(owner).and_then(|c| {
         c.powers.iter().position(|p| p.id == power_id).map(|idx| {
             let p = c.powers.remove(idx);
@@ -466,14 +487,33 @@ pub fn remove_by_id(
             if p.id == PowerId::MinionPower {
                 c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
             }
-            (idx, p, shifted_tail)
+            let in_hook_cache = !c.is_detached && !(c.is_player && !player_is_active);
+            (idx, p, shifted_tail, in_hook_cache)
         })
     });
-    if let Some((idx, p, shifted_tail)) = removed {
-        if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
-            && (shifted_tail || invalidates_creature_hooks(state, p.id))
-        {
-            state.invalidate_creature_hooks();
+    if let Some((idx, p, shifted_tail, in_hook_cache)) = removed {
+        if in_hook_cache {
+            if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
+                && (shifted_tail || invalidates_creature_hooks(state, p.id))
+            {
+                state.invalidate_creature_hooks();
+            }
+        } else {
+            #[cfg(debug_assertions)]
+            if state.hook_cache.dirty_mask == 0 {
+                debug_assert!(
+                    !state
+                        .hook_cache
+                        .listener_pre_player
+                        .iter()
+                        .chain(state.hook_cache.listener_post_player.iter())
+                        .any(|(l, _)| matches!(
+                            l,
+                            crate::CachedHookListener::Power { creature, .. } if *creature == owner
+                        )),
+                    "detached/inactive creature still present in hook_cache"
+                );
+            }
         }
         hooks::after_power_removed(state, content, owner, p)?;
         return Ok(Some(p));
@@ -487,6 +527,7 @@ pub fn remove_by_handle(
     owner: CreatureHandle,
     power_handle: u32,
 ) -> Result<Option<PowerInst>, KernelError> {
+    let player_is_active = state.player.is_active_for_hooks;
     let removed = state.creature_mut(owner).and_then(|c| {
         c.powers
             .iter()
@@ -497,14 +538,33 @@ pub fn remove_by_handle(
                 if p.id == PowerId::MinionPower {
                     c.has_minion_power = c.powers.iter().any(|pw| pw.id == PowerId::MinionPower);
                 }
-                (idx, p, shifted_tail)
+                let in_hook_cache = !c.is_detached && !(c.is_player && !player_is_active);
+                (idx, p, shifted_tail, in_hook_cache)
             })
     });
-    if let Some((idx, p, shifted_tail)) = removed {
-        if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
-            && (shifted_tail || invalidates_creature_hooks(state, p.id))
-        {
-            state.invalidate_creature_hooks();
+    if let Some((idx, p, shifted_tail, in_hook_cache)) = removed {
+        if in_hook_cache {
+            if !state.try_remove_power_from_hook_cache(owner, idx, shifted_tail, p)
+                && (shifted_tail || invalidates_creature_hooks(state, p.id))
+            {
+                state.invalidate_creature_hooks();
+            }
+        } else {
+            #[cfg(debug_assertions)]
+            if state.hook_cache.dirty_mask == 0 {
+                debug_assert!(
+                    !state
+                        .hook_cache
+                        .listener_pre_player
+                        .iter()
+                        .chain(state.hook_cache.listener_post_player.iter())
+                        .any(|(l, _)| matches!(
+                            l,
+                            crate::CachedHookListener::Power { creature, .. } if *creature == owner
+                        )),
+                    "detached/inactive creature still present in hook_cache"
+                );
+            }
         }
         hooks::after_power_removed(state, content, owner, p)?;
         return Ok(Some(p));

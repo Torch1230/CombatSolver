@@ -81,10 +81,7 @@ pub fn card_meta(id: CardId) -> Result<&'static CardMeta, KernelError> {
     if card_partition(id) == CardPartition::Silent {
         Ok(&SILENT_CARD_META[id as usize])
     } else {
-        Err(KernelError::Unsupported {
-            kind: "Card",
-            id: id.model_id_str().to_owned(),
-        })
+        Err(KernelError::unsupported("Card", id.model_id_str().to_owned()))
     }
 }
 
@@ -231,6 +228,7 @@ fn set_to_free_this_turn(
     if !meta.flags.contains(CardStaticFlags::IS_X_ENERGY_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_cost_override_this_turn_or_until_played = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
         if let Some(ext) = state.card_ext_mut(handle) {
             ext.push_local_energy_modifier(LocalEnergyModifier {
@@ -243,6 +241,7 @@ fn set_to_free_this_turn(
     if !meta.flags.contains(CardStaticFlags::IS_X_STAR_COST) {
         if let Some(c) = state.card_mut(handle) {
             c.temp_star_cost_override_this_turn = sts2_kernel::OptI16::some(0);
+            state.mark_eot_card_cleanup_dirty();
         }
     }
     Ok(())
@@ -295,10 +294,7 @@ fn discard_from_hand_select(
             }
             Ok(CardPlayOutcome::default())
         }
-        SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-            needs_choice: Some((req, 1)),
-            transform_into: None,
-        }),
+        SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
     }
 }
 
@@ -690,10 +686,7 @@ pub fn on_play(
                     }
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::Haze => {
@@ -718,10 +711,7 @@ pub fn on_play(
                     create_shivs_in_hand(state, content, owner, 2, upg, false)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::InfiniteBlades => {
@@ -849,10 +839,7 @@ pub fn on_play(
                     apply_nightmare_to_selected(content, state, owner, ctx.card, &selected)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::NoxiousFumes => {
@@ -1126,10 +1113,10 @@ pub fn on_play(
             power::apply(state, content, PowerId::WraithFormPower, owner, Dec::ONE, Some(owner), src)?;
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "Card",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Card",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1169,10 +1156,10 @@ pub fn on_play_resume(
             apply_nightmare_to_selected(content, state, owner, ctx.card, selected)?;
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardResume",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardResume",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1290,10 +1277,10 @@ pub fn on_turn_end_in_hand(
         .flags
         .contains(sts2_types::CardStaticFlags::HAS_TURN_END_IN_HAND)
     {
-        return Err(KernelError::Unsupported {
-            kind: "CardTurnEndInHand",
-            id: id.model_id_str().to_owned(),
-        });
+        return Err(KernelError::unsupported(
+            "CardTurnEndInHand",
+            id.model_id_str().to_owned(),
+        ));
     }
     Ok(())
 }

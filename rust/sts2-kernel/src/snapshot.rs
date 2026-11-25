@@ -456,10 +456,10 @@ fn parse_side(s: &str, path: &str) -> Result<CombatSide, KernelError> {
     match s {
         "Player" => Ok(CombatSide::Player),
         "Enemy" => Ok(CombatSide::Enemy),
-        _ => Err(KernelError::SnapshotImport {
-            field_path: path.to_owned(),
-            message: format!("unknown CombatSide '{s}'"),
-        }),
+        _ => Err(KernelError::snapshot_import(
+            path.to_owned(),
+            format!("unknown CombatSide '{s}'"),
+        )),
     }
 }
 
@@ -472,10 +472,10 @@ fn parse_card_type(s: &str, path: &str) -> Result<sts2_types::CardType, KernelEr
         "Status" => Ok(sts2_types::CardType::Status),
         "Curse" => Ok(sts2_types::CardType::Curse),
         "Quest" => Ok(sts2_types::CardType::Quest),
-        _ => Err(KernelError::SnapshotImport {
-            field_path: path.to_owned(),
-            message: format!("unknown CardType '{s}'"),
-        }),
+        _ => Err(KernelError::snapshot_import(
+            path.to_owned(),
+            format!("unknown CardType '{s}'"),
+        )),
     }
 }
 
@@ -494,10 +494,10 @@ fn parse_phase(s: &str) -> Result<PlayerTurnPhase, KernelError> {
         "Play" => Ok(PlayerTurnPhase::Play),
         "AutoPostPlay" => Ok(PlayerTurnPhase::AutoPostPlay),
         "End" => Ok(PlayerTurnPhase::End),
-        _ => Err(KernelError::SnapshotImport {
-            field_path: "player.phase".to_owned(),
-            message: format!("unknown PlayerTurnPhase '{s}'"),
-        }),
+        _ => Err(KernelError::snapshot_import(
+            "player.phase".to_owned(),
+            format!("unknown PlayerTurnPhase '{s}'"),
+        )),
     }
 }
 
@@ -523,10 +523,10 @@ fn parse_room_type(s: &str) -> Result<RoomType, KernelError> {
         "Event" => Ok(RoomType::Event),
         "RestSite" => Ok(RoomType::RestSite),
         "Map" => Ok(RoomType::Map),
-        _ => Err(KernelError::SnapshotImport {
-            field_path: "roomType".to_owned(),
-            message: format!("unknown RoomType '{s}'"),
-        }),
+        _ => Err(KernelError::snapshot_import(
+            "roomType".to_owned(),
+            format!("unknown RoomType '{s}'"),
+        )),
     }
 }
 
@@ -547,9 +547,8 @@ fn room_type_to_str(rt: RoomType) -> &'static str {
 fn parse_keywords(names: &[String], path: &str) -> Result<CardKeywords, KernelError> {
     let mut out = CardKeywords::empty();
     for name in names {
-        let kw = CardKeywords::from_keyword_name(name).ok_or_else(|| KernelError::SnapshotImport {
-            field_path: path.to_owned(),
-            message: format!("unknown CardKeyword '{name}'"),
+        let kw = CardKeywords::from_keyword_name(name).ok_or_else(|| {
+            KernelError::snapshot_import(path.to_owned(), format!("unknown CardKeyword '{name}'"))
         })?;
         out |= kw;
     }
@@ -585,10 +584,10 @@ fn parse_local_energy_mod_kind(s: &str) -> Result<LocalEnergyModifierKind, Kerne
         "AddThisTurn" => Ok(LocalEnergyModifierKind::AddThisTurn),
         "AddUntilPlayed" => Ok(LocalEnergyModifierKind::AddUntilPlayed),
         "AddThisTurnOrUntilPlayed" => Ok(LocalEnergyModifierKind::AddThisTurnOrUntilPlayed),
-        _ => Err(KernelError::SnapshotImport {
-            field_path: "cards[].localEnergyModifiers[].kind".to_owned(),
-            message: format!("unknown LocalEnergyModifierKind '{s}'"),
-        }),
+        _ => Err(KernelError::snapshot_import(
+            "cards[].localEnergyModifiers[].kind".to_owned(),
+            format!("unknown LocalEnergyModifierKind '{s}'"),
+        )),
     }
 }
 
@@ -652,10 +651,10 @@ fn parse_field_value(dto: &FieldValueDto) -> Result<FieldValue, KernelError> {
                 .map(|x| (x.original_card_handle, x.clone_card_handle))
                 .collect(),
         )),
-        other => Err(KernelError::SnapshotImport {
-            field_path: "privateFields".to_owned(),
-            message: format!("unknown LiveFieldKind '{other}'"),
-        }),
+        other => Err(KernelError::snapshot_import(
+            "privateFields".to_owned(),
+            format!("unknown LiveFieldKind '{other}'"),
+        )),
     }
 }
 
@@ -833,10 +832,8 @@ pub fn import_live_state(
     content: &dyn ContentDispatcher,
 ) -> Result<BattleState, KernelError> {
     let character_id = match dto.character_id.as_deref() {
-        Some(s) => CharacterId::from_model_id_str(s).ok_or_else(|| KernelError::Unsupported {
-            kind: "Character",
-            id: s.to_owned(),
-        })?,
+        Some(s) => CharacterId::from_model_id_str(s)
+            .ok_or_else(|| KernelError::unsupported("Character", s.to_owned()))?,
         None => CharacterId::Ironclad,
     };
     let game_mode = match dto.game_mode.as_deref() {
@@ -844,38 +841,29 @@ pub fn import_live_state(
         Some("Blitz") => GameMode::Blitz,
         Some("Standard") | None => GameMode::Standard,
         Some(other) => {
-            return Err(KernelError::Unsupported {
-                kind: "GameMode",
-                id: other.to_owned(),
-            });
+            return Err(KernelError::unsupported("GameMode", other.to_owned()));
         }
     };
 
     let dominion_id = match dto.dominion_id.as_deref() {
-        Some(s) if !s.is_empty() => Some(DominionId::from_model_id_str(s).ok_or_else(|| {
-            KernelError::Unsupported {
-                kind: "Dominion",
-                id: s.to_owned(),
-            }
-        })?),
+        Some(s) if !s.is_empty() => Some(
+            DominionId::from_model_id_str(s)
+                .ok_or_else(|| KernelError::unsupported("Dominion", s.to_owned()))?,
+        ),
         _ => None,
     };
     let mut run_model_ids = Vec::with_capacity(dto.run_model_ids.len());
     for rm in &dto.run_model_ids {
-        let id = RunModelId::from_model_id_str(rm).ok_or_else(|| KernelError::Unsupported {
-            kind: "RunModel",
-            id: rm.clone(),
-        })?;
+        let id = RunModelId::from_model_id_str(rm)
+            .ok_or_else(|| KernelError::unsupported("RunModel", rm.clone()))?;
         run_model_ids.push(id);
     }
 
     let parse_card_pool = |raw: &[String]| -> Result<Vec<CardId>, KernelError> {
         let mut out = Vec::with_capacity(raw.len());
         for entry in raw {
-            let id = CardId::from_model_id_str(entry).ok_or_else(|| KernelError::Unsupported {
-                kind: "Card",
-                id: entry.clone(),
-            })?;
+            let id = CardId::from_model_id_str(entry)
+                .ok_or_else(|| KernelError::unsupported("Card", entry.clone()))?;
             let _ = content.card_meta(id)?;
             out.push(id);
         }
@@ -888,10 +876,8 @@ pub fn import_live_state(
     let tarot_card_pool = parse_card_pool(&dto.tarot_cards)?;
     let mut potion_generation_pool = Vec::with_capacity(dto.unlocked_potions.len());
     for entry in &dto.unlocked_potions {
-        let pid = PotionId::from_model_id_str(entry).ok_or_else(|| KernelError::Unsupported {
-            kind: "Potion",
-            id: entry.clone(),
-        })?;
+        let pid = PotionId::from_model_id_str(entry)
+            .ok_or_else(|| KernelError::unsupported("Potion", entry.clone()))?;
         let _ = content.potion_meta(pid)?;
         potion_generation_pool.push(pid);
     }
@@ -935,19 +921,19 @@ pub fn import_live_state(
     }
 
     for (card_pos, c) in dto.cards.iter().enumerate() {
-        let card_id = CardId::from_model_id_str(&c.card_id).ok_or_else(|| KernelError::Unsupported {
-            kind: "Card",
-            id: c.card_id.clone(),
-        })?;
+        let card_id = CardId::from_model_id_str(&c.card_id)
+            .ok_or_else(|| KernelError::unsupported("Card", c.card_id.clone()))?;
         let meta = content.card_meta(card_id)?;
         if matches!(meta.card_type, CardType::Status | CardType::Curse) {
             if let Ok(idx_u16) = u16::try_from(card_pos) {
                 root_all_clutter_indices.push(idx_u16);
             }
         }
-        let handle_u = u32::try_from(c.handle).map_err(|_| KernelError::SnapshotImport {
-            field_path: "cards[].handle".to_owned(),
-            message: "negative card handle".to_owned(),
+        let handle_u = u32::try_from(c.handle).map_err(|_| {
+            KernelError::snapshot_import(
+                "cards[].handle".to_owned(),
+                "negative card handle".to_owned(),
+            )
         })?;
         max_card_handle = max_card_handle.max(handle_u + 1);
 
@@ -980,10 +966,7 @@ pub fn import_live_state(
         let enchantment = match &c.enchantment {
             Some(e) => {
                 let eid = EnchantmentId::from_model_id_str(&e.enchantment_id).ok_or_else(|| {
-                    KernelError::Unsupported {
-                        kind: "Enchantment",
-                        id: e.enchantment_id.clone(),
-                    }
+                    KernelError::unsupported("Enchantment", e.enchantment_id.clone())
                 })?;
                 let mut pf = FieldMap::new();
                 for (pk, pv) in &e.private_fields {
@@ -1005,10 +988,7 @@ pub fn import_live_state(
         let affliction = match &c.affliction {
             Some(a) => {
                 let aid = AfflictionId::from_model_id_str(&a.affliction_id).ok_or_else(|| {
-                    KernelError::Unsupported {
-                        kind: "Affliction",
-                        id: a.affliction_id.clone(),
-                    }
+                    KernelError::unsupported("Affliction", a.affliction_id.clone())
                 })?;
                 Some(crate::state::AfflictionInst {
                     id: aid,
@@ -1096,10 +1076,8 @@ pub fn import_live_state(
 
     let mut relics = Vec::new();
     for r in &dto.relics {
-        let rid = RelicId::from_model_id_str(&r.relic_id).ok_or_else(|| KernelError::Unsupported {
-            kind: "Relic",
-            id: r.relic_id.clone(),
-        })?;
+        let rid = RelicId::from_model_id_str(&r.relic_id)
+            .ok_or_else(|| KernelError::unsupported("Relic", r.relic_id.clone()))?;
         let _ = content.relic_meta(rid)?;
         let mut pf = FieldMap::new();
         for (pk, pv) in &r.private_fields {
@@ -1120,12 +1098,8 @@ pub fn import_live_state(
         match slot {
             None => potion_slots.push(None),
             Some(pid_str) => {
-                let pid = PotionId::from_model_id_str(pid_str).ok_or_else(|| {
-                    KernelError::Unsupported {
-                        kind: "Potion",
-                        id: pid_str.clone(),
-                    }
-                })?;
+                let pid = PotionId::from_model_id_str(pid_str)
+                    .ok_or_else(|| KernelError::unsupported("Potion", pid_str.clone()))?;
                 let _ = content.potion_meta(pid)?;
                 potion_slots.push(Some(pid));
             }
@@ -1134,10 +1108,8 @@ pub fn import_live_state(
 
     let mut orbs = Vec::new();
     for o in &dto.player.orbs {
-        let oid = OrbId::from_model_id_str(&o.orb_id).ok_or_else(|| KernelError::Unsupported {
-            kind: "Orb",
-            id: o.orb_id.clone(),
-        })?;
+        let oid = OrbId::from_model_id_str(&o.orb_id)
+            .ok_or_else(|| KernelError::unsupported("Orb", o.orb_id.clone()))?;
         let _ = content.orb_meta(oid)?;
         orbs.push(OrbInst {
             id: oid,
@@ -1153,10 +1125,10 @@ pub fn import_live_state(
             "Away" => ArrowStatus::Away,
             "Destroyed" => ArrowStatus::Destroyed,
             other => {
-                return Err(KernelError::SnapshotImport {
-                    field_path: "player.arrows[].status".to_owned(),
-                    message: format!("unknown ArrowStatus '{other}'"),
-                });
+                return Err(KernelError::snapshot_import(
+                    "player.arrows[].status".to_owned(),
+                    format!("unknown ArrowStatus '{other}'"),
+                ));
             }
         };
         arrows.push(ArrowSlotInst { status });
@@ -1170,10 +1142,10 @@ pub fn import_live_state(
 
     for cr in &dto.creatures {
         let ch = CreatureHandle(u32::try_from(cr.handle).map_err(|_| {
-            KernelError::SnapshotImport {
-                field_path: "creatures[].handle".to_owned(),
-                message: "negative creature handle".to_owned(),
-            }
+            KernelError::snapshot_import(
+                "creatures[].handle".to_owned(),
+                "negative creature handle".to_owned(),
+            )
         })?);
         max_creature_handle = max_creature_handle.max(ch.0 + 1);
         if cr.is_player {
@@ -1183,17 +1155,13 @@ pub fn import_live_state(
         let monster = match &cr.monster {
             Some(m) => {
                 let m_str = cr.monster_id.as_deref().ok_or_else(|| {
-                    KernelError::SnapshotImport {
-                        field_path: "creatures[].monsterId".to_owned(),
-                        message: "monster creature missing monsterId".to_owned(),
-                    }
+                    KernelError::snapshot_import(
+                        "creatures[].monsterId".to_owned(),
+                        "monster creature missing monsterId".to_owned(),
+                    )
                 })?;
-                let mid = MonsterId::from_model_id_str(m_str).ok_or_else(|| {
-                    KernelError::Unsupported {
-                        kind: "Monster",
-                        id: m_str.to_owned(),
-                    }
-                })?;
+                let mid = MonsterId::from_model_id_str(m_str)
+                    .ok_or_else(|| KernelError::unsupported("Monster", m_str.to_owned()))?;
                 let _ = content.monster_meta(mid)?;
                 let mut setup_fields = FieldMap::new();
                 for (k, v) in &m.setup_fields {
@@ -1226,12 +1194,8 @@ pub fn import_live_state(
 
         let mut powers = Vec::new();
         for p in &cr.powers {
-            let pid = PowerId::from_model_id_str(&p.power_id).ok_or_else(|| {
-                KernelError::Unsupported {
-                    kind: "Power",
-                    id: p.power_id.clone(),
-                }
-            })?;
+            let pid = PowerId::from_model_id_str(&p.power_id)
+                .ok_or_else(|| KernelError::unsupported("Power", p.power_id.clone()))?;
             let _ = content.power_meta(pid)?;
             let mut pf = FieldMap::new();
             for (k, v) in &p.private_fields {
@@ -1272,12 +1236,10 @@ pub fn import_live_state(
         }
 
         let monster_id = match cr.monster_id.as_deref() {
-            Some(ms) => Some(MonsterId::from_model_id_str(ms).ok_or_else(|| {
-                KernelError::Unsupported {
-                    kind: "Monster",
-                    id: ms.to_owned(),
-                }
-            })?),
+            Some(ms) => Some(
+                MonsterId::from_model_id_str(ms)
+                    .ok_or_else(|| KernelError::unsupported("Monster", ms.to_owned()))?,
+            ),
             None => None,
         };
 
@@ -1301,9 +1263,11 @@ pub fn import_live_state(
         });
     }
 
-    let player_ch = player_creature_handle.ok_or_else(|| KernelError::SnapshotImport {
-        field_path: "creatures".to_owned(),
-        message: "no player creature found".to_owned(),
+    let player_ch = player_creature_handle.ok_or_else(|| {
+        KernelError::snapshot_import(
+            "creatures".to_owned(),
+            "no player creature found".to_owned(),
+        )
     })?;
 
     let player = PlayerInst {
@@ -1355,7 +1319,7 @@ pub fn import_live_state(
         };
     let root_relics = player.relics.clone();
     let root_relic_headers = root_relics.iter().map(RootRelicHeader::from_relic).collect();
-    let static_ctx = Arc::new(RootStaticContext {
+    let mut static_ctx_val = RootStaticContext {
         encounter_id: dto.encounter_id.clone(),
         encounter_is_weak: dto.encounter_is_weak || dto.encounter_id.ends_with("_WEAK"),
         room_type: parse_room_type(&dto.room_type)?,
@@ -1380,6 +1344,7 @@ pub fn import_live_state(
         root_deck_prefix_len,
         root_deck_cards,
         root_deck_handles,
+        root_deck_contiguous: false,
         root_card_floors,
         has_root_relics: true,
         root_relics,
@@ -1394,8 +1359,21 @@ pub fn import_live_state(
         root_initial_cards_len,
         root_combat_clutter_indices,
         root_all_clutter_indices,
+        root_initial_cards: Vec::new(),
+        root_card_fast_hash: Vec::new(),
+        root_combat_delta_len: 0,
+        root_clean_eot_mask: [0; 8],
+        has_root_card_hook_mask: false,
+        root_initial_card_hook_mask: [0; 8],
         pool_cache: crate::state::RootPoolCache::default(),
-    });
+    };
+    static_ctx_val.set_root_initial_cards(&cards, &player);
+    let card_meta_dirty = if static_ctx_val.root_combat_delta_len > 0 {
+        crate::state::CardMetaDirtyMask::CLEAN
+    } else {
+        crate::state::CardMetaDirtyMask::ALL_DIRTY
+    };
+    let static_ctx = Arc::new(static_ctx_val);
 
     let damage_history = dto
         .damage_history
@@ -1446,10 +1424,8 @@ pub fn import_live_state(
         ));
     }
     for oc in &dto.semantic_history.orb_channels {
-        let oid = OrbId::from_model_id_str(&oc.orb_id).ok_or_else(|| KernelError::Unsupported {
-            kind: "Orb",
-            id: oc.orb_id.clone(),
-        })?;
+        let oid = OrbId::from_model_id_str(&oc.orb_id)
+            .ok_or_else(|| KernelError::unsupported("Orb", oc.orb_id.clone()))?;
         semantic_history.orb_channels.push((
             parse_turn_key(&oc.turn, "semanticHistory.orbChannels[].turn.side")?,
             oc.actor_index,
@@ -1479,7 +1455,12 @@ pub fn import_live_state(
         ));
     }
 
-    Ok(BattleState {
+    let eot_card_cleanup_dirty = crate::state::EotCleanupDirtyFlag(
+        cards
+            .iter()
+            .any(|c| crate::state::BattleState::card_has_eot_cleanup_state(c, &card_extensions)),
+    );
+    let mut out_state = BattleState {
         static_ctx,
         current_side: parse_side(&dto.current_side, "currentSide")?,
         round_number: dto.round_number,
@@ -1526,7 +1507,15 @@ pub fn import_live_state(
         hook_cache: Default::default(),
         deck_dirty: DeckDirtyFlag(false),
         relic_dirty_mask: RelicDirtyMask(0),
-    })
+        handle_layout: crate::state::ContiguousHandlesFlag::default(),
+        card_meta_dirty,
+        extra_clutter_hint: crate::state::ExtraClutterHintFlag(!has_root_clutter_indices),
+        eot_card_cleanup_dirty,
+    };
+    let init_tk = out_state.current_turn_key();
+    out_state.semantic_history.refresh_turn_cache(&init_tk);
+    out_state.recompute_handle_layout();
+    Ok(out_state)
 }
 
 pub fn export_rng_streams(state: &BattleState) -> OracleRngStreamsDto {

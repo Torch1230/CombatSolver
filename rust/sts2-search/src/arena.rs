@@ -363,9 +363,18 @@ impl ChoiceArena {
             return (0, 0);
         }
         let start = offset as usize;
+        let dst_step_offset = self.steps_meta.len() as u32;
+        if len == 1 {
+            let (first_idx, idx_len) = src.steps_meta[start];
+            let i0 = first_idx as usize;
+            let i1 = i0 + idx_len as usize;
+            let base_idx = self.indices.len() as u32;
+            self.indices.extend_from_slice(&src.indices[i0..i1]);
+            self.steps_meta.push((base_idx, idx_len));
+            return (dst_step_offset, 1);
+        }
         let end = start + len as usize;
         let slice_meta = &src.steps_meta[start..end];
-        let dst_step_offset = self.steps_meta.len() as u32;
         self.steps_meta.reserve(slice_meta.len());
         let first_idx = slice_meta[0].0 as usize;
         let last = slice_meta[slice_meta.len() - 1];
@@ -750,6 +759,13 @@ impl NodeArena {
 
     #[inline]
     pub fn push_node(&mut self, node: SearchNode) -> NodeId {
+        self.push_node_with(|dst| unsafe {
+            dst.write(node);
+        })
+    }
+
+    #[inline(always)]
+    pub fn push_node_with<F: FnOnce(*mut SearchNode)>(&mut self, init: F) -> NodeId {
         let id = self.node_len;
         let chunk_idx = id >> NODE_CHUNK_SHIFT;
         let local_idx = id & NODE_CHUNK_MASK;
@@ -759,9 +775,11 @@ impl NodeArena {
         let chunk = &mut self.node_chunks[chunk_idx];
         debug_assert_eq!(chunk.len(), local_idx);
         debug_assert!(local_idx < chunk.capacity());
-        // SAFETY: Every chunk is created with `NODE_CHUNK_SIZE` capacity and `local_idx == chunk.len() < NODE_CHUNK_SIZE`.
+        // SAFETY: Every chunk has `NODE_CHUNK_SIZE` capacity, `local_idx == chunk.len() < NODE_CHUNK_SIZE`,
+        // and `set_len` commits the element after `init` writes a fully initialized `SearchNode`.
         unsafe {
-            chunk.as_mut_ptr().add(local_idx).write(node);
+            let dst = chunk.as_mut_ptr().add(local_idx);
+            init(dst);
             chunk.set_len(local_idx + 1);
         }
         self.node_len = id + 1;

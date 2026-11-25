@@ -107,9 +107,10 @@ fn use_internal(
 
     state.player.card_or_potion_effect_depth += 1;
     let outcome = content.potion_on_use(state, potion_id, target, choices, 0)?;
-    if let Some((req, next_step)) = outcome.needs_choice {
+    if let Some(req) = outcome.needs_choice {
+        let next_step = outcome.needs_choice_step;
         state.pending = Some(PendingContinuation {
-            request: req.clone(),
+            request: (*req).clone(),
             frames: smallvec::smallvec![ContinuationFrame::PotionUseResume {
                 potion_slot,
                 potion_id,
@@ -135,14 +136,14 @@ pub fn resume_potion_use(
 ) -> Result<Option<PendingContinuation>, KernelError> {
     let outcome =
         content.potion_on_use_resume_after_select(state, potion_id, target, selected, resume_step)?;
-    if let Some((next_req, next_step)) = outcome.needs_choice {
+    if let Some(next_req) = outcome.needs_choice {
         return Ok(Some(PendingContinuation {
-            request: next_req,
+            request: *next_req,
             frames: smallvec::smallvec![ContinuationFrame::PotionUseResume {
                 potion_slot,
                 potion_id,
                 target,
-                resume_step: next_step,
+                resume_step: outcome.needs_choice_step,
             }],
         }));
     }

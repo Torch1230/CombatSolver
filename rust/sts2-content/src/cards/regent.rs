@@ -185,10 +185,7 @@ static REGENT_CARD_META: LazyLock<[CardMeta; REGENT_CARD_COUNT]> = LazyLock::new
 
 pub fn card_meta(id: CardId) -> Result<&'static CardMeta, KernelError> {
     let Some(idx) = regent_index(id) else {
-        return Err(KernelError::Unsupported {
-            kind: "Card",
-            id: id.model_id_str().to_owned(),
-        });
+        return Err(KernelError::unsupported("Card", id.model_id_str().to_owned()));
     };
     Ok(&REGENT_CARD_META[idx])
 }
@@ -317,7 +314,7 @@ fn clone_card_in_combat(
     };
     let mut temp_flags = source.temp_flags;
     temp_flags.remove(CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::IS_DUPE);
-    state.cards.push(CardInst {
+    state.push_card(CardInst {
         handle: new_handle,
         deck_card_handle: sts2_kernel::OptCardHandle::NONE,
         clone_of_handle: sts2_kernel::OptCardHandle::some(source_handle),
@@ -606,10 +603,7 @@ pub fn on_play(
                     on_play_resume(content, state, ctx, &sel, 1)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::BigBang => {
@@ -680,10 +674,7 @@ pub fn on_play(
                 on_play_resume(content, state, ctx, &sel, 1)?;
                 Ok(CardPlayOutcome::default())
             }
-            SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                needs_choice: Some((req, 1)),
-                transform_into: None,
-            }),
+            SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
         },
         CardId::ChildOfTheStars => {
             apply_self_power(
@@ -808,10 +799,7 @@ pub fn on_play(
                     on_play_resume(content, state, ctx, &sel, 1)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::CrashLanding => {
@@ -896,10 +884,7 @@ pub fn on_play(
                     on_play_resume(content, state, ctx, &sel, 1)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::DefendRegent => {
@@ -1032,10 +1017,7 @@ pub fn on_play(
                     on_play_resume(content, state, ctx, &sel, 1)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::Glitterstream => {
@@ -1136,10 +1118,7 @@ pub fn on_play(
                     on_play_resume(content, state, ctx, &sel, 1)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::HiddenCache => {
@@ -1369,10 +1348,7 @@ pub fn on_play(
                     on_play_resume(content, state, ctx, &sel, 1)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::Plot => {
@@ -1437,10 +1413,7 @@ pub fn on_play(
                     finish_quasar_choice(content, state, &cands, &sel)?;
                     Ok(CardPlayOutcome::default())
                 }
-                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                    needs_choice: Some((req, 1)),
-                    transform_into: None,
-                }),
+                SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
             }
         }
         CardId::Radiate => {
@@ -1610,10 +1583,7 @@ pub fn on_play(
                 on_play_resume(content, state, ctx, &sel, 1)?;
                 Ok(CardPlayOutcome::default())
             }
-            SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome {
-                needs_choice: Some((req, 1)),
-                transform_into: None,
-            }),
+            SelectResult::NeedsChoice(req) => Ok(CardPlayOutcome::with_choice(req, 1)),
         },
         CardId::Tyranny => {
             apply_self_power(content, state, ctx, PowerId::TyrannyPower, 1)?;
@@ -1636,10 +1606,10 @@ pub fn on_play(
             forge::forge(state, content, Dec::from_i32(if upg { 9 } else { 7 }))?;
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "Card",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "Card",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1655,10 +1625,10 @@ pub fn on_play_resume(
         .ok_or_else(|| KernelError::InvalidState("missing card".to_owned()))?;
     let upg = card.upgrade_level > 0;
     if resume_step != 1 {
-        return Err(KernelError::Unsupported {
-            kind: "CardResume",
-            id: card.id.model_id_str().to_owned(),
-        });
+        return Err(KernelError::unsupported(
+            "CardResume",
+            card.id.model_id_str().to_owned(),
+        ));
     }
 
     match card.id {
@@ -1711,10 +1681,10 @@ pub fn on_play_resume(
                     }
                     let outcome = autoplay::from_cards(state, content, &[sel], None, false)?;
                     if let StepOutcome::NeedsChoice(req) = outcome {
-                        return Err(KernelError::Unsupported {
-                            kind: "CardAutoplayChoice",
-                            id: req.source_id.into_owned(),
-                        });
+                        return Err(KernelError::unsupported(
+                            "CardAutoplayChoice",
+                            req.source_id.into_owned(),
+                        ));
                     }
                 }
             }
@@ -1749,10 +1719,10 @@ pub fn on_play_resume(
             }
             Ok(CardPlayOutcome::default())
         }
-        _ => Err(KernelError::Unsupported {
-            kind: "CardResume",
-            id: card.id.model_id_str().to_owned(),
-        }),
+        _ => Err(KernelError::unsupported(
+            "CardResume",
+            card.id.model_id_str().to_owned(),
+        )),
     }
 }
 
@@ -1853,10 +1823,10 @@ pub fn dispatch_hook(
             {
                 let outcome = autoplay::from_cards(state, content, &[card], None, false)?;
                 if let StepOutcome::NeedsChoice(req) = outcome {
-                    return Err(KernelError::Unsupported {
-                        kind: "CardHookChoice",
-                        id: req.source_id.into_owned(),
-                    });
+                    return Err(KernelError::unsupported(
+                        "CardHookChoice",
+                        req.source_id.into_owned(),
+                    ));
                 }
             }
             Ok(HookResult::default())
@@ -1891,16 +1861,24 @@ pub fn dispatch_hook(
         }
         CardId::MakeItSo => {
             if slot == HookSlot::AfterCardPlayedLate {
-                if let HookArgs::CardPlay(ctx) = args {
-                    if let Some(played_ci) = state.card(ctx.card) {
-                        let is_skill = content.card_meta(played_ci.id)?.card_type == CardType::Skill;
-                        let in_non_hand_combat_pile = matches!(
-                            ci.pile,
-                            PileType::Draw | PileType::Discard | PileType::Exhaust
-                        );
-                        let count = state.player.counters.skill_cards_played_this_turn;
-                        if is_skill && in_non_hand_combat_pile && count > 0 && count % 3 == 0 {
-                            card_pile::add_sync(state, card, PileType::Hand, CardPilePosition::Bottom);
+                let count = state.player.counters.skill_cards_played_this_turn;
+                let in_non_hand_combat_pile = matches!(
+                    ci.pile,
+                    PileType::Draw | PileType::Discard | PileType::Exhaust
+                );
+                if in_non_hand_combat_pile && count > 0 && count % 3 == 0 {
+                    if let HookArgs::CardPlay(ctx) = args {
+                        if let Some(played_ci) = state.card(ctx.card) {
+                            if state.fast_card_meta(content, played_ci.id)?.card_type
+                                == CardType::Skill
+                            {
+                                card_pile::add_sync(
+                                    state,
+                                    card,
+                                    PileType::Hand,
+                                    CardPilePosition::Bottom,
+                                );
+                            }
                         }
                     }
                 }
@@ -1947,10 +1925,10 @@ pub fn dispatch_hook(
         }
         _ => {
             let _ = card_meta(ci.id)?;
-            Err(KernelError::Unsupported {
-                kind: "CardHook",
-                id: ci.id.model_id_str().to_owned(),
-            })
+            Err(KernelError::unsupported(
+                "CardHook",
+                ci.id.model_id_str().to_owned(),
+            ))
         }
     }
 }
@@ -1968,10 +1946,10 @@ pub fn on_turn_end_in_hand(
         .flags
         .contains(sts2_types::CardStaticFlags::HAS_TURN_END_IN_HAND)
     {
-        return Err(KernelError::Unsupported {
-            kind: "CardTurnEndInHand",
-            id: id.model_id_str().to_owned(),
-        });
+        return Err(KernelError::unsupported(
+            "CardTurnEndInHand",
+            id.model_id_str().to_owned(),
+        ));
     }
     Ok(())
 }

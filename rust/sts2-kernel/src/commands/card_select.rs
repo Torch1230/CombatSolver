@@ -8,8 +8,10 @@ use sts2_types::PileType;
 
 pub enum SelectResult {
     Selected(SmallVec<[CardHandle; 8]>),
-    NeedsChoice(ChoiceRequest),
+    NeedsChoice(Box<ChoiceRequest>),
 }
+
+const _: () = assert!(std::mem::size_of::<SelectResult>() <= 48);
 
 /// Exact port of `CardSelectCmd.FromHandForDiscard` + `SelectCardsAsync`:
 /// - Returns empty if combat is over/ending or 0 candidates.
@@ -76,7 +78,7 @@ pub fn select_cards(
         return resolve_selection_indices(candidates, effective_min, effective_max, cancelable, &indices);
     }
 
-    Ok(SelectResult::NeedsChoice(ChoiceRequest {
+    Ok(SelectResult::NeedsChoice(Box::new(ChoiceRequest {
         timing,
         source_id: source_id.into(),
         source_pile,
@@ -84,7 +86,7 @@ pub fn select_cards(
         max_count: effective_max,
         candidates: candidates.iter().copied().collect(),
         can_skip: cancelable,
-    }))
+    })))
 }
 
 pub fn resolve_selection_indices(
@@ -94,6 +96,16 @@ pub fn resolve_selection_indices(
     cancelable: bool,
     indices: &[usize],
 ) -> Result<SelectResult, KernelError> {
+    if indices.len() == 1 && min_count <= 1 && max_count >= 1 {
+        let idx = indices[0];
+        let Some(&card) = candidates.get(idx) else {
+            return Err(KernelError::InvalidAction(format!(
+                "choice index {idx} out of range (candidates={})",
+                candidates.len()
+            )));
+        };
+        return Ok(SelectResult::Selected(smallvec::smallvec![card]));
+    }
     if (cancelable && indices.is_empty()) || (indices.len() >= min_count && indices.len() <= max_count) {
         let mut selected = SmallVec::<[CardHandle; 8]>::new();
         for &idx in indices {

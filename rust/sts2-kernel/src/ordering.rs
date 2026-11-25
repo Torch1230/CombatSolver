@@ -5,7 +5,7 @@ use crate::state::{BattleState, CardHandle, CardInst};
 use core::cmp::Ordering;
 use smallvec::SmallVec;
 use std::sync::LazyLock;
-use sts2_types::{AfflictionId, CardId, Dec, EnchantmentId, Rng};
+use sts2_types::{AfflictionId, CardId, CardStaticFlags, Dec, EnchantmentId, HookSlot, Rng};
 
 #[inline(always)]
 pub fn resolve_local_energy_cost_card(state: &BattleState, card: &CardInst, is_x_energy: bool) -> i32 {
@@ -340,22 +340,16 @@ fn compare_shuffle_tiebreak(
     Ok(Ordering::Equal)
 }
 
-/// Exact port of `ListExtensions.StableShuffle`: sort by `CardModel.CompareTo`, then `UnstableShuffle`.
-pub fn stable_shuffle_cards(
+fn stable_sort_shuffle_cards_generic(
     state: &mut BattleState,
     content: &dyn ContentDispatcher,
     handles: &mut [CardHandle],
-    rng: &mut Rng,
 ) -> Result<(), KernelError> {
-    if handles.len() <= 1 {
-        rng.unstable_shuffle(handles);
-        return Ok(());
-    }
     let n = handles.len();
     let card_ranks = &*CARD_MODEL_ORDER;
     let ench_ranks = &*ENCH_MODEL_ORDER;
     let aff_ranks = &*AFF_MODEL_ORDER;
-    let mut keys: SmallVec<[ShuffleCardKey; 64]> = SmallVec::with_capacity(n);
+    let mut keys: SmallVec<[ShuffleCardKey; 128]> = SmallVec::with_capacity(n);
     for (orig_idx, &h) in handles.iter().enumerate() {
         let c = state
             .card(h)
@@ -386,7 +380,7 @@ pub fn stable_shuffle_cards(
             .then_with(|| a.aff_rank.cmp(&b.aff_rank))
             .then_with(|| a.orig_idx.cmp(&b.orig_idx))
     });
-    let mut cost_cache: SmallVec<[i32; 64]> = SmallVec::new();
+    let mut cost_cache: SmallVec<[i32; 256]> = SmallVec::new();
     let mut start = 0usize;
     while start < n {
         let first = keys[start];
@@ -411,17 +405,17 @@ pub fn stable_shuffle_cards(
                     .hook_cache
                     .masks
                     .combat_combined
-                    .contains(sts2_types::HookSlot::TryModifyEnergyCostInCombat)
+                    .contains(HookSlot::TryModifyEnergyCostInCombat)
                 && !state
                     .hook_cache
                     .masks
                     .combat_combined
-                    .contains(sts2_types::HookSlot::TryModifyEnergyCostInCombatLate);
+                    .contains(HookSlot::TryModifyEnergyCostInCombatLate);
             if !has_dyn_vars && no_energy_hooks {
                 let is_x = state
                     .fast_card_meta(content, first.card_id)?
                     .flags
-                    .contains(sts2_types::CardStaticFlags::IS_X_ENERGY_COST);
+                    .contains(CardStaticFlags::IS_X_ENERGY_COST);
                 let first_c = state
                     .card(first.handle)
                     .ok_or_else(|| KernelError::InvalidState("missing card handle".to_owned()))?;
@@ -491,6 +485,116 @@ pub fn stable_shuffle_cards(
     }
     for (dst, k) in handles.iter_mut().zip(keys.iter()) {
         *dst = k.handle;
+    }
+    Ok(())
+}
+
+/// Exact port of `ListExtensions.StableShuffle`: sort by `CardModel.CompareTo`, then `UnstableShuffle`.
+pub fn stable_shuffle_cards(
+    state: &mut BattleState,
+    content: &dyn ContentDispatcher,
+    handles: &mut [CardHandle],
+    rng: &mut Rng,
+) -> Result<(), KernelError> {
+    if handles.len() <= 1 {
+        rng.unstable_shuffle(handles);
+        return Ok(());
+    }
+    let can_try_fast = handles.len() <= u16::MAX as usize
+        && state.hook_cache.dirty_mask == 0
+        && state.hook_cache.cached_tables.is_some()
+        && !state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::TryModifyEnergyCostInCombat)
+        && !state
+            .hook_cache
+            .masks
+            .combat_combined
+            .contains(HookSlot::TryModifyEnergyCostInCombatLate)
+        && CardId::COUNT <= 1024
+        && EnchantmentId::COUNT < 255
+        && AfflictionId::COUNT < 255;
+
+    let mut did_fast = false;
+    if can_try_fast {
+        #[cfg(debug_assertions)]
+        let mut dbg_orig: SmallVec<[CardHandle; 256]> = SmallVec::from_slice(handles);
+        let tables = state.hook_cache.cached_tables.expect("checked above");
+        let card_ranks = &*CARD_MODEL_ORDER;
+        let ench_ranks = &*ENCH_MODEL_ORDER;
+        let aff_ranks = &*AFF_MODEL_ORDER;
+        let mut fast_keys: SmallVec<[(u64, CardHandle); 256]> =
+            SmallVec::with_capacity(handles.len());
+        let mut fast_ok = true;
+        let hlen = handles.len();
+        for (orig_idx, &h) in handles.iter().enumerate() {
+            #[cfg(target_arch = "x86_64")]
+            if orig_idx + 2 < hlen {
+                let ahead = unsafe { *handles.get_unchecked(orig_idx + 2) }
+                    .0
+                    .wrapping_sub(1) as usize;
+                if ahead < state.cards.len() {
+                    unsafe {
+                        core::arch::x86_64::_mm_prefetch::<{ core::arch::x86_64::_MM_HINT_T0 }>(
+                            state.cards.as_ptr().add(ahead).cast::<i8>(),
+                        );
+                    }
+                }
+            }
+            let c = state
+                .card(h)
+                .ok_or_else(|| KernelError::InvalidState("missing card in shuffle".to_owned()))?;
+            if card_has_dynamic_comparison_values(c.id)
+                || !(0..=63).contains(&c.upgrade_level)
+                || !(0..=255).contains(&c.base_replay_count)
+            {
+                fast_ok = false;
+                break;
+            }
+            let is_x = tables.card_metas[c.id as usize]
+                .flags
+                .contains(CardStaticFlags::IS_X_ENERGY_COST);
+            let cost = local_cmp_cost(state, c, is_x);
+            if !(0..=255).contains(&cost) {
+                fast_ok = false;
+                break;
+            }
+            let card_rank = card_ranks[c.id as usize];
+            debug_assert!(card_rank < 1024);
+            let ench_rank = state
+                .card_ext(c.ext_index)
+                .and_then(|e| e.enchantment.as_ref().map(|x| ench_ranks[x.id as usize] + 1))
+                .unwrap_or(0);
+            let aff_rank = c
+                .affliction
+                .map_or(0, |x| aff_ranks[x.id as usize] + 1);
+            debug_assert!(ench_rank <= 255 && aff_rank <= 255);
+            let key: u64 = ((card_rank as u64) << 54)
+                | ((c.upgrade_level as u64) << 48)
+                | ((ench_rank as u64) << 40)
+                | ((aff_rank as u64) << 32)
+                | ((cost as u64) << 24)
+                | ((c.base_replay_count as u64) << 16)
+                | (orig_idx as u64);
+            fast_keys.push((key, h));
+        }
+        if fast_ok {
+            fast_keys.sort_unstable_by_key(|&(k, _)| k);
+            for (dst, &(_, h)) in handles.iter_mut().zip(fast_keys.iter()) {
+                *dst = h;
+            }
+            #[cfg(debug_assertions)]
+            {
+                stable_sort_shuffle_cards_generic(state, content, &mut dbg_orig)?;
+                debug_assert_eq!(handles, dbg_orig.as_slice());
+            }
+            did_fast = true;
+        }
+    }
+    if !did_fast {
+        stable_sort_shuffle_cards_generic(state, content, handles)?;
     }
     rng.unstable_shuffle(handles);
     Ok(())

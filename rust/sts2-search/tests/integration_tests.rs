@@ -250,6 +250,10 @@ fn build_combat(
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
 
     CombatEngine::start_combat(&mut state, &content).unwrap();
@@ -1747,7 +1751,7 @@ fn pack_unpack_roundtrip_preserves_compact_cards_and_counters() {
 
     // Populate card extensions, upgrades, overrides, affliction, flags, and transform on cards.
     root.card_extensions.push(CardExtension {
-        local_energy_modifiers: smallvec::smallvec![LocalEnergyModifier {
+        local_energy_modifiers: vec![LocalEnergyModifier {
             kind: LocalEnergyModifierKind::AddThisTurn,
             amount: -1,
             is_reduce_only: true,
@@ -1790,7 +1794,7 @@ fn pack_unpack_roundtrip_preserves_compact_cards_and_counters() {
     let mut restored = empty_scratch_state(root.static_ctx.clone());
     // Seed an existing card_extension entry to verify in-place reuse does not leak stale fields.
     restored.card_extensions.push(CardExtension {
-        local_energy_modifiers: smallvec::smallvec![LocalEnergyModifier {
+        local_energy_modifiers: vec![LocalEnergyModifier {
             kind: LocalEnergyModifierKind::FreeThisCombat,
             amount: 0,
             is_reduce_only: false,
@@ -2577,7 +2581,7 @@ fn eval_features_sandpit_wuppy_sovereign_blade_and_fool() {
     let mut pf = sts2_kernel::state::FieldMap::default();
     pf.insert("SovereignBlade._damage", FieldValue::Int(25));
     s_blade.card_extensions.push(CardExtension {
-        local_energy_modifiers: SmallVec::new(),
+        local_energy_modifiers: Vec::new(),
         enchantment: None,
         private_fields: pf,
     });

@@ -1969,7 +1969,7 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
             2 => {
                 let paused_listener = read_hook_listener(r)?;
                 let len = r.var_u32()? as usize;
-                let mut remaining_listeners = SmallVec::with_capacity(len);
+                let mut remaining_listeners = Vec::with_capacity(len);
                 for _ in 0..len {
                     remaining_listeners.push(read_hook_listener(r)?);
                 }
@@ -1983,7 +1983,7 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
             3 => {
                 let paused_listener = read_hook_listener(r)?;
                 let len = r.var_u32()? as usize;
-                let mut remaining_listeners = SmallVec::with_capacity(len);
+                let mut remaining_listeners = Vec::with_capacity(len);
                 for _ in 0..len {
                     remaining_listeners.push(read_hook_listener(r)?);
                 }
@@ -2006,7 +2006,7 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
             4 => {
                 let paused_listener = read_hook_listener(r)?;
                 let len = r.var_u32()? as usize;
-                let mut remaining_listeners = SmallVec::with_capacity(len);
+                let mut remaining_listeners = Vec::with_capacity(len);
                 for _ in 0..len {
                     remaining_listeners.push(read_hook_listener(r)?);
                 }
@@ -2072,7 +2072,7 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
             }
             10 => {
                 let len = r.var_u32()? as usize;
-                let mut remaining_listeners = SmallVec::with_capacity(len);
+                let mut remaining_listeners = Vec::with_capacity(len);
                 for _ in 0..len {
                     remaining_listeners.push(read_hook_listener(r)?);
                 }
@@ -2129,6 +2129,120 @@ fn read_relic_into(
     dr.stack_count = stack_count;
     dr.floor_added_to_deck = floor_added_to_deck;
     r.cow_field_map_into(&mut dr.private_fields)
+}
+
+#[inline(never)]
+fn write_card_non_fast(
+    w: &mut ByteWriter<'_>,
+    card: &CardInst,
+    shape_hdr_fast: bool,
+    use_root_floor: bool,
+    remaining_after: usize,
+) {
+    if shape_hdr_fast {
+        let base_flags = ((card.pile as u8) & 0x0F)
+            | (u8::from(card.removed_from_state) << 4)
+            | (u8::from(card.upgrade_level != 0) << 5)
+            | (u8::from(use_root_floor) << 6);
+        let cost_byte = card.canonical_base_energy_cost as i8 as u8;
+        let deck_h = card.deck_card_handle.raw() as u16;
+        let rare_clean = card.is_rare_clean();
+        if card.ext_index.is_none() && rare_clean {
+            if card.base_energy_cost == card.canonical_base_energy_cost {
+                if let Some(aff) = card.affliction {
+                    if (-32768..=32767).contains(&aff.amount) {
+                        w.ensure(13 + remaining_after * 8);
+                        let word = (base_flags as u64)
+                            | ((cost_byte as u64) << 8)
+                            | ((card.id as u16 as u64) << 16)
+                            | ((card.local_keywords.bits() as u64) << 32)
+                            | ((deck_h as u64) << 48);
+                        let aff_word = (aff.id as u16 as u32)
+                            | (((aff.amount as i16 as u16) as u32) << 16);
+                        unsafe {
+                            w.u8_unchecked(1);
+                            w.u64_unchecked(word);
+                            w.u32_unchecked(aff_word);
+                        }
+                        return;
+                    }
+                }
+            } else if card.affliction.is_none()
+                && (((card.base_energy_cost as i32 + 128) as u32) & !0xFFu32) == 0
+            {
+                w.ensure(10 + remaining_after * 8);
+                let word = (base_flags as u64)
+                    | ((cost_byte as u64) << 8)
+                    | ((card.id as u16 as u64) << 16)
+                    | ((card.local_keywords.bits() as u64) << 32)
+                    | ((deck_h as u64) << 48);
+                let actual_cost_byte = card.base_energy_cost as i8 as u8;
+                unsafe {
+                    w.u8_unchecked(2);
+                    w.u64_unchecked(word);
+                    w.u8_unchecked(actual_cost_byte);
+                }
+                return;
+            }
+        } else if rare_clean
+            && card.affliction.is_none()
+            && card.base_energy_cost == card.canonical_base_energy_cost
+        {
+            if let Some(ei) = card.ext_index {
+                if ei <= u16::MAX as u32 {
+                    w.ensure(11 + remaining_after * 8);
+                    let word = (base_flags as u64)
+                        | ((cost_byte as u64) << 8)
+                        | ((card.id as u16 as u64) << 16)
+                        | ((card.local_keywords.bits() as u64) << 32)
+                        | ((deck_h as u64) << 48);
+                    unsafe {
+                        w.u8_unchecked(3);
+                        w.u64_unchecked(word);
+                        w.u16_unchecked(ei as u16);
+                    }
+                    return;
+                }
+            }
+        } else if card.ext_index.is_none()
+            && card.affliction.is_none()
+            && card.base_energy_cost == card.canonical_base_energy_cost
+            && (card.keywords_added_from_outside.bits()
+                | card.keywords_removed_from_outside.bits()
+                | (card.captured_energy_x_value as u16)
+                | (card.base_replay_count as u16)
+                | card.temp_star_cost_override_this_turn.raw()
+                | card.temp_cost_override_this_combat.raw())
+                == 0
+        {
+            let word = (base_flags as u64)
+                | ((cost_byte as u64) << 8)
+                | ((card.id as u16 as u64) << 16)
+                | ((card.local_keywords.bits() as u64) << 32)
+                | ((deck_h as u64) << 48);
+            if card.temp_cost_override_this_turn.is_none()
+                && card.temp_cost_override_this_turn_or_until_played.is_none()
+            {
+                w.ensure(11 + remaining_after * 8);
+                unsafe {
+                    w.u8_unchecked(4);
+                    w.u64_unchecked(word);
+                    w.u16_unchecked(card.temp_flags.bits());
+                }
+            } else {
+                w.ensure(15 + remaining_after * 8);
+                unsafe {
+                    w.u8_unchecked(5);
+                    w.u64_unchecked(word);
+                    w.u16_unchecked(card.temp_flags.bits());
+                    w.u16_unchecked(card.temp_cost_override_this_turn.raw());
+                    w.u16_unchecked(card.temp_cost_override_this_turn_or_until_played.raw());
+                }
+            }
+            return;
+        }
+    }
+    write_card_slow(w, card, remaining_after);
 }
 
 #[inline(never)]
@@ -2274,6 +2388,87 @@ fn write_damage_history_slow(
     }
 }
 
+#[inline(always)]
+fn mask_range_64_packer(lo: usize, hi: usize) -> u64 {
+    if lo >= hi {
+        0
+    } else {
+        let a = if lo >= 64 { u64::MAX } else { (1u64 << lo) - 1 };
+        let b = if hi >= 64 { u64::MAX } else { (1u64 << hi) - 1 };
+        b & !a
+    }
+}
+
+#[inline(always)]
+fn write_packed_card<const CONTIGUOUS: bool, const CHECK_ROOT_FLOORS: bool>(
+    w: &mut ByteWriter<'_>,
+    card: &CardInst,
+    card_abs_idx: usize,
+    root_floors: &[OptI16],
+    root_floors_len: usize,
+    remaining_after: usize,
+) {
+    #[cfg(debug_assertions)]
+    if CONTIGUOUS {
+        debug_assert_eq!(card.handle.0, (card_abs_idx + 1) as u32);
+    }
+    let floor_raw = card.floor_added_to_deck.raw();
+    let use_root_floor = CHECK_ROOT_FLOORS && floor_raw != 0;
+    let handle_ok = CONTIGUOUS || card.handle.0 == (card_abs_idx + 1) as u32;
+    let floor_ok = if CHECK_ROOT_FLOORS {
+        !use_root_floor
+            || (card_abs_idx < root_floors_len
+                && floor_raw == root_floors[card_abs_idx].raw())
+    } else {
+        floor_raw == 0
+    };
+    let shape_hdr_fast = handle_ok
+        && card.clone_of_handle.is_none()
+        && card.transform_into_after_play.is_none()
+        && ((card.upgrade_level as u32) & !1u32) == 0
+        && (((card.canonical_base_energy_cost as i32 + 128) as u32) & !0xFFu32) == 0
+        && (card.deck_card_handle.raw() >> 16) == 0
+        && floor_ok;
+    if shape_hdr_fast
+        && card.ext_index.is_none()
+        && card.affliction.is_none()
+        && card.is_rare_clean()
+    {
+        let base_flags = ((card.pile as u8) & 0x0F)
+            | (u8::from(card.removed_from_state) << 4)
+            | (u8::from(card.upgrade_level != 0) << 5)
+            | (u8::from(use_root_floor) << 6);
+        let cost_byte = card.canonical_base_energy_cost as i8 as u8;
+        let deck_h = card.deck_card_handle.raw() as u16;
+        if card.base_energy_cost == card.canonical_base_energy_cost {
+            let word = ((0x80u8 | base_flags) as u64)
+                | ((cost_byte as u64) << 8)
+                | ((card.id as u16 as u64) << 16)
+                | ((card.local_keywords.bits() as u64) << 32)
+                | ((deck_h as u64) << 48);
+            unsafe {
+                w.u64_unchecked(word);
+            }
+            return;
+        } else if (((card.base_energy_cost as i32 + 128) as u32) & !0xFFu32) == 0 {
+            w.ensure(10 + remaining_after * 8);
+            let word = (base_flags as u64)
+                | ((cost_byte as u64) << 8)
+                | ((card.id as u16 as u64) << 16)
+                | ((card.local_keywords.bits() as u64) << 32)
+                | ((deck_h as u64) << 48);
+            let actual_cost_byte = card.base_energy_cost as i8 as u8;
+            unsafe {
+                w.u8_unchecked(2);
+                w.u64_unchecked(word);
+                w.u8_unchecked(actual_cost_byte);
+            }
+            return;
+        }
+    }
+    write_card_non_fast(w, card, shape_hdr_fast, use_root_floor, remaining_after);
+}
+
 /// Packs the entire mutable `BattleState` into a compact variable-length binary record.
 /// Static run context (`static_ctx`) is shared via `Arc<RootStaticContext>` and not duplicated per node.
 pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
@@ -2282,10 +2477,19 @@ pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
     let prefix_len = sctx.root_deck_prefix_len;
     let deck_unchanged =
         !state.deck_dirty.0 && prefix_len > 0 && state.cards.len() >= prefix_len;
+    let delta_len = sctx.root_combat_delta_len;
+    let combat_cards_delta = deck_unchanged
+        && delta_len > prefix_len
+        && state.cards.len() >= delta_len
+        && state.handle_layout.cards;
     let card_start = if deck_unchanged { prefix_len } else { 0 };
-    let cards_to_pack = state.cards.len() - card_start;
+    let cards_to_pack_est = if combat_cards_delta {
+        (state.cards.len() - delta_len) + 4
+    } else {
+        state.cards.len() - card_start
+    };
     let est_size = 512
-        + cards_to_pack * 10
+        + cards_to_pack_est * 10
         + state.creatures.len() * 64
         + state.damage_history.len() * 12;
     out.reserve(est_size);
@@ -2313,7 +2517,9 @@ pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
     let pack_flags = u8::from(seed_matches_root)
         | (u8::from(deck_unchanged) << 1)
         | (u8::from(u16_handles) << 2)
-        | (u8::from(relics_delta) << 3);
+        | (u8::from(relics_delta) << 3)
+        | (u8::from(combat_cards_delta) << 4)
+        | (u8::from(state.eot_card_cleanup_dirty.0) << 5);
 
     // Header scalars (batched direct pointer writes)
     w.ensure(45);
@@ -2558,131 +2764,129 @@ pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
         }
     }
 
-    // Cards (compact 8-byte single-u64 record / 13-byte afflicted fast record / full fallback)
+    // Cards (delta-encoded for root combat cards when enabled, otherwise full tail)
     let root_floors = sctx.root_card_floors.as_slice();
     let root_floors_len = root_floors.len();
-    w.ensure(5 + cards_to_pack * 8);
-    unsafe {
-        w.var_u32_unchecked(cards_to_pack as u32);
-    }
-    for (idx, card) in state.cards[card_start..].iter().enumerate() {
-        let card_abs_idx = card_start + idx;
-        let floor_raw = card.floor_added_to_deck.raw();
-        let use_root_floor = floor_raw != 0;
-        let shape_hdr_fast = card.handle.0 == (card_abs_idx + 1) as u32
-            && card.clone_of_handle.is_none()
-            && card.transform_into_after_play.is_none()
-            && ((card.upgrade_level as u32) & !1u32) == 0
-            && (((card.canonical_base_energy_cost as i32 + 128) as u32) & !0xFFu32) == 0
-            && (card.deck_card_handle.raw() >> 16) == 0
-            && (!use_root_floor
-                || (card_abs_idx < root_floors_len
-                    && floor_raw == root_floors[card_abs_idx].raw()));
-        if shape_hdr_fast {
-            let base_flags = ((card.pile as u8) & 0x0F)
-                | (u8::from(card.removed_from_state) << 4)
-                | (u8::from(card.upgrade_level != 0) << 5)
-                | (u8::from(use_root_floor) << 6);
-            let cost_byte = card.canonical_base_energy_cost as i8 as u8;
-            let deck_h = card.deck_card_handle.raw() as u16;
-            let rare_clean = card.is_rare_clean();
-            if card.ext_index.is_none() && rare_clean {
-                if card.base_energy_cost == card.canonical_base_energy_cost {
-                    if card.affliction.is_none() {
-                        let word = ((0x80u8 | base_flags) as u64)
-                            | ((cost_byte as u64) << 8)
-                            | ((card.id as u16 as u64) << 16)
-                            | ((card.local_keywords.bits() as u64) << 32)
-                            | ((deck_h as u64) << 48);
-                        unsafe {
-                            w.u64_unchecked(word);
-                        }
-                        continue;
-                    }
-                    if let Some(aff) = card.affliction {
-                        if (-32768..=32767).contains(&aff.amount) {
-                            w.ensure(13 + (cards_to_pack - idx - 1) * 8);
-                            let word = (base_flags as u64)
-                                | ((cost_byte as u64) << 8)
-                                | ((card.id as u16 as u64) << 16)
-                                | ((card.local_keywords.bits() as u64) << 32)
-                                | ((deck_h as u64) << 48);
-                            let aff_word = (aff.id as u16 as u32)
-                                | (((aff.amount as i16 as u16) as u32) << 16);
-                            unsafe {
-                                w.u8_unchecked(1);
-                                w.u64_unchecked(word);
-                                w.u32_unchecked(aff_word);
-                            }
-                            continue;
-                        }
-                    }
-                } else if card.affliction.is_none()
-                    && (((card.base_energy_cost as i32 + 128) as u32) & !0xFFu32) == 0
-                {
-                    w.ensure(10 + (cards_to_pack - idx - 1) * 8);
-                    let word = (base_flags as u64)
-                        | ((cost_byte as u64) << 8)
-                        | ((card.id as u16 as u64) << 16)
-                        | ((card.local_keywords.bits() as u64) << 32)
-                        | ((deck_h as u64) << 48);
-                    let actual_cost_byte = card.base_energy_cost as i8 as u8;
-                    unsafe {
-                        w.u8_unchecked(2);
-                        w.u64_unchecked(word);
-                        w.u8_unchecked(actual_cost_byte);
-                    }
-                    continue;
-                }
-            } else if rare_clean
-                && card.affliction.is_none()
-                && card.base_energy_cost == card.canonical_base_energy_cost
+    if combat_cards_delta {
+        let extra_len = state.cards.len() - delta_len;
+        let word_count = (delta_len + 63) >> 6;
+        let mut dirty_words = [0u64; 8];
+        let mut dirty_count = 0usize;
+        for w_idx in 0..word_count {
+            let base = w_idx << 6;
+            let lo = prefix_len.saturating_sub(base).min(64);
+            let hi = (delta_len - base).min(64);
+            let vmask = mask_range_64_packer(lo, hi);
+            let d = state.card_meta_dirty.0[w_idx] & vmask;
+            dirty_words[w_idx] = d;
+            dirty_count += d.count_ones() as usize;
+            #[cfg(debug_assertions)]
             {
-                if let Some(ei) = card.ext_index {
-                    if ei <= u16::MAX as u32 {
-                        w.ensure(11 + (cards_to_pack - idx - 1) * 8);
-                        let word = (base_flags as u64)
-                            | ((cost_byte as u64) << 8)
-                            | ((card.id as u16 as u64) << 16)
-                            | ((card.local_keywords.bits() as u64) << 32)
-                            | ((deck_h as u64) << 48);
-                        unsafe {
-                            w.u8_unchecked(3);
-                            w.u64_unchecked(word);
-                            w.u16_unchecked(ei as u16);
+                let mut clean = vmask & !d;
+                while clean != 0 {
+                    let idx = base + clean.trailing_zeros() as usize;
+                    clean &= clean - 1;
+                    let cur = &state.cards[idx];
+                    let root_c = &sctx.root_initial_cards[idx];
+                    debug_assert_eq!(
+                        CardInst {
+                            pile: root_c.pile,
+                            ..*cur
+                        },
+                        *root_c,
+                        "combat card[{idx}] modified without mark_card_meta_dirty"
+                    );
+                    let matches_pile = match cur.pile {
+                        PileType::Hand => p.hand.contains(&cur.handle),
+                        PileType::Draw => p.draw.contains(&cur.handle),
+                        PileType::Discard => p.discard.contains(&cur.handle),
+                        PileType::Exhaust => p.exhaust.contains(&cur.handle),
+                        PileType::Play => p.play.contains(&cur.handle),
+                        PileType::None => {
+                            !p.hand.contains(&cur.handle)
+                                && !p.draw.contains(&cur.handle)
+                                && !p.discard.contains(&cur.handle)
+                                && !p.exhaust.contains(&cur.handle)
+                                && !p.play.contains(&cur.handle)
                         }
-                        continue;
-                    }
+                        PileType::Deck => false,
+                    };
+                    debug_assert!(
+                        matches_pile,
+                        "clean combat card[{idx}] pile {:?} out of sync with player piles",
+                        cur.pile
+                    );
                 }
-            } else if card.ext_index.is_none()
-                && card.affliction.is_none()
-                && card.base_energy_cost == card.canonical_base_energy_cost
-                && (card.keywords_added_from_outside.bits()
-                    | card.keywords_removed_from_outside.bits()
-                    | (card.captured_energy_x_value as u16)
-                    | (card.base_replay_count as u16)
-                    | card.temp_star_cost_override_this_turn.raw()
-                    | card.temp_cost_override_this_turn.raw()
-                    | card.temp_cost_override_this_turn_or_until_played.raw()
-                    | card.temp_cost_override_this_combat.raw())
-                    == 0
-            {
-                w.ensure(11 + (cards_to_pack - idx - 1) * 8);
-                let word = (base_flags as u64)
-                    | ((cost_byte as u64) << 8)
-                    | ((card.id as u16 as u64) << 16)
-                    | ((card.local_keywords.bits() as u64) << 32)
-                    | ((deck_h as u64) << 48);
-                unsafe {
-                    w.u8_unchecked(4);
-                    w.u64_unchecked(word);
-                    w.u16_unchecked(card.temp_flags.bits());
-                }
-                continue;
             }
         }
-
-        write_card_slow(&mut w, card, cards_to_pack - idx - 1);
+        w.ensure(5 + word_count * 8 + (dirty_count + extra_len) * 8);
+        unsafe {
+            w.var_u32_unchecked(extra_len as u32);
+            for w_idx in 0..word_count {
+                w.u64_unchecked(dirty_words[w_idx]);
+            }
+        }
+        let mut rem_dirty = dirty_count;
+        for w_idx in 0..word_count {
+            let mut bits = dirty_words[w_idx];
+            let base = w_idx << 6;
+            while bits != 0 {
+                let idx = base + bits.trailing_zeros() as usize;
+                bits &= bits - 1;
+                rem_dirty -= 1;
+                write_packed_card::<true, true>(
+                    &mut w,
+                    &state.cards[idx],
+                    idx,
+                    root_floors,
+                    root_floors_len,
+                    rem_dirty + extra_len,
+                );
+            }
+        }
+        #[cfg(debug_assertions)]
+        debug_assert!(root_floors_len <= delta_len || root_floors_len == 0);
+        for (offset, card) in state.cards[delta_len..].iter().enumerate() {
+            write_packed_card::<true, false>(
+                &mut w,
+                card,
+                delta_len + offset,
+                root_floors,
+                root_floors_len,
+                extra_len - offset - 1,
+            );
+        }
+    } else {
+        let cards_to_pack = state.cards.len() - card_start;
+        w.ensure(5 + cards_to_pack * 8);
+        unsafe {
+            w.var_u32_unchecked(cards_to_pack as u32);
+        }
+        if state.handle_layout.cards {
+            for (idx, card) in state.cards[card_start..].iter().enumerate() {
+                let card_abs_idx = card_start + idx;
+                write_packed_card::<true, true>(
+                    &mut w,
+                    card,
+                    card_abs_idx,
+                    root_floors,
+                    root_floors_len,
+                    cards_to_pack - idx - 1,
+                );
+            }
+        } else {
+            for (idx, card) in state.cards[card_start..].iter().enumerate() {
+                let card_abs_idx = card_start + idx;
+                write_packed_card::<false, true>(
+                    &mut w,
+                    card,
+                    card_abs_idx,
+                    root_floors,
+                    root_floors_len,
+                    cards_to_pack - idx - 1,
+                );
+            }
+        }
     }
 
     // CardExtensions
@@ -2967,6 +3171,8 @@ pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
         | (u8::from(!sh.actor_events.is_empty()) << 5);
     w.u8(sh_mask);
     if sh_mask != 0 {
+        let cur_tk = SemanticHistory::current_turn_key(state);
+        let tc_ok = sh.turn_cache.matches(&cur_tk, sh);
         let mut prev_valid = false;
         let mut prev_tk = TurnKey {
             round_number: 0,
@@ -2975,95 +3181,257 @@ pub fn pack_state(state: &BattleState, out: &mut Vec<u8>) {
         };
         if (sh_mask & (1 << 0)) != 0 {
             w.ensure(5 + sh.exhausts.len() * 32);
+            let all_cur = tc_ok && sh.turn_cache.ex_cur as usize == sh.exhausts.len();
             unsafe {
                 w.var_u32_unchecked(sh.exhausts.len() as u32);
-                for (tk, idx) in &sh.exhausts {
-                    if *idx < 0x80 && prev_valid && prev_tk == *tk {
-                        w.u16_unchecked((*idx as u16) << 8);
-                    } else {
-                        write_turn_key_delta_unchecked(&mut w, tk, &mut prev_valid, &mut prev_tk);
-                        w.var_u32_unchecked(*idx as u32);
+                if all_cur {
+                    let mut start = 0usize;
+                    if !prev_valid || prev_tk != cur_tk {
+                        let (ref tk0, idx0) = sh.exhausts[0];
+                        debug_assert_eq!(*tk0, cur_tk);
+                        write_turn_key_delta_unchecked(&mut w, tk0, &mut prev_valid, &mut prev_tk);
+                        w.var_u32_unchecked(idx0 as u32);
+                        start = 1;
+                    }
+                    for &(ref _tk, idx) in &sh.exhausts[start..] {
+                        debug_assert_eq!(*_tk, prev_tk);
+                        if idx < 0x80 {
+                            w.u16_unchecked((idx as u16) << 8);
+                        } else {
+                            w.u8_unchecked(0);
+                            w.var_u32_unchecked(idx as u32);
+                        }
+                    }
+                } else {
+                    for (tk, idx) in &sh.exhausts {
+                        if *idx < 0x80 && prev_valid && prev_tk == *tk {
+                            w.u16_unchecked((*idx as u16) << 8);
+                        } else {
+                            write_turn_key_delta_unchecked(
+                                &mut w,
+                                tk,
+                                &mut prev_valid,
+                                &mut prev_tk,
+                            );
+                            w.var_u32_unchecked(*idx as u32);
+                        }
                     }
                 }
             }
         }
         if (sh_mask & (1 << 1)) != 0 {
             w.ensure(5 + sh.card_block_gains.len() * 36);
+            let all_cur = tc_ok && sh.turn_cache.cbg_cur as usize == sh.card_block_gains.len();
             unsafe {
                 w.var_u32_unchecked(sh.card_block_gains.len() as u32);
-                for (tk, idx, ord) in &sh.card_block_gains {
-                    if *idx < 0x80 && prev_valid && prev_tk == *tk {
-                        if (-32768..=32767).contains(ord) {
-                            w.u32_unchecked(
-                                3u32
-                                    | ((*idx as u32) << 8)
-                                    | (((*ord as i16 as u16) as u32) << 16),
-                            );
-                            continue;
-                        }
-                        w.u16_unchecked((*idx as u16) << 8);
-                    } else {
-                        write_turn_key_delta_unchecked(&mut w, tk, &mut prev_valid, &mut prev_tk);
-                        w.var_u32_unchecked(*idx as u32);
+                if all_cur {
+                    let mut start = 0usize;
+                    if !prev_valid || prev_tk != cur_tk {
+                        let (ref tk0, idx0, ord0) = sh.card_block_gains[0];
+                        debug_assert_eq!(*tk0, cur_tk);
+                        write_turn_key_delta_unchecked(&mut w, tk0, &mut prev_valid, &mut prev_tk);
+                        w.var_u32_unchecked(idx0 as u32);
+                        w.i32_unchecked(ord0);
+                        start = 1;
                     }
-                    w.i32_unchecked(*ord);
+                    for &(ref _tk, idx, ord) in &sh.card_block_gains[start..] {
+                        debug_assert_eq!(*_tk, prev_tk);
+                        if idx < 0x80 {
+                            if (-32768..=32767).contains(&ord) {
+                                w.u32_unchecked(
+                                    3u32
+                                        | ((idx as u32) << 8)
+                                        | (((ord as i16 as u16) as u32) << 16),
+                                );
+                                continue;
+                            }
+                            w.u16_unchecked((idx as u16) << 8);
+                        } else {
+                            w.u8_unchecked(0);
+                            w.var_u32_unchecked(idx as u32);
+                        }
+                        w.i32_unchecked(ord);
+                    }
+                } else {
+                    for (tk, idx, ord) in &sh.card_block_gains {
+                        if *idx < 0x80 && prev_valid && prev_tk == *tk {
+                            if (-32768..=32767).contains(ord) {
+                                w.u32_unchecked(
+                                    3u32
+                                        | ((*idx as u32) << 8)
+                                        | (((*ord as i16 as u16) as u32) << 16),
+                                );
+                                continue;
+                            }
+                            w.u16_unchecked((*idx as u16) << 8);
+                        } else {
+                            write_turn_key_delta_unchecked(
+                                &mut w,
+                                tk,
+                                &mut prev_valid,
+                                &mut prev_tk,
+                            );
+                            w.var_u32_unchecked(*idx as u32);
+                        }
+                        w.i32_unchecked(*ord);
+                    }
                 }
             }
         }
         if (sh_mask & (1 << 2)) != 0 {
             w.ensure(5 + sh.orb_channels.len() * 33);
+            let all_cur = tc_ok && sh.turn_cache.oc_cur as usize == sh.orb_channels.len();
             unsafe {
                 w.var_u32_unchecked(sh.orb_channels.len() as u32);
-                for (tk, idx, oid) in &sh.orb_channels {
-                    if *idx < 0x80 && prev_valid && prev_tk == *tk {
-                        w.u16_unchecked((*idx as u16) << 8);
-                    } else {
-                        write_turn_key_delta_unchecked(&mut w, tk, &mut prev_valid, &mut prev_tk);
-                        w.var_u32_unchecked(*idx as u32);
+                if all_cur {
+                    let mut start = 0usize;
+                    if !prev_valid || prev_tk != cur_tk {
+                        let (ref tk0, idx0, oid0) = sh.orb_channels[0];
+                        debug_assert_eq!(*tk0, cur_tk);
+                        write_turn_key_delta_unchecked(&mut w, tk0, &mut prev_valid, &mut prev_tk);
+                        w.var_u32_unchecked(idx0 as u32);
+                        w.u8_unchecked(oid0 as u8);
+                        start = 1;
                     }
-                    w.u8_unchecked(*oid as u8);
+                    for &(ref _tk, idx, oid) in &sh.orb_channels[start..] {
+                        debug_assert_eq!(*_tk, prev_tk);
+                        if idx < 0x80 {
+                            w.u16_unchecked((idx as u16) << 8);
+                        } else {
+                            w.u8_unchecked(0);
+                            w.var_u32_unchecked(idx as u32);
+                        }
+                        w.u8_unchecked(oid as u8);
+                    }
+                } else {
+                    for (tk, idx, oid) in &sh.orb_channels {
+                        if *idx < 0x80 && prev_valid && prev_tk == *tk {
+                            w.u16_unchecked((*idx as u16) << 8);
+                        } else {
+                            write_turn_key_delta_unchecked(
+                                &mut w,
+                                tk,
+                                &mut prev_valid,
+                                &mut prev_tk,
+                            );
+                            w.var_u32_unchecked(*idx as u32);
+                        }
+                        w.u8_unchecked(*oid as u8);
+                    }
                 }
             }
         }
         if (sh_mask & (1 << 3)) != 0 {
             w.ensure(5 + sh.energy_spent.len() * 36);
+            let all_cur = tc_ok
+                && sh.energy_spent[0].0 == cur_tk
+                && sh.energy_spent[sh.energy_spent.len() - 1].0 == cur_tk;
             unsafe {
                 w.var_u32_unchecked(sh.energy_spent.len() as u32);
-                for (tk, idx, amt) in &sh.energy_spent {
-                    if *idx < 0x80 && prev_valid && prev_tk == *tk {
-                        if (-32768..=32767).contains(amt) {
-                            w.u32_unchecked(
-                                3u32
-                                    | ((*idx as u32) << 8)
-                                    | (((*amt as i16 as u16) as u32) << 16),
-                            );
-                            continue;
-                        }
-                        w.u16_unchecked((*idx as u16) << 8);
-                    } else {
-                        write_turn_key_delta_unchecked(&mut w, tk, &mut prev_valid, &mut prev_tk);
-                        w.var_u32_unchecked(*idx as u32);
+                if all_cur {
+                    let mut start = 0usize;
+                    if !prev_valid || prev_tk != cur_tk {
+                        let (ref tk0, idx0, amt0) = sh.energy_spent[0];
+                        debug_assert_eq!(*tk0, cur_tk);
+                        write_turn_key_delta_unchecked(&mut w, tk0, &mut prev_valid, &mut prev_tk);
+                        w.var_u32_unchecked(idx0 as u32);
+                        w.i32_unchecked(amt0);
+                        start = 1;
                     }
-                    w.i32_unchecked(*amt);
+                    for &(ref _tk, idx, amt) in &sh.energy_spent[start..] {
+                        debug_assert_eq!(*_tk, prev_tk);
+                        if idx < 0x80 {
+                            if (-32768..=32767).contains(&amt) {
+                                w.u32_unchecked(
+                                    3u32
+                                        | ((idx as u32) << 8)
+                                        | (((amt as i16 as u16) as u32) << 16),
+                                );
+                                continue;
+                            }
+                            w.u16_unchecked((idx as u16) << 8);
+                        } else {
+                            w.u8_unchecked(0);
+                            w.var_u32_unchecked(idx as u32);
+                        }
+                        w.i32_unchecked(amt);
+                    }
+                } else {
+                    for (tk, idx, amt) in &sh.energy_spent {
+                        if *idx < 0x80 && prev_valid && prev_tk == *tk {
+                            if (-32768..=32767).contains(amt) {
+                                w.u32_unchecked(
+                                    3u32
+                                        | ((*idx as u32) << 8)
+                                        | (((*amt as i16 as u16) as u32) << 16),
+                                );
+                                continue;
+                            }
+                            w.u16_unchecked((*idx as u16) << 8);
+                        } else {
+                            write_turn_key_delta_unchecked(
+                                &mut w,
+                                tk,
+                                &mut prev_valid,
+                                &mut prev_tk,
+                            );
+                            w.var_u32_unchecked(*idx as u32);
+                        }
+                        w.i32_unchecked(*amt);
+                    }
                 }
             }
         }
         if (sh_mask & (1 << 4)) != 0 {
             w.ensure(5 + sh.card_drawn.len() * 34);
+            let all_cur = tc_ok && sh.turn_cache.cd_cur as usize == sh.card_drawn.len();
             unsafe {
                 w.var_u32_unchecked(sh.card_drawn.len() as u32);
-                for (tk, idx, ct, from_hand) in &sh.card_drawn {
-                    if *idx < 0x80 && prev_valid && prev_tk == *tk {
-                        w.u32_unchecked(
-                            ((*idx as u32) << 8)
-                                | ((*ct as u32) << 16)
-                                | (u32::from(*from_hand) << 24),
-                        );
-                    } else {
-                        write_turn_key_delta_unchecked(&mut w, tk, &mut prev_valid, &mut prev_tk);
-                        w.var_u32_unchecked(*idx as u32);
-                        w.u8_unchecked(*ct as u8);
-                        w.u8_unchecked(u8::from(*from_hand));
+                if all_cur {
+                    let mut start = 0usize;
+                    if !prev_valid || prev_tk != cur_tk {
+                        let (ref tk0, idx0, ct0, fh0) = sh.card_drawn[0];
+                        debug_assert_eq!(*tk0, cur_tk);
+                        write_turn_key_delta_unchecked(&mut w, tk0, &mut prev_valid, &mut prev_tk);
+                        w.var_u32_unchecked(idx0 as u32);
+                        w.u8_unchecked(ct0 as u8);
+                        w.u8_unchecked(u8::from(fh0));
+                        start = 1;
+                    }
+                    for &(ref _tk, idx, ct, from_hand) in &sh.card_drawn[start..] {
+                        debug_assert_eq!(*_tk, prev_tk);
+                        if idx < 0x80 {
+                            w.u32_unchecked(
+                                ((idx as u32) << 8)
+                                    | ((ct as u32) << 16)
+                                    | (u32::from(from_hand) << 24),
+                            );
+                        } else {
+                            w.u8_unchecked(0);
+                            w.var_u32_unchecked(idx as u32);
+                            w.u8_unchecked(ct as u8);
+                            w.u8_unchecked(u8::from(from_hand));
+                        }
+                    }
+                } else {
+                    for (tk, idx, ct, from_hand) in &sh.card_drawn {
+                        if *idx < 0x80 && prev_valid && prev_tk == *tk {
+                            w.u32_unchecked(
+                                ((*idx as u32) << 8)
+                                    | ((*ct as u32) << 16)
+                                    | (u32::from(*from_hand) << 24),
+                            );
+                        } else {
+                            write_turn_key_delta_unchecked(
+                                &mut w,
+                                tk,
+                                &mut prev_valid,
+                                &mut prev_tk,
+                            );
+                            w.var_u32_unchecked(*idx as u32);
+                            w.u8_unchecked(*ct as u8);
+                            w.u8_unchecked(u8::from(*from_hand));
+                        }
                     }
                 }
             }
@@ -3175,6 +3543,296 @@ fn read_powers_into(r: &mut ByteReader<'_>, powers: &mut Vec<PowerInst>) -> Resu
     Ok(has_minion_power)
 }
 
+#[inline(always)]
+fn read_packed_card_at(
+    r: &mut ByteReader<'_>,
+    sctx: &RootStaticContext,
+    unpack_tables: Option<&sts2_kernel::content_dispatch::HookMaskTableView>,
+    card_abs_idx: usize,
+    pile_has_hook_bits: &mut u8,
+    cards_contiguous: &mut bool,
+) -> Result<CardInst, ()> {
+    let (tag, fast_word_opt) = if r.remaining() >= 8 {
+        let word = u64::from_le(unsafe { std::ptr::read_unaligned(r.cur.cast::<u64>()) });
+        (word as u8, Some(word))
+    } else {
+        (r.peek_u8()?, None)
+    };
+    let fast_bit = (tag & 0x80) != 0;
+    if fast_bit || (1..=5).contains(&tag) {
+        let word = if !fast_bit {
+            let _ = r.u8()?;
+            r.u64()?
+        } else if let Some(w) = fast_word_opt {
+            unsafe {
+                r.cur = r.cur.add(8);
+            }
+            w
+        } else {
+            return Err(());
+        };
+        let tag_byte = word as u8;
+        let pile = decode_pile_type(tag_byte & 0x0F)?;
+        let removed_from_state = (tag_byte & 0x10) != 0;
+        let upgrade_level = i32::from((tag_byte & 0x20) != 0);
+        let use_root_floor = (tag_byte & 0x40) != 0;
+        let canonical_base_energy_cost = ((word >> 8) as u8 as i8) as i16;
+        let id = decode_card_id(((word >> 16) & 0xFFFF) as u16)?;
+        let local_keywords = CardKeywords::from_bits_retain(((word >> 32) & 0xFFFF) as u16);
+        let dh_raw = (word >> 48) as u16;
+        let deck_card_handle = OptCardHandle(dh_raw as u32);
+        let (
+            base_energy_cost,
+            affliction,
+            temp_flags,
+            ext_index,
+            temp_cost_override_this_turn,
+            temp_cost_override_this_turn_or_until_played,
+        ) = if fast_bit {
+            (
+                canonical_base_energy_cost,
+                None,
+                CardTempFlags::empty(),
+                None,
+                OptI16::NONE,
+                OptI16::NONE,
+            )
+        } else {
+            match tag {
+                1 => {
+                    let aff_raw = r.u32()?;
+                    (
+                        canonical_base_energy_cost,
+                        Some(AfflictionInst {
+                            id: decode_affliction_id((aff_raw & 0xFFFF) as u16)?,
+                            amount: ((aff_raw >> 16) as u16 as i16) as i32,
+                        }),
+                        CardTempFlags::empty(),
+                        None,
+                        OptI16::NONE,
+                        OptI16::NONE,
+                    )
+                }
+                2 => (
+                    (r.u8()? as i8) as i16,
+                    None,
+                    CardTempFlags::empty(),
+                    None,
+                    OptI16::NONE,
+                    OptI16::NONE,
+                ),
+                3 => (
+                    canonical_base_energy_cost,
+                    None,
+                    CardTempFlags::empty(),
+                    Some(r.u16()? as u32),
+                    OptI16::NONE,
+                    OptI16::NONE,
+                ),
+                4 => (
+                    canonical_base_energy_cost,
+                    None,
+                    CardTempFlags::from_bits_retain(r.u16()?),
+                    None,
+                    OptI16::NONE,
+                    OptI16::NONE,
+                ),
+                5 => {
+                    let t = r.take(6)?;
+                    (
+                        canonical_base_energy_cost,
+                        None,
+                        CardTempFlags::from_bits_retain(slice_u16(t, 0)),
+                        None,
+                        OptI16(slice_u16(t, 2)),
+                        OptI16(slice_u16(t, 4)),
+                    )
+                }
+                _ => unreachable!(),
+            }
+        };
+        if let Some(t) = unpack_tables {
+            if !removed_from_state
+                && (t.card_has_hook(id)
+                    || ext_index.is_some()
+                    || (!t.afflictions_self_card_entered_only && affliction.is_some()))
+            {
+                *pile_has_hook_bits |= 1u8 << (pile as u8);
+            }
+        }
+        let floor_added_to_deck = if use_root_floor {
+            sctx.root_card_floors
+                .get(card_abs_idx)
+                .copied()
+                .unwrap_or(OptI16::NONE)
+        } else {
+            OptI16::NONE
+        };
+        let handle = CardHandle((card_abs_idx + 1) as u32);
+        Ok(CardInst {
+            handle,
+            id,
+            upgrade_level,
+            canonical_base_energy_cost,
+            base_energy_cost,
+            captured_energy_x_value: 0,
+            base_replay_count: 0,
+            floor_added_to_deck,
+            deck_card_handle,
+            clone_of_handle: OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: OptI16::NONE,
+            temp_cost_override_this_turn,
+            temp_cost_override_this_turn_or_until_played,
+            temp_cost_override_this_combat: OptI16::NONE,
+            local_keywords,
+            keywords_added_from_outside: CardKeywords::empty(),
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags,
+            affliction,
+            ext_index,
+            pile,
+            removed_from_state,
+            transform_into_after_play: None,
+        })
+    } else if tag == 0 {
+        let _ = r.u8()?;
+        let handle = CardHandle(r.var_u32()?);
+        if handle.0 != (card_abs_idx + 1) as u32 {
+            *cards_contiguous = false;
+        }
+        let chdr = r.take(11)?;
+        let id = decode_card_id(slice_u16(chdr, 0))?;
+        let canonical_base_energy_cost =
+            slice_i32(chdr, 2).clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+        let local_keywords = CardKeywords::from_bits_retain(slice_u16(chdr, 6));
+        let opt_mask = slice_u16(chdr, 8);
+        let flags_byte = chdr[10];
+
+        let upgrade_level = if (opt_mask & (1 << 0)) != 0 { r.i32()? } else { 0 };
+        let base_energy_cost = if (opt_mask & (1 << 1)) != 0 {
+            r.i32()?.clamp(i16::MIN as i32, i16::MAX as i32) as i16
+        } else {
+            canonical_base_energy_cost
+        };
+        let captured_energy_x_value = if (opt_mask & (1 << 2)) != 0 {
+            r.i32()?.clamp(i16::MIN as i32, i16::MAX as i32) as i16
+        } else {
+            0
+        };
+        let base_replay_count = if (opt_mask & (1 << 3)) != 0 {
+            r.i32()?.clamp(i16::MIN as i32, i16::MAX as i32) as i16
+        } else {
+            0
+        };
+        let floor_added_to_deck = if (opt_mask & (1 << 4)) != 0 {
+            OptI16::some_clamped(r.i32()?)
+        } else {
+            OptI16::NONE
+        };
+        let deck_card_handle = if (opt_mask & (1 << 5)) != 0 {
+            OptCardHandle::some(CardHandle(r.var_u32()?))
+        } else {
+            OptCardHandle::NONE
+        };
+        let clone_of_handle = if (opt_mask & (1 << 6)) != 0 {
+            OptCardHandle::some(CardHandle(r.var_u32()?))
+        } else {
+            OptCardHandle::NONE
+        };
+        let temp_star_cost_override_this_turn = if (opt_mask & (1 << 7)) != 0 {
+            OptI16::some_clamped(r.i32()?)
+        } else {
+            OptI16::NONE
+        };
+        let temp_cost_override_this_turn = if (opt_mask & (1 << 8)) != 0 {
+            OptI16::some_clamped(r.i32()?)
+        } else {
+            OptI16::NONE
+        };
+        let temp_cost_override_this_turn_or_until_played = if (opt_mask & (1 << 9)) != 0 {
+            OptI16::some_clamped(r.i32()?)
+        } else {
+            OptI16::NONE
+        };
+        let temp_cost_override_this_combat = if (opt_mask & (1 << 10)) != 0 {
+            OptI16::some_clamped(r.i32()?)
+        } else {
+            OptI16::NONE
+        };
+        let keywords_added_from_outside = if (opt_mask & (1 << 11)) != 0 {
+            CardKeywords::from_bits_retain(r.u16()?)
+        } else {
+            CardKeywords::empty()
+        };
+        let keywords_removed_from_outside = if (opt_mask & (1 << 12)) != 0 {
+            CardKeywords::from_bits_retain(r.u16()?)
+        } else {
+            CardKeywords::empty()
+        };
+        let temp_flags = if (opt_mask & (1 << 13)) != 0 {
+            CardTempFlags::from_bits_retain(r.u16()?)
+        } else {
+            CardTempFlags::empty()
+        };
+        let affliction = if (opt_mask & (1 << 14)) != 0 {
+            Some(AfflictionInst {
+                id: decode_affliction_id(r.u16()?)?,
+                amount: r.i32()?,
+            })
+        } else {
+            None
+        };
+        let ext_index = if (opt_mask & (1 << 15)) != 0 {
+            Some(r.var_u32()?)
+        } else {
+            None
+        };
+        let pile = decode_pile_type(flags_byte & 0x0F)?;
+        let removed_from_state = (flags_byte & 0x10) != 0;
+        let transform_into_after_play = if (flags_byte & 0x20) != 0 {
+            Some(decode_card_id(r.u16()?)?)
+        } else {
+            None
+        };
+        if let Some(t) = unpack_tables {
+            if !removed_from_state
+                && (t.card_has_hook(id)
+                    || ext_index.is_some()
+                    || (!t.afflictions_self_card_entered_only && affliction.is_some()))
+            {
+                *pile_has_hook_bits |= 1u8 << (pile as u8);
+            }
+        }
+        Ok(CardInst {
+            handle,
+            id,
+            upgrade_level,
+            canonical_base_energy_cost,
+            base_energy_cost,
+            captured_energy_x_value,
+            base_replay_count,
+            floor_added_to_deck,
+            deck_card_handle,
+            clone_of_handle,
+            temp_star_cost_override_this_turn,
+            temp_cost_override_this_turn,
+            temp_cost_override_this_turn_or_until_played,
+            temp_cost_override_this_combat,
+            local_keywords,
+            keywords_added_from_outside,
+            keywords_removed_from_outside,
+            temp_flags,
+            affliction,
+            ext_index,
+            pile,
+            removed_from_state,
+            transform_into_after_play,
+        })
+    } else {
+        Err(())
+    }
+}
+
 /// Unpacks a packed binary state directly into a reusable `BattleState` scratch buffer.
 pub fn unpack_state(
     bytes: &[u8],
@@ -3195,6 +3853,7 @@ fn unpack_state_inner(
     out.attacking_creatures.clear();
     out.deferred_death_cleanup.clear();
     let prev_deck_dirty = out.deck_dirty.0;
+    let prev_cards_contiguous = out.handle_layout.cards;
     let prev_dirty = out.hook_cache.dirty_mask;
     if !same_root {
         out.static_ctx = Arc::clone(static_ctx);
@@ -3223,6 +3882,10 @@ fn unpack_state_inner(
     let deck_unchanged = (pack_flags & 2) != 0;
     let u16_handles = (pack_flags & 4) != 0;
     let relics_delta = (pack_flags & 8) != 0;
+    let combat_cards_delta = (pack_flags & 16) != 0;
+    out.eot_card_cleanup_dirty = sts2_kernel::state::EotCleanupDirtyFlag((pack_flags & 32) != 0);
+    let mut cards_contiguous = true;
+    let mut creatures_contiguous = true;
     if seed_matches_root {
         if !same_root || !Arc::ptr_eq(&out.run_rngs.string_seed, &sctx.root_run_rng_string_seed) {
             out.run_rngs.string_seed = Arc::clone(&sctx.root_run_rng_string_seed);
@@ -3556,294 +4219,252 @@ fn unpack_state_inner(
     };
     let mut pile_has_hook_bits = 0u8;
     let prefix_len = sctx.root_deck_prefix_len;
-    let cards_len = r.var_u32()? as usize;
-    if deck_unchanged {
-        #[cfg(debug_assertions)]
-        debug_assert!(sctx.root_deck_cards.iter().all(|c| c.pile == PileType::Deck));
-        if same_root && !out.deck_dirty.0 && out.cards.len() >= prefix_len {
+    if combat_cards_delta {
+        let delta_len = sctx.root_combat_delta_len;
+        if !deck_unchanged
+            || delta_len <= prefix_len
+            || delta_len > 512
+            || sctx.root_initial_cards.len() < delta_len
+        {
+            return Err(());
+        }
+        let extra_len = r.var_u32()? as usize;
+        let word_count = (delta_len + 63) >> 6;
+        let mut dirty_words = [0u64; 8];
+        let mut valid_combat_words = [0u64; 8];
+        for w_idx in 0..word_count {
+            let base = w_idx << 6;
+            let lo = prefix_len.saturating_sub(base).min(64);
+            let hi = (delta_len - base).min(64);
+            let vmask = mask_range_64_packer(lo, hi);
+            valid_combat_words[w_idx] = vmask;
+            let dw = r.u64()?;
+            if (dw & !vmask) != 0 {
+                return Err(());
+            }
+            dirty_words[w_idx] = dw;
+        }
+        if same_root && !prev_deck_dirty && prev_cards_contiguous && out.cards.len() >= delta_len
+        {
+            out.cards.truncate(delta_len);
             #[cfg(debug_assertions)]
             debug_assert_eq!(
                 &out.cards[..prefix_len],
                 &sctx.root_deck_cards[..],
                 "reuse invariant violated for out.cards[..prefix_len]"
             );
-            out.cards.truncate(prefix_len);
+            for w_idx in 0..word_count {
+                let base = w_idx << 6;
+                let prev_d = out.card_meta_dirty.0[w_idx];
+                #[cfg(debug_assertions)]
+                {
+                    let mut check =
+                        (valid_combat_words[w_idx] & !dirty_words[w_idx]) & !prev_d;
+                    while check != 0 {
+                        let idx = base + check.trailing_zeros() as usize;
+                        check &= check - 1;
+                        let cur = &out.cards[idx];
+                        let rcard = &sctx.root_initial_cards[idx];
+                        debug_assert_eq!(
+                            CardInst {
+                                pile: rcard.pile,
+                                ..*cur
+                            },
+                            *rcard,
+                            "combat_cards_delta reuse invariant violated at out.cards[{idx}]"
+                        );
+                    }
+                }
+                let mut restore = (prev_d & !dirty_words[w_idx]) & valid_combat_words[w_idx];
+                while restore != 0 {
+                    let idx = base + restore.trailing_zeros() as usize;
+                    restore &= restore - 1;
+                    out.cards[idx] = sctx.root_initial_cards[idx];
+                }
+            }
         } else {
             out.cards.clear();
-            out.cards.reserve(prefix_len + cards_len);
-            out.cards.extend_from_slice(&sctx.root_deck_cards);
+            out.cards.reserve(delta_len + extra_len);
+            out.cards
+                .extend_from_slice(&sctx.root_initial_cards[..delta_len]);
         }
-        out.cards.reserve(cards_len);
-        out.deck_dirty.0 = false;
-    } else {
-        out.cards.clear();
-        out.cards.reserve(cards_len);
-        out.deck_dirty.0 = true;
-    }
-    if cards_len != 0 {
-        let base_len = out.cards.len();
-        let cards_ptr = out.cards.as_mut_ptr();
-        let mut cards_guard = SetLenOnDrop {
-            vec: &mut out.cards,
-            base_len,
-            written: 0,
-        };
-        for idx in 0..cards_len {
-            let (tag, fast_word_opt) = if r.remaining() >= 8 {
-                let word = u64::from_le(unsafe { std::ptr::read_unaligned(r.cur.cast::<u64>()) });
-                (word as u8, Some(word))
-            } else {
-                (r.peek_u8()?, None)
-            };
-            let fast_bit = (tag & 0x80) != 0;
-            let card = if fast_bit || (1..=4).contains(&tag) {
-                let word = if !fast_bit {
-                    let _ = r.u8()?;
-                    r.u64()?
-                } else if let Some(w) = fast_word_opt {
-                    unsafe {
-                        r.cur = r.cur.add(8);
-                    }
-                    w
-                } else {
-                    return Err(());
-                };
-                let tag_byte = word as u8;
-                let pile = decode_pile_type(tag_byte & 0x0F)?;
-                let removed_from_state = (tag_byte & 0x10) != 0;
-                let upgrade_level = i32::from((tag_byte & 0x20) != 0);
-                let use_root_floor = (tag_byte & 0x40) != 0;
-                let canonical_base_energy_cost = ((word >> 8) as u8 as i8) as i16;
-                let id = decode_card_id(((word >> 16) & 0xFFFF) as u16)?;
-                let local_keywords =
-                    CardKeywords::from_bits_retain(((word >> 32) & 0xFFFF) as u16);
-                let dh_raw = (word >> 48) as u16;
-                let deck_card_handle = OptCardHandle(dh_raw as u32);
-                let (base_energy_cost, affliction, temp_flags, ext_index) = if fast_bit {
-                    (
-                        canonical_base_energy_cost,
-                        None,
-                        CardTempFlags::empty(),
-                        None,
-                    )
-                } else {
-                    match tag {
-                        1 => {
-                            let aff_raw = r.u32()?;
-                            (
-                                canonical_base_energy_cost,
-                                Some(AfflictionInst {
-                                    id: decode_affliction_id((aff_raw & 0xFFFF) as u16)?,
-                                    amount: ((aff_raw >> 16) as u16 as i16) as i32,
-                                }),
-                                CardTempFlags::empty(),
-                                None,
-                            )
-                        }
-                        2 => (
-                            (r.u8()? as i8) as i16,
-                            None,
-                            CardTempFlags::empty(),
-                            None,
-                        ),
-                        3 => (
-                            canonical_base_energy_cost,
-                            None,
-                            CardTempFlags::empty(),
-                            Some(r.u16()? as u32),
-                        ),
-                        4 => (
-                            canonical_base_energy_cost,
-                            None,
-                            CardTempFlags::from_bits_retain(r.u16()?),
-                            None,
-                        ),
-                        _ => unreachable!(),
-                    }
-                };
-                if let Some(t) = unpack_tables {
-                    if !removed_from_state
-                        && (t.card_has_hook(id)
-                            || ext_index.is_some()
-                            || (!t.afflictions_self_card_entered_only && affliction.is_some()))
-                    {
-                        pile_has_hook_bits |= 1u8 << (pile as u8);
-                    }
-                }
-                let card_abs_idx = base_len + idx;
-                let floor_added_to_deck = if use_root_floor {
-                    sctx.root_card_floors
-                        .get(card_abs_idx)
-                        .copied()
-                        .unwrap_or(OptI16::NONE)
-                } else {
-                    OptI16::NONE
-                };
-                let handle = CardHandle((card_abs_idx + 1) as u32);
-                CardInst {
-                    handle,
-                    id,
-                    upgrade_level,
-                    canonical_base_energy_cost,
-                    base_energy_cost,
-                    captured_energy_x_value: 0,
-                    base_replay_count: 0,
-                    floor_added_to_deck,
-                    deck_card_handle,
-                    clone_of_handle: OptCardHandle::NONE,
-                    temp_star_cost_override_this_turn: OptI16::NONE,
-                    temp_cost_override_this_turn: OptI16::NONE,
-                    temp_cost_override_this_turn_or_until_played: OptI16::NONE,
-                    temp_cost_override_this_combat: OptI16::NONE,
-                    local_keywords,
-                    keywords_added_from_outside: CardKeywords::empty(),
-                    keywords_removed_from_outside: CardKeywords::empty(),
-                    temp_flags,
-                    affliction,
-                    ext_index,
-                    pile,
-                    removed_from_state,
-                    transform_into_after_play: None,
-                }
-            } else if tag == 0 {
-                let _ = r.u8()?;
-                let handle = CardHandle(r.var_u32()?);
-                let chdr = r.take(11)?;
-                let id = decode_card_id(slice_u16(chdr, 0))?;
-                let canonical_base_energy_cost =
-                    slice_i32(chdr, 2).clamp(i16::MIN as i32, i16::MAX as i32) as i16;
-                let local_keywords = CardKeywords::from_bits_retain(slice_u16(chdr, 6));
-                let opt_mask = slice_u16(chdr, 8);
-                let flags_byte = chdr[10];
 
-                let upgrade_level = if (opt_mask & (1 << 0)) != 0 { r.i32()? } else { 0 };
-                let base_energy_cost = if (opt_mask & (1 << 1)) != 0 {
-                    r.i32()?.clamp(i16::MIN as i32, i16::MAX as i32) as i16
-                } else {
-                    canonical_base_energy_cost
-                };
-                let captured_energy_x_value = if (opt_mask & (1 << 2)) != 0 {
-                    r.i32()?.clamp(i16::MIN as i32, i16::MAX as i32) as i16
-                } else {
-                    0
-                };
-                let base_replay_count = if (opt_mask & (1 << 3)) != 0 {
-                    r.i32()?.clamp(i16::MIN as i32, i16::MAX as i32) as i16
-                } else {
-                    0
-                };
-                let floor_added_to_deck = if (opt_mask & (1 << 4)) != 0 {
-                    OptI16::some_clamped(r.i32()?)
-                } else {
-                    OptI16::NONE
-                };
-                let deck_card_handle = if (opt_mask & (1 << 5)) != 0 {
-                    OptCardHandle::some(CardHandle(r.var_u32()?))
-                } else {
-                    OptCardHandle::NONE
-                };
-                let clone_of_handle = if (opt_mask & (1 << 6)) != 0 {
-                    OptCardHandle::some(CardHandle(r.var_u32()?))
-                } else {
-                    OptCardHandle::NONE
-                };
-                let temp_star_cost_override_this_turn = if (opt_mask & (1 << 7)) != 0 {
-                    OptI16::some_clamped(r.i32()?)
-                } else {
-                    OptI16::NONE
-                };
-                let temp_cost_override_this_turn = if (opt_mask & (1 << 8)) != 0 {
-                    OptI16::some_clamped(r.i32()?)
-                } else {
-                    OptI16::NONE
-                };
-                let temp_cost_override_this_turn_or_until_played = if (opt_mask & (1 << 9)) != 0 {
-                    OptI16::some_clamped(r.i32()?)
-                } else {
-                    OptI16::NONE
-                };
-                let temp_cost_override_this_combat = if (opt_mask & (1 << 10)) != 0 {
-                    OptI16::some_clamped(r.i32()?)
-                } else {
-                    OptI16::NONE
-                };
-                let keywords_added_from_outside = if (opt_mask & (1 << 11)) != 0 {
-                    CardKeywords::from_bits_retain(r.u16()?)
-                } else {
-                    CardKeywords::empty()
-                };
-                let keywords_removed_from_outside = if (opt_mask & (1 << 12)) != 0 {
-                    CardKeywords::from_bits_retain(r.u16()?)
-                } else {
-                    CardKeywords::empty()
-                };
-                let temp_flags = if (opt_mask & (1 << 13)) != 0 {
-                    CardTempFlags::from_bits_retain(r.u16()?)
-                } else {
-                    CardTempFlags::empty()
-                };
-                let affliction = if (opt_mask & (1 << 14)) != 0 {
-                    Some(AfflictionInst {
-                        id: decode_affliction_id(r.u16()?)?,
-                        amount: r.i32()?,
-                    })
-                } else {
-                    None
-                };
-                let ext_index = if (opt_mask & (1 << 15)) != 0 {
-                    Some(r.var_u32()?)
-                } else {
-                    None
-                };
-                let pile = decode_pile_type(flags_byte & 0x0F)?;
-                let removed_from_state = (flags_byte & 0x10) != 0;
-                let transform_into_after_play = if (flags_byte & 0x20) != 0 {
-                    Some(decode_card_id(r.u16()?)?)
-                } else {
-                    None
-                };
-                if let Some(t) = unpack_tables {
-                    if !removed_from_state
-                        && (t.card_has_hook(id)
-                            || ext_index.is_some()
-                            || (!t.afflictions_self_card_entered_only && affliction.is_some()))
-                    {
-                        pile_has_hook_bits |= 1u8 << (pile as u8);
+        for c in &mut out.cards[prefix_len..delta_len] {
+            c.pile = PileType::None;
+        }
+        for &ch in &out.player.hand {
+            let idx = ch.0.wrapping_sub(1) as usize;
+            if idx >= prefix_len && idx < delta_len {
+                out.cards[idx].pile = PileType::Hand;
+            }
+        }
+        for &ch in &out.player.draw {
+            let idx = ch.0.wrapping_sub(1) as usize;
+            if idx >= prefix_len && idx < delta_len {
+                out.cards[idx].pile = PileType::Draw;
+            }
+        }
+        for &ch in &out.player.discard {
+            let idx = ch.0.wrapping_sub(1) as usize;
+            if idx >= prefix_len && idx < delta_len {
+                out.cards[idx].pile = PileType::Discard;
+            }
+        }
+        for &ch in &out.player.exhaust {
+            let idx = ch.0.wrapping_sub(1) as usize;
+            if idx >= prefix_len && idx < delta_len {
+                out.cards[idx].pile = PileType::Exhaust;
+            }
+        }
+        for &ch in &out.player.play {
+            let idx = ch.0.wrapping_sub(1) as usize;
+            if idx >= prefix_len && idx < delta_len {
+                out.cards[idx].pile = PileType::Play;
+            }
+        }
+
+        if let Some(t) = unpack_tables {
+            if sctx.has_root_card_hook_mask {
+                for w_idx in 0..word_count {
+                    let clean = valid_combat_words[w_idx] & !dirty_words[w_idx];
+                    let mut hooks = clean & sctx.root_initial_card_hook_mask[w_idx];
+                    let base = w_idx << 6;
+                    while hooks != 0 {
+                        let idx = base + hooks.trailing_zeros() as usize;
+                        hooks &= hooks - 1;
+                        pile_has_hook_bits |= 1u8 << (out.cards[idx].pile as u8);
                     }
                 }
-                CardInst {
-                    handle,
-                    id,
-                    upgrade_level,
-                    canonical_base_energy_cost,
-                    base_energy_cost,
-                    captured_energy_x_value,
-                    base_replay_count,
-                    floor_added_to_deck,
-                    deck_card_handle,
-                    clone_of_handle,
-                    temp_star_cost_override_this_turn,
-                    temp_cost_override_this_turn,
-                    temp_cost_override_this_turn_or_until_played,
-                    temp_cost_override_this_combat,
-                    local_keywords,
-                    keywords_added_from_outside,
-                    keywords_removed_from_outside,
-                    temp_flags,
-                    affliction,
-                    ext_index,
-                    pile,
-                    removed_from_state,
-                    transform_into_after_play,
-                }
             } else {
-                return Err(());
-            };
-            unsafe {
-                cards_ptr.add(base_len + idx).write(card);
+                for w_idx in 0..word_count {
+                    let mut clean = valid_combat_words[w_idx] & !dirty_words[w_idx];
+                    let base = w_idx << 6;
+                    while clean != 0 {
+                        let idx = base + clean.trailing_zeros() as usize;
+                        clean &= clean - 1;
+                        let c = &out.cards[idx];
+                        if !c.removed_from_state
+                            && (t.card_has_hook(c.id)
+                                || c.ext_index.is_some()
+                                || (!t.afflictions_self_card_entered_only
+                                    && c.affliction.is_some()))
+                        {
+                            pile_has_hook_bits |= 1u8 << (c.pile as u8);
+                        }
+                    }
+                }
             }
-            cards_guard.written += 1;
         }
+
+        for w_idx in 0..word_count {
+            let mut bits = dirty_words[w_idx];
+            let base = w_idx << 6;
+            while bits != 0 {
+                let idx = base + bits.trailing_zeros() as usize;
+                bits &= bits - 1;
+                let card = read_packed_card_at(
+                    r,
+                    sctx,
+                    unpack_tables,
+                    idx,
+                    &mut pile_has_hook_bits,
+                    &mut cards_contiguous,
+                )?;
+                out.cards[idx] = card;
+            }
+        }
+
+        let track_extra_clutter = unpack_tables.is_some()
+            && sctx.has_root_clutter_indices
+            && delta_len == sctx.root_initial_cards_len;
+        let mut extra_has_sc = false;
+        if extra_len > 0 {
+            out.cards.reserve(extra_len);
+            let base_len = delta_len;
+            let cards_ptr = out.cards.as_mut_ptr();
+            let mut cards_guard = SetLenOnDrop {
+                vec: &mut out.cards,
+                base_len,
+                written: 0,
+            };
+            for offset in 0..extra_len {
+                let card = read_packed_card_at(
+                    r,
+                    sctx,
+                    unpack_tables,
+                    base_len + offset,
+                    &mut pile_has_hook_bits,
+                    &mut cards_contiguous,
+                )?;
+                if track_extra_clutter {
+                    if let Some(t) = unpack_tables {
+                        if t.card_is_status_or_curse(card.id) {
+                            extra_has_sc = true;
+                        }
+                    }
+                }
+                unsafe {
+                    cards_ptr.add(base_len + offset).write(card);
+                }
+                cards_guard.written += 1;
+            }
+        }
+        out.deck_dirty.0 = false;
+        out.card_meta_dirty = sts2_kernel::state::CardMetaDirtyMask::CLEAN;
+        out.card_meta_dirty.0[..word_count].copy_from_slice(&dirty_words[..word_count]);
+        out.extra_clutter_hint =
+            sts2_kernel::state::ExtraClutterHintFlag(!track_extra_clutter || extra_has_sc);
+    } else {
+        out.extra_clutter_hint = sts2_kernel::state::ExtraClutterHintFlag(true);
+        let cards_len = r.var_u32()? as usize;
+        if deck_unchanged {
+            #[cfg(debug_assertions)]
+            debug_assert!(sctx.root_deck_cards.iter().all(|c| c.pile == PileType::Deck));
+            cards_contiguous = sctx.root_deck_contiguous;
+            if same_root && !out.deck_dirty.0 && out.cards.len() >= prefix_len {
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(
+                    &out.cards[..prefix_len],
+                    &sctx.root_deck_cards[..],
+                    "reuse invariant violated for out.cards[..prefix_len]"
+                );
+                out.cards.truncate(prefix_len);
+            } else {
+                out.cards.clear();
+                out.cards.reserve(prefix_len + cards_len);
+                out.cards.extend_from_slice(&sctx.root_deck_cards);
+            }
+            out.cards.reserve(cards_len);
+            out.deck_dirty.0 = false;
+        } else {
+            out.cards.clear();
+            out.cards.reserve(cards_len);
+            out.deck_dirty.0 = true;
+        }
+        if cards_len != 0 {
+            let base_len = out.cards.len();
+            let cards_ptr = out.cards.as_mut_ptr();
+            let mut cards_guard = SetLenOnDrop {
+                vec: &mut out.cards,
+                base_len,
+                written: 0,
+            };
+            for idx in 0..cards_len {
+                let card = read_packed_card_at(
+                    r,
+                    sctx,
+                    unpack_tables,
+                    base_len + idx,
+                    &mut pile_has_hook_bits,
+                    &mut cards_contiguous,
+                )?;
+                unsafe {
+                    cards_ptr.add(base_len + idx).write(card);
+                }
+                cards_guard.written += 1;
+            }
+        }
+        out.card_meta_dirty = sts2_kernel::state::CardMetaDirtyMask::ALL_DIRTY;
     }
 
     // CardExtensions (reuse Vec/BTreeMap capacity in-place)
@@ -3893,9 +4514,9 @@ fn unpack_state_inner(
             r.cow_field_map_into(&mut de.private_fields)?;
         } else {
             let local_energy_modifiers = if mlen == 0 {
-                SmallVec::new()
+                Vec::new()
             } else {
-                let mut v = SmallVec::with_capacity(mlen);
+                let mut v = Vec::with_capacity(mlen);
                 for _ in 0..mlen {
                     let mraw = r.take(6)?;
                     v.push(LocalEnergyModifier {
@@ -3934,6 +4555,9 @@ fn unpack_state_inner(
     let old_cr_len = out.creatures.len();
     for cr_idx in 0..cr_len {
         let handle = CreatureHandle(r.u32()?);
+        if handle.0 != (cr_idx + 1) as u32 {
+            creatures_contiguous = false;
+        }
         let combat_id = r.opt_u32()?;
         let side = decode_combat_side(r.u8()?)?;
         if cr_idx < old_cr_len {
@@ -4357,6 +4981,7 @@ fn unpack_state_inner(
     }
 
     // Semantic history
+    let cur_tk = out.current_turn_key();
     let sh = &mut out.semantic_history;
     let sh_mask = r.u8()?;
     if sh_mask == 0 {
@@ -4378,13 +5003,25 @@ fn unpack_state_inner(
         if !sh.actor_events.is_empty() {
             sh.actor_events.clear();
         }
+        sh.turn_cache = sts2_kernel::state::SemanticHistoryTurnCache {
+            valid: true,
+            valid_for: cur_tk,
+            ..Default::default()
+        };
     } else {
         let mut prev_valid = false;
+        let mut prev_matches_cur = false;
         let mut prev_tk = TurnKey {
             round_number: 0,
             side: CombatSide::Player,
             player_turn_numbers: InlineOptI32Vec4::new(),
         };
+        let mut ex_cur = 0u32;
+        let mut cbg_cur = 0u32;
+        let mut oc_cur = 0u32;
+        let mut es_cur_sum = 0i32;
+        let mut cd_cur = 0u32;
+        let mut ae_start = 0u32;
         if (sh_mask & (1 << 0)) != 0 {
             sh.exhausts.clear();
             let ex_len = r.var_u32()? as usize;
@@ -4406,6 +5043,9 @@ fn unpack_state_inner(
                                 r.cur = r.cur.add(2);
                                 dst_ptr.add(idx).write((prev_tk, (raw >> 8) as usize));
                             }
+                            if prev_matches_cur {
+                                ex_cur += 1;
+                            }
                             guard.written += 1;
                             continue;
                         }
@@ -4413,6 +5053,10 @@ fn unpack_state_inner(
                     let tag = r.u8()?;
                     if tag != 0 || !prev_valid {
                         read_turn_key_delta_with_tag_into(tag, r, &mut prev_valid, &mut prev_tk)?;
+                        prev_matches_cur = prev_tk == cur_tk;
+                    }
+                    if prev_matches_cur {
+                        ex_cur += 1;
                     }
                     let val = (prev_tk, r.var_u32()? as usize);
                     unsafe {
@@ -4449,6 +5093,9 @@ fn unpack_state_inner(
                                     ((raw >> 16) as u16 as i16) as i32,
                                 ));
                             }
+                            if prev_matches_cur {
+                                cbg_cur += 1;
+                            }
                             guard.written += 1;
                             continue;
                         }
@@ -4456,6 +5103,10 @@ fn unpack_state_inner(
                     let tag = r.u8()?;
                     if tag != 0 || !prev_valid {
                         read_turn_key_delta_with_tag_into(tag, r, &mut prev_valid, &mut prev_tk)?;
+                        prev_matches_cur = prev_tk == cur_tk;
+                    }
+                    if prev_matches_cur {
+                        cbg_cur += 1;
                     }
                     let val = (prev_tk, r.var_u32()? as usize, r.i32()?);
                     unsafe {
@@ -4482,6 +5133,10 @@ fn unpack_state_inner(
                     let tag = r.u8()?;
                     if tag != 0 || !prev_valid {
                         read_turn_key_delta_with_tag_into(tag, r, &mut prev_valid, &mut prev_tk)?;
+                        prev_matches_cur = prev_tk == cur_tk;
+                    }
+                    if prev_matches_cur {
+                        oc_cur += 1;
                     }
                     let val = (prev_tk, r.var_u32()? as usize, decode_orb_id(r.u8()?)?);
                     unsafe {
@@ -4510,13 +5165,17 @@ fn unpack_state_inner(
                             std::ptr::read_unaligned(r.cur.cast::<u32>())
                         });
                         if (raw & 0x80FF) == 3 {
+                            let amt = ((raw >> 16) as u16 as i16) as i32;
                             unsafe {
                                 r.cur = r.cur.add(4);
                                 dst_ptr.add(idx).write((
                                     prev_tk,
                                     ((raw >> 8) & 0x7F) as usize,
-                                    ((raw >> 16) as u16 as i16) as i32,
+                                    amt,
                                 ));
+                            }
+                            if prev_matches_cur {
+                                es_cur_sum += amt;
                             }
                             guard.written += 1;
                             continue;
@@ -4525,8 +5184,14 @@ fn unpack_state_inner(
                     let tag = r.u8()?;
                     if tag != 0 || !prev_valid {
                         read_turn_key_delta_with_tag_into(tag, r, &mut prev_valid, &mut prev_tk)?;
+                        prev_matches_cur = prev_tk == cur_tk;
                     }
-                    let val = (prev_tk, r.var_u32()? as usize, r.i32()?);
+                    let actor_idx = r.var_u32()? as usize;
+                    let amt = r.i32()?;
+                    if prev_matches_cur {
+                        es_cur_sum += amt;
+                    }
+                    let val = (prev_tk, actor_idx, amt);
                     unsafe {
                         dst_ptr.add(idx).write(val);
                     }
@@ -4563,6 +5228,9 @@ fn unpack_state_inner(
                                     (raw >> 24) != 0,
                                 ));
                             }
+                            if prev_matches_cur {
+                                cd_cur += 1;
+                            }
                             guard.written += 1;
                             continue;
                         }
@@ -4570,6 +5238,10 @@ fn unpack_state_inner(
                     let tag = r.u8()?;
                     if tag != 0 || !prev_valid {
                         read_turn_key_delta_with_tag_into(tag, r, &mut prev_valid, &mut prev_tk)?;
+                        prev_matches_cur = prev_tk == cur_tk;
+                    }
+                    if prev_matches_cur {
+                        cd_cur += 1;
                     }
                     let val = (
                         prev_tk,
@@ -4592,14 +5264,22 @@ fn unpack_state_inner(
             for idx in 0..keep {
                 r.read_cow_str_encoded_into(&mut sh.actor_events[idx].0)?;
                 read_turn_key_delta_into(r, &mut prev_valid, &mut prev_tk)?;
+                prev_matches_cur = prev_tk == cur_tk;
+                if !prev_matches_cur {
+                    ae_start = (idx + 1) as u32;
+                }
                 sh.actor_events[idx].1 = prev_tk;
                 sh.actor_events[idx].2 = r.var_u32()? as usize;
             }
             if ae_len > keep {
                 sh.actor_events.reserve(ae_len - keep);
-                for _ in keep..ae_len {
+                for idx in keep..ae_len {
                     let s = r.cow_str()?;
                     read_turn_key_delta_into(r, &mut prev_valid, &mut prev_tk)?;
+                    prev_matches_cur = prev_tk == cur_tk;
+                    if !prev_matches_cur {
+                        ae_start = (idx + 1) as u32;
+                    }
                     sh.actor_events.push((s, prev_tk, r.var_u32()? as usize));
                 }
             } else {
@@ -4608,6 +5288,22 @@ fn unpack_state_inner(
         } else if !sh.actor_events.is_empty() {
             sh.actor_events.clear();
         }
+        sh.turn_cache = sts2_kernel::state::SemanticHistoryTurnCache {
+            valid: true,
+            valid_for: cur_tk,
+            ex_len: sh.exhausts.len() as u32,
+            ex_cur,
+            cbg_len: sh.card_block_gains.len() as u32,
+            cbg_cur,
+            oc_len: sh.orb_channels.len() as u32,
+            oc_cur,
+            es_len: sh.energy_spent.len() as u32,
+            es_cur_sum,
+            cd_len: sh.card_drawn.len() as u32,
+            cd_cur,
+            ae_len: sh.actor_events.len() as u32,
+            ae_start,
+        };
     }
     match r.u8()? {
         0 => {
@@ -4691,6 +5387,33 @@ fn unpack_state_inner(
     } else {
         out.invalidate_hook_cache();
     }
+    out.handle_layout = sts2_kernel::state::ContiguousHandlesFlag {
+        cards: cards_contiguous,
+        creatures: creatures_contiguous,
+    };
+    #[cfg(debug_assertions)]
+    {
+        debug_assert!(!out.handle_layout.cards || out.cards_are_contiguous());
+        debug_assert!(!out.handle_layout.creatures || out.creatures_are_contiguous());
+        if let Some(t) = unpack_tables {
+            let mut expected_bits = 0u8;
+            for c in &out.cards {
+                if !c.removed_from_state
+                    && !matches!(c.pile, PileType::Deck | PileType::None)
+                    && (t.card_has_hook(c.id)
+                        || c.ext_index.is_some()
+                        || (!t.afflictions_self_card_entered_only && c.affliction.is_some()))
+                {
+                    expected_bits |= 1u8 << (c.pile as u8);
+                }
+            }
+            debug_assert_eq!(
+                pile_has_hook_bits & 0b0011_1110,
+                expected_bits,
+                "unpack_state pile_has_hook_bits mismatch"
+            );
+        }
+    }
     Ok(())
 }
 
@@ -4772,6 +5495,10 @@ pub fn empty_scratch_state(static_ctx: Arc<RootStaticContext>) -> BattleState {
         hook_cache: Default::default(),
         deck_dirty: DeckDirtyFlag(true),
         relic_dirty_mask: RelicDirtyMask(u64::MAX),
+        handle_layout: sts2_kernel::state::ContiguousHandlesFlag::default(),
+        card_meta_dirty: sts2_kernel::state::CardMetaDirtyMask::ALL_DIRTY,
+        extra_clutter_hint: sts2_kernel::state::ExtraClutterHintFlag::default(),
+        eot_card_cleanup_dirty: sts2_kernel::state::EotCleanupDirtyFlag::default(),
     }
 }
 
@@ -5232,40 +5959,91 @@ fn hash_canonical_card_slow(
     pending_buf: &mut [u64; 4],
     pending_len: &mut usize,
 ) {
-    if card.is_rare_clean()
-        && card.affliction.is_none()
-        && card.transform_into_after_play.is_none()
-    {
-        if let Some(ei) = card.ext_index {
-            if let Some(ext) = card_extensions.get(ei as usize) {
+    if card.is_rare_clean() && card.transform_into_after_play.is_none() {
+        if card.ext_index.is_none() {
+            if let Some(a) = card.affliction {
                 flush_pending_fast_cards(h, pending_buf, pending_len);
                 let slow_tag = (1u64 << 14)
                     | (card.id as u64)
                     | ((card.local_keywords.bits() as u64) << 16)
-                    | ((1u64 << 6) << 32);
+                    | ((1u64 << 4) << 32);
                 let cost_upg_word = (card.base_energy_cost as u32 as u64)
                     | ((card.upgrade_level as u32 as u64) << 32);
                 h.mix_u64x2(slow_tag, cost_upg_word);
-                h.mix_u32(ext.local_energy_modifiers.len() as u32);
-                for m in &ext.local_energy_modifiers {
-                    h.mix_u64(
-                        ((m.kind as u64) << 40)
-                            | ((u64::from(m.is_reduce_only)) << 32)
-                            | (m.amount as u32 as u64),
-                    );
-                }
-                match &ext.enchantment {
-                    Some(e) => {
+                h.mix_u64(((a.id as u64) << 32) | (a.amount as u32 as u64));
+                return;
+            }
+        } else if card.affliction.is_none() {
+            if let Some(ei) = card.ext_index {
+                if let Some(ext) = card_extensions.get(ei as usize) {
+                    flush_pending_fast_cards(h, pending_buf, pending_len);
+                    let slow_tag = (1u64 << 14)
+                        | (card.id as u64)
+                        | ((card.local_keywords.bits() as u64) << 16)
+                        | ((1u64 << 6) << 32);
+                    let cost_upg_word = (card.base_energy_cost as u32 as u64)
+                        | ((card.upgrade_level as u32 as u64) << 32);
+                    h.mix_u64x2(slow_tag, cost_upg_word);
+                    h.mix_u32(ext.local_energy_modifiers.len() as u32);
+                    for m in &ext.local_energy_modifiers {
                         h.mix_u64(
-                            1 | ((e.id as u64) << 8)
-                                | ((e.status as u64) << 24)
-                                | ((e.amount as u32 as u64) << 32),
+                            ((m.kind as u64) << 40)
+                                | ((u64::from(m.is_reduce_only)) << 32)
+                                | (m.amount as u32 as u64),
                         );
-                        hash_field_map(h, &e.private_fields);
                     }
-                    None => h.mix_u64(0),
+                    match &ext.enchantment {
+                        Some(e) => {
+                            h.mix_u64(
+                                1 | ((e.id as u64) << 8)
+                                    | ((e.status as u64) << 24)
+                                    | ((e.amount as u32 as u64) << 32),
+                            );
+                            hash_field_map(h, &e.private_fields);
+                        }
+                        None => h.mix_u64(0),
+                    }
+                    hash_field_map(h, &ext.private_fields);
+                    return;
                 }
-                hash_field_map(h, &ext.private_fields);
+            }
+        }
+    }
+    if card.ext_index.is_none()
+        && card.affliction.is_none()
+        && card.transform_into_after_play.is_none()
+    {
+        let common_other = card.keywords_added_from_outside.bits()
+            | card.keywords_removed_from_outside.bits()
+            | (card.captured_energy_x_value as u16)
+            | (card.base_replay_count as u16)
+            | card.temp_star_cost_override_this_turn.raw()
+            | card.temp_cost_override_this_combat.raw();
+        if common_other == 0 {
+            let tf = card.temp_flags.bits();
+            let c_turn = card.temp_cost_override_this_turn.get();
+            let c_played = card.temp_cost_override_this_turn_or_until_played.get();
+            let rare_mask = (u64::from(c_turn.is_some()) << 1)
+                | (u64::from(c_played.is_some()) << 2)
+                | (u64::from(tf != 0) << 11);
+            if rare_mask != 0 {
+                flush_pending_fast_cards(h, pending_buf, pending_len);
+                let slow_tag = (1u64 << 14)
+                    | (card.id as u64)
+                    | ((card.local_keywords.bits() as u64) << 16)
+                    | (rare_mask << 32);
+                let cost_upg_word = (card.base_energy_cost as u32 as u64)
+                    | ((card.upgrade_level as u32 as u64) << 32);
+                h.mix_u64x2(slow_tag, cost_upg_word);
+                if tf != 0 {
+                    h.mix_u64((tf as u64) << 32);
+                }
+                if let Some(v) = c_turn {
+                    h.mix_i32(v);
+                }
+                if let Some(v) = c_played {
+                    h.mix_i32(v);
+                }
                 return;
             }
         }
@@ -5499,18 +6277,209 @@ fn hash_player_counters(h: &mut WordHasher128, c: &PlayerCounters) {
 }
 
 #[inline(always)]
+fn resolve_fast_hash_at(
+    cards_slice: &[CardInst],
+    idx: usize,
+    delta_len: usize,
+    root_fast_hash: &[u64],
+    dirty_words: &[u64; 8],
+) -> u64 {
+    debug_assert!(delta_len <= 512 && delta_len <= root_fast_hash.len());
+    if idx < delta_len && (unsafe { *dirty_words.get_unchecked(idx >> 6) } & (1u64 << (idx & 63))) == 0
+    {
+        let w = unsafe { *root_fast_hash.get_unchecked(idx) };
+        #[cfg(debug_assertions)]
+        debug_assert_eq!(w, sts2_kernel::state::compute_card_fast_hash_word(&cards_slice[idx]));
+        w
+    } else {
+        sts2_kernel::state::compute_card_fast_hash_word(unsafe { cards_slice.get_unchecked(idx) })
+    }
+}
+
+#[inline(always)]
+fn push_fast_hash_word_or_slow(
+    h: &mut WordHasher128,
+    card_extensions: &[CardExtension],
+    card: &CardInst,
+    w: u64,
+    pending_buf: &mut [u64; 4],
+    pending_len: &mut usize,
+) {
+    if (w & sts2_kernel::state::ROOT_CARD_FAST_HASH_SLOW) == 0 {
+        pending_buf[*pending_len] = w;
+        *pending_len += 1;
+        if *pending_len == 4 {
+            h.mix_u64x4(
+                pending_buf[0],
+                pending_buf[1],
+                pending_buf[2],
+                pending_buf[3],
+            );
+            *pending_len = 0;
+        }
+    } else {
+        hash_canonical_card_slow(h, card_extensions, card, pending_buf, pending_len);
+    }
+}
+
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
 fn hash_canonical_pile(
     h: &mut WordHasher128,
     cards_slice: &[CardInst],
     card_extensions: &[CardExtension],
+    cards_contiguous: bool,
+    delta_len: usize,
+    any_card_meta_dirty: bool,
+    root_fast_hash: &[u64],
+    dirty_words: &[u64; 8],
     pile: &[CardHandle],
-    pending_buf: &mut [u64; 4],
-    pending_len: &mut usize,
 ) {
-    flush_pending_fast_cards(h, pending_buf, pending_len);
-    h.mix_u32(pile.len() as u32);
     let len = pile.len();
-    for i in 0..len {
+    h.mix_u32(len as u32);
+    if len == 0 {
+        return;
+    }
+    let mut pending_buf = [0u64; 4];
+    let mut pending_len = 0usize;
+    let mut i = 0usize;
+    if cards_contiguous {
+        let cards_len = cards_slice.len();
+        debug_assert!(delta_len <= 512 && delta_len <= root_fast_hash.len() && delta_len <= cards_len);
+        while i < len {
+            if pending_len == 0 && i + 4 <= len {
+                #[cfg(target_arch = "x86_64")]
+                if delta_len == 0 && i + 5 < len {
+                    let n0 = pile[i + 4].0.wrapping_sub(1) as usize;
+                    let n1 = pile[i + 5].0.wrapping_sub(1) as usize;
+                    if let Some(nc) = cards_slice.get(n0) {
+                        unsafe {
+                            std::arch::x86_64::_mm_prefetch(
+                                (nc as *const CardInst).cast::<i8>(),
+                                std::arch::x86_64::_MM_HINT_T0,
+                            );
+                        }
+                    }
+                    if let Some(nc) = cards_slice.get(n1) {
+                        unsafe {
+                            std::arch::x86_64::_mm_prefetch(
+                                (nc as *const CardInst).cast::<i8>(),
+                                std::arch::x86_64::_MM_HINT_T0,
+                            );
+                        }
+                    }
+                }
+                let i0 = pile[i].0.wrapping_sub(1) as usize;
+                let i1 = pile[i + 1].0.wrapping_sub(1) as usize;
+                let i2 = pile[i + 2].0.wrapping_sub(1) as usize;
+                let i3 = pile[i + 3].0.wrapping_sub(1) as usize;
+                if !any_card_meta_dirty
+                    && i0 < delta_len
+                    && i1 < delta_len
+                    && i2 < delta_len
+                    && i3 < delta_len
+                {
+                    let w0 = unsafe { *root_fast_hash.get_unchecked(i0) };
+                    let w1 = unsafe { *root_fast_hash.get_unchecked(i1) };
+                    let w2 = unsafe { *root_fast_hash.get_unchecked(i2) };
+                    let w3 = unsafe { *root_fast_hash.get_unchecked(i3) };
+                    #[cfg(debug_assertions)]
+                    {
+                        debug_assert_eq!(w0, resolve_fast_hash_at(cards_slice, i0, delta_len, root_fast_hash, dirty_words));
+                        debug_assert_eq!(w1, resolve_fast_hash_at(cards_slice, i1, delta_len, root_fast_hash, dirty_words));
+                        debug_assert_eq!(w2, resolve_fast_hash_at(cards_slice, i2, delta_len, root_fast_hash, dirty_words));
+                        debug_assert_eq!(w3, resolve_fast_hash_at(cards_slice, i3, delta_len, root_fast_hash, dirty_words));
+                    }
+                    if ((w0 | w1 | w2 | w3) & sts2_kernel::state::ROOT_CARD_FAST_HASH_SLOW) == 0 {
+                        h.mix_u64x4(w0, w1, w2, w3);
+                    } else {
+                        let c0 = unsafe { cards_slice.get_unchecked(i0) };
+                        let c1 = unsafe { cards_slice.get_unchecked(i1) };
+                        let c2 = unsafe { cards_slice.get_unchecked(i2) };
+                        let c3 = unsafe { cards_slice.get_unchecked(i3) };
+                        push_fast_hash_word_or_slow(h, card_extensions, c0, w0, &mut pending_buf, &mut pending_len);
+                        push_fast_hash_word_or_slow(h, card_extensions, c1, w1, &mut pending_buf, &mut pending_len);
+                        push_fast_hash_word_or_slow(h, card_extensions, c2, w2, &mut pending_buf, &mut pending_len);
+                        push_fast_hash_word_or_slow(h, card_extensions, c3, w3, &mut pending_buf, &mut pending_len);
+                    }
+                    i += 4;
+                    continue;
+                }
+                if i0 < cards_len && i1 < cards_len && i2 < cards_len && i3 < cards_len {
+                    let c0 = unsafe { cards_slice.get_unchecked(i0) };
+                    let c1 = unsafe { cards_slice.get_unchecked(i1) };
+                    let c2 = unsafe { cards_slice.get_unchecked(i2) };
+                    let c3 = unsafe { cards_slice.get_unchecked(i3) };
+                    #[cfg(debug_assertions)]
+                    {
+                        debug_assert_eq!(c0.handle, pile[i]);
+                        debug_assert_eq!(c1.handle, pile[i + 1]);
+                        debug_assert_eq!(c2.handle, pile[i + 2]);
+                        debug_assert_eq!(c3.handle, pile[i + 3]);
+                    }
+                    let w0 = resolve_fast_hash_at(
+                        cards_slice,
+                        i0,
+                        delta_len,
+                        root_fast_hash,
+                        dirty_words,
+                    );
+                    let w1 = resolve_fast_hash_at(
+                        cards_slice,
+                        i1,
+                        delta_len,
+                        root_fast_hash,
+                        dirty_words,
+                    );
+                    let w2 = resolve_fast_hash_at(
+                        cards_slice,
+                        i2,
+                        delta_len,
+                        root_fast_hash,
+                        dirty_words,
+                    );
+                    let w3 = resolve_fast_hash_at(
+                        cards_slice,
+                        i3,
+                        delta_len,
+                        root_fast_hash,
+                        dirty_words,
+                    );
+                    if ((w0 | w1 | w2 | w3) & sts2_kernel::state::ROOT_CARD_FAST_HASH_SLOW) == 0 {
+                        h.mix_u64x4(w0, w1, w2, w3);
+                    } else {
+                        push_fast_hash_word_or_slow(h, card_extensions, c0, w0, &mut pending_buf, &mut pending_len);
+                        push_fast_hash_word_or_slow(h, card_extensions, c1, w1, &mut pending_buf, &mut pending_len);
+                        push_fast_hash_word_or_slow(h, card_extensions, c2, w2, &mut pending_buf, &mut pending_len);
+                        push_fast_hash_word_or_slow(h, card_extensions, c3, w3, &mut pending_buf, &mut pending_len);
+                    }
+                    i += 4;
+                    continue;
+                }
+            }
+            let idx = pile[i].0.wrapping_sub(1) as usize;
+            if idx < cards_len {
+                let card = unsafe { cards_slice.get_unchecked(idx) };
+                #[cfg(debug_assertions)]
+                debug_assert_eq!(card.handle, pile[i]);
+                let w = resolve_fast_hash_at(
+                    cards_slice,
+                    idx,
+                    delta_len,
+                    root_fast_hash,
+                    dirty_words,
+                );
+                push_fast_hash_word_or_slow(h, card_extensions, card, w, &mut pending_buf, &mut pending_len);
+            } else {
+                flush_pending_fast_cards(h, &mut pending_buf, &mut pending_len);
+                h.mix_u64(1u64 << 15);
+            }
+            i += 1;
+        }
+        flush_pending_fast_cards(h, &mut pending_buf, &mut pending_len);
+        return;
+    }
+    while i < len {
         #[cfg(target_arch = "x86_64")]
         if i + 2 < len {
             let next_idx = pile[i + 2].0.wrapping_sub(1) as usize;
@@ -5528,10 +6497,12 @@ fn hash_canonical_pile(
             cards_slice,
             card_extensions,
             pile[i],
-            pending_buf,
-            pending_len,
+            &mut pending_buf,
+            &mut pending_len,
         );
+        i += 1;
     }
+    flush_pending_fast_cards(h, &mut pending_buf, &mut pending_len);
 }
 
 /// Zero-allocation direct word-accumulator 128-bit canonical equivalence hash.
@@ -5602,16 +6573,84 @@ pub fn hash_canonical_key(state: &BattleState) -> crate::hash::StateHash {
 
     hash_player_counters(&mut h, &p.counters);
 
-    let mut pending_buf = [0u64; 4];
-    let mut pending_len = 0usize;
     let cards_slice = state.cards.as_slice();
     let card_extensions = &state.card_extensions;
-    hash_canonical_pile(&mut h, cards_slice, card_extensions, &p.hand, &mut pending_buf, &mut pending_len);
-    hash_canonical_pile(&mut h, cards_slice, card_extensions, &p.draw, &mut pending_buf, &mut pending_len);
-    hash_canonical_pile(&mut h, cards_slice, card_extensions, &p.discard, &mut pending_buf, &mut pending_len);
-    hash_canonical_pile(&mut h, cards_slice, card_extensions, &p.exhaust, &mut pending_buf, &mut pending_len);
-    hash_canonical_pile(&mut h, cards_slice, card_extensions, &p.play, &mut pending_buf, &mut pending_len);
-    flush_pending_fast_cards(&mut h, &mut pending_buf, &mut pending_len);
+    let cards_contiguous = state.handle_layout.cards;
+    let delta_len = if cards_contiguous
+        && !state.deck_dirty.0
+        && sctx.root_card_fast_hash.len() >= sctx.root_combat_delta_len
+        && sctx.root_combat_delta_len <= cards_slice.len().min(512)
+    {
+        sctx.root_combat_delta_len
+    } else {
+        0
+    };
+    let root_fast_hash = sctx.root_card_fast_hash.as_slice();
+    let dirty_words = &state.card_meta_dirty.0;
+    let any_card_meta_dirty = (dirty_words[0]
+        | dirty_words[1]
+        | dirty_words[2]
+        | dirty_words[3]
+        | dirty_words[4]
+        | dirty_words[5]
+        | dirty_words[6]
+        | dirty_words[7])
+        != 0;
+    hash_canonical_pile(
+        &mut h,
+        cards_slice,
+        card_extensions,
+        cards_contiguous,
+        delta_len,
+        any_card_meta_dirty,
+        root_fast_hash,
+        dirty_words,
+        &p.hand,
+    );
+    hash_canonical_pile(
+        &mut h,
+        cards_slice,
+        card_extensions,
+        cards_contiguous,
+        delta_len,
+        any_card_meta_dirty,
+        root_fast_hash,
+        dirty_words,
+        &p.draw,
+    );
+    hash_canonical_pile(
+        &mut h,
+        cards_slice,
+        card_extensions,
+        cards_contiguous,
+        delta_len,
+        any_card_meta_dirty,
+        root_fast_hash,
+        dirty_words,
+        &p.discard,
+    );
+    hash_canonical_pile(
+        &mut h,
+        cards_slice,
+        card_extensions,
+        cards_contiguous,
+        delta_len,
+        any_card_meta_dirty,
+        root_fast_hash,
+        dirty_words,
+        &p.exhaust,
+    );
+    hash_canonical_pile(
+        &mut h,
+        cards_slice,
+        card_extensions,
+        cards_contiguous,
+        delta_len,
+        any_card_meta_dirty,
+        root_fast_hash,
+        dirty_words,
+        &p.play,
+    );
 
     h.mix_u64((p.combat_generated_potion_mask as u64) | ((p.potion_slots.len() as u64) << 16));
     for &slot in &p.potion_slots {
@@ -5790,50 +6829,99 @@ pub fn hash_canonical_key(state: &BattleState) -> crate::hash::StateHash {
         h.mix_u64x4(total_exhausts as u64, 0, 0, 0);
     } else {
         let cur_tk = state.current_turn_key();
-        let ex_cur = {
-            let mut n = sh.exhausts.len();
-            while n > 0 && sh.exhausts[n - 1].0 == cur_tk {
-                n -= 1;
-            }
-            sh.exhausts.len() - n
-        };
-        let cbg_cur = {
-            let mut n = sh.card_block_gains.len();
-            while n > 0 && sh.card_block_gains[n - 1].0 == cur_tk {
-                n -= 1;
-            }
-            sh.card_block_gains.len() - n
-        };
-        let oc_cur = {
-            let mut n = sh.orb_channels.len();
-            while n > 0 && sh.orb_channels[n - 1].0 == cur_tk {
-                n -= 1;
-            }
-            sh.orb_channels.len() - n
-        };
-        let cur_energy_spent: i32 = {
-            let mut sum = 0i32;
-            let mut n = sh.energy_spent.len();
-            while n > 0 && sh.energy_spent[n - 1].0 == cur_tk {
-                n -= 1;
-                sum += sh.energy_spent[n].2;
-            }
-            sum
-        };
-        let cd_cur = {
-            let mut n = sh.card_drawn.len();
-            while n > 0 && sh.card_drawn[n - 1].0 == cur_tk {
-                n -= 1;
-            }
-            sh.card_drawn.len() - n
-        };
-        let ae_start = {
-            let mut n = sh.actor_events.len();
-            while n > 0 && sh.actor_events[n - 1].1 == cur_tk {
-                n -= 1;
-            }
-            n
-        };
+        let (ex_cur, cbg_cur, oc_cur, cur_energy_spent, cd_cur, ae_start) =
+            if sh.turn_cache.matches(&cur_tk, sh) {
+                (
+                    sh.turn_cache.ex_cur as usize,
+                    sh.turn_cache.cbg_cur as usize,
+                    sh.turn_cache.oc_cur as usize,
+                    sh.turn_cache.es_cur_sum,
+                    sh.turn_cache.cd_cur as usize,
+                    sh.turn_cache.ae_start as usize,
+                )
+            } else {
+                let ex_cur = if sh.exhausts.is_empty()
+                    || sh.exhausts[sh.exhausts.len() - 1].0 != cur_tk
+                {
+                    0
+                } else if sh.exhausts[0].0 == cur_tk {
+                    sh.exhausts.len()
+                } else {
+                    let mut n = sh.exhausts.len();
+                    while n > 0 && sh.exhausts[n - 1].0 == cur_tk {
+                        n -= 1;
+                    }
+                    sh.exhausts.len() - n
+                };
+                let cbg_cur = if sh.card_block_gains.is_empty()
+                    || sh.card_block_gains[sh.card_block_gains.len() - 1].0 != cur_tk
+                {
+                    0
+                } else if sh.card_block_gains[0].0 == cur_tk {
+                    sh.card_block_gains.len()
+                } else {
+                    let mut n = sh.card_block_gains.len();
+                    while n > 0 && sh.card_block_gains[n - 1].0 == cur_tk {
+                        n -= 1;
+                    }
+                    sh.card_block_gains.len() - n
+                };
+                let oc_cur = if sh.orb_channels.is_empty()
+                    || sh.orb_channels[sh.orb_channels.len() - 1].0 != cur_tk
+                {
+                    0
+                } else if sh.orb_channels[0].0 == cur_tk {
+                    sh.orb_channels.len()
+                } else {
+                    let mut n = sh.orb_channels.len();
+                    while n > 0 && sh.orb_channels[n - 1].0 == cur_tk {
+                        n -= 1;
+                    }
+                    sh.orb_channels.len() - n
+                };
+                let cur_energy_spent: i32 = if sh.energy_spent.is_empty()
+                    || sh.energy_spent[sh.energy_spent.len() - 1].0 != cur_tk
+                {
+                    0
+                } else if sh.energy_spent[0].0 == cur_tk {
+                    sh.energy_spent.iter().map(|e| e.2).sum()
+                } else {
+                    let mut sum = 0i32;
+                    let mut n = sh.energy_spent.len();
+                    while n > 0 && sh.energy_spent[n - 1].0 == cur_tk {
+                        n -= 1;
+                        sum += sh.energy_spent[n].2;
+                    }
+                    sum
+                };
+                let cd_cur = if sh.card_drawn.is_empty()
+                    || sh.card_drawn[sh.card_drawn.len() - 1].0 != cur_tk
+                {
+                    0
+                } else if sh.card_drawn[0].0 == cur_tk {
+                    sh.card_drawn.len()
+                } else {
+                    let mut n = sh.card_drawn.len();
+                    while n > 0 && sh.card_drawn[n - 1].0 == cur_tk {
+                        n -= 1;
+                    }
+                    sh.card_drawn.len() - n
+                };
+                let ae_start = if sh.actor_events.is_empty()
+                    || sh.actor_events[sh.actor_events.len() - 1].1 != cur_tk
+                {
+                    sh.actor_events.len()
+                } else if sh.actor_events[0].1 == cur_tk {
+                    0
+                } else {
+                    let mut n = sh.actor_events.len();
+                    while n > 0 && sh.actor_events[n - 1].1 == cur_tk {
+                        n -= 1;
+                    }
+                    n
+                };
+                (ex_cur, cbg_cur, oc_cur, cur_energy_spent, cd_cur, ae_start)
+            };
         #[cfg(debug_assertions)]
         {
             debug_assert_eq!(ex_cur, sh.exhausts.iter().filter(|(tk, _)| *tk == cur_tk).count());
@@ -6356,6 +7444,123 @@ mod tests {
     }
 
     #[test]
+    fn combat_cards_delta_pack_unpack_and_reuse_round_trip() {
+        let mk_card = |h: u32, id: CardId, pile: PileType, deck_h: OptCardHandle| CardInst {
+            handle: CardHandle(h),
+            id,
+            upgrade_level: 0,
+            canonical_base_energy_cost: 1,
+            base_energy_cost: 1,
+            captured_energy_x_value: 0,
+            base_replay_count: 0,
+            floor_added_to_deck: OptI16::some(1),
+            deck_card_handle: deck_h,
+            clone_of_handle: OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: OptI16::NONE,
+            temp_cost_override_this_turn: OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: OptI16::NONE,
+            temp_cost_override_this_combat: OptI16::NONE,
+            local_keywords: CardKeywords::empty(),
+            keywords_added_from_outside: CardKeywords::empty(),
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags: CardTempFlags::empty(),
+            affliction: None,
+            ext_index: None,
+            pile,
+            removed_from_state: false,
+            transform_into_after_play: None,
+        };
+        let root_cards = vec![
+            mk_card(1, CardId::StrikeIronclad, PileType::Deck, OptCardHandle::NONE),
+            mk_card(
+                2,
+                CardId::StrikeIronclad,
+                PileType::Hand,
+                OptCardHandle::some(CardHandle(1)),
+            ),
+            mk_card(
+                3,
+                CardId::DefendIronclad,
+                PileType::Draw,
+                OptCardHandle::some(CardHandle(1)),
+            ),
+            mk_card(
+                4,
+                CardId::Bash,
+                PileType::Discard,
+                OptCardHandle::some(CardHandle(1)),
+            ),
+        ];
+        let mut r_ctx_val = (*dummy_ctx()).clone();
+        r_ctx_val.root_deck_prefix_len = 1;
+        r_ctx_val.root_deck_cards = vec![root_cards[0]];
+        r_ctx_val.root_deck_handles = vec![CardHandle(1)];
+        r_ctx_val.set_root_card_floors(&root_cards);
+
+        let mut st_base = empty_scratch_state(Arc::new(r_ctx_val.clone()));
+        st_base.cards = root_cards.clone();
+        st_base.player.deck = vec![CardHandle(1)];
+        st_base.player.hand = vec![CardHandle(2)];
+        st_base.player.draw = vec![CardHandle(3)];
+        st_base.player.discard = vec![CardHandle(4)];
+        r_ctx_val.set_root_initial_cards(&root_cards, &st_base.player);
+        assert_eq!(r_ctx_val.root_combat_delta_len, 4);
+        let r_ctx = Arc::new(r_ctx_val);
+
+        let mut st_clean = empty_scratch_state(r_ctx.clone());
+        st_clean.cards = root_cards;
+        st_clean.player.deck = vec![CardHandle(1)];
+        st_clean.player.hand = vec![CardHandle(3)];
+        st_clean.player.draw = vec![];
+        st_clean.player.discard = vec![CardHandle(2)];
+        st_clean.cards[1].pile = PileType::Discard;
+        st_clean.cards[2].pile = PileType::Hand;
+        st_clean.cards[3].pile = PileType::None;
+        st_clean.deck_dirty.0 = false;
+        st_clean.card_meta_dirty = sts2_kernel::state::CardMetaDirtyMask::CLEAN;
+        st_clean.recompute_handle_layout();
+
+        let mut st_mut = st_clean.clone();
+        if let Some(c) = st_mut.card_mut(CardHandle(3)) {
+            c.upgrade_level = 1;
+            c.base_energy_cost = 0;
+        }
+        st_mut.push_card(mk_card(
+            5,
+            CardId::Wound,
+            PileType::Exhaust,
+            OptCardHandle::NONE,
+        ));
+        st_mut.player.exhaust.push(CardHandle(5));
+
+        let mut ctx_full = (*r_ctx).clone();
+        ctx_full.root_combat_delta_len = 0;
+        let mut st_clean_full = st_clean.clone();
+        st_clean_full.static_ctx = Arc::new(ctx_full);
+
+        let mut b_clean = Vec::new();
+        let mut b_clean_full = Vec::new();
+        let mut b_mut = Vec::new();
+        pack_state(&st_clean, &mut b_clean);
+        pack_state(&st_clean_full, &mut b_clean_full);
+        pack_state(&st_mut, &mut b_mut);
+        assert!(b_clean.len() < b_clean_full.len());
+
+        let mut reuse = empty_scratch_state(r_ctx.clone());
+        unpack_state(&b_mut, &r_ctx, &mut reuse).unwrap();
+        assert_eq!(reuse, st_mut);
+        assert_eq!(reuse.cards.len(), 5);
+        assert!(reuse.handle_layout.cards);
+        assert_eq!(reuse.card_meta_dirty.0[0], 1u64 << 2);
+
+        unpack_state(&b_clean, &r_ctx, &mut reuse).unwrap();
+        assert_eq!(reuse, st_clean);
+        assert_eq!(reuse.cards.len(), 4);
+        assert_eq!(reuse.cards[3].pile, PileType::None);
+        assert_eq!(reuse.card_meta_dirty.0[0], 0);
+    }
+
+    #[test]
     fn hash_canonical_key_matches_wave1_reference() {
         let mut s = empty_scratch_state(dummy_ctx());
         s.run_rngs = RunRngSet::from_string_seed("WAVE1_REF");
@@ -6608,13 +7813,185 @@ mod tests {
             None,
             CardTempFlags::EXHAUST_ON_NEXT_PLAY | CardTempFlags::TEMPORARY_RETAIN_TURN,
         ));
+        let mut tag5_a = mk(3, PileType::Hand, None, CardTempFlags::empty());
+        tag5_a.temp_cost_override_this_turn = OptI16::some(0);
+        let mut tag5_b = mk(4, PileType::Draw, None, CardTempFlags::empty());
+        tag5_b.temp_cost_override_this_turn = OptI16::some(3);
+        s.cards.push(tag5_a);
+        s.cards.push(tag5_b);
         s.player.hand.push(CardHandle(1));
         s.player.discard.push(CardHandle(2));
+        s.player.hand.push(CardHandle(3));
+        s.player.draw.push(CardHandle(4));
         let mut buf = Vec::new();
         pack_state(&s, &mut buf);
         let mut unpacked = empty_scratch_state(dummy_ctx());
         unpack_state(&buf, &dummy_ctx(), &mut unpacked).unwrap();
         assert_eq!(unpacked.cards, s.cards);
         assert_eq!(unpacked.card_extensions, s.card_extensions);
+    }
+
+    #[test]
+    fn pack_unpack_card_tag5_and_hash_subsets_round_trip() {
+        let mut s = empty_scratch_state(dummy_ctx());
+        let base_card = CardInst {
+            handle: CardHandle(1),
+            id: CardId::StrikeIronclad,
+            upgrade_level: 0,
+            canonical_base_energy_cost: 1,
+            base_energy_cost: 1,
+            captured_energy_x_value: 0,
+            base_replay_count: 0,
+            floor_added_to_deck: OptI16::NONE,
+            deck_card_handle: OptCardHandle::NONE,
+            clone_of_handle: OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: OptI16::NONE,
+            temp_cost_override_this_turn: OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: OptI16::NONE,
+            temp_cost_override_this_combat: OptI16::NONE,
+            local_keywords: CardKeywords::empty(),
+            keywords_added_from_outside: CardKeywords::empty(),
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags: CardTempFlags::empty(),
+            affliction: None,
+            ext_index: None,
+            pile: PileType::Hand,
+            removed_from_state: false,
+            transform_into_after_play: None,
+        };
+        let variants = [
+            (
+                CardTempFlags::DISCOVERY_OFFER | CardTempFlags::TEMPORARY_RETAIN_TURN,
+                OptI16::some(0),
+                OptI16::NONE,
+            ),
+            (CardTempFlags::empty(), OptI16::NONE, OptI16::some(0)),
+            (
+                CardTempFlags::EXHAUST_ON_NEXT_PLAY,
+                OptI16::NONE,
+                OptI16::some(0),
+            ),
+            (
+                CardTempFlags::DISCOVERY_OFFER,
+                OptI16::some(1),
+                OptI16::some(0),
+            ),
+        ];
+        for (idx, &(tf, ct, ctp)) in variants.iter().enumerate() {
+            let mut c = base_card;
+            c.handle = CardHandle((idx + 1) as u32);
+            c.temp_flags = tf;
+            c.temp_cost_override_this_turn = ct;
+            c.temp_cost_override_this_turn_or_until_played = ctp;
+            s.cards.push(c);
+            s.player.hand.push(c.handle);
+
+            // Verify fast slow-card hash matches manual rare_mask layout bit-for-bit.
+            let mut h_fast = WordHasher128::new();
+            let mut pb = [0u64; 4];
+            let mut pl = 0usize;
+            hash_canonical_card_slow(&mut h_fast, &s.card_extensions, &c, &mut pb, &mut pl);
+            flush_pending_fast_cards(&mut h_fast, &mut pb, &mut pl);
+
+            let mut h_ref = WordHasher128::new();
+            let rm: u64 = (u64::from(ct.is_some()) << 1)
+                | (u64::from(ctp.is_some()) << 2)
+                | (u64::from(!tf.is_empty()) << 11);
+            let slow_tag = (1u64 << 14)
+                | (c.id as u64)
+                | ((c.local_keywords.bits() as u64) << 16)
+                | (rm << 32);
+            let cost_upg_word =
+                (c.base_energy_cost as u32 as u64) | ((c.upgrade_level as u32 as u64) << 32);
+            h_ref.mix_u64x2(slow_tag, cost_upg_word);
+            if !tf.is_empty() {
+                h_ref.mix_u64((tf.bits() as u64) << 32);
+            }
+            if let Some(v) = ct.get() {
+                h_ref.mix_i32(v);
+            }
+            if let Some(v) = ctp.get() {
+                h_ref.mix_i32(v);
+            }
+            assert_eq!(h_fast.finish(), h_ref.finish());
+        }
+        let mut buf = Vec::new();
+        pack_state(&s, &mut buf);
+        let mut unpacked = empty_scratch_state(dummy_ctx());
+        unpack_state(&buf, &dummy_ctx(), &mut unpacked).unwrap();
+        assert_eq!(unpacked.cards, s.cards);
+    }
+
+    #[test]
+    fn canonical_card_hash_fast_paths_match_generic_slow_path() {
+        let mut s = empty_scratch_state(dummy_ctx());
+        let mut afflicted = CardInst {
+            handle: CardHandle(1),
+            id: CardId::DefendNecrobinder,
+            upgrade_level: 1,
+            canonical_base_energy_cost: 1,
+            base_energy_cost: 1,
+            captured_energy_x_value: 0,
+            base_replay_count: 0,
+            floor_added_to_deck: OptI16::NONE,
+            deck_card_handle: OptCardHandle::NONE,
+            clone_of_handle: OptCardHandle::NONE,
+            temp_star_cost_override_this_turn: OptI16::NONE,
+            temp_cost_override_this_turn: OptI16::NONE,
+            temp_cost_override_this_turn_or_until_played: OptI16::NONE,
+            temp_cost_override_this_combat: OptI16::NONE,
+            local_keywords: CardKeywords::empty(),
+            keywords_added_from_outside: CardKeywords::empty(),
+            keywords_removed_from_outside: CardKeywords::empty(),
+            temp_flags: CardTempFlags::empty(),
+            affliction: Some(AfflictionInst {
+                id: AfflictionId::Hexed,
+                amount: 1,
+            }),
+            ext_index: None,
+            pile: PileType::Hand,
+            removed_from_state: false,
+            transform_into_after_play: None,
+        };
+        let mut mummy = afflicted;
+        mummy.handle = CardHandle(2);
+        mummy.affliction = None;
+        mummy.temp_cost_override_this_turn = OptI16::some(0);
+
+        for card in [&mut afflicted, &mut mummy] {
+            let cards = [*card];
+            let mut h_fast = WordHasher128::new();
+            let mut pb_fast = [0u64; 4];
+            let mut pl_fast = 0usize;
+            hash_canonical_card(&mut h_fast, &cards, &s.card_extensions, card.handle, &mut pb_fast, &mut pl_fast);
+            flush_pending_fast_cards(&mut h_fast, &mut pb_fast, &mut pl_fast);
+
+            let mut h_slow = WordHasher128::new();
+            let mut pb_slow = [0u64; 4];
+            let mut pl_slow = 0usize;
+            hash_canonical_card_slow(&mut h_slow, &s.card_extensions, card, &mut pb_slow, &mut pl_slow);
+            flush_pending_fast_cards(&mut h_slow, &mut pb_slow, &mut pl_slow);
+
+            assert_eq!(h_fast.finish(), h_slow.finish());
+
+            // Also verify direct bit layout against manual rare-word encoding
+            let mut h_manual = WordHasher128::new();
+            let rm: u64 = if card.affliction.is_some() { 1 << 4 } else { 1 << 1 };
+            let slow_tag = (1u64 << 14)
+                | (card.id as u64)
+                | ((card.local_keywords.bits() as u64) << 16)
+                | (rm << 32);
+            let cost_upg_word = (card.base_energy_cost as u32 as u64)
+                | ((card.upgrade_level as u32 as u64) << 32);
+            h_manual.mix_u64x2(slow_tag, cost_upg_word);
+            if let Some(v) = card.temp_cost_override_this_turn.get() {
+                h_manual.mix_i32(v);
+            }
+            if let Some(a) = card.affliction {
+                h_manual.mix_u64(((a.id as u64) << 32) | (a.amount as u32 as u64));
+            }
+            assert_eq!(h_fast.finish(), h_manual.finish());
+        }
+        let _ = &mut s;
     }
 }

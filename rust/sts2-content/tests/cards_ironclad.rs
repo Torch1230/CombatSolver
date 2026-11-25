@@ -226,6 +226,10 @@ fn build_ironclad_battle(hand_ids: &[(CardId, i32)], draw_ids: &[(CardId, i32)],
         hook_cache: Default::default(),
         deck_dirty: Default::default(),
         relic_dirty_mask: Default::default(),
+        handle_layout: Default::default(),
+        card_meta_dirty: Default::default(),
+        extra_clutter_hint: Default::default(),
+        eot_card_cleanup_dirty: Default::default(),
     };
 
     for (h, levels) in upgrade_list {
@@ -847,4 +851,47 @@ fn ironclad_synergies_exhaust_vulnerable_draw_powers_and_remaining_cards() {
         let needs_enemy = generated_card_meta(state.card(h).unwrap().id).target_type == sts2_types::TargetType::AnyEnemy;
         assert_eq!(play_hand_idx(&mut state, 0, if needs_enemy { Some(enemy) } else { None }), StepOutcome::Completed);
     }
+}
+
+#[test]
+fn mummified_hand_on_x_cost_whirlwind_marks_eot_cleanup_and_clears_star_override() {
+    let content = Sts2Content;
+    let (mut state, _enemy) = build_ironclad_battle(
+        &[(CardId::Barricade, 0), (CardId::Whirlwind, 0)],
+        &[],
+        &[],
+        100,
+    );
+    let whirlwind_h = state.player.hand[1];
+    state.player.relics.push(sts2_kernel::RelicInst {
+        id: sts2_types::RelicId::MummifiedHand,
+        is_wax: false,
+        is_melted: false,
+        stack_count: 1,
+        floor_added_to_deck: None,
+        private_fields: sts2_kernel::FieldMap::new(),
+    });
+    state.invalidate_hook_cache();
+    state.eot_card_cleanup_dirty = sts2_kernel::EotCleanupDirtyFlag(false);
+
+    assert_eq!(play_hand_idx(&mut state, 0, None), StepOutcome::Completed);
+    assert_eq!(
+        state
+            .card(whirlwind_h)
+            .unwrap()
+            .temp_star_cost_override_this_turn
+            .get(),
+        Some(0)
+    );
+    assert!(state.eot_card_cleanup_dirty.0);
+
+    CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    assert!(
+        state
+            .card(whirlwind_h)
+            .unwrap()
+            .temp_star_cost_override_this_turn
+            .is_none()
+    );
+    assert!(!state.eot_card_cleanup_dirty.0);
 }

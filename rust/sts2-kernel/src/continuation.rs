@@ -21,7 +21,7 @@ pub struct ChoiceRequest {
     pub source_pile: PileType,
     pub min_count: usize,
     pub max_count: usize,
-    pub candidates: SmallVec<[CardHandle; 32]>,
+    pub candidates: SmallVec<[CardHandle; 16]>,
     pub can_skip: bool,
 }
 
@@ -67,19 +67,19 @@ pub enum ContinuationFrame {
     },
     BeforeHandDrawResume {
         paused_listener: HookListener,
-        remaining_listeners: SmallVec<[HookListener; 16]>,
+        remaining_listeners: Vec<HookListener>,
         is_extra_turn: bool,
     },
     AfterShuffleResume {
         paused_listener: HookListener,
-        remaining_listeners: SmallVec<[HookListener; 16]>,
+        remaining_listeners: Vec<HookListener>,
         remaining_draws: i32,
         from_hand_draw: bool,
         resume_turn_start: Option<bool>,
     },
     AfterPlayerTurnStartResume {
         paused_listener: HookListener,
-        remaining_listeners: SmallVec<[HookListener; 16]>,
+        remaining_listeners: Vec<HookListener>,
         is_extra_turn: bool,
     },
     CardSelectResume {
@@ -105,7 +105,7 @@ pub enum ContinuationFrame {
         remaining_enemies: SmallVec<[CreatureHandle; 8]>,
     },
     AfterAutoPrePlayResume {
-        remaining_listeners: SmallVec<[HookListener; 16]>,
+        remaining_listeners: Vec<HookListener>,
         is_late: bool,
     },
 }
@@ -113,12 +113,16 @@ pub enum ContinuationFrame {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PendingContinuation {
     pub request: ChoiceRequest,
-    pub frames: SmallVec<[ContinuationFrame; 4]>,
+    pub frames: SmallVec<[ContinuationFrame; 2]>,
 }
+
+const _: () = assert!(std::mem::size_of::<PendingContinuation>() <= 400);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StepOutcome {
     Completed,
-    NeedsChoice(ChoiceRequest),
+    NeedsChoice(Box<ChoiceRequest>),
     CombatEnded { won: bool },
 }
+
+const _: () = assert!(std::mem::size_of::<StepOutcome>() <= 16);
