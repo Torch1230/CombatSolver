@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
 using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Encounters;
+using MegaCrit.Sts2.Core.Models.Modifiers;
 using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.MonsterMoves.MonsterMoveStateMachine;
@@ -50,6 +51,8 @@ internal static partial class InCombatLiveStateCapturer
         }
 
         Player player = LocalContext.GetMe(state) ?? concreteRun.Players[0];
+        bool hasMurderous = state.Modifiers.Any(static m => m is Murderous)
+            || concreteRun.Modifiers.Any(static m => m is Murderous);
         return new InCombatRustHostMetadata(
             CharacterId: player.Character.Id.ToString(),
             Ascension: (byte)Math.Clamp(concreteRun.AscensionLevel, 0, 255),
@@ -61,7 +64,8 @@ internal static partial class InCombatLiveStateCapturer
             TotalFloor: concreteRun.TotalFloor,
             ActIndex: concreteRun.CurrentActIndex,
             MapCol: concreteRun.CurrentMapCoord?.col ?? 0,
-            MapRow: concreteRun.CurrentMapCoord?.row ?? 0);
+            MapRow: concreteRun.CurrentMapCoord?.row ?? 0,
+            HasMurderousModifier: hasMurderous);
     }
 
     public static (RustKernelLiveStateDto LiveState, int PriorBattleHpLost) Capture(

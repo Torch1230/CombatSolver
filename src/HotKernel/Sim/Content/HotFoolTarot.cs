@@ -2371,9 +2371,12 @@ internal static class HotFoolTarot
                     if (count > 0)
                     {
                         HotCombatEngine.SetPendingGeneratedChoiceOptions(options[..count]);
-                        if (HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, 0, 1, 1, out HotChoiceSelection sel)
-                            && sel.CardDefId != 0
-                            && sel.CardDefId < rules.Cards.Length)
+                        if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, 0, 1, 1, out HotChoiceSelection sel))
+                            break;
+                        HotCombatEngine.FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (HotCombatEngine.IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            break;
+                        if (sel.CardDefId != 0 && sel.CardDefId < rules.Cards.Length)
                         {
                             HotCustomCardId chosenCardId = rules.Cards[sel.CardDefId].CardId;
                             if (chosenCardId == HotCustomCardId.Sloth)

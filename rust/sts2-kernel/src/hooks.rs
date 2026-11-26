@@ -6227,12 +6227,55 @@ pub fn after_creature_added_to_combat(
     content: &dyn ContentDispatcher,
     creature: CreatureHandle,
 ) -> Result<(), KernelError> {
-    dispatch_void_combat_slot(
+    if !state.static_ctx.has_murderous_modifier {
+        return dispatch_void_combat_slot(
+            state,
+            content,
+            HookSlot::AfterCreatureAddedToCombat,
+            &HookArgs::Creature(creature),
+            false,
+        );
+    }
+
+    // STS2 0.114.0 CombatState.IterateHookListeners order:
+    // creature/relic listeners -> Modifiers (Murderous) -> RunModels -> Dominion.
+    let args = HookArgs::Creature(creature);
+    let listeners = collect_combat_only_listeners_for_mask(
         state,
         content,
+        HookMask::EMPTY.with(HookSlot::AfterCreatureAddedToCombat),
+    )?;
+    let tail_idx = listeners
+        .iter()
+        .position(|l| matches!(l, HookListener::RunModel(_) | HookListener::Dominion(_)))
+        .unwrap_or(listeners.len());
+    dispatch_void_list_known_slot(
+        state,
+        content,
+        &listeners[..tail_idx],
         HookSlot::AfterCreatureAddedToCombat,
-        &HookArgs::Creature(creature),
-        false,
+        &args,
+    )?;
+    if state
+        .creature(creature)
+        .is_some_and(|c| c.side != CombatSide::Player)
+    {
+        let _ = crate::commands::power::apply(
+            state,
+            content,
+            PowerId::StrengthPower,
+            creature,
+            Dec::from_i32(3),
+            None,
+            None,
+        )?;
+    }
+    dispatch_void_list_known_slot(
+        state,
+        content,
+        &listeners[tail_idx..],
+        HookSlot::AfterCreatureAddedToCombat,
+        &args,
     )
 }
 

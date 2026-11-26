@@ -1820,6 +1820,7 @@ fn write_pending(w: &mut ByteWriter<'_>, pending: &Option<PendingContinuation>) 
                 paused_listener,
                 remaining_listeners,
                 is_extra_turn,
+                side_turn_start_done,
             } => {
                 w.u8(2);
                 write_hook_listener(w, *paused_listener);
@@ -1828,6 +1829,7 @@ fn write_pending(w: &mut ByteWriter<'_>, pending: &Option<PendingContinuation>) 
                     write_hook_listener(w, l);
                 }
                 w.bool(*is_extra_turn);
+                w.bool(*side_turn_start_done);
             }
             ContinuationFrame::AfterShuffleResume {
                 paused_listener,
@@ -1835,6 +1837,7 @@ fn write_pending(w: &mut ByteWriter<'_>, pending: &Option<PendingContinuation>) 
                 remaining_draws,
                 from_hand_draw,
                 resume_turn_start,
+                side_turn_start_done,
             } => {
                 w.u8(3);
                 write_hook_listener(w, *paused_listener);
@@ -1849,11 +1852,13 @@ fn write_pending(w: &mut ByteWriter<'_>, pending: &Option<PendingContinuation>) 
                     Some(false) => 1,
                     Some(true) => 2,
                 });
+                w.bool(*side_turn_start_done);
             }
             ContinuationFrame::AfterPlayerTurnStartResume {
                 paused_listener,
                 remaining_listeners,
                 is_extra_turn,
+                side_turn_start_done,
             } => {
                 w.u8(4);
                 write_hook_listener(w, *paused_listener);
@@ -1862,6 +1867,7 @@ fn write_pending(w: &mut ByteWriter<'_>, pending: &Option<PendingContinuation>) 
                     write_hook_listener(w, l);
                 }
                 w.bool(*is_extra_turn);
+                w.bool(*side_turn_start_done);
             }
             ContinuationFrame::CardSelectResume {
                 source_card,
@@ -1993,10 +1999,12 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
                     remaining_listeners.push(read_hook_listener(r)?);
                 }
                 let is_extra_turn = r.bool()?;
+                let side_turn_start_done = r.bool()?;
                 ContinuationFrame::BeforeHandDrawResume {
                     paused_listener,
                     remaining_listeners,
                     is_extra_turn,
+                    side_turn_start_done,
                 }
             }
             3 => {
@@ -2014,12 +2022,14 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
                     2 => Some(true),
                     _ => return Err(()),
                 };
+                let side_turn_start_done = r.bool()?;
                 ContinuationFrame::AfterShuffleResume {
                     paused_listener,
                     remaining_listeners,
                     remaining_draws,
                     from_hand_draw,
                     resume_turn_start,
+                    side_turn_start_done,
                 }
             }
             4 => {
@@ -2030,10 +2040,12 @@ fn read_pending(r: &mut ByteReader<'_>) -> Result<Option<PendingContinuation>, (
                     remaining_listeners.push(read_hook_listener(r)?);
                 }
                 let is_extra_turn = r.bool()?;
+                let side_turn_start_done = r.bool()?;
                 ContinuationFrame::AfterPlayerTurnStartResume {
                     paused_listener,
                     remaining_listeners,
                     is_extra_turn,
+                    side_turn_start_done,
                 }
             }
             5 => {
@@ -8037,5 +8049,60 @@ mod tests {
             assert_eq!(h_fast.finish(), h_manual.finish());
         }
         let _ = &mut s;
+    }
+
+    #[test]
+    fn pack_unpack_turn_start_resume_preserves_side_turn_start_done() {
+        use sts2_kernel::content_dispatch::HookListener;
+        use sts2_kernel::continuation::{ChoiceRequest, ChoiceTiming, ContinuationFrame, PendingContinuation};
+
+        for side_done in [false, true] {
+            for frame in [
+                ContinuationFrame::BeforeHandDrawResume {
+                    paused_listener: HookListener::Relic(0),
+                    remaining_listeners: vec![HookListener::Relic(1)],
+                    is_extra_turn: true,
+                    side_turn_start_done: side_done,
+                },
+                ContinuationFrame::AfterShuffleResume {
+                    paused_listener: HookListener::Relic(0),
+                    remaining_listeners: vec![],
+                    remaining_draws: 3,
+                    from_hand_draw: true,
+                    resume_turn_start: Some(false),
+                    side_turn_start_done: side_done,
+                },
+                ContinuationFrame::AfterPlayerTurnStartResume {
+                    paused_listener: HookListener::Power {
+                        creature: CreatureHandle(1),
+                        power_handle: 7,
+                    },
+                    remaining_listeners: vec![HookListener::Relic(0)],
+                    is_extra_turn: false,
+                    side_turn_start_done: side_done,
+                },
+            ] {
+                let mut s = empty_scratch_state(dummy_ctx());
+                s.pending = Some(PendingContinuation {
+                    request: ChoiceRequest {
+                        timing: ChoiceTiming::PlayerTurnStart,
+                        source_id: "POWER.TOOLS_OF_THE_TRADE_POWER".into(),
+                        source_pile: PileType::Hand,
+                        min_count: 1,
+                        max_count: 1,
+                        candidates: smallvec::smallvec![],
+                        can_skip: false,
+                    },
+                    frames: smallvec::smallvec![frame.clone()],
+                });
+                let mut packed = Vec::new();
+                pack_state(&s, &mut packed);
+                let mut unpacked = empty_scratch_state(Arc::clone(&s.static_ctx));
+                unpack_state(&packed, &s.static_ctx, &mut unpacked).unwrap();
+                let pending = unpacked.pending.expect("pending round-trip");
+                assert_eq!(pending.frames.len(), 1);
+                assert_eq!(pending.frames[0], frame);
+            }
+        }
     }
 }

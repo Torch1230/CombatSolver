@@ -7,6 +7,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.CardPools;
+using MegaCrit.Sts2.Core.Models.Modifiers;
 using MegaCrit.Sts2.Core.Models.PotionPools;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -31,6 +32,26 @@ internal static class InCombatRustKernelEligibility
     private static readonly Assembly VanillaGameAssembly = typeof(RunState).Assembly;
 
     private static readonly PropertyInfo? BaseLibCardModifiersProperty = ResolveBaseLibCardModifiersProperty();
+
+    private static readonly HashSet<Type> SupportedVanillaModifierTypes =
+    [
+        typeof(AllStar),
+        typeof(BigGameHunter),
+        typeof(CharacterCards),
+        typeof(CursedRun),
+        typeof(DeadlyEvents),
+        typeof(Draft),
+        typeof(Flight),
+        typeof(Hoarder),
+        typeof(Insanity),
+        typeof(Midas),
+        typeof(Murderous),
+        typeof(NightTerrors),
+        typeof(SealedDeck),
+        typeof(Specialized),
+        typeof(Terminal),
+        typeof(Vintage),
+    ];
 
     public static RustKernelEligibilityResult AssessHostAndCombat(
         CombatState state,
@@ -65,32 +86,22 @@ internal static class InCombatRustKernelEligibility
                 "Rust combat kernel requires a concrete single-player RunState.");
         }
 
-        if (run.GameMode is not (GameMode.Standard or GameMode.Dread or GameMode.Blitz))
+        if (run.GameMode is not (GameMode.Standard or GameMode.Daily or GameMode.Dread or GameMode.Blitz))
         {
             return RustKernelEligibilityResult.Ineligible(
                 "non_standard_mode",
                 $"Game mode {run.GameMode} routes to HotKernel.");
         }
 
-        if (run.IsCustomGame)
+        foreach (ModifierModel modifier in run.Modifiers.Concat(state.Modifiers))
         {
-            return RustKernelEligibilityResult.Ineligible(
-                "custom_game",
-                "Custom games route to HotKernel.");
-        }
-
-        if (RunManager.Instance.DailyTime is not null)
-        {
-            return RustKernelEligibilityResult.Ineligible(
-                "daily_run",
-                "Daily runs route to HotKernel.");
-        }
-
-        if (run.Modifiers.Count > 0 || state.Modifiers.Count > 0)
-        {
-            return RustKernelEligibilityResult.Ineligible(
-                "modifiers_present",
-                "Combat or run has custom modifiers outside vanilla Standard/Dread/Blitz.");
+            Type modifierType = modifier.GetType();
+            if (modifierType.Assembly != VanillaGameAssembly || !SupportedVanillaModifierTypes.Contains(modifierType))
+            {
+                return RustKernelEligibilityResult.Ineligible(
+                    "modifiers_present",
+                    $"Combat or run has unsupported modifier {modifierType.FullName}.");
+            }
         }
 
         if (run.RunModels.Any(m => m.GetType().Assembly != VanillaGameAssembly))

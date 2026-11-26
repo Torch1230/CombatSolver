@@ -33,7 +33,8 @@ internal sealed record InCombatRustHostMetadata(
     int TotalFloor,
     int ActIndex,
     int MapCol,
-    int MapRow);
+    int MapRow,
+    bool HasMurderousModifier = false);
 
 internal sealed record RustKernelRngStreamDto(
     int Counter,
@@ -413,7 +414,8 @@ internal sealed record RustKernelRequestDto(
     RustKernelPolicyDto Policy,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? PotionRewardReplacementHpCredit = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? IsNonFinalAct3Boss = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? InitialBrightestFlameMaxHpSpent = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? InitialBrightestFlameMaxHpSpent = null,
+    bool HasMurderousModifier = false);
 
 internal sealed record RustKernelChoiceCardTokenDto(
     string CardId,

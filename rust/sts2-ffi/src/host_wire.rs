@@ -179,6 +179,8 @@ pub struct HostSolveRequest {
     pub is_non_final_act3_boss: Option<bool>,
     #[serde(default)]
     pub initial_brightest_flame_max_hp_spent: Option<i32>,
+    #[serde(default)]
+    pub has_murderous_modifier: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1560,6 +1562,7 @@ pub fn solve_in_combat_host_v1_json(
     req.live_state.encounter_is_weak = req.encounter_is_weak;
     req.live_state.initial_encounter_monster_count = req.initial_encounter_monster_count;
     req.live_state.total_floor = req.total_floor;
+    req.live_state.has_murderous_modifier = req.has_murderous_modifier;
 
     let content = Sts2Content;
     let mut root_state = match import_live_state(&req.live_state, &content) {

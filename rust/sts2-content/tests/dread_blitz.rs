@@ -1030,3 +1030,56 @@ fn phrog_parasite_infested_wrigglers_ceremonial_dominion_trigger_ritual_and_slot
         assert_eq!(strength, 1, "wriggler {} should gain Ritual strength on first enemy turn end", idx + 1);
     }
 }
+
+#[test]
+fn murderous_modifier_grants_strength_to_newly_added_enemies_after_relics_before_dominion() {
+    let content = Sts2Content;
+    let (mut state, _) = build_battle(
+        CharacterId::Defect,
+        &[CardId::StrikeDefect; 5],
+        &[(MonsterId::PhrogParasite, 40)],
+        GameMode::Standard,
+        Some(DominionId::CeremonialBeastDominion),
+        Vec::new(),
+        "PHROG_PARASITE_ELITE",
+        RoomType::Elite,
+    );
+    Arc::make_mut(&mut state.static_ctx).has_murderous_modifier = true;
+    state.player.relics.push(sts2_kernel::RelicInst {
+        id: RelicId::PhilosophersStone,
+        is_wax: false,
+        is_melted: false,
+        stack_count: 1,
+        floor_added_to_deck: None,
+        private_fields: Default::default(),
+    });
+    state.is_in_progress = true;
+    state.invalidate_hook_cache();
+
+    let summoned = sts2_kernel::commands::creature::create_and_add_monster(
+        &mut state,
+        &content,
+        MonsterId::Wriggler,
+        CombatSide::Enemy,
+        Some(std::borrow::Cow::Borrowed("wriggler1")),
+    )
+    .unwrap();
+    let sc = state.creature(summoned).unwrap();
+    let ids: Vec<PowerId> = sc.powers.iter().map(|p| p.id).collect();
+    assert_eq!(ids, vec![PowerId::StrengthPower, PowerId::RitualPower]);
+    let str_amt = sc.powers.iter().find(|p| p.id == PowerId::StrengthPower).unwrap().amount;
+    // PhilosophersStone (+1) + Murderous (+3)
+    assert_eq!(str_amt, 4);
+
+    // Allies/player-side creatures do not receive Murderous Strength in AfterCreatureAddedToCombat.
+    let pc = state.player.creature_handle;
+    sts2_kernel::hooks::after_creature_added_to_combat(&mut state, &content, pc).unwrap();
+    let player_str = state
+        .creature(pc)
+        .unwrap()
+        .powers
+        .iter()
+        .find(|p| p.id == PowerId::StrengthPower)
+        .map_or(0, |p| p.amount);
+    assert_eq!(player_str, 0);
+}

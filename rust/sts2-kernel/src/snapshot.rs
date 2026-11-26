@@ -342,6 +342,8 @@ pub struct LiveStateJson {
     #[serde(default)]
     pub dominion_id: Option<String>,
     #[serde(default)]
+    pub has_murderous_modifier: bool,
+    #[serde(default)]
     pub run_model_ids: Vec<String>,
     pub encounter_id: String,
     #[serde(default)]
@@ -841,7 +843,7 @@ pub fn import_live_state(
     let game_mode = match dto.game_mode.as_deref() {
         Some("Dread") => GameMode::Dread,
         Some("Blitz") => GameMode::Blitz,
-        Some("Standard") | None => GameMode::Standard,
+        Some("Standard") | Some("Daily") | None => GameMode::Standard,
         Some(other) => {
             return Err(KernelError::unsupported("GameMode", other.to_owned()));
         }
@@ -1330,6 +1332,7 @@ pub fn import_live_state(
         ascension: dto.ascension,
         character_id,
         dominion_id,
+        has_murderous_modifier: dto.has_murderous_modifier,
         run_model_ids,
         card_generation_pools,
         colorless_card_pool,
@@ -1749,6 +1752,7 @@ pub fn export_live_state(state: &BattleState) -> Result<LiveStateJson, KernelErr
             .static_ctx
             .dominion_id
             .map(|d| d.model_id_str().to_owned()),
+        has_murderous_modifier: state.static_ctx.has_murderous_modifier,
         run_model_ids: state
             .static_ctx
             .run_model_ids

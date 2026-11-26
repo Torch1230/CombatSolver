@@ -69,6 +69,7 @@ pub enum ContinuationFrame {
         paused_listener: HookListener,
         remaining_listeners: Vec<HookListener>,
         is_extra_turn: bool,
+        side_turn_start_done: bool,
     },
     AfterShuffleResume {
         paused_listener: HookListener,
@@ -76,11 +77,13 @@ pub enum ContinuationFrame {
         remaining_draws: i32,
         from_hand_draw: bool,
         resume_turn_start: Option<bool>,
+        side_turn_start_done: bool,
     },
     AfterPlayerTurnStartResume {
         paused_listener: HookListener,
         remaining_listeners: Vec<HookListener>,
         is_extra_turn: bool,
+        side_turn_start_done: bool,
     },
     CardSelectResume {
         source_card: CardHandle,

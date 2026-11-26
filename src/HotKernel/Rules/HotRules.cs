@@ -86,6 +86,7 @@ internal sealed class HotRules
     public int AscensionLevel => RulesSnapshot.AscensionLevel;
     public ulong AscensionsMask => RulesSnapshot.Ascensions;
     public string? DominionId => RulesSnapshot.DominionId;
+    public bool HasMurderousModifier => RulesSnapshot.HasMurderousModifier;
     public required byte MaxHandSize { get; init; }
     public required bool EncounterGoldForfeited { get; init; }
     public required int BaseMaxEnergy { get; init; }

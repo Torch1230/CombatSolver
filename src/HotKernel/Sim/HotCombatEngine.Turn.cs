@@ -834,6 +834,9 @@ internal static partial class HotCombatEngine
         SnapshotAndClearHistoryCourse(ref s, out bool hasPrevHc, out HotCard prevHcCard, out ushort prevHcUid);
 
         bool reachedAutoPrePlay = false;
+        scratch.InPlayerTurnSetup = true;
+        scratch.TurnSetupTakingExtraTurn = takingExtraTurn;
+        scratch.TurnSetupSideStartDone = false;
         try
         {
             // Reset Player Energy (unless IceCream) + ModifyMaxEnergy + EnergyNextTurnPower
@@ -1008,50 +1011,15 @@ internal static partial class HotCombatEngine
             if (CheckWinCondition(ref s, rules))
                 return;
 
-            // Player side turn start: PlatingPower decrements by 1 when PlayerTurnNumber != 1.
-            ushort platingDefId = rules.PlatingPowerDefId != 0 ? rules.PlatingPowerDefId : rules.GetPowerDefId(HotPowerId.PlatingPower);
-            if (s.PlayerTurnNumber != 1 && platingDefId != 0)
-                DecrementPlating(ref s, rules, ownerSlot: 0, platingDefId);
-
-            // Player Poison tick (if poisoned)
-            TriggerPoison(ref s, ref cold, rules, scratch, targetSlot: 0);
-            if (scratch.NeedsChoice)
+            if (!scratch.TurnSetupSideStartDone)
             {
-                RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
-                return;
-            }
-            if (CheckWinCondition(ref s, rules))
-                return;
-
-            // Remaining AfterSideTurnStart listeners (BiasedCognition, Coolant, DemonForm, NoxiousFumes, WraithForm, Rampart, remaining relics, Dominion)
-            if ((s.ActiveHookMask & (ulong)HotHookMask.AfterSideTurnStart) != 0 || rules.Dominion != HotDominionId.None)
-            {
-                HotHookArgs afterStartArgs = new()
-                {
-                    Side = HotCombatSide.Player,
-                    ActorSlot = 0,
-                    BoolFlag = takingExtraTurn,
-                };
-                DispatchAfterSideTurnStartRemaining(ref s, ref cold, rules, scratch, ref afterStartArgs);
+                RunPlayerSideTurnStartAndOrbs(ref s, ref cold, rules, scratch, takingExtraTurn);
                 if (scratch.NeedsChoice)
                 {
                     RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
                     return;
                 }
-                if (CheckWinCondition(ref s, rules))
-                    return;
-            }
-
-            // Plasma Orb turn-start passives (CombatManager.cs:814: runs after SetupPlayerTurn + AfterSideTurnStart, before AutoPrePlay)
-            if (s.OrbCount > 0)
-            {
-                TriggerOrbsAfterTurnStart(ref s, ref cold, rules, scratch);
-                if (scratch.NeedsChoice)
-                {
-                    RestoreHistoryCourseUidOnChoicePause(ref s, hasPrevHc, prevHcUid);
-                    return;
-                }
-                if (CheckWinCondition(ref s, rules))
+                if (IsOverOrEnding(in s) || CheckWinCondition(ref s, rules))
                     return;
             }
 
@@ -1059,11 +1027,66 @@ internal static partial class HotCombatEngine
         }
         finally
         {
+            scratch.InPlayerTurnSetup = false;
             if (!reachedAutoPrePlay)
                 ClearPlayerTurnEndRequest();
         }
 
         RunAutoPrePlayPhase(ref s, ref cold, rules, scratch, hasPrevHc, in prevHcCard, prevHcUid);
+    }
+
+    internal static void FlushDeferredPlayerSideTurnStartIfInSetup(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch)
+    {
+        if (!scratch.InPlayerTurnSetup || scratch.TurnSetupSideStartDone || scratch.NeedsChoice || IsOverOrEnding(in s))
+            return;
+
+        RunPlayerSideTurnStartAndOrbs(ref s, ref cold, rules, scratch, scratch.TurnSetupTakingExtraTurn);
+    }
+
+    private static void RunPlayerSideTurnStartAndOrbs(
+        ref CombatHotState s,
+        ref HotColdSidecar? cold,
+        HotRules rules,
+        HotExecScratch scratch,
+        bool takingExtraTurn)
+    {
+        scratch.TurnSetupSideStartDone = true;
+
+        // Player side turn start: PlatingPower decrements by 1 when PlayerTurnNumber != 1.
+        ushort platingDefId = rules.PlatingPowerDefId != 0 ? rules.PlatingPowerDefId : rules.GetPowerDefId(HotPowerId.PlatingPower);
+        if (s.PlayerTurnNumber != 1 && platingDefId != 0)
+            DecrementPlating(ref s, rules, ownerSlot: 0, platingDefId);
+
+        // Player Poison tick (if poisoned)
+        TriggerPoison(ref s, ref cold, rules, scratch, targetSlot: 0);
+        if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+            return;
+
+        // Remaining AfterSideTurnStart listeners (BiasedCognition, Coolant, DemonForm, NoxiousFumes, WraithForm, Rampart, remaining relics, Dominion)
+        if ((s.ActiveHookMask & (ulong)HotHookMask.AfterSideTurnStart) != 0 || rules.Dominion != HotDominionId.None)
+        {
+            HotHookArgs afterStartArgs = new()
+            {
+                Side = HotCombatSide.Player,
+                ActorSlot = 0,
+                BoolFlag = takingExtraTurn,
+            };
+            DispatchAfterSideTurnStartRemaining(ref s, ref cold, rules, scratch, ref afterStartArgs);
+            if (scratch.NeedsChoice || CheckWinCondition(ref s, rules))
+                return;
+        }
+
+        // Plasma Orb turn-start passives (CombatManager.cs:814: runs after SetupPlayerTurn + AfterSideTurnStart, before AutoPrePlay)
+        if (s.OrbCount > 0)
+        {
+            TriggerOrbsAfterTurnStart(ref s, ref cold, rules, scratch);
+            if (!scratch.NeedsChoice)
+                CheckWinCondition(ref s, rules);
+        }
     }
 
     private static void RunAutoPrePlayPhase(

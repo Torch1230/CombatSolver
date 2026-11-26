@@ -571,6 +571,7 @@ pub fn shuffle(
                 remaining_draws: 0,
                 from_hand_draw: false,
                 resume_turn_start: None,
+                side_turn_start_done: false,
             }],
         });
     }

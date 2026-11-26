@@ -1058,3 +1058,18 @@ fn ffi_host_v1_any_player_potions_and_exhaustive_death_boundary() {
     assert_eq!(death_res.terminal.search_boundary, "None");
     assert_eq!(death_res.terminal.confidence, "DeathOnly");
 }
+
+#[test]
+fn ffi_accepts_daily_game_mode_and_murderous_modifier() {
+    let live = build_smoke_live_state_json();
+    let live_val = serde_json::to_value(&live).unwrap();
+    let req_bytes = build_host_request_json(live_val, "Disabled", 1);
+    let mut req_val: serde_json::Value = serde_json::from_slice(&req_bytes).unwrap();
+    req_val["gameMode"] = serde_json::json!("Daily");
+    req_val["hasMurderousModifier"] = serde_json::json!(true);
+    let modified = serde_json::to_vec(&req_val).unwrap();
+    let resp = call_host_v1(&modified);
+    assert_eq!(resp.outcome, "Succeeded");
+    let res = resp.result.unwrap();
+    assert!(res.terminal.all_enemies_dead);
+}

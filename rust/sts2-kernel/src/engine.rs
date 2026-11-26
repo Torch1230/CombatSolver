@@ -279,24 +279,50 @@ impl CombatEngine {
         if let Some((req, paused_listener, remaining_listeners)) =
             hooks::before_hand_draw(state, content)?
         {
+            if Self::run_player_side_turn_start_and_orbs(state, content, is_extra_turn)? {
+                return Self::finish_action_boundary(state, content);
+            }
             state.pending = Some(PendingContinuation {
                 request: (*req).clone(),
                 frames: smallvec::smallvec![ContinuationFrame::BeforeHandDrawResume {
                     paused_listener,
                     remaining_listeners,
                     is_extra_turn,
+                    side_turn_start_done: true,
                 }],
             });
             return Ok(StepOutcome::NeedsChoice(req));
         }
 
-        Self::finish_player_turn_start(state, content, is_extra_turn)
+        Self::finish_player_turn_start(state, content, is_extra_turn, false)
+    }
+
+    fn run_player_side_turn_start_and_orbs(
+        state: &mut BattleState,
+        content: &dyn ContentDispatcher,
+        is_extra_turn: bool,
+    ) -> Result<bool, KernelError> {
+        let participants: SmallVec<[CreatureHandle; 8]> = if is_extra_turn {
+            smallvec::smallvec![state.player.creature_handle]
+        } else {
+            state.ally_handles.iter().copied().collect()
+        };
+        hooks::after_side_turn_start(state, content, CombatSide::Player, &participants)?;
+        let orb_count = state.player.orbs.len();
+        for i in 0..orb_count {
+            if !state.is_in_progress {
+                break;
+            }
+            content.orb_after_turn_start(state, i)?;
+        }
+        Self::check_win_condition(state, content)
     }
 
     fn finish_player_turn_start(
         state: &mut BattleState,
         content: &dyn ContentDispatcher,
         is_extra_turn: bool,
+        mut side_turn_start_done: bool,
     ) -> Result<StepOutcome, KernelError> {
         let (mut hand_draw, modifiers) = hooks::modify_hand_draw(
             state,
@@ -313,23 +339,35 @@ impl CombatEngine {
         }
         let draw_count = hand_draw.to_i32_trunc()?;
         let _ = card_pile::draw(state, content, draw_count, true)?;
-        if let Some(pending) = state.pending.as_mut() {
+        if let Some(mut pending) = state.pending.take() {
+            if !side_turn_start_done {
+                if Self::run_player_side_turn_start_and_orbs(state, content, is_extra_turn)? {
+                    return Self::finish_action_boundary(state, content);
+                }
+                side_turn_start_done = true;
+            }
             if let Some(ContinuationFrame::AfterShuffleResume {
-                resume_turn_start, ..
+                resume_turn_start,
+                side_turn_start_done: s_done,
+                ..
             }) = pending.frames.last_mut()
             {
                 *resume_turn_start = Some(is_extra_turn);
+                *s_done = side_turn_start_done;
             }
-            return Ok(StepOutcome::NeedsChoice(Box::new(pending.request.clone())));
+            let req = Box::new(pending.request.clone());
+            state.pending = Some(pending);
+            return Ok(StepOutcome::NeedsChoice(req));
         }
 
-        Self::run_after_player_turn_start(state, content, is_extra_turn)
+        Self::run_after_player_turn_start(state, content, is_extra_turn, side_turn_start_done)
     }
 
     fn run_after_player_turn_start(
         state: &mut BattleState,
         content: &dyn ContentDispatcher,
         is_extra_turn: bool,
+        mut side_turn_start_done: bool,
     ) -> Result<StepOutcome, KernelError> {
         hooks::after_player_turn_start_early(state, content)?;
         if hooks::is_over_or_ending_checked(state, content)? {
@@ -338,39 +376,39 @@ impl CombatEngine {
         if let Some((req, paused_listener, remaining_listeners)) =
             hooks::after_player_turn_start(state, content)?
         {
+            if !side_turn_start_done {
+                if Self::run_player_side_turn_start_and_orbs(state, content, is_extra_turn)? {
+                    return Self::finish_action_boundary(state, content);
+                }
+                side_turn_start_done = true;
+            }
             state.pending = Some(PendingContinuation {
                 request: (*req).clone(),
                 frames: smallvec::smallvec![ContinuationFrame::AfterPlayerTurnStartResume {
                     paused_listener,
                     remaining_listeners,
                     is_extra_turn,
+                    side_turn_start_done,
                 }],
             });
             return Ok(StepOutcome::NeedsChoice(req));
         }
-        Self::finish_after_player_turn_start(state, content, is_extra_turn)
+        Self::finish_after_player_turn_start(state, content, is_extra_turn, side_turn_start_done)
     }
 
     fn finish_after_player_turn_start(
         state: &mut BattleState,
         content: &dyn ContentDispatcher,
         is_extra_turn: bool,
+        side_turn_start_done: bool,
     ) -> Result<StepOutcome, KernelError> {
-        let participants: SmallVec<[CreatureHandle; 8]> = if is_extra_turn {
-            smallvec::smallvec![state.player.creature_handle]
-        } else {
-            state.ally_handles.iter().copied().collect()
-        };
         hooks::after_player_turn_start_late(state, content)?;
-        hooks::after_side_turn_start(state, content, CombatSide::Player, &participants)?;
-        let orb_count = state.player.orbs.len();
-        for i in 0..orb_count {
-            if !state.is_in_progress {
-                break;
-            }
-            content.orb_after_turn_start(state, i)?;
+        if !side_turn_start_done
+            && Self::run_player_side_turn_start_and_orbs(state, content, is_extra_turn)?
+        {
+            return Self::finish_action_boundary(state, content);
         }
-        if state.player_creature().is_some_and(|c| c.is_alive()) {
+        if state.is_in_progress && state.player_creature().is_some_and(|c| c.is_alive()) {
             state.player.phase = PlayerTurnPhase::AutoPrePlay;
             card_pile::check_for_empty_hand(state, content)?;
             if hooks::after_auto_pre_play_phase_entered(state, content)? {
@@ -1627,7 +1665,9 @@ impl CombatEngine {
                 paused_listener,
                 remaining_listeners,
                 is_extra_turn,
+                side_turn_start_done,
             } => {
+                let outer_frames = pending.frames;
                 let res = content.resume_hook_choice(
                     state,
                     paused_listener,
@@ -1635,30 +1675,68 @@ impl CombatEngine {
                     &selected,
                 )?;
                 if let Some(next_req) = res.needs_choice {
-                    state.pending = Some(PendingContinuation {
+                    let mut next_pending = PendingContinuation {
                         request: (*next_req).clone(),
-                        frames: smallvec::smallvec![ContinuationFrame::BeforeHandDrawResume {
+                        frames: outer_frames,
+                    };
+                    next_pending.frames.push(ContinuationFrame::BeforeHandDrawResume {
+                        paused_listener,
+                        remaining_listeners,
+                        is_extra_turn,
+                        side_turn_start_done,
+                    });
+                    state.pending = Some(next_pending);
+                    return Ok(StepOutcome::NeedsChoice(next_req));
+                }
+                if let Some(mut inner) = state.pending.take() {
+                    inner.frames.insert(
+                        0,
+                        ContinuationFrame::BeforeHandDrawResume {
                             paused_listener,
                             remaining_listeners,
                             is_extra_turn,
-                        }],
-                    });
-                    return Ok(StepOutcome::NeedsChoice(next_req));
+                            side_turn_start_done,
+                        },
+                    );
+                    Self::prepend_outer_frames(&mut inner, outer_frames);
+                    let req = Box::new(inner.request.clone());
+                    state.pending = Some(inner);
+                    return Ok(StepOutcome::NeedsChoice(req));
                 }
                 if let Some((next_req, next_paused, rest)) =
                     hooks::continue_before_hand_draw(state, content, &remaining_listeners)?
                 {
-                    state.pending = Some(PendingContinuation {
+                    let mut next_pending = PendingContinuation {
                         request: (*next_req).clone(),
-                        frames: smallvec::smallvec![ContinuationFrame::BeforeHandDrawResume {
-                            paused_listener: next_paused,
-                            remaining_listeners: rest,
-                            is_extra_turn,
-                        }],
+                        frames: outer_frames,
+                    };
+                    next_pending.frames.push(ContinuationFrame::BeforeHandDrawResume {
+                        paused_listener: next_paused,
+                        remaining_listeners: rest,
+                        is_extra_turn,
+                        side_turn_start_done,
                     });
+                    state.pending = Some(next_pending);
                     return Ok(StepOutcome::NeedsChoice(next_req));
                 }
-                Self::finish_player_turn_start(state, content, is_extra_turn)
+                let outcome = Self::finish_player_turn_start(
+                    state,
+                    content,
+                    is_extra_turn,
+                    side_turn_start_done,
+                )?;
+                if matches!(outcome, StepOutcome::NeedsChoice(_)) {
+                    if !outer_frames.is_empty() {
+                        if let Some(p) = state.pending.as_mut() {
+                            Self::prepend_outer_frames(p, outer_frames);
+                        }
+                    }
+                    return Ok(outcome);
+                }
+                if matches!(outcome, StepOutcome::Completed) && !outer_frames.is_empty() {
+                    return Self::unwind_outer_frames(state, content, outer_frames);
+                }
+                Ok(outcome)
             }
             ContinuationFrame::AfterShuffleResume {
                 paused_listener,
@@ -1666,6 +1744,7 @@ impl CombatEngine {
                 remaining_draws,
                 from_hand_draw,
                 resume_turn_start,
+                side_turn_start_done,
             } => {
                 let res = content.resume_hook_choice(
                     state,
@@ -1681,6 +1760,7 @@ impl CombatEngine {
                         remaining_draws,
                         from_hand_draw,
                         resume_turn_start,
+                        side_turn_start_done,
                     });
                     state.pending = Some(pending);
                     return Ok(StepOutcome::NeedsChoice(next_req));
@@ -1695,6 +1775,7 @@ impl CombatEngine {
                         remaining_draws,
                         from_hand_draw,
                         resume_turn_start,
+                        side_turn_start_done,
                     });
                     state.pending = Some(pending);
                     return Ok(StepOutcome::NeedsChoice(next_req));
@@ -1704,10 +1785,12 @@ impl CombatEngine {
                     if let Some(mut inner) = state.pending.take() {
                         if let Some(ContinuationFrame::AfterShuffleResume {
                             resume_turn_start: rts,
+                            side_turn_start_done: s_done,
                             ..
                         }) = inner.frames.last_mut()
                         {
                             *rts = resume_turn_start;
+                            *s_done = side_turn_start_done;
                         }
                         for (i, outer) in pending.frames.into_iter().enumerate() {
                             inner.frames.insert(i, outer);
@@ -1718,7 +1801,25 @@ impl CombatEngine {
                     }
                 }
                 if let Some(is_extra_turn) = resume_turn_start {
-                    return Self::run_after_player_turn_start(state, content, is_extra_turn);
+                    let outer_frames = pending.frames;
+                    let outcome = Self::run_after_player_turn_start(
+                        state,
+                        content,
+                        is_extra_turn,
+                        side_turn_start_done,
+                    )?;
+                    if matches!(outcome, StepOutcome::NeedsChoice(_)) {
+                        if !outer_frames.is_empty() {
+                            if let Some(p) = state.pending.as_mut() {
+                                Self::prepend_outer_frames(p, outer_frames);
+                            }
+                        }
+                        return Ok(outcome);
+                    }
+                    if matches!(outcome, StepOutcome::Completed) && !outer_frames.is_empty() {
+                        return Self::unwind_outer_frames(state, content, outer_frames);
+                    }
+                    return Ok(outcome);
                 }
                 if let Some(ContinuationFrame::CardPlayResume {
                     card,
@@ -1815,7 +1916,9 @@ impl CombatEngine {
                 paused_listener,
                 remaining_listeners,
                 is_extra_turn,
+                side_turn_start_done,
             } => {
+                let outer_frames = pending.frames;
                 let res = content.resume_hook_choice(
                     state,
                     paused_listener,
@@ -1823,30 +1926,68 @@ impl CombatEngine {
                     &selected,
                 )?;
                 if let Some(next_req) = res.needs_choice {
-                    state.pending = Some(PendingContinuation {
+                    let mut next_pending = PendingContinuation {
                         request: (*next_req).clone(),
-                        frames: smallvec::smallvec![ContinuationFrame::AfterPlayerTurnStartResume {
+                        frames: outer_frames,
+                    };
+                    next_pending.frames.push(ContinuationFrame::AfterPlayerTurnStartResume {
+                        paused_listener,
+                        remaining_listeners,
+                        is_extra_turn,
+                        side_turn_start_done,
+                    });
+                    state.pending = Some(next_pending);
+                    return Ok(StepOutcome::NeedsChoice(next_req));
+                }
+                if let Some(mut inner) = state.pending.take() {
+                    inner.frames.insert(
+                        0,
+                        ContinuationFrame::AfterPlayerTurnStartResume {
                             paused_listener,
                             remaining_listeners,
                             is_extra_turn,
-                        }],
-                    });
-                    return Ok(StepOutcome::NeedsChoice(next_req));
+                            side_turn_start_done,
+                        },
+                    );
+                    Self::prepend_outer_frames(&mut inner, outer_frames);
+                    let req = Box::new(inner.request.clone());
+                    state.pending = Some(inner);
+                    return Ok(StepOutcome::NeedsChoice(req));
                 }
                 if let Some((next_req, next_paused, rest)) =
                     hooks::continue_after_player_turn_start(state, content, &remaining_listeners)?
                 {
-                    state.pending = Some(PendingContinuation {
+                    let mut next_pending = PendingContinuation {
                         request: (*next_req).clone(),
-                        frames: smallvec::smallvec![ContinuationFrame::AfterPlayerTurnStartResume {
-                            paused_listener: next_paused,
-                            remaining_listeners: rest,
-                            is_extra_turn,
-                        }],
+                        frames: outer_frames,
+                    };
+                    next_pending.frames.push(ContinuationFrame::AfterPlayerTurnStartResume {
+                        paused_listener: next_paused,
+                        remaining_listeners: rest,
+                        is_extra_turn,
+                        side_turn_start_done,
                     });
+                    state.pending = Some(next_pending);
                     return Ok(StepOutcome::NeedsChoice(next_req));
                 }
-                Self::finish_after_player_turn_start(state, content, is_extra_turn)
+                let outcome = Self::finish_after_player_turn_start(
+                    state,
+                    content,
+                    is_extra_turn,
+                    side_turn_start_done,
+                )?;
+                if matches!(outcome, StepOutcome::NeedsChoice(_)) {
+                    if !outer_frames.is_empty() {
+                        if let Some(p) = state.pending.as_mut() {
+                            Self::prepend_outer_frames(p, outer_frames);
+                        }
+                    }
+                    return Ok(outcome);
+                }
+                if matches!(outcome, StepOutcome::Completed) && !outer_frames.is_empty() {
+                    return Self::unwind_outer_frames(state, content, outer_frames);
+                }
+                Ok(outcome)
             }
             ContinuationFrame::EnemyTurnResume {
                 current_enemy,
@@ -2023,6 +2164,94 @@ impl CombatEngine {
                     }
                     if Self::check_win_condition(state, content)? {
                         return Ok(StepOutcome::CombatEnded { won: state.won });
+                    }
+                }
+                ContinuationFrame::BeforeHandDrawResume {
+                    remaining_listeners,
+                    is_extra_turn,
+                    side_turn_start_done,
+                    ..
+                } => {
+                    if Self::check_win_condition(state, content)? {
+                        return Ok(StepOutcome::CombatEnded { won: state.won });
+                    }
+                    if let Some((next_req, next_paused, rest)) =
+                        hooks::continue_before_hand_draw(state, content, &remaining_listeners)?
+                    {
+                        let mut p = PendingContinuation {
+                            request: (*next_req).clone(),
+                            frames: SmallVec::new(),
+                        };
+                        p.frames.push(ContinuationFrame::BeforeHandDrawResume {
+                            paused_listener: next_paused,
+                            remaining_listeners: rest,
+                            is_extra_turn,
+                            side_turn_start_done,
+                        });
+                        Self::prepend_outer_frames(&mut p, outer);
+                        state.pending = Some(p);
+                        return Ok(StepOutcome::NeedsChoice(next_req));
+                    }
+                    let outcome = Self::finish_player_turn_start(
+                        state,
+                        content,
+                        is_extra_turn,
+                        side_turn_start_done,
+                    )?;
+                    if matches!(outcome, StepOutcome::NeedsChoice(_)) {
+                        if !outer.is_empty() {
+                            if let Some(p) = state.pending.as_mut() {
+                                Self::prepend_outer_frames(p, outer);
+                            }
+                        }
+                        return Ok(outcome);
+                    }
+                    if !matches!(outcome, StepOutcome::Completed) || outer.is_empty() {
+                        return Ok(outcome);
+                    }
+                }
+                ContinuationFrame::AfterPlayerTurnStartResume {
+                    remaining_listeners,
+                    is_extra_turn,
+                    side_turn_start_done,
+                    ..
+                } => {
+                    if Self::check_win_condition(state, content)? {
+                        return Ok(StepOutcome::CombatEnded { won: state.won });
+                    }
+                    if let Some((next_req, next_paused, rest)) =
+                        hooks::continue_after_player_turn_start(state, content, &remaining_listeners)?
+                    {
+                        let mut p = PendingContinuation {
+                            request: (*next_req).clone(),
+                            frames: SmallVec::new(),
+                        };
+                        p.frames.push(ContinuationFrame::AfterPlayerTurnStartResume {
+                            paused_listener: next_paused,
+                            remaining_listeners: rest,
+                            is_extra_turn,
+                            side_turn_start_done,
+                        });
+                        Self::prepend_outer_frames(&mut p, outer);
+                        state.pending = Some(p);
+                        return Ok(StepOutcome::NeedsChoice(next_req));
+                    }
+                    let outcome = Self::finish_after_player_turn_start(
+                        state,
+                        content,
+                        is_extra_turn,
+                        side_turn_start_done,
+                    )?;
+                    if matches!(outcome, StepOutcome::NeedsChoice(_)) {
+                        if !outer.is_empty() {
+                            if let Some(p) = state.pending.as_mut() {
+                                Self::prepend_outer_frames(p, outer);
+                            }
+                        }
+                        return Ok(outcome);
+                    }
+                    if !matches!(outcome, StepOutcome::Completed) || outer.is_empty() {
+                        return Ok(outcome);
                     }
                 }
                 ContinuationFrame::EndTurnResume { .. } => {

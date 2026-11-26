@@ -2536,28 +2536,34 @@ fn surrounded_face(
     power_handle: u32,
     target: CreatureHandle,
 ) {
+    let facing = state
+        .creature(creature)
+        .and_then(|c| c.powers.iter().find(|p| p.handle == power_handle))
+        .map_or(0, |p| {
+            get_int_field(state, p, "SurroundedPower.<Facing>k__BackingField", 0)
+        });
     let has_left = state
         .creature(target)
         .is_some_and(|c| c.powers.iter().any(|p| p.id == PowerId::BackAttackLeftPower));
     let has_right = state
         .creature(target)
         .is_some_and(|c| c.powers.iter().any(|p| p.id == PowerId::BackAttackRightPower));
-    if has_left {
-        set_int_field(
-            state,
-            creature,
-            power_handle,
-            "SurroundedPower.<Facing>k__BackingField",
-            0,
-        );
-    } else if has_right {
-        set_int_field(
+    match facing {
+        0 if has_left => set_int_field(
             state,
             creature,
             power_handle,
             "SurroundedPower.<Facing>k__BackingField",
             1,
-        );
+        ),
+        1 if has_right => set_int_field(
+            state,
+            creature,
+            power_handle,
+            "SurroundedPower.<Facing>k__BackingField",
+            0,
+        ),
+        _ => {}
     }
 }
 
@@ -6321,11 +6327,12 @@ fn dispatch_hook_cold(
                 if let HookArgs::ModifyDamage { target, dealer, .. } = args {
                     if *target == Some(creature) {
                         if let Some(d) = dealer {
+                            // SurroundedPower.Direction: Right = 0, Left = 1 (SurroundedPower.cs:19-23,56-71).
                             let facing = get_int_field(
                                 state,
                                 &p,
                                 "SurroundedPower.<Facing>k__BackingField",
-                                1,
+                                0,
                             );
                             let back_left = state.creature(*d).is_some_and(|c| {
                                 c.powers
@@ -6337,7 +6344,8 @@ fn dispatch_hook_cold(
                                     .iter()
                                     .any(|pw| pw.id == PowerId::BackAttackRightPower)
                             });
-                            let back_attack = (facing == 1 && back_left) || (facing == 0 && back_right);
+                            let back_attack =
+                                (facing == 0 && back_left) || (facing == 1 && back_right);
                             if back_attack {
                                 return Ok(HookResult {
                                     dec_val: Some(Dec::ONE_POINT_FIVE),
@@ -6374,16 +6382,27 @@ fn dispatch_hook_cold(
                 {
                     let target_side = state
                         .creature(*target)
-                        .map_or(CombatSide::Enemy, |c| c.side);
+                        .map_or(owner_side, |c| c.side);
                     if !*was_removal_prevented && target_side != owner_side {
-                        let living: SmallVec<[CreatureHandle; 8]> = state
-                            .enemy_handles
-                            .iter()
-                            .copied()
-                            .filter(|&h| state.creature(h).is_some_and(|c| c.is_alive()))
-                            .collect();
-                        if living.len() == 1 {
-                            surrounded_face(state, creature, p.handle, living[0]);
+                        let hittable = hittable_enemies(state, content)?;
+                        if !hittable.is_empty() {
+                            let all_left = hittable.iter().all(|&h| {
+                                state.creature(h).is_some_and(|c| {
+                                    c.powers
+                                        .iter()
+                                        .any(|pw| pw.id == PowerId::BackAttackLeftPower)
+                                })
+                            });
+                            let all_right = hittable.iter().all(|&h| {
+                                state.creature(h).is_some_and(|c| {
+                                    c.powers
+                                        .iter()
+                                        .any(|pw| pw.id == PowerId::BackAttackRightPower)
+                                })
+                            });
+                            if all_left || all_right {
+                                surrounded_face(state, creature, p.handle, hittable[0]);
+                            }
                         }
                     }
                 }

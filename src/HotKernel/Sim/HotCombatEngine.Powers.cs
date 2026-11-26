@@ -681,6 +681,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {
@@ -3296,6 +3299,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {
@@ -3344,6 +3350,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     if (pickedCount > 0)
                         DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: 0);
@@ -3375,6 +3384,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {
@@ -3468,6 +3480,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {

@@ -76,6 +76,9 @@ internal sealed class HotExecScratch
     public int ActiveDrawDepth;
     public int PendingPowerChangeCount;
     public int LastStarsSpent;
+    public bool InPlayerTurnSetup;
+    public bool TurnSetupTakingExtraTurn;
+    public bool TurnSetupSideStartDone;
     public int CurrentPlayIndex;
     public int CurrentPlayTargetSlot;
     // STS2 0.114.0 UnmovablePower: 0 or 1 indicating whether the active CardPlay has already
@@ -132,6 +135,9 @@ internal sealed class HotExecScratch
         ActiveDrawDepth = 0;
         PendingPowerChangeCount = 0;
         LastStarsSpent = 0;
+        InPlayerTurnSetup = false;
+        TurnSetupTakingExtraTurn = false;
+        TurnSetupSideStartDone = false;
         CurrentPlayIndex = 0;
         CurrentPlayTargetSlot = -1;
         CardBlockGainsInCurrentPlay = 0;

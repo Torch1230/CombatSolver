@@ -3935,7 +3935,8 @@ internal static partial class SolverController
             IsNonFinalAct3Boss: rootSnapshot.EncounterRoomType == MegaCrit.Sts2.Core.Rooms.RoomType.Boss
                 && meta.ActIndex >= 2
                 && rootSnapshot.BossHpRelief == BossHpRelief.None,
-            InitialBrightestFlameMaxHpSpent: rootSnapshot.InitialBrightestFlameMaxHpSpent);
+            InitialBrightestFlameMaxHpSpent: rootSnapshot.InitialBrightestFlameMaxHpSpent,
+            HasMurderousModifier: meta.HasMurderousModifier);
 
         InCombatSolverBackendState.BeginActiveRustKernel(request.MaxDegreeOfParallelism);
         SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());

@@ -1411,16 +1411,25 @@ fn remaining_nz_powers_and_wired_kernel_hooks() {
     assert_eq!(shot, Some(0));
     assert_eq!(state.player.arrows[0].status, ArrowStatus::Away);
 
-    // SurroundedPower wired via hooks::before_potion_used
+    // SurroundedPower wired via hooks::before_potion_used (Direction::Right = 0 default, flips to Left = 1)
     let surr_h = push_power(&mut state, pc, PowerId::SurroundedPower, 1, Some(enemy), Vec::new());
     power::apply(&mut state, &content, PowerId::BackAttackLeftPower, enemy, Dec::ONE, Some(enemy), None).unwrap();
     let dmg_back = sts2_kernel::hooks::modify_damage(&mut state, &content, Some(pc), Some(enemy), Dec::from_i32(10), ValueProp::MOVE, None, None).unwrap();
     // (10 + 6 Str) * 1.5 Vuln * 1.5 Surrounded = 36
     assert_eq!(dmg_back, Dec::from_i32(36));
     sts2_kernel::hooks::before_potion_used(&mut state, &content, PotionId::FirePotion, Some(enemy)).unwrap();
+    let surr_facing = state
+        .creature(pc)
+        .unwrap()
+        .powers
+        .iter()
+        .find(|p| p.handle == surr_h)
+        .and_then(|p| p.ext_index)
+        .and_then(|idx| state.power_extensions[idx as usize].private_fields.get("SurroundedPower.<Facing>k__BackingField"))
+        .cloned();
+    assert_eq!(surr_facing, Some(FieldValue::Int(1)));
     let dmg_after_turn = sts2_kernel::hooks::modify_damage(&mut state, &content, Some(pc), Some(enemy), Dec::from_i32(10), ValueProp::MOVE, None, None).unwrap();
     assert_eq!(dmg_after_turn, Dec::from_i32(24));
-    let _ = surr_h;
 
     let th_h = push_power(
         &mut state,
@@ -1913,4 +1922,181 @@ fn stampede_pauses_on_headbutt_before_second_iteration_and_simpleton_ranks_x_cos
     let simp_out = CombatEngine::end_player_turn(&mut s_simp, &content).unwrap();
     assert!(matches!(simp_out, sts2_kernel::StepOutcome::Completed));
     assert_eq!(s_simp.creature(e_simp).unwrap().current_hp, 50 - 6);
+}
+
+#[test]
+fn surrounded_power_facing_encoding_and_after_death_parity() {
+    let content = Sts2Content;
+    let (mut state, enemy_left) = build_battle(
+        CharacterId::Ironclad,
+        &[CardId::StrikeIronclad],
+        80,
+    );
+    let pc = state.player.creature_handle;
+    let enemy_right = CreatureHandle(state.next_creature_handle);
+    state.next_creature_handle += 1;
+    let mut right_creature = state.creature(enemy_left).unwrap().clone();
+    right_creature.handle = enemy_right;
+    right_creature.combat_id = Some(3);
+    state.creatures.push(right_creature);
+    state.enemy_handles.push(enemy_right);
+    state.spawned_enemy_handles.push(enemy_right);
+
+    let enemy_left2 = CreatureHandle(state.next_creature_handle);
+    state.next_creature_handle += 1;
+    let mut left2_creature = state.creature(enemy_left).unwrap().clone();
+    left2_creature.handle = enemy_left2;
+    left2_creature.combat_id = Some(4);
+    state.creatures.push(left2_creature);
+    state.enemy_handles.push(enemy_left2);
+    state.spawned_enemy_handles.push(enemy_left2);
+
+    // Direction::Right = 0: BackAttackLeftPower deals 1.5x, BackAttackRightPower deals 1.0x.
+    let surr_h = push_power(
+        &mut state,
+        pc,
+        PowerId::SurroundedPower,
+        1,
+        Some(enemy_left),
+        vec![("SurroundedPower.<Facing>k__BackingField", FieldValue::Int(0))],
+    );
+    power::apply(&mut state, &content, PowerId::BackAttackLeftPower, enemy_left, Dec::ONE, None, None).unwrap();
+    power::apply(&mut state, &content, PowerId::BackAttackLeftPower, enemy_left2, Dec::ONE, None, None).unwrap();
+    power::apply(&mut state, &content, PowerId::BackAttackRightPower, enemy_right, Dec::ONE, None, None).unwrap();
+
+    let facing_val = |s: &BattleState| -> Option<i32> {
+        let p = s.creature(pc).unwrap().powers.iter().find(|p| p.handle == surr_h).unwrap();
+        p.ext_index.and_then(|idx| {
+            match s.power_extensions[idx as usize].private_fields.get("SurroundedPower.<Facing>k__BackingField") {
+                Some(FieldValue::Int(v)) => Some(*v),
+                _ => None,
+            }
+        })
+    };
+
+    assert_eq!(facing_val(&state), Some(0));
+    assert_eq!(
+        sts2_kernel::hooks::modify_damage(&mut state, &content, Some(pc), Some(enemy_left), Dec::from_i32(10), ValueProp::MOVE, None, None).unwrap(),
+        Dec::from_i32(15)
+    );
+    assert_eq!(
+        sts2_kernel::hooks::modify_damage(&mut state, &content, Some(pc), Some(enemy_right), Dec::from_i32(10), ValueProp::MOVE, None, None).unwrap(),
+        Dec::from_i32(10)
+    );
+
+    // Targeting enemy_left flips Facing from Right (0) -> Left (1).
+    let strike_h = state.player.hand[0];
+    let mut empty_choices = SmallVec::new();
+    let out = CombatEngine::play_card(&mut state, &content, strike_h, Some(enemy_left), &mut empty_choices).unwrap();
+    assert!(matches!(out, StepOutcome::Completed));
+    assert_eq!(facing_val(&state), Some(1));
+    assert_eq!(
+        sts2_kernel::hooks::modify_damage(&mut state, &content, Some(pc), Some(enemy_left), Dec::from_i32(10), ValueProp::MOVE, None, None).unwrap(),
+        Dec::from_i32(10)
+    );
+    assert_eq!(
+        sts2_kernel::hooks::modify_damage(&mut state, &content, Some(pc), Some(enemy_right), Dec::from_i32(10), ValueProp::MOVE, None, None).unwrap(),
+        Dec::from_i32(15)
+    );
+
+    // Reset facing to Right (0) and kill the sole BackAttackRight enemy ->
+    // remaining 2 hittable enemies both have BackAttackLeftPower, so AfterDeath flips Facing -> Left (1).
+    let ext_idx = state.creature(pc).unwrap().powers.iter().find(|p| p.handle == surr_h).unwrap().ext_index.unwrap();
+    state.power_extensions[ext_idx as usize]
+        .private_fields
+        .insert("SurroundedPower.<Facing>k__BackingField".to_owned(), FieldValue::Int(0));
+    damage::damage_targets(&mut state, &content, &[enemy_right], Dec::from_i32(100), ValueProp::UNBLOCKABLE | ValueProp::UNPOWERED, Some(pc), None, None).unwrap();
+    assert_eq!(facing_val(&state), Some(1));
+}
+
+#[test]
+fn tools_of_the_trade_sly_tactician_interleaves_after_side_turn_start_before_resume() {
+    let content = Sts2Content;
+    let (mut state, enemy) = build_battle(
+        CharacterId::Defect,
+        &[],
+        120,
+    );
+    let pc = state.player.creature_handle;
+    state.player.max_energy = 4;
+    state.player.energy = 4;
+    state.player.phase = PlayerTurnPhase::Play;
+    state.player.relics.push(sts2_kernel::RelicInst {
+        id: RelicId::LetterOpener,
+        is_wax: false,
+        is_melted: false,
+        stack_count: 1,
+        floor_added_to_deck: None,
+        private_fields: [(
+            "LetterOpener._skillsThisTurn".to_owned(),
+            FieldValue::Int(2),
+        )]
+        .into_iter()
+        .collect(),
+    });
+    state.invalidate_hook_cache();
+
+    power::apply(
+        &mut state,
+        &content,
+        PowerId::ToolsOfTheTradePower,
+        pc,
+        Dec::ONE,
+        Some(pc),
+        None,
+    )
+    .unwrap();
+
+    let mut tactician = make_card(state.next_card_handle, CardId::Tactician, PileType::Draw);
+    state.next_card_handle += 1;
+    tactician.upgrade_level = 1;
+    tactician.local_keywords |= CardKeywords::SLY;
+    let t_h = tactician.handle;
+    state.cards.push(tactician);
+    state.player.draw.push(t_h);
+
+    for _ in 0..5 {
+        let h = state.next_card_handle;
+        state.next_card_handle += 1;
+        state.cards.push(make_card(h, CardId::DefendDefect, PileType::Draw));
+        state.player.draw.push(CardHandle(h));
+    }
+
+    let letter_skills = |s: &BattleState| -> Option<i32> {
+        s.player
+            .relics
+            .iter()
+            .find(|r| r.id == RelicId::LetterOpener)
+            .and_then(|r| r.private_fields.get("LetterOpener._skillsThisTurn"))
+            .and_then(|v| match v {
+                FieldValue::Int(n) => Some(*n),
+                _ => None,
+            })
+    };
+
+    let pause_out = CombatEngine::end_player_turn(&mut state, &content).unwrap();
+    let req = match pause_out {
+        StepOutcome::NeedsChoice(req) => req,
+        other => panic!("expected ToolsOfTheTrade NeedsChoice, got {other:?}"),
+    };
+    assert_eq!(state.player.turn_number, 2);
+    assert_eq!(state.player.phase, PlayerTurnPhase::Start);
+    assert_eq!(letter_skills(&state), Some(0));
+
+    let tact_opt = req.candidates.iter().position(|&h| h == t_h).unwrap();
+    let resume_out = CombatEngine::resume_choice(&mut state, &content, &[tact_opt]).unwrap();
+    assert!(matches!(resume_out, StepOutcome::Completed));
+    assert_eq!(state.player.phase, PlayerTurnPhase::Play);
+    assert_eq!(letter_skills(&state), Some(1));
+
+    // Two additional Skills reach 3 Skills on Turn 2 and trigger LetterOpener's 5 AoE damage.
+    let hp_before = state.creature(enemy).unwrap().current_hp;
+    for _ in 0..2 {
+        let d_h = state.player.hand[0];
+        let mut q = SmallVec::new();
+        let out = CombatEngine::play_card(&mut state, &content, d_h, None, &mut q).unwrap();
+        assert!(matches!(out, StepOutcome::Completed));
+    }
+    assert_eq!(state.creature(enemy).unwrap().current_hp, hp_before - 5);
+    assert_eq!(letter_skills(&state), Some(3));
 }
