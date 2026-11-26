@@ -61,6 +61,15 @@ class ComparisonTests(unittest.TestCase):
         self.change("result.json", lambda x: x["solverMetrics"].update(newQualityFlag=True))
         self.assert_drift()
 
+    def test_missing_and_null_structured_metrics_are_different(self):
+        self.change("result.json", lambda x: x["solverMetrics"].update(newQualityFlag=None))
+        for reference, candidate, side in ((self.a, self.b, "B"), (self.b, self.a, "A")):
+            with self.subTest(present_on=side):
+                result = compare(reference, candidate)
+                self.assertFalse(result["oracleEqual"])
+                self.assertNotIn("changePercent", result)
+                self.assertEqual(result["differences"], {"metrics": {"newQualityFlag": {side: None}}})
+
     def test_full_actions_participate(self):
         self.change("details.json", lambda x: x["actions"][0].update(card="DEFEND_IRONCLAD"))
         self.assert_drift()
