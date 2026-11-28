@@ -16,7 +16,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>CombatSolver</RootNamespace>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <EnablePerformanceRecording Condition="'$(EnablePerformanceRecording)' == ''">false</EnablePerformanceRecording>
     <DefineConstants Condition="'$(EnablePerformanceRecording)' == 'true'">$(DefineConstants);ENABLE_PERFORMANCE_RECORDING</DefineConstants>
     <DefineConstants Condition="'$(VerifyHistoryCounters)' == 'true'">$(DefineConstants);VERIFY_HISTORY_COUNTERS</DefineConstants>

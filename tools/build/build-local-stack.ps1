@@ -3,6 +3,7 @@
     [string]$Configuration = "Release",
     [switch]$ForPublication,
     [switch]$SkipRustKernel,
+    [switch]$SkipCopyMod,
     [string]$PrivateConfigDirectory = ""
 )
 
@@ -11,6 +12,9 @@ $solverRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $solverProject = Join-Path $solverRoot "CombatSolver.csproj"
 
 $buildArguments = @('build', $solverProject, '-c', $Configuration, '--nologo')
+if ($SkipCopyMod) {
+    $buildArguments += '-p:CopyModOnBuild=false'
+}
 if ($SkipRustKernel) {
     $buildArguments += '-p:StageRustCombatKernelEnabled=false'
 }

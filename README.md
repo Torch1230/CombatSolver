@@ -29,13 +29,14 @@ Combat Solver 是面向《杀戮尖塔 2》单人模式（标准 / 恐惧 / 极�
 - [RitsuLib](https://steamcommunity.com/sharedfiles/filedetails/?id=3747602295) `0.6.16` 或更高版本
 - 仅支持单人战斗，不支持多人模式
 
-推荐通过 Steam 创意工坊订阅。若通过 GitHub Release 手动安装，将以下四个文件放入游戏目录的 `mods/CombatSolver/`：
+推荐通过 Steam 创意工坊订阅。若通过 GitHub Release 手动安装，将压缩包内文件解压放入游戏目录的 `mods/CombatSolver/`（其中 `rust-kernel/` 为 Windows 可选原生加速组件，缺失或关闭时自动使用 C# `HotKernel`）：
 
 ```text
 CombatSolver.dll
 CombatSolver.json
 LICENSE
 THIRD_PARTY_NOTICES.md
+rust-kernel/sts2_combat_rs.dll
 ```
 
 启用 RitsuLib 与 Combat Solver 后进入单人战斗，待发牌及回合开始效果结算完毕，覆盖层即自动开始计算。
@@ -58,8 +59,9 @@ THIRD_PARTY_NOTICES.md
 
 ### 性能（Performance）
 
-新一代高速引擎大幅降低了内存占用，不再需要任何 NoGC、多核回收或内存清理工具，性能页仅保留两项设置：
+新一代高速引擎大幅降低了内存占用，不再需要任何 NoGC、多核回收或内存清理工具，性能页保留三项核心设置：
 
+- **战斗内优先使用 Rust 内核**：默认开启（需存在对应平台 `rust-kernel/` 原生库）。所有 Rust 路线在采纳前均经 C# `HotKernel` 逐动作与终局状态回放校验，任一不支持、超时或失配自动回退至 `HotKernel`。
 - **战斗最大求解时长**：默认 `30` 秒（范围 `1–600` 秒）。普通战斗仍会瞬间完成；遇到复杂或高战损战斗时在设定时限内自动逐级深化。
 - **最大并发线程数**：默认 **自动**（16 核及以上 `8` 线程、4–15 核 `4` 线程、2–3 核 `2` 线程，其余单线程），可手动设为关闭（单线程）或 `2–16` 上限。若疑为并行异常，请先上传问题包，再切换为单线程重试。
 
