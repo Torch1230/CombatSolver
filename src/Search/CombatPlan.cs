@@ -356,6 +356,7 @@ internal sealed class SolverResult
     public required int? CombatEndedTurn { get; init; }
     public required int? DeathTurn { get; init; }
     public required bool OnlyDeathRoutesFound { get; init; }
+    public bool WasLosslesslyExhausted { get; init; }
     public required bool IsActEndingBoss { get; init; }
     public required BossHpRelief BossHpRelief { get; init; }
     public required TimeSpan Elapsed { get; init; }
@@ -547,6 +548,7 @@ internal sealed class SolverResult
             CombatEndedTurn = CombatEndedTurn,
             DeathTurn = DeathTurn,
             OnlyDeathRoutesFound = OnlyDeathRoutesFound,
+            WasLosslesslyExhausted = WasLosslesslyExhausted,
             IsActEndingBoss = IsActEndingBoss,
             BossHpRelief = BossHpRelief,
             Elapsed = TimeSpan.Zero,

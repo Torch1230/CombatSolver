@@ -24,6 +24,10 @@ internal sealed record FightOutcomeRecord
     [JsonPropertyName("encounter_id")]
     public required string EncounterId { get; init; }
 
+    [JsonPropertyName("boss_hp_relief")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BossHpRelief { get; init; }
+
     [JsonPropertyName("won")]
     public bool Won { get; init; }
 

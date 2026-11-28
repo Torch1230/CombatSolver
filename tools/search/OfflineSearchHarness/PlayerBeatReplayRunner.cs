@@ -218,13 +218,13 @@ internal static class PlayerBeatReplayRunner
         int? PlayerEventCursor = null,
         int PlayerDeathSaveUseCount = 0);
 
-    private readonly record struct RootPotionSlotInfo(
+    internal readonly record struct RootPotionSlotInfo(
         int Slot,
         string Entry,
         short StrategicCostHp,
         bool IsCombatUsable);
 
-    private readonly record struct RootCanonicalContext(
+    internal readonly record struct RootCanonicalContext(
         bool HasPolicy,
         HotSearchPolicy Policy,
         short[] RootSlotCosts,
@@ -332,7 +332,7 @@ internal static class PlayerBeatReplayRunner
         string? Error,
         LockstepStepDiff[] Steps);
 
-    private sealed record DeployReplanDiff(
+    internal sealed record DeployReplanDiff(
         int Turn,
         string Cause,
         string FirstDiff,
@@ -1635,7 +1635,30 @@ internal static class PlayerBeatReplayRunner
             Steps: stepDiffs.ToArray());
     }
 
-    private static RootCanonicalContext CaptureRootCanonicalContext(
+    internal static CombatState RestoreBundleForBatch(
+        MainLoopContext loop,
+        string bundlePath,
+        out string characterId,
+        out string encounterId,
+        out IDisposable bundleHandle)
+    {
+        PreparedBundle bundle = LoadBundle(bundlePath);
+        try
+        {
+            CombatState combat = RestoreBundleToTurn1Playable(loop, bundle, out _);
+            characterId = bundle.GroundTruth.CharacterId;
+            encounterId = bundle.GroundTruth.EncounterId;
+            bundleHandle = bundle;
+            return combat;
+        }
+        catch
+        {
+            bundle.Dispose();
+            throw;
+        }
+    }
+
+    internal static RootCanonicalContext CaptureRootCanonicalContext(
         CombatRootSnapshot root,
         BattleDamageSnapshot damage,
         SearchPolicySnapshot policy)
@@ -4133,7 +4156,7 @@ internal static class PlayerBeatReplayRunner
         File.WriteAllText(path, JsonSerializer.Serialize(payload, BenchmarkOutcomeHelper.JsonOptions));
     }
 
-    private static TException? FindInner<TException>(Exception ex) where TException : Exception
+    internal static TException? FindInner<TException>(Exception ex) where TException : Exception
     {
         for (Exception? cur = ex; cur != null; cur = cur.InnerException)
         {

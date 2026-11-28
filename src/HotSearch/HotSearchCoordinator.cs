@@ -2496,7 +2496,8 @@ internal static class HotSearchCoordinator
             TotalSearchElapsed: totalElapsed,
             PotionHpSaved: potionHpSaved,
             PotionHpRequired: pass.BestKey.OptionalPotionStrategicCost,
-            PotionBranchesRejected: potionBranchesRejected);
+            PotionBranchesRejected: potionBranchesRejected,
+            WasLosslesslyExhausted: pass.WasLosslesslyExhausted);
 
         HotRouteKey passBestKey = pass.BestKey;
         return HotPlanMaterializer.Materialize(
@@ -2756,6 +2757,7 @@ internal static class HotSearchCoordinator
             CombatEndedTurn = source.CombatEndedTurn,
             DeathTurn = source.DeathTurn,
             OnlyDeathRoutesFound = source.OnlyDeathRoutesFound,
+            WasLosslesslyExhausted = source.WasLosslesslyExhausted,
             IsActEndingBoss = source.IsActEndingBoss,
             BossHpRelief = source.BossHpRelief,
             Elapsed = source.Elapsed,

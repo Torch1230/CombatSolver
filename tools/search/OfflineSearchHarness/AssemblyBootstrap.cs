@@ -19,17 +19,21 @@ internal static class AssemblyBootstrap
     [ModuleInitializer]
     internal static void Initialize()
     {
-        Sts2DataDir = (string?)AppContext.GetData("Sts2DataDir") ?? string.Empty;
-        RitsuLibDir = (string?)AppContext.GetData("RitsuLibDir") ?? string.Empty;
-        RitsuLibCompatDir = (string?)AppContext.GetData("RitsuLibCompatDir") ?? string.Empty;
-        RitsuLibSharedDir = (string?)AppContext.GetData("RitsuLibSharedDir") ?? string.Empty;
+        // 支持无 Steam/无仓库路径的便携集群部署：环境变量优先覆盖 runtimeconfig.json 固化路径。
+        Sts2DataDir = ResolveConfiguredPath("OFFLINE_HARNESS_STS2_DATA_DIR", "Sts2DataDir");
+        RitsuLibDir = ResolveConfiguredPath("OFFLINE_HARNESS_RITSU_LIB_DIR", "RitsuLibDir");
+        RitsuLibCompatDir = ResolveConfiguredPath("OFFLINE_HARNESS_RITSU_COMPAT_DIR", "RitsuLibCompatDir");
+        RitsuLibSharedDir = ResolveConfiguredPath("OFFLINE_HARNESS_RITSU_SHARED_DIR", "RitsuLibSharedDir");
         // 批量运行器要能按 plan 换掉模组产物（对照不同 DLL 的游戏内跑法），所以环境变量优先。
-        CombatSolverDll = Environment.GetEnvironmentVariable("OFFLINE_HARNESS_COMBATSOLVER_DLL") is { Length: > 0 } overridden
-            ? overridden
-            : (string?)AppContext.GetData("CombatSolverDll") ?? string.Empty;
+        CombatSolverDll = ResolveConfiguredPath("OFFLINE_HARNESS_COMBATSOLVER_DLL", "CombatSolverDll");
 
         AssemblyLoadContext.Default.Resolving += Resolve;
     }
+
+    private static string ResolveConfiguredPath(string envVarName, string appContextKey)
+        => Environment.GetEnvironmentVariable(envVarName) is { Length: > 0 } overridden
+            ? overridden
+            : (string?)AppContext.GetData(appContextKey) ?? string.Empty;
 
     private static Assembly? Resolve(AssemblyLoadContext context, AssemblyName name)
     {
@@ -55,5 +59,7 @@ internal static class AssemblyBootstrap
             yield return Path.Combine(RitsuLibDir, simpleName + ".dll");
         if (Sts2DataDir.Length > 0)
             yield return Path.Combine(Sts2DataDir, simpleName + ".dll");
+        if (AppContext.BaseDirectory is { Length: > 0 } baseDir)
+            yield return Path.Combine(baseDir, simpleName + ".dll");
     }
 }

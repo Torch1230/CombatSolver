@@ -51,7 +51,14 @@ internal sealed record CardInjectionSpec(
     string? EnchantmentId = null,
     int EnchantmentAmount = 1,
     string? AfflictionId = null,
-    int AfflictionAmount = 1);
+    int AfflictionAmount = 1,
+    Dictionary<string, int>? DynamicVars = null,
+    Dictionary<string, string>? EnumMembers = null);
+
+internal sealed record RelicInjectionSpec(
+    string RelicId,
+    Dictionary<string, int>? IntegerMembers = null,
+    Dictionary<string, bool>? BooleanMembers = null);
 
 internal sealed record PowerInjectionSpec(
     string PowerId,
@@ -63,6 +70,8 @@ internal sealed record CombatSetupSpec
 {
     public string CharacterId { get; init; } = "IRONCLAD";
     public string EncounterId { get; init; } = "FUZZY_WURM_CRAWLER_WEAK";
+    public string? Boss1EncounterId { get; init; }
+    public string? Boss2EncounterId { get; init; }
     public string Seed { get; init; } = "FUZZ0001";
     public GameMode GameMode { get; init; } = GameMode.Standard;
     public string? DominionId { get; init; }
@@ -77,6 +86,7 @@ internal sealed record CombatSetupSpec
     public bool ClearStarterRelics { get; init; }
     public CardInjectionSpec[] Cards { get; init; } = [];
     public string[] Relics { get; init; } = [];
+    public RelicInjectionSpec[] RelicSpecs { get; init; } = [];
     public int? PotionSlotCount { get; init; }
     public string[] Potions { get; init; } = [];
     public PowerInjectionSpec[] InitialPowers { get; init; } = [];
@@ -360,6 +370,14 @@ internal static class RealCombatDriver
                 await RunManager.Instance.SetActInternal(clampedAct);
         }
 
+        if (clampedAct == runState.Acts.Count - 1)
+        {
+            if (!string.IsNullOrWhiteSpace(spec.Boss1EncounterId))
+                runState.Act.SetBossEncounter(ResolveModel(ModelDb.All.OfType<EncounterModel>(), spec.Boss1EncounterId, "Boss 1"));
+            if (!string.IsNullOrWhiteSpace(spec.Boss2EncounterId))
+                runState.Act.SetSecondBossEncounter(ResolveModel(ModelDb.All.OfType<EncounterModel>(), spec.Boss2EncounterId, "Boss 2"));
+        }
+
         Player player = LocalContext.GetMe(runState)
             ?? throw new InvalidOperationException("创建跑局后找不到本地玩家。");
 
@@ -394,6 +412,31 @@ internal static class RealCombatDriver
             player.AddRelicInternal(mutable, -1, silent: true);
         }
 
+        foreach (RelicInjectionSpec relicSpec in spec.RelicSpecs)
+        {
+            RelicModel canonical = ResolveModel(ModelDb.AllRelics, relicSpec.RelicId, "遗物");
+            if (!ownedRelicIds.Add(canonical.Id))
+                continue;
+            RelicModel mutable = canonical.ToMutable();
+            if (mutable is MegaCrit.Sts2.Core.Models.Relics.Wuppy wuppyRelic)
+            {
+                int wuppyMaxHp = Math.Max(1, spec.WuppyMaxHp ?? MegaCrit.Sts2.Core.Models.Relics.Wuppy.weakHp);
+                wuppyRelic.MaxHp = wuppyMaxHp;
+                wuppyRelic.CurrentHp = Math.Clamp(spec.WuppyCurrentHp ?? wuppyMaxHp, 0, wuppyMaxHp);
+            }
+            player.AddRelicInternal(mutable, -1, silent: true);
+            if (relicSpec.IntegerMembers != null)
+            {
+                foreach ((string memberName, int value) in relicSpec.IntegerMembers)
+                    SetRelicStateMember(mutable, memberName, value);
+            }
+            if (relicSpec.BooleanMembers != null)
+            {
+                foreach ((string memberName, bool value) in relicSpec.BooleanMembers)
+                    SetRelicStateMember(mutable, memberName, value);
+            }
+        }
+
         // 牌组准备
         if (spec.ClearStarterDeck)
         {
@@ -419,6 +462,17 @@ internal static class RealCombatDriver
             }
             for (int u = 0; u < cardSpec.UpgradeLevel && card.IsUpgradable; u++)
                 CardCmd.Upgrade(card, CardPreviewStyle.None);
+            if (cardSpec.DynamicVars != null)
+            {
+                foreach ((string key, int value) in cardSpec.DynamicVars)
+                {
+                    if (!card.DynamicVars.TryGetValue(key, out var dynamicVar))
+                        throw new InvalidOperationException($"卡牌 {card.Id.Entry} 不存在动态变量 {key}。");
+                    dynamicVar.BaseValue = value;
+                }
+            }
+            if (cardSpec.EnumMembers != null)
+                ApplyCardEnumMembers(card, cardSpec.EnumMembers);
             if (!string.IsNullOrWhiteSpace(cardSpec.EnchantmentId))
             {
                 EnchantmentModel ench = ResolveModel(
@@ -594,6 +648,73 @@ internal static class RealCombatDriver
             || m.Id.ToString().Equals(id, StringComparison.OrdinalIgnoreCase)
             || m.GetType().Name.Equals(id, StringComparison.OrdinalIgnoreCase));
         return match ?? throw new InvalidOperationException($"找不到{kind}：{id}。");
+    }
+
+    private static void SetRelicStateMember<T>(RelicModel relic, string memberName, T value)
+    {
+        for (Type? type = relic.GetType(); type != null; type = type.BaseType)
+        {
+            const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.DeclaredOnly;
+            if (type.GetProperty(memberName, flags) is { } property)
+            {
+                if (property.PropertyType != typeof(T) || property.SetMethod == null)
+                {
+                    throw new InvalidOperationException(
+                        $"遗物 {relic.Id.Entry} 状态属性 {memberName} 不是可写的 {typeof(T).Name}。");
+                }
+                property.SetValue(relic, value);
+                return;
+            }
+            if (type.GetField(memberName, flags) is { } field)
+            {
+                if (field.FieldType != typeof(T) || field.IsInitOnly)
+                {
+                    throw new InvalidOperationException(
+                        $"遗物 {relic.Id.Entry} 状态字段 {memberName} 不是可写的 {typeof(T).Name}。");
+                }
+                field.SetValue(relic, value);
+                return;
+            }
+        }
+        throw new InvalidOperationException($"遗物 {relic.Id.Entry} 不存在状态成员 {memberName}。");
+    }
+
+    private static void ApplyCardEnumMembers(CardModel card, IReadOnlyDictionary<string, string> enumMembers)
+    {
+        foreach ((string memberName, string rawValue) in enumMembers)
+        {
+            bool applied = false;
+            for (Type? type = card.GetType(); type != null; type = type.BaseType)
+            {
+                const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.DeclaredOnly;
+                if (type.GetProperty(memberName, flags) is { } property)
+                {
+                    if (!property.PropertyType.IsEnum || property.SetMethod == null)
+                        throw new InvalidOperationException($"卡牌 {card.Id.Entry} 属性 {memberName} 不是可写的枚举。");
+                    object parsed = Enum.Parse(property.PropertyType, rawValue, ignoreCase: true);
+                    property.SetValue(card, parsed);
+                    applied = true;
+                    break;
+                }
+                if (type.GetField(memberName, flags) is { } field)
+                {
+                    if (!field.FieldType.IsEnum || field.IsInitOnly)
+                        throw new InvalidOperationException($"卡牌 {card.Id.Entry} 字段 {memberName} 不是可写的枚举。");
+                    object parsed = Enum.Parse(field.FieldType, rawValue, ignoreCase: true);
+                    field.SetValue(card, parsed);
+                    applied = true;
+                    break;
+                }
+            }
+            if (!applied)
+                throw new InvalidOperationException($"卡牌 {card.Id.Entry} 不存在枚举成员 {memberName}。");
+        }
     }
 }
 

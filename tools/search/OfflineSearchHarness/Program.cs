@@ -47,6 +47,10 @@ internal static class Program
             return PlayerBeatReplayRunner.RunReplayBundle(rawArgs.Skip(1).ToArray());
         if (rawArgs.Length >= 1 && rawArgs[0] == "--bench-player-corpus")
             return PlayerBeatReplayRunner.RunPlayerCorpus(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--eval-specs")
+            return SpecBatchEvaluator.Run(rawArgs.Skip(1).ToArray());
+        if (rawArgs.Length >= 1 && rawArgs[0] == "--eval-stdio")
+            return SpecBatchEvaluator.RunStdio(rawArgs.Skip(1).ToArray());
         if (rawArgs.Length >= 1 && rawArgs[0] == "--compare-outcomes")
             return OutcomeComparator.Run(rawArgs.Skip(1).ToArray());
         if (rawArgs.Length == 3 && rawArgs[0] == "--compare-quality-batch")

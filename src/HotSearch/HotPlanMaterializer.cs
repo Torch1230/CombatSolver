@@ -39,7 +39,8 @@ internal readonly record struct HotMaterializeMetrics(
     TimeSpan TotalSearchElapsed,
     int PotionHpSaved,
     int PotionHpRequired,
-    int PotionBranchesRejected);
+    int PotionBranchesRejected,
+    bool WasLosslesslyExhausted = false);
 
 /// <summary>
 /// Replays ONLY the single winning <see cref="HotAction"/> trace from the root <see cref="CombatHotState"/>
@@ -521,6 +522,7 @@ internal static class HotPlanMaterializer
             CombatEndedTurn = combatEndedTurn,
             DeathTurn = deathTurn,
             OnlyDeathRoutesFound = metrics.OnlyDeathRoutesFound,
+            WasLosslesslyExhausted = metrics.WasLosslesslyExhausted,
             IsActEndingBoss = hotPolicy.IsActEndingBoss,
             BossHpRelief = hotPolicy.EncounterBossHpRelief,
             Elapsed = metrics.Elapsed,
