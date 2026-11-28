@@ -1160,6 +1160,12 @@ internal static partial class SolverController
 
             setupStage = "worker_schedule";
             SolvedRouteCache routeCache = SolvedRouteCache.Capture(state, rootSnapshot, searchPolicy, battleDamage);
+            PreparedInCombatRustKernelSearch? preparedRust = PrepareInCombatRustKernel(
+                generation,
+                state,
+                settings,
+                searchPolicy,
+                battleDamage);
             bool allowPreliminaryPreview = !deployWhenReady
                 && !_combat.FullAutoEnabled
                 && reason is not (SearchReason.Deploy or SearchReason.FullAuto);
@@ -1181,6 +1187,28 @@ internal static partial class SolverController
                 worker.Priority = ThreadPriority.BelowNormal;
                 try
                 {
+                    if (preparedRust is not null
+                        && TrySolveWithRustKernel(
+                            generation,
+                            search,
+                            rootSnapshot,
+                            displayNames,
+                            battleDamage,
+                            searchPolicy,
+                            preparedRust,
+                            token,
+                            out SolverResult? rustResult)
+                        && rustResult is not null)
+                    {
+                        SolverResult finalizedRust = search.Interaction.FinalizeWorkerResult(rustResult);
+                        token.ThrowIfCancellationRequested();
+                        if (!search.Interaction.StopRequested && !finalizedRust.IsPreliminary)
+                            routeCache.StoreFirst(finalizedRust);
+                        return finalizedRust;
+                    }
+
+                    InCombatSolverBackendState.BeginActiveHotKernel(searchPolicy.MaxDegreeOfParallelism);
+                    SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
                     SolverResult result = HotSearchCoordinator.Solve(
                         rootSnapshot,
                         displayNames,
@@ -1189,6 +1217,8 @@ internal static partial class SolverController
                         token,
                         progress => PublishSearchProgress(search, progress),
                         onPreliminaryResult);
+                    InCombatSolverBackendState.RecordHotKernelCompleted(searchPolicy.MaxDegreeOfParallelism);
+                    SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
                     SolverResult finalizedResult = search.Interaction.FinalizeWorkerResult(result);
                     token.ThrowIfCancellationRequested();
                     if (!search.Interaction.StopRequested && !finalizedResult.IsPreliminary)
@@ -2134,6 +2164,7 @@ internal static partial class SolverController
         LastFullAutoPausedForConsecutiveDriftForTesting = false;
         LastSearchFailureForTesting = null;
         BattleDamageTracker.Reset();
+        InCombatSolverBackendState.ResetForCombat();
         SolverOverlay.Hide();
         // 战斗重置隐藏界面，并登记下一个可操作边界的初始化请求。
         SolverOverlay.MarkInitializationPending();
@@ -3615,6 +3646,7 @@ internal static partial class SolverController
     {
         SolverSearchSession? search = _search;
         _search = null;
+        InCombatSolverBackendState.ClearActive();
         if (search == null)
             return;
         search.PreliminaryResult = null;
@@ -3852,5 +3884,256 @@ internal static partial class SolverController
     {
         if (!NGame.IsMainThread())
             throw new InvalidOperationException("CombatSolver 的主线程控制器被后台线程调用。");
+    }
+
+    private sealed record PreparedInCombatRustKernelSearch(
+        RustKernelLiveStateDto LiveState,
+        int PriorBattleHpLost,
+        InCombatRustHostMetadata HostMetadata,
+        RustKernelPolicyDto Policy,
+        int SearchBudgetMilliseconds);
+
+    private static PreparedInCombatRustKernelSearch? PrepareInCombatRustKernel(
+        int generation,
+        CombatState state,
+        SolverSettingsSnapshot settings,
+        SearchPolicySnapshot searchPolicy,
+        BattleDamageSnapshot battleDamage)
+    {
+        RustKernelEligibilityResult hostResult = InCombatRustKernelEligibility.AssessHostAndCombat(state, settings);
+        if (!hostResult.IsEligible)
+        {
+            string code = hostResult.FailureCode ?? "ineligible";
+            InCombatSolverBackendState.RecordExclusion(code, hostResult.Detail);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_EXCLUDED generation={generation} " +
+                $"code={code} detail={hostResult.Detail}");
+            return null;
+        }
+
+        if (!InCombatRustKernelBridge.HasInstalledBackendArtifact())
+        {
+            InCombatSolverBackendState.RecordExclusion("rust_kernel_absent", "Installed rust-kernel library was not found.");
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_EXCLUDED generation={generation} " +
+                "code=rust_kernel_absent detail=Installed rust-kernel library was not found.");
+            return null;
+        }
+
+        if (InCombatRustKernelBridge.IsCorrupt)
+        {
+            InCombatSolverBackendState.RecordFallback("rust_kernel_corrupt", "Installed rust-kernel previously failed activation.");
+            Entry.Logger.Warn(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_FALLBACK generation={generation} " +
+                "code=rust_kernel_corrupt detail=Installed rust-kernel previously failed activation.");
+            return null;
+        }
+
+        RustKernelEligibilityResult policyResult = InCombatRustKernelEligibility.AssessSearchPolicy(searchPolicy);
+        if (!policyResult.IsEligible)
+        {
+            string code = policyResult.FailureCode ?? "policy_unsupported";
+            InCombatSolverBackendState.RecordExclusion(code, policyResult.Detail);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_EXCLUDED generation={generation} " +
+                $"code={code} detail={policyResult.Detail}");
+            return null;
+        }
+
+        Player player = LocalContext.GetMe(state)
+            ?? throw new InvalidOperationException("找不到本地玩家。");
+        IReadOnlyList<(int Slot, string PotionId)> effectivePotions =
+            InCombatRustKernelPolicyMapper.CaptureEffectivePotions(player);
+
+        if (!InCombatRustKernelPolicyMapper.TryBuildPolicy(
+                SolverSettings.Current,
+                settings,
+                searchPolicy,
+                effectivePotions,
+                out RustKernelPolicyDto? policyDto,
+                out int searchBudgetMs,
+                out string? policyReason)
+            || policyDto is null)
+        {
+            InCombatSolverBackendState.RecordFallback("policy_unsupported", policyReason);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_FALLBACK generation={generation} " +
+                $"code=policy_unsupported detail={policyReason}");
+            return null;
+        }
+
+        try
+        {
+            (RustKernelLiveStateDto liveState, int priorBattleHpLost) =
+                InCombatLiveStateCapturer.Capture(state, battleDamage);
+            InCombatRustHostMetadata hostMeta = InCombatLiveStateCapturer.CaptureHostMetadata(state);
+            InCombatSolverBackendState.ClearExclusion();
+            return new PreparedInCombatRustKernelSearch(
+                liveState,
+                priorBattleHpLost,
+                hostMeta,
+                policyDto,
+                searchBudgetMs);
+        }
+        catch (InCombatLiveCaptureUnsupportedException ex)
+        {
+            InCombatSolverBackendState.RecordFallback(ex.FailureCode, ex.Message);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_FALLBACK generation={generation} " +
+                $"code={ex.FailureCode} field={ex.FieldPath ?? "-"} detail={ex.Message}");
+            return null;
+        }
+    }
+
+    private static bool TrySolveWithRustKernel(
+        int generation,
+        SolverSearchSession search,
+        CombatRootSnapshot rootSnapshot,
+        SolverDisplayNames displayNames,
+        BattleDamageSnapshot battleDamage,
+        SearchPolicySnapshot searchPolicy,
+        PreparedInCombatRustKernelSearch prepared,
+        CancellationToken token,
+        out SolverResult? finalizedResult)
+    {
+        finalizedResult = null;
+
+        RustKernelAvailability availability =
+            InCombatRustKernelBridge.EnsureActivated(out string? activationError);
+        if (availability != RustKernelAvailability.Ready)
+        {
+            if (availability == RustKernelAvailability.CorruptOrIncompatible)
+            {
+                InCombatSolverBackendState.RecordFallback("rust_kernel_corrupt", activationError);
+                Entry.Logger.Warn(
+                    $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_FALLBACK generation={generation} " +
+                    $"code=rust_kernel_corrupt detail={activationError}");
+                SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            }
+            return false;
+        }
+
+        int overallTimeoutMs = Math.Clamp(prepared.SearchBudgetMilliseconds + 5_000, 5_000, 620_000);
+        InCombatRustHostMetadata meta = prepared.HostMetadata;
+        var request = new RustKernelRequestDto(
+            AbiVersion: RustKernelAbi.Version,
+            RequestId: $"rust-incombat-{generation}-{Guid.NewGuid():N}",
+            LiveState: prepared.LiveState,
+            CharacterId: meta.CharacterId,
+            Ascension: meta.Ascension,
+            GameMode: meta.GameMode,
+            DominionId: meta.DominionId,
+            RunModelIds: meta.RunModelIds,
+            EncounterIsWeak: meta.EncounterIsWeak,
+            InitialEncounterMonsterCount: meta.InitialEncounterMonsterCount,
+            TotalFloor: meta.TotalFloor,
+            ActIndex: meta.ActIndex,
+            MapCol: meta.MapCol,
+            MapRow: meta.MapRow,
+            PriorBattleHpLost: prepared.PriorBattleHpLost,
+            SearchBudgetMilliseconds: prepared.SearchBudgetMilliseconds,
+            OverallTimeoutMilliseconds: overallTimeoutMs,
+            MaxDegreeOfParallelism: searchPolicy.MaxDegreeOfParallelism,
+            Policy: prepared.Policy,
+            PotionRewardReplacementHpCredit: searchPolicy.PredictPotionReward
+                ? rootSnapshot.PotionRewardOutlook.ReplacementHpCredit
+                : 0,
+            IsNonFinalAct3Boss: rootSnapshot.EncounterRoomType == MegaCrit.Sts2.Core.Rooms.RoomType.Boss
+                && meta.ActIndex >= 2
+                && rootSnapshot.BossHpRelief == BossHpRelief.None,
+            InitialBrightestFlameMaxHpSpent: rootSnapshot.InitialBrightestFlameMaxHpSpent,
+            HasMurderousModifier: meta.HasMurderousModifier);
+
+        InCombatSolverBackendState.BeginActiveRustKernel(request.MaxDegreeOfParallelism);
+        SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+
+        var sw = Stopwatch.StartNew();
+        RustKernelResponseDto response;
+        try
+        {
+            response = InCombatRustKernelBridge.RunInCombatAsync(
+                request,
+                p =>
+                {
+                    PublishSearchProgress(search, new SolverProgress(
+                        StartTurnNumber: rootSnapshot.StartTurnNumber,
+                        CurrentTurnNumber: Math.Max(rootSnapshot.StartTurnNumber, p.MaxTurnReached),
+                        CompletedTurnLayers: Math.Max(0, p.MaxTurnReached - rootSnapshot.StartTurnNumber),
+                        PlayDepth: 0,
+                        ExpandedNodes: (int)Math.Clamp(p.ExpandedNodes, 0L, int.MaxValue),
+                        ReviewedWorldlines: p.TransitionCount ?? p.ExpandedNodes,
+                        MaxNodes: prepared.Policy.MaxExpandedNodes,
+                        FrontierNodes: 0,
+                        EndedNodes: 0,
+                        ElapsedMilliseconds: (long)Math.Max(0d, p.ElapsedMilliseconds),
+                        Phase: p.ActivePhaseLabel ?? "RustKernel",
+                        RequestBudgetMilliseconds: prepared.SearchBudgetMilliseconds));
+                },
+                token).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            InCombatSolverBackendState.ClearActive();
+            throw;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            string detail = ex.GetBaseException().Message;
+            InCombatSolverBackendState.RecordFallback("rust_kernel_bridge_error", detail);
+            Entry.Logger.Warn(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_FALLBACK generation={generation} " +
+                $"code=rust_kernel_bridge_error detail={detail}");
+            SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            return false;
+        }
+
+        if (response.Outcome == "Cancelled" || token.IsCancellationRequested)
+        {
+            InCombatSolverBackendState.ClearActive();
+            throw new OperationCanceledException(token);
+        }
+
+        if (response.Outcome != "Succeeded" || response.Result is null)
+        {
+            string code = response.FailureCode ?? $"rust_kernel_{response.Outcome.ToLowerInvariant()}";
+            string detail = response.Error ?? $"RustKernel ended with outcome {response.Outcome}.";
+            InCombatSolverBackendState.RecordFallback(code, detail);
+            Entry.Logger.Info(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_FALLBACK generation={generation} " +
+                $"code={code} field={response.FieldPath ?? "-"} detail={detail}");
+            SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            return false;
+        }
+
+        if (!InCombatRustKernelResultMaterializer.TryMaterialize(
+                rootSnapshot,
+                displayNames,
+                battleDamage,
+                searchPolicy,
+                response.Result,
+                response.EffectiveDegreeOfParallelism,
+                sw.Elapsed,
+                out SolverResult? materialized,
+                out string? failCode,
+                out string? failDetail)
+            || materialized is null)
+        {
+            string code = failCode ?? "rust_kernel_replay_mismatch";
+            InCombatSolverBackendState.RecordFallback(code, failDetail);
+            Entry.Logger.Warn(
+                $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_FALLBACK generation={generation} " +
+                $"code={code} detail={failDetail}");
+            SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+            return false;
+        }
+
+        InCombatSolverBackendState.RecordRustKernelSuccess(response.EffectiveDegreeOfParallelism);
+        SolverDispatcher.Post(static () => SolverOverlay.RefreshControls());
+        Entry.Logger.Info(
+            $"[CombatSolver/InCombatRustKernel] RUST_KERNEL_INCOMBAT_SUCCEEDED generation={generation} " +
+            $"dop={response.EffectiveDegreeOfParallelism} nodes={materialized.ExpandedNodes} " +
+            $"elapsed_ms={response.TotalElapsedMilliseconds:F1}");
+        finalizedResult = materialized;
+        return true;
     }
 }

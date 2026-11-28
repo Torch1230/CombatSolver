@@ -94,6 +94,15 @@ internal sealed partial class UnattendedTestRunner
             if (request.ScenarioId == "SHOWCASE-BUNDLE-IMPORT-V0111")
                 return Observation(combatEnded: false);
 
+            if (request.VerifyInCombatRustKernelContract)
+            {
+                runner.SetStage("verify_in_combat_rust_kernel_contract");
+                if (!request.PreserveNativeCombatStateForTest && !runner.HasNativeRecording)
+                    SolverController.BeginCombat(combatState);
+                await runner.RunInCombatRustKernelContractAsync(combatState, player);
+                return Observation(combatEnded: false);
+            }
+
             if (request.StopAfterCombatRootSnapshotAssertion)
                 return Observation(combatEnded: runner.HasNativeRecording && !CombatManager.Instance.IsInProgress);
 

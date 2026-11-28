@@ -132,7 +132,7 @@ for name in \
     clear-player-hand clear-player-piles clear-run-deck clear-all-powers \
     verify-prediction-failure-boundaries verify-search-policy-snapshot verify-growth-policy \
     verify-controller-session-lifecycle verify-fork-boundaries \
-    verify-combat-root-snapshot verify-pre-combat-forecast-api verify-base-lib-card-modifier-boundary \
+    verify-combat-root-snapshot verify-pre-combat-forecast-api verify-in-combat-rust-kernel-contract verify-base-lib-card-modifier-boundary \
     stop-after-combat-root-snapshot-assertion verify-incremental-search \
     force-short-search-only fixed-search-budget measure-search-phases use-novelty-portfolio-for-test hold-after-initial-search; do
     add_option "$name" 0 switch bool
@@ -482,9 +482,11 @@ if [[ -n ${option_value[combat-solver-build-dir]} ]]; then
     build_dir="$(realpath -m -- "${option_value[combat-solver-build-dir]}")"
     combat_solver_dll="$build_dir/CombatSolver.dll"
     combat_solver_manifest="$build_dir/CombatSolver.json"
+    combat_solver_rust_kernel_dir="$build_dir/rust-kernel"
 else
     combat_solver_dll="$repo_root/.godot/mono/temp/bin/Release/CombatSolver.dll"
     combat_solver_manifest="$repo_root/CombatSolver.json"
+    combat_solver_rust_kernel_dir="$repo_root/.godot/mono/temp/bin/Release/rust-kernel"
 fi
 ritsu_workshop_root="$(realpath -m -- "${option_value[ritsu-workshop-root]}")"
 # shellcheck source=headless-runtime.sh
@@ -1137,7 +1139,11 @@ else
     combat_solver_dll_sha256="${combat_solver_dll_sha256%% *}"
     combat_solver_manifest_sha256="$(sha256sum -- "$combat_solver_manifest")"
     combat_solver_manifest_sha256="${combat_solver_manifest_sha256%% *}"
-    artifact_id="$(hr_snapshot_id "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")"
+    snapshot_id_args=("$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source")
+    if [[ -d $combat_solver_rust_kernel_dir ]]; then
+        snapshot_id_args+=("$combat_solver_rust_kernel_dir")
+    fi
+    artifact_id="$(hr_snapshot_id "${snapshot_id_args[@]}")"
 fi
 
 runtime_profile="${option_value[runtime-profile]}"
@@ -1222,7 +1228,7 @@ if ((option_value[reuse-only] == 1)) && [[ -z "$process_pid" ]]; then
 fi
 hr_acquire "$process_pid" "$process_identity_start_time" || runtime_error 'headless host admission failed'
 if [[ -z $process_pid ]]; then
-    hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" || runtime_error 'could not prepare frozen game snapshot'
+    hr_prepare_snapshot "$source_game_root" "$combat_solver_dll" "$combat_solver_manifest" "$ritsu_source" "$ritsu_manifest_source" "$artifact_id" "$combat_solver_rust_kernel_dir" || runtime_error 'could not prepare frozen game snapshot'
 fi
 
 # Publish only after every process-safety check. An already-running protocol

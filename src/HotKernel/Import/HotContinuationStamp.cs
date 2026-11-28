@@ -825,7 +825,7 @@ internal static class HotContinuationStamp
                         int srcIdx = FindCardIndexByUid(in state, p.AuxCardUid);
                         if (srcIdx >= 0)
                         {
-                            HotCard nmCard = PrepareNightmareSelectedCard(in state.Cards[srcIdx], cold, out HotColdSidecar? nmCold);
+                            HotCard nmCard = PrepareNightmareSelectedCard(in state.Cards[srcIdx], cold, rules, out HotColdSidecar? nmCold);
                             AppendCard(text, in nmCard, nmCold, rules);
                         }
                         else if (p.Aux0 > 0 && p.Aux0 < rules.Cards.Length)
@@ -935,6 +935,7 @@ internal static class HotContinuationStamp
     private static HotCard PrepareNightmareSelectedCard(
         in HotCard source,
         HotColdSidecar? cold,
+        HotRules rules,
         out HotColdSidecar? adjustedCold)
     {
         // Match NightmarePower.SetSelectedCard: CreateClone() + ClearAffliction() + EndOfTurnCleanup().
@@ -944,11 +945,13 @@ internal static class HotContinuationStamp
             | HotCardFlags.ExhaustOnNextPlay
             | HotCardFlags.SingleTurnRetain
             | HotCardFlags.IsSlyThisTurn
-            | HotCardFlags.IsDupe);
+            | HotCardFlags.IsDupe
+            | HotCardFlags.FetchPlayedThisTurn);
         copy.Flags |= HotCardFlags.IsClone;
         copy.AfflId = 0;
         copy.AfflAmt = 0;
         copy.ExtraReplayThisTurn = 0;
+        HotCombatEngine.ClearPerInstanceHistoryOnClone(ref copy, rules);
 
         if ((copy.Flags & HotCardFlags.HasCostOverflow) == 0)
         {

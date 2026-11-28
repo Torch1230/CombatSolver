@@ -186,7 +186,8 @@ function Get-HeadlessSnapshotPlan(
     [string]$CombatSolverManifest,
     [string]$MemoryCleaner,
     [string]$RitsuRoot,
-    [string]$RitsuManifest
+    [string]$RitsuManifest,
+    [string]$RustKernelDir = ""
 ) {
     # Every payload is bound, including other mods and non-DLL mod assets. No
     # hardlinks/junctions: a build in another worktree must not mutate this image.
@@ -219,6 +220,24 @@ function Get-HeadlessSnapshotPlan(
     $sources['mods\CombatSolver\CombatSolver.dll'] = $CombatSolverDll
     $sources['mods\CombatSolver\CombatSolver.json'] = $CombatSolverManifest
     $sources['mods\CombatSolver\CombatSolver.MemoryCleaner.exe'] = $MemoryCleaner
+    foreach ($existingKey in @($sources.Keys | Where-Object {
+            $_ -eq 'mods\CombatSolver\rust-kernel' -or
+            $_.StartsWith('mods\CombatSolver\rust-kernel\', [StringComparison]::OrdinalIgnoreCase)
+        })) {
+        [void]$sources.Remove($existingKey)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RustKernelDir) -and (Test-Path -LiteralPath $RustKernelDir -PathType Container)) {
+        Assert-HeadlessNoReparsePoint $RustKernelDir
+        foreach ($item in Get-ChildItem -LiteralPath $RustKernelDir -Recurse -Force) {
+            if ($item.PSIsContainer) { continue }
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Cannot freeze a rust-kernel payload containing a reparse point: $($item.FullName)"
+            }
+            $relative = [IO.Path]::GetRelativePath($RustKernelDir, $item.FullName)
+            $sources[(Join-Path 'mods\CombatSolver\rust-kernel' $relative)] = $item.FullName
+            [void]$enumeratedSources.Add($item.FullName)
+        }
+    }
     $sources['mods\.combatsolver-headless-ritsulib\STS2-RitsuLib.json'] = $RitsuManifest
     $variantManifest = Join-Path $RitsuRoot 'ritsulib-variants.manifest'
     if (Test-Path -LiteralPath $variantManifest -PathType Leaf) {

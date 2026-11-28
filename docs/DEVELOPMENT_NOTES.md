@@ -2,6 +2,19 @@
 
 这里只记录当前未发布的行为变化。发布定稿后将该批次完整移入历史卷。
 
+## 下一版本（开发中）：原生 Rust 战斗内核集成
+
+- 移植独立 `rust/` 原生战斗内核与并行搜索引擎（`sts2-types` / `sts2-kernel` / `sts2-content` / `sts2-search` / `sts2-ffi`），经 `tools/build/RustCombatKernel.targets` 自动构建并随 Mod 发布至 `rust-kernel/`，Release 配置启用 `lto = "fat"` 与 `codegen-units = 1`。
+- 内核热路径采用内联 `ContentMetaTables` 元数据表、`ActiveHookCache` SoA 扁平监听数组（`flat_masks_w0`..`w2` 与 `flat_listeners`）、0/1 监听器无返回值快路径、`dirty_mask == 0` 缓存就绪查询直达路径、`CategoryHookMasks::deck_cards` 牌库直跳、`powers/batch_n_z` 虚无与阵营判定下沉、`commands/damage` 复用的 `SmallVec` 缓冲与玩家血量/格挡直写，以及紧凑的 `BattleState` / `FieldMap`（单条目内联快路径）内存布局。
+- 搜索与状态序列化采用同根共享 `RootStaticContext`、进程内 `Cow<'static, str>` 指针编码、`u16` 卡牌句柄与批量直写缓冲编码、`Result<T, ()>` 内部零分配解包、零分配流式 128 位规范哈希（纳入 `semantic_history`、`damage_history` 空历史快路径，并延后至 `frozen_incumbent` 剪枝之后计算）、16 字节 `Copy` `CompactRolloutStep` + `RolloutChoiceSlab` + `PilotIntentCache` 推演缓存、与评估模式解耦的 4 路组相联 `ChoiceProbeCache` 与跨阶段复用的 `TurnRolloutCache`、`ChoiceArena` 扁平选牌暂存区、40 字节 `StoredFastEval` + 160 字节 `SearchNode` 布局、紧凑 `(f64, u32)` 桶排序与快速有界堆多桶并行剪枝，以及批量阈值 `total_cands >= 1024` 的并行分片 Pareto 转置表；全程保留全部搜索算法超参数并保证 `DOP 1 / 4 / 8 / 16` 严格确定性。
+- 新增纯 Rust 战斗内主机桥接与准入链（`InCombatRustKernelBridge` / `Eligibility` / `PolicyMapper` / `InCombatLiveStateCapturer` / `InCombatSolverBackendState`），完整捕获已解锁角色/无色/诅咒/跨角色/塔罗卡牌池与药水池，覆盖 `SolverSettings.UseRustCombatKernel`（默认开启）、全部 1.0.0–1.0.3 搜索/药水/成长/遗物/首领血量政策映射，并在 FFI 边界输出结构化诊断结果与失败码。
+- 新增 `InCombatRustKernelResultMaterializer`（回传 `ChoiceBranchesEvaluated`）与 `HotPlanMaterializer.MaterializeFromSteps`，在采纳前于 `HotRootBundle` 上逐动作与终局状态回放校验 Rust 最优路线；任一排除、损坏、超时或失配自动回退至 `HotKernel`。
+- 性能设置页新增“战斗内优先使用 Rust 内核”开关，主界面摘要栏新增引擎状态徽章与双语本地化。
+- 完成 STS2 v0.114.0 与上游 1.0.3 行为同步：重新生成全实体元数据（717 张卡牌、303 个 Power、315 个遗物、67 瓶药水、112 种怪物、22 个附魔、7 个灾厄、12 个领域与 3 个跑局模型，FFI 支持版本更新为 `v0.114.0`），补齐 `AfterPlayerTurnStartEarly` / `ModifyEnergyGain` / `AfterModifyingEnergyGain` 钩子槽位、箭矢移除销毁状态与能源、Osty、旋律、`HistoryCourse`、`MinionPower`、`GrandFinale`、`SovereignBlade` 等实体语义，并更新 `ActEndingBossPolicy`、`Feed` 剪枝与估值、`BloodPotion` 成本及 POR 零效果药水规则。
+- 持续实施 Rust 内核与搜索无损性能优化（第 19 至第 27 轮）：收敛 `KernelError` 与 `ChoiceRequest` 为堆装箱句柄以压缩返回值 ABI；协调器引入 `FinalPlanTracker` 在线终局筛选、`NodeArena::push_node_with` 原位初始化及 `ChoiceArena` 单步复制快路径；推演循环去除捕获闭包，整合 `FastEnemySlot` 连续数组、`IntentHitsCache` 最近命中缓存、`BestPilotMove` 与 8 项标志查表；通过 `hot_keys` 静态键预驻留与 `FieldMap` 指针优先归一化合并 `AfterCardPlayed` 属性检索，精简多监听器分支；引入 `EotCleanupDirtyFlag` 跳过无临时状态回合末清理与无钩子牌堆移动缓存更新，并在序列化与 128 位规范哈希中新增 Tag 2/5、`hash_canonical_card_slow` 全子集快路径及干净根卡 4 路批量读取。
+- 完整同步 Rust 内核、`HotKernel` 与运行时状态捕获的战斗结算语义：洗牌排序实现与 .NET 9 `ArraySortHelper<T>.IntrospectiveSort` 逐行一致的划分逻辑；支持 `AfterAutoPrePlayPhaseEnteredEarly` 及可暂停续传的 `AfterAutoPostPlayPhaseEntered` / `EndTurnResume` 阶段（覆盖 `StampedePower`、`SimpletonPower`、`IAmInvincible` 与 `HowlFromBeyond`）；完整传递 `BattleFriendV3` 的 `EventDefeat` 超时状态、克隆牌独立出牌历史、`MadScience` 整型类型与词条解码、`Swift`/`Sown` 出牌后失活时序、敌方回合末参与者快照，以及运行时强制选牌与单候选项回放一致性。
+- 战斗内 Rust 内核与 `HotKernel` 现支持每日挑战（`Daily`）、自定义跑局及全部 16 项原版 `ModifierModel` 修正（含 `Murderous` 在敌方中途加入战斗时按原生监听器顺序附加 3 层 `StrengthPower`）；`SurroundedPower` 对齐原版 `Direction.Right=0 / Direction.Left=1` 朝向编码并在 `AfterDeath` 检查全部存活可命中敌人同向性；双引擎 `SetupPlayerTurn` 在 `BeforeHandDraw`、`AfterShuffle` 或 `AfterPlayerTurnStart` 首次暂停选择时立即交错执行 `AfterSideTurnStart` 与 `OrbQueue.AfterTurnStart`（保证 `ToolsOfTheTradePower` 等选牌休眠恢复触发 `Sly` 自动出牌时先完成 `LetterOpener._skillsThisTurn` 等回合初重置）。
+
 1.0.3 的 STS2 v0.114.0 全量适配、发布安全加固与 30s/600s 求解时长调整见[历史卷 36](archive/development/volume-36.md)，玩家说明见[1.0.3 更新日志](releases/1.0.3-RELEASE_NOTES.md)。
 
 1.0.2 的搜索策略调优、死循环消除与高风险战斗重算清零见[历史卷 35](archive/development/volume-35.md)，玩家说明见[1.0.2 更新日志](releases/1.0.2-RELEASE_NOTES.md)。

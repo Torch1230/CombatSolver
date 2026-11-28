@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = [
+    "sts2-types",
+    "sts2-kernel",
+    "sts2-content",
+    "sts2-search",
+    "sts2-ffi",
+    "tools/gen_metadata",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.dependencies]
+ahash = "0.8"
+bitflags = { version = "2", features = ["serde"] }
+bumpalo = "3"
+crossbeam-deque = "0.8"
+hashbrown = "0.15"
+parking_lot = "0.12"
+rayon = "1"
+rust_decimal = { version = "1", features = ["serde", "serde-float", "serde-str"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+smallvec = { version = "1.15", features = ["serde", "union"] }
+xxhash-rust = { version = "0.8", features = ["xxh64"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1

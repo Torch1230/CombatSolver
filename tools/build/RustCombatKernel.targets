@@ -1,0 +1,52 @@
+<Project>
+  <PropertyGroup>
+    <StageRustCombatKernelEnabled Condition="'$(StageRustCombatKernelEnabled)' == ''">true</StageRustCombatKernelEnabled>
+    <BuildRustCombatKernelOnBuild Condition="'$(BuildRustCombatKernelOnBuild)' == ''">true</BuildRustCombatKernelOnBuild>
+    <RustCombatKernelManifest>$(MSBuildProjectDirectory)/rust/Cargo.toml</RustCombatKernelManifest>
+    <_RustKernelLibName Condition="'$(OS)' == 'Windows_NT'">sts2_combat_rs.dll</_RustKernelLibName>
+    <_RustKernelLibName Condition="'$(OS)' != 'Windows_NT'">libsts2_combat_rs.so</_RustKernelLibName>
+    <_RustKernelSourcePath>$(MSBuildProjectDirectory)/rust/target/release/$(_RustKernelLibName)</_RustKernelSourcePath>
+  </PropertyGroup>
+
+  <Target Name="BuildRustCombatKernel"
+          AfterTargets="Build"
+          Condition="'$(StageRustCombatKernelEnabled)' == 'true' and '$(BuildRustCombatKernelOnBuild)' != 'false' and Exists('$(RustCombatKernelManifest)')">
+    <Exec Command="cargo build --manifest-path &quot;$(RustCombatKernelManifest)&quot; -p sts2-ffi --release"
+          EnvironmentVariables="CARGO_BUILD_JOBS=8" />
+  </Target>
+
+  <Target Name="StageRustCombatKernel"
+          AfterTargets="BuildRustCombatKernel;Build"
+          DependsOnTargets="BuildRustCombatKernel">
+    <PropertyGroup>
+      <_RustKernelStageTargetDir>$(TargetDir)rust-kernel</_RustKernelStageTargetDir>
+    </PropertyGroup>
+    <RemoveDir Directories="$(_RustKernelStageTargetDir)"
+               Condition="'$(StageRustCombatKernelEnabled)' != 'true' and Exists('$(_RustKernelStageTargetDir)')" />
+    <Error Condition="'$(StageRustCombatKernelEnabled)' == 'true' and !Exists('$(_RustKernelSourcePath)')"
+           Text="Missing Rust combat kernel artifact '$(_RustKernelSourcePath)'. Build with cargo or pass -p:StageRustCombatKernelEnabled=false." />
+    <MakeDir Directories="$(_RustKernelStageTargetDir)"
+             Condition="'$(StageRustCombatKernelEnabled)' == 'true'" />
+    <Copy SourceFiles="$(_RustKernelSourcePath)"
+          DestinationFolder="$(_RustKernelStageTargetDir)"
+          SkipUnchangedFiles="true"
+          Condition="'$(StageRustCombatKernelEnabled)' == 'true'" />
+  </Target>
+
+  <Target Name="CopyModRustCombatKernel"
+          AfterTargets="CopyMod;StageRustCombatKernel"
+          DependsOnTargets="StageRustCombatKernel"
+          Condition="'$(CopyModOnBuild)' == 'true'">
+    <PropertyGroup>
+      <_RustKernelStageTargetDir>$(TargetDir)rust-kernel</_RustKernelStageTargetDir>
+    </PropertyGroup>
+    <RemoveDir Directories="$(ModOutputDir)/rust-kernel" Condition="Exists('$(ModOutputDir)/rust-kernel')" />
+    <ItemGroup Condition="Exists('$(_RustKernelStageTargetDir)')">
+      <_RustKernelFiles Include="$(_RustKernelStageTargetDir)/**/*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ModOutputDir)/rust-kernel" Condition="Exists('$(_RustKernelStageTargetDir)')" />
+    <Copy SourceFiles="@(_RustKernelFiles)"
+          DestinationFiles="@(_RustKernelFiles->'$(ModOutputDir)/rust-kernel/%(RecursiveDir)%(Filename)%(Extension)')"
+          Condition="Exists('$(_RustKernelStageTargetDir)')" />
+  </Target>
+</Project>

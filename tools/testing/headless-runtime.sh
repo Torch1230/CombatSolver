@@ -322,7 +322,11 @@ hr_snapshot_id() {
     } | sha256sum | cut -d ' ' -f 1
 }
 hr_prepare_snapshot() {
-    local source="$1" dll="$2" manifest="$3" ritsu="$4" ritsu_manifest="$5" expected="$6" staging old directory actual id_temp
+    local source="$1" dll="$2" manifest="$3" ritsu="$4" ritsu_manifest="$5" expected="$6" rust_kernel_dir="${7:-}" staging old directory actual id_temp
+    local -a id_inputs=("$source" "$dll" "$manifest" "$ritsu" "$ritsu_manifest")
+    if [[ -n $rust_kernel_dir && -d $rust_kernel_dir ]]; then
+        id_inputs+=("$rust_kernel_dir")
+    fi
     [[ $HR_ROOT != "$source" && $HR_ROOT != "$source/"* && $source != "$HR_ROOT/"* ]] || { hr_error 'source and runtime must be disjoint'; return 1; }
     local candidate
     for candidate in /proc/[0-9]*/exe; do
@@ -337,6 +341,10 @@ hr_prepare_snapshot() {
     done
     cp -- "$dll" "$staging/mods/CombatSolver/CombatSolver.dll" || return 1
     cp -- "$manifest" "$staging/mods/CombatSolver/CombatSolver.json" || return 1
+    if [[ -n $rust_kernel_dir && -d $rust_kernel_dir ]]; then
+        mkdir -p -- "$staging/mods/CombatSolver/rust-kernel" || return 1
+        cp -a -- "$rust_kernel_dir/." "$staging/mods/CombatSolver/rust-kernel/" || return 1
+    fi
     if [[ -d $ritsu ]]; then
         cp -a -- "$ritsu/." "$staging/mods/CombatSolverHeadlessRitsuLib/" || return 1
         rm -f -- "$staging/mods/CombatSolverHeadlessRitsuLib/mod_manifest.json" \
@@ -346,7 +354,7 @@ hr_prepare_snapshot() {
     fi
     cp -- "$ritsu_manifest" "$staging/mods/CombatSolverHeadlessRitsuLib/STS2-RitsuLib.json" || return 1
     printf '%s\n' 'CombatSolver isolated headless dependency' >"$staging/mods/CombatSolverHeadlessRitsuLib/.combatsolver-headless-only" || return 1
-    actual="$(hr_snapshot_id "$source" "$dll" "$manifest" "$ritsu" "$ritsu_manifest")" || return 1
+    actual="$(hr_snapshot_id "${id_inputs[@]}")" || return 1
     [[ $actual == "$expected" ]] || {
         hr_error "snapshot source changed while copying; unpublished snapshot retained at $staging"; return 1;
     }

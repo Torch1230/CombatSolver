@@ -1,5 +1,17 @@
 # CombatSolver 测试入口
 
+## 下一版本（开发中）：原生 Rust 战斗内核集成
+
+- STS2 v0.114.0 适配当前验证（Linux，提交后当前工作树，`RUSTFLAGS="-D warnings"`）：Rust 工作区全量测试（`256 passed, 0 failed`，含 `SurroundedPower` `Right=0/Left=1` 与 `AfterDeath`、`ToolsOfTheTradePower + Sly Tactician + LetterOpener` 回合初交错、状态打包含 `side_turn_start_done` 往返、`Daily` 模式与 `Murderous` 新增敌方 3 层力量）均通过且零警告；`sts2-ffi --release`、`CombatSolver.csproj` Release 与 `OfflineSearchHarness.csproj` Release 零警告零错误编译；`verify-refactor-boundaries.sh`、`verify-documentation.py`、`verify-tools.py`、`verify-coverage.py` 与 `run-independent-checks.py`（6/6）全部通过；`--verify-hot-parity`（Gate A 19/19、Gate B1 6 角色 246 步、Gate B2 DOP=1/8、Gate C `1,734,605 trans/s`）与 `--fuzz-combat --fights 100 --seed 114 --phase all`（100/100 通过、`2315` 步、`diff_buckets=0, crash_buckets=0`）全部通过。
+- 战斗内 Rust 内核与全自动无头实机验证（STS2 v0.114.0 Linux）：标准合同 `runId=33d8738ff6b54943b908fcc2bad994ec`（`InCombatRustKernelContract:Turn1Dop=4:Turn2Transplant=RustKernel:DisabledFallback=HotKernel:CorruptFallback=Verified`）、`KAISER_CRAB_BOSS + MURDEROUS` Rust 合同 `runId=dbd9ef9de89a4bf880befa9a15494e3b` 与整场部署 `runId=f427f9c4eb904de6943a0d2193e05769`（3 回合胜、`hp=75/80`、`UnexpectedReplans:0`），以及 `TOOLS_OF_THE_TRADE_POWER + Tactician+1(Sly) + LetterOpener` 全自动部署 `runId=c76a632b421143e692243de5b7de57ea`（首轮 `RustKernel` `dop=8` `34.6 ms`、7 回合胜、`hp=70/70`、`UnexpectedReplans:0`）全部通过。
+- 离线 Fat-LTO 基准与 Rust 内核大样本对拍（历史提交基线，本轮未重跑）：`884cabe6` 下 153 场 / 295 根 `RustKernel ↔ HotKernel` 差异对拍 `fallbacks=0, divergences=0`；`998e71a4` 下 Standard V0.114.0 32 行 `DOP=1` 为 `12,510.50 ms`，`DOP=16` 为 `2,662.61 ms`，Heavy V0.114.0 A10/Dread 8 场景 `DOP=16` `120,548.05 ms`（`VERIFY_REPLAY: 8/8 REPLAY_OK`）；`998e71a4` Windows MSVC `sts2-ffi --release`、`cargo test -p sts2-ffi --release`（7/7）与 `sts2_rs_abi_version() == 1` 通过。
+- 历史 v0.113.1 `queen-boss` 无头基线（本轮未重跑）：Windows `d5d22b2511304c699f36afe10491a76f` Passed（`60,266 / 419,731`，胜第 6 回合，端到端 `3,234.0 ms`、`gcPauseMs=0`）。
+
+```text
+./tools/testing/run-unattended-test.sh --verify-in-combat-rust-kernel-contract --cleanup-instance-on-exit
+pwsh -NoProfile -File tools\testing\run-unattended-test.ps1 -VerifyInCombatRustKernelContract -CleanupInstanceOnExit
+```
+
 ## 1.0.3 STS2 v0.114.0 适配与安全加固
 
 v0.114.0 全实体零缺口审计、800 场零差异差分模糊、200 场零重算实机部署压测、发布二进制安全扫描与全量门禁见[历史卷 36](archive/testing/volume-36.md)。

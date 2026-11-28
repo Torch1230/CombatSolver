@@ -7,6 +7,7 @@ internal sealed partial class SolverSettingsPanel
 {
     private SpinBox _maxCombatSolveSeconds = null!;
     private OptionButton _searchParallelism = null!;
+    private CheckButton _useRustCombatKernel = null!;
 
     internal bool ExercisePerformancePresetPersistenceForTesting()
     {
@@ -50,15 +51,20 @@ internal sealed partial class SolverSettingsPanel
             {
                 MaxCombatSolveSeconds = 9,
                 SearchMaxDegreeOfParallelism = null,
+                UseRustCombatKernel = false,
             };
             SolverSettingsData roundTripped = SolverSettings.RoundTripForTesting(customSolve);
             SolverSettings.ApplyForTesting(customSolve);
             Reload();
             bool controlsSynced = (int)Math.Round(_maxCombatSolveSeconds.Value) == 9
                 && _searchParallelism.GetItemId(_searchParallelism.Selected) == 0
+                && !roundTripped.UseRustCombatKernel
+                && !_useRustCombatKernel.ButtonPressed
                 && roundTripped.MaxCombatSolveSeconds == 9
                 && roundTripped.SearchMaxDegreeOfParallelism == null
                 && CommitPending()
+                && !SolverSettings.Current.UseRustCombatKernel
+                && !SolverSettings.Capture().UseRustCombatKernel
                 && SolverSettings.Current.MaxCombatSolveSeconds == 9
                 && SolverSettings.Capture().MaxCombatSolveSeconds == 9;
 
@@ -91,6 +97,24 @@ internal sealed partial class SolverSettingsPanel
             SolverText.Get("最大并发线程数"),
             _searchParallelism,
             SolverText.Get("默认选择自动，按可用逻辑处理器决定并发上限（16 核及以上 8 线程、4–15 核 4 线程、2–3 核 2 线程，其余单线程）。关闭时使用单线程；2–16 为并行上限。遇到疑似并行问题时请先上传问题包，再切换为关闭。"));
+        _useRustCombatKernel = CreateToggle();
+        _useRustCombatKernel.Toggled += enabled =>
+        {
+            if (_loading)
+                return;
+            SolverSettings.Update(SolverSettings.Current with { UseRustCombatKernel = enabled });
+            SolverOverlay.RefreshControls();
+            SetStatus(
+                enabled
+                    ? SolverText.Get("战斗内优先使用 Rust 内核已启用，下次搜索生效")
+                    : SolverText.Get("已关闭战斗内 Rust 内核，将使用 HotKernel 引擎"),
+                SolverUiTokens.Palette.Success);
+        };
+        AddBasicRow(
+            performanceGrid,
+            SolverText.Get("战斗内优先使用 Rust 内核"),
+            _useRustCombatKernel,
+            SolverText.Get("开启后，单人原版战斗（含标准、恐惧与极速模式）会优先使用原生 Rust 内核并行求解，并在采纳前由 HotKernel 逐动作回放验证；遇到不支持的 Mod、策略或异常时自动回退至 HotKernel。"));
         AddSettingsSection(
             content,
             SolverText.Get("搜索性能"),
@@ -104,6 +128,7 @@ internal sealed partial class SolverSettingsPanel
         _maxCombatSolveSeconds.SetValueNoSignal(data.MaxCombatSolveSeconds);
         int parallelismId = data.SearchMaxDegreeOfParallelism ?? 0;
         _searchParallelism.Selected = _searchParallelism.GetItemIndex(parallelismId);
+        _useRustCombatKernel.ButtonPressed = data.UseRustCombatKernel;
     }
 
     private SpinBox CreateMaxCombatSolveSecondsInput()

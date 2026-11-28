@@ -99,11 +99,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Begone:
             {
-                if (s.HandCount > 0)
+                if (!HotCombatEngine.IsOverOrEnding(in s) && s.HandCount > 0)
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                     {
                         ushort minionStrikeId = rules.GetCardDefId(HotCustomCardId.MinionStrike);
@@ -266,11 +265,10 @@ internal static class HotRegentNecro
                 if (scratch.NeedsChoice)
                     return PauseForChoice(in s, out result);
 
-                if (s.DiscardCount > 0)
+                if (!HotCombatEngine.IsOverOrEnding(in s) && s.DiscardCount > 0)
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DiscardPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Discard, HotChoiceKind.DiscardPile, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Discard, sel.CardUidOrIndex);
                     if (idx >= 0)
                         HotPiles.MoveCard(ref s, idx, HotPileKind.Draw, 0);
                 }
@@ -331,19 +329,22 @@ internal static class HotRegentNecro
                 if (scratch.NeedsChoice)
                     return PauseForChoice(in s, out result);
 
-                if (HasPlayableSkillInHand(in s, rules))
+                if (!HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.DecisionsDecisions, out int chosenIdx))
                         return PauseForChoice(in s, out result);
 
-                    int repeat = Math.Max(1, GetVarInt(in card, def, "Repeat", 3));
-                    ushort chosenUid = sel.CardUidOrIndex;
-                    for (int r = 0; r < repeat && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); r++)
+                    if (chosenIdx >= 0)
                     {
-                        int idx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, chosenUid);
-                        if (idx < 0)
-                            break;
-                        HotCombatEngine.AutoPlayCard(ref s, ref cold, rules, scratch, idx, targetEnemySlot: -1);
+                        int repeat = Math.Max(1, GetVarInt(in card, def, "Repeat", 3));
+                        ushort chosenUid = s.Cards[chosenIdx].CardUid;
+                        for (int r = 0; r < repeat && !scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s); r++)
+                        {
+                            int idx = HotCombatEngine.FindCardIndexByUidAnyPile(in s, chosenUid);
+                            if (idx < 0)
+                                break;
+                            HotCombatEngine.AutoPlayCard(ref s, ref cold, rules, scratch, idx, targetEnemySlot: -1);
+                        }
                     }
                 }
                 return Complete(in s, scratch, out result);
@@ -480,11 +481,10 @@ internal static class HotRegentNecro
                         return PauseForChoice(in s, out result);
                 }
 
-                if (HasColorlessCardInHand(in s, rules))
+                if (!HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.HeirloomHammer, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                     {
                         int repeat = Math.Max(1, GetVarInt(in card, def, "Repeat", 1));
@@ -766,11 +766,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Tutor:
             {
-                if (s.DrawCount > 0)
+                if (!HotCombatEngine.IsOverOrEnding(in s) && s.DrawCount > 0)
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Draw, HotChoiceKind.DrawPile, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
                     if (idx >= 0)
                         MoveCardToHandOrDiscard(ref s, idx);
                 }
@@ -901,11 +900,10 @@ internal static class HotRegentNecro
                 int summon = GetVarInt(in card, def, "Summon", def.GetMagic(card.UpgradeLevel));
                 if (summon > 0)
                     SummonOsty(ref s, ref cold, rules, scratch, summon);
-                if (!scratch.NeedsChoice && s.DrawCount > 0)
+                if (!scratch.NeedsChoice && !HotCombatEngine.IsOverOrEnding(in s) && s.DrawCount > 0)
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DrawPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Draw, HotChoiceKind.DrawPile, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Draw, sel.CardUidOrIndex);
                     if (idx >= 0)
                         HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx);
                 }
@@ -1151,11 +1149,10 @@ internal static class HotRegentNecro
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
-                if (s.DiscardCount > 0)
+                if (!HotCombatEngine.IsOverOrEnding(in s) && s.DiscardCount > 0)
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.DiscardPile, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Discard, HotChoiceKind.DiscardPile, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Discard, sel.CardUidOrIndex);
                     if (idx >= 0)
                         MoveCardToHandOrDiscard(ref s, idx);
                 }
@@ -1411,11 +1408,10 @@ internal static class HotRegentNecro
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
-                if (HasHandCardWithoutKeyword(in s, HotCardKeywordMask.Ethereal))
+                if (!HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.SculptingStrike, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                         HotCombatEngine.ApplyCardKeywordOutsideUpgrade(ref s.Cards[idx], HotCardKeywordMask.Ethereal);
                 }
@@ -1527,11 +1523,10 @@ internal static class HotRegentNecro
                     if (scratch.NeedsChoice)
                         return PauseForChoice(in s, out result);
                 }
-                if (HasHandCardWithoutRetain(in s, rules))
+                if (!HotCombatEngine.IsOverOrEnding(in s))
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.Snap, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                     {
                         s.Cards[idx].LocalKeywordsMask |= HotCardKeywordMask.Retain;
@@ -1618,11 +1613,10 @@ internal static class HotRegentNecro
 
             case HotCustomCardId.Transfigure:
             {
-                if (s.HandCount > 0)
+                if (!HotCombatEngine.IsOverOrEnding(in s) && s.HandCount > 0)
                 {
-                    if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, cardDefId, 1, 1, out HotChoiceSelection sel))
+                    if (!HotCombatEngine.TrySelectMandatorySingleCard(ref s, rules, scratch, HotPileKind.Hand, HotChoiceKind.HandCard, cardDefId, HotCustomCardId.None, out int idx))
                         return PauseForChoice(in s, out result);
-                    int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                     {
                         ref HotCard targetCard = ref s.Cards[idx];
@@ -3061,6 +3055,7 @@ internal static class HotRegentNecro
         clone.CardUid = s.NextCardUid++;
         clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
         clone.Flags |= HotCardFlags.IsClone;
+        HotCombatEngine.ClearPerInstanceHistoryOnClone(ref clone, rules);
         HotCombatEngine.AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in clone, dstPile, dstOffset: -1, createdByPlayer: true);
     }
 
@@ -3264,51 +3259,5 @@ internal static class HotRegentNecro
                 count++;
         }
         return count;
-    }
-
-    private static bool HasPlayableSkillInHand(in CombatHotState s, HotRules rules)
-    {
-        for (int i = 0; i < s.HandCount; i++)
-        {
-            ref readonly HotCard c = ref s.Cards[i];
-            if (c.CardDefId < rules.Cards.Length
-                && rules.Cards[c.CardDefId].Type == CardType.Skill
-                && (c.LocalKeywordsMask & HotCardKeywordMask.Unplayable) == 0)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool HasColorlessCardInHand(in CombatHotState s, HotRules rules)
-    {
-        for (int i = 0; i < s.HandCount; i++)
-        {
-            ushort defId = s.Cards[i].CardDefId;
-            if (defId < rules.Cards.Length && rules.Cards[defId].IsVisualColorless)
-                return true;
-        }
-        return false;
-    }
-
-    private static bool HasHandCardWithoutKeyword(in CombatHotState s, HotCardKeywordMask kw)
-    {
-        for (int i = 0; i < s.HandCount; i++)
-        {
-            if ((s.Cards[i].LocalKeywordsMask & kw) == 0)
-                return true;
-        }
-        return false;
-    }
-
-    private static bool HasHandCardWithoutRetain(in CombatHotState s, HotRules rules)
-    {
-        for (int i = 0; i < s.HandCount; i++)
-        {
-            if (!HotCombatEngine.HasEffectiveRetainKeyword(in s, in s.Cards[i], rules))
-                return true;
-        }
-        return false;
     }
 }

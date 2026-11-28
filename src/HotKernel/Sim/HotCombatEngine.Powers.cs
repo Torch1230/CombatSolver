@@ -681,6 +681,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {
@@ -1689,6 +1692,7 @@ internal static partial class HotCombatEngine
                         clone.CardUid = s.NextCardUid++;
                         clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
                         clone.Flags |= HotCardFlags.IsClone;
+                        ClearPerInstanceHistoryOnClone(ref clone, rules);
                         if ((clone.Flags & HotCardFlags.HasCostOverflow) != 0 && srcCard.CardUid != 0)
                             HotCostModifiers.CloneOverflow(ref cold, srcCard.CardUid, clone.CardUid);
                         AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in clone, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
@@ -2739,6 +2743,13 @@ internal static partial class HotCombatEngine
         }
 
         bool ownerParticipates = IsSlotOnCurrentSide(args.Side, ownerSlot);
+        if (ownerParticipates
+            && args.Side == HotCombatSide.Enemy
+            && ownerSlot >= 3
+            && (args.EnemyParticipantMask & 0x8000_0000u) != 0)
+        {
+            ownerParticipates = (args.EnemyParticipantMask & (1u << (ownerSlot - 3))) != 0;
+        }
 
         // Opponent-side turn-end expirations
         if (!ownerParticipates)
@@ -3288,6 +3299,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {
@@ -3336,6 +3350,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     if (pickedCount > 0)
                         DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: 0);
@@ -3367,6 +3384,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {
@@ -3460,6 +3480,9 @@ internal static partial class HotCombatEngine
                                 pickedUids[pickedCount++] = sel.CardUidOrIndex;
                         }
                         scratch.EndChoiceGroup();
+                        FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                     }
                     for (int i = 0; i < pickedCount && !IsOverOrEnding(in s) && !scratch.NeedsChoice; i++)
                     {
@@ -3858,6 +3881,7 @@ internal static partial class HotCombatEngine
                 copy.CardUid = s.NextCardUid++;
                 copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
                 copy.Flags |= HotCardFlags.IsClone;
+                ClearPerInstanceHistoryOnClone(ref copy, rules);
                 if ((copy.Flags & HotCardFlags.HasCostOverflow) != 0 && template.CardUid != 0)
                     HotCostModifiers.CloneOverflow(ref cold, template.CardUid, copy.CardUid);
                 AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
@@ -3877,6 +3901,7 @@ internal static partial class HotCombatEngine
                     copy.CardUid = s.NextCardUid++;
                     copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
                     copy.Flags |= HotCardFlags.IsClone;
+                    ClearPerInstanceHistoryOnClone(ref copy, rules);
                     if ((copy.Flags & HotCardFlags.HasCostOverflow) != 0 && template.CardUid != 0)
                         HotCostModifiers.CloneOverflow(ref cold, template.CardUid, copy.CardUid);
                     AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);

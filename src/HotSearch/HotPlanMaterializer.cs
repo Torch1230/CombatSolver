@@ -64,14 +64,51 @@ internal static class HotPlanMaterializer
         in HotRouteKey winningKey,
         in HotMaterializeMetrics metrics)
     {
-        HotRules rules = rootBundle.Rules;
         int[] nodePath = nodeArena.ExtractActionNodePath(winningNodeId);
+        HotAction[] actions = new HotAction[nodePath.Length];
+        HotChoiceSelection[][] stepChoices = new HotChoiceSelection[nodePath.Length][];
+        for (int i = 0; i < nodePath.Length; i++)
+        {
+            ref readonly HotSearchNode stepNode = ref nodeArena.GetRef(nodePath[i]);
+            actions[i] = stepNode.Action;
+            ReadOnlySpan<HotChoiceSelection> choices = nodeArena.GetNodeChoices(in stepNode);
+            stepChoices[i] = choices.IsEmpty ? Array.Empty<HotChoiceSelection>() : choices.ToArray();
+        }
+
+        return MaterializeFromSteps(
+            root,
+            displayNames,
+            battleDamage,
+            policy,
+            rootBundle,
+            in hotPolicy,
+            rootPotionCosts,
+            actions,
+            stepChoices,
+            in winningKey,
+            in metrics);
+    }
+
+    public static SolverResult MaterializeFromSteps(
+        CombatRootSnapshot root,
+        SolverDisplayNames displayNames,
+        BattleDamageSnapshot battleDamage,
+        SearchPolicySnapshot policy,
+        HotRootBundle rootBundle,
+        in HotSearchPolicy hotPolicy,
+        short[] rootPotionCosts,
+        ReadOnlySpan<HotAction> actions,
+        IReadOnlyList<HotChoiceSelection[]> stepChoices,
+        in HotRouteKey winningKey,
+        in HotMaterializeMetrics metrics)
+    {
+        HotRules rules = rootBundle.Rules;
 
         CombatHotState state = rootBundle.RootState;
         HotColdSidecar? cold = rootBundle.RootCold;
         HotExecScratch scratch = new();
 
-        List<PlanAction> planActions = new(nodePath.Length);
+        List<PlanAction> planActions = new(actions.Length);
         List<PredictedPotionUse> potionUses = [];
         List<CachedContinuation> continuations = [];
 
@@ -107,11 +144,12 @@ internal static class HotPlanMaterializer
         ContinuationStamp? turnSetupPlayState = null;
         bool hadTurnSetup = false;
 
-        for (int stepIdx = 0; stepIdx < nodePath.Length; stepIdx++)
+        for (int stepIdx = 0; stepIdx < actions.Length; stepIdx++)
         {
-            ref readonly HotSearchNode stepNode = ref nodeArena.GetRef(nodePath[stepIdx]);
-            HotAction hotAction = stepNode.Action;
-            ReadOnlySpan<HotChoiceSelection> choices = nodeArena.GetNodeChoices(in stepNode);
+            HotAction hotAction = actions[stepIdx];
+            ReadOnlySpan<HotChoiceSelection> choices = stepIdx < stepChoices.Count
+                ? stepChoices[stepIdx].AsSpan()
+                : ReadOnlySpan<HotChoiceSelection>.Empty;
 
             // Match exact canonicalization + deterministic CardUid assignment performed by HotParallelExpander
             HotStatePacker.CanonicalizeForPack(ref state, ref cold);
@@ -191,7 +229,7 @@ internal static class HotPlanMaterializer
                 // (exact boundary checked by PlayerTurnSetupPatches.cs:829 and SolverController.ActivateTurnSetupResult).
                 turnSetupPlayState = new ContinuationStamp(HotContinuationStamp.CaptureFromHot(in state, cold, rules));
 
-                if (setupVictory || setupDefeat || setupEventDefeat || stepIdx == nodePath.Length - 1)
+                if (setupVictory || setupDefeat || setupEventDefeat || stepIdx == actions.Length - 1)
                 {
                     int curHpLost = state.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost];
                     int curHpRecovered = state.Counters[(int)HotCounterSlot.PlayerRecoveredHp];
@@ -300,7 +338,7 @@ internal static class HotPlanMaterializer
             if (isDefeat && deathTurn == null)
                 deathTurn = actionTurn;
 
-            bool isFinalStep = stepIdx == nodePath.Length - 1;
+            bool isFinalStep = stepIdx == actions.Length - 1;
             if (endedByTurn || isVictory || isDefeat || isEventDefeat || isFinalStep)
             {
                 int curHpLost = state.Counters[(int)HotCounterSlot.PlayerCumulativeHpLost];
@@ -339,7 +377,7 @@ internal static class HotPlanMaterializer
         }
 
         // Ensure StartTurnNumber always has baseline outcome entries if the route was empty (0 actions).
-        if (nodePath.Length == 0)
+        if (actions.Length == 0)
         {
             hpLostByTurn[root.StartTurnNumber] = 0;
             hpRecoveredByTurn[root.StartTurnNumber] = 0;

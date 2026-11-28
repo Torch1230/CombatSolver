@@ -3477,12 +3477,15 @@ internal static class HotMonsters
         byte newOwnerSlot)
     {
         // STS2 0.114.0 Hook.AfterCreatureAddedToCombat -> CombatState.IterateHookListeners():
-        // Player relics (PhilosophersStone, FurCoat) run inside the _allies loop BEFORE Dominion (appended at end).
+        // Player relics (PhilosophersStone, FurCoat) run inside _allies BEFORE Modifiers -> RunModels -> Dominion.
         if (rules.HasRelic(HotRelicId.PhilosophersStone))
             HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, newOwnerSlot, 0, HotPowerId.StrengthPower, 1);
 
         if (rules.IsFurCoatActiveInCurrentRoom && rules.HasRelic(HotRelicId.FurCoat) && s.Enemies[newEnemySlot].Vital.CurrentHp > 1)
             s.Enemies[newEnemySlot].Vital.CurrentHp = 1;
+
+        if (rules.HasMurderousModifier)
+            HotCombatEngine.ApplyPowerById(ref s, ref cold, rules, scratch, newOwnerSlot, 0xFF, HotPowerId.StrengthPower, 3);
 
         if (rules.Dominion != HotDominionId.None)
             HotFoolTarot.ApplyDominionOnEnemyAdded(ref s, ref cold, rules, scratch, newEnemySlot);

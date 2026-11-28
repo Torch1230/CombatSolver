@@ -1,0 +1,9 @@
+[package]
+name = "sts2-content"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+smallvec.workspace = true
+sts2-kernel = { path = "../sts2-kernel" }
+sts2-types = { path = "../sts2-types" }

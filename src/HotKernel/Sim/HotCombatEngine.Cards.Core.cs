@@ -1432,6 +1432,7 @@ internal static partial class HotCombatEngine
                                 clone.Flags |= HotCardFlags.IsSlyThisTurn;
                             clone.Flags |= HotCardFlags.IsClone;
                             clone.ExtraReplayThisTurn = 0;
+                            ClearPerInstanceHistoryOnClone(ref clone, rules);
                             CleanupDetachedCardTurnEndCosts(ref clone, srcUid, ref cold);
                             int detachedIdx = AddDetachedCard(ref cold, in clone);
                             AddPowerInstance(ref s, rules, 0, 0, nmId, 3, aux0: detachedIdx, aux1: 0, auxCardUid: 0);
@@ -1612,6 +1613,7 @@ internal static partial class HotCombatEngine
                     copy.DampenOrigUpg = 0;
                     copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
                     copy.Flags |= HotCardFlags.IsClone;
+                    ClearPerInstanceHistoryOnClone(ref copy, rules);
                     CostSetThisCombat(ref copy, ref cold, 0);
                     AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Discard, -1, createdByPlayer: true);
                 }
@@ -2531,6 +2533,7 @@ internal static partial class HotCombatEngine
                         copy.DampenOrigUpg = 0;
                         copy.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
                         copy.Flags |= HotCardFlags.IsClone;
+                        ClearPerInstanceHistoryOnClone(ref copy, rules);
                         HotColdSidecar.CloneDecimalVar(ref cold, tpl.CardUid, copy.CardUid);
                         AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in copy, HotPileKind.Hand, -1, createdByPlayer: true);
                     }
@@ -3689,7 +3692,7 @@ internal static partial class HotCombatEngine
     /// skips <c>RequestChoice</c> when <c>eligibleCount &lt;= 1</c> and directly returns the sole eligible
     /// index (or <c>-1</c> if none).
     /// </summary>
-    private static bool TrySelectMandatorySingleCard(
+    internal static bool TrySelectMandatorySingleCard(
         ref CombatHotState s,
         HotRules rules,
         HotExecScratch scratch,

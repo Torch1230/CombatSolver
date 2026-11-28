@@ -498,6 +498,61 @@ run_snapshot_tests() {
     diff -r -- "$case_root/b-before" "$b_root/game" >"$case_root/b.diff" || fail 'A update changed B private files'
     [[ "$(<"$b_root/snapshot-id")" == "$b_id" ]] || fail 'A update changed B provenance'
     pass 'source tree and B remain unchanged across A update and rejected live publication'
+
+    local rk_src="$case_root/rust-kernel-src"
+    local rk_root="$case_root/instances/snapshot-rust-kernel"
+    local rk_id_v1 rk_id_v2 rk_id_absent
+    mkdir -p -- "$rk_src"
+    printf '%s\n' 'rust-kernel-v1' >"$rk_src/libsts2_combat_rs.so"
+    rk_id_v1="$(
+        source "$runtime_helper"
+        hr_snapshot_id "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$rk_src"
+    )"
+    (
+        export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+        export HR_WORKTREE="$case_root/worktree-rk"
+        mkdir -p -- "$HR_WORKTREE"
+        source "$runtime_helper"
+        hr_init "$rk_root" snapshot-rust-kernel "$rk_root/game/SlayTheSpire2" "$rk_root/data" parallel 1 1 10
+        hr_prepare_snapshot "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$rk_id_v1" "$rk_src"
+    )
+    cmp -s -- "$rk_src/libsts2_combat_rs.so" "$rk_root/game/mods/CombatSolver/rust-kernel/libsts2_combat_rs.so" \
+        || fail 'rust-kernel payload was not staged'
+    printf '%s\n' 'rust-kernel-v2' >"$rk_src/libsts2_combat_rs.so"
+    rk_id_v2="$(
+        source "$runtime_helper"
+        hr_snapshot_id "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$rk_src"
+    )"
+    [[ "$rk_id_v2" != "$rk_id_v1" ]] || fail 'changing rust-kernel payload did not change snapshot ID'
+    (
+        export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+        export HR_WORKTREE="$case_root/worktree-rk"
+        source "$runtime_helper"
+        hr_init "$rk_root" snapshot-rust-kernel "$rk_root/game/SlayTheSpire2" "$rk_root/data" parallel 1 1 10
+        hr_prepare_snapshot "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$rk_id_v2" "$rk_src"
+    )
+    cmp -s -- "$rk_src/libsts2_combat_rs.so" "$rk_root/game/mods/CombatSolver/rust-kernel/libsts2_combat_rs.so" \
+        || fail 'updated rust-kernel payload was not staged'
+    rk_id_absent="$(snapshot_id a)"
+    (
+        export COMBATSOLVER_HEADLESS_HOST_ROOT="$case_root/host"
+        export HR_WORKTREE="$case_root/worktree-rk"
+        source "$runtime_helper"
+        hr_init "$rk_root" snapshot-rust-kernel "$rk_root/game/SlayTheSpire2" "$rk_root/data" parallel 1 1 10
+        hr_prepare_snapshot "$source_root" "$artifacts/a/CombatSolver.dll" \
+            "$artifacts/a/CombatSolver.json" "$artifacts/ritsu/STS2-RitsuLib.dll" \
+            "$artifacts/ritsu/STS2-RitsuLib.json" "$rk_id_absent" ""
+    )
+    [[ ! -e "$rk_root/game/mods/CombatSolver/rust-kernel" ]] || fail 'present-to-absent transition left rust-kernel directory behind'
+    pass 'rust-kernel snapshot stages native library, detects updates, and removes on absent'
 }
 
 run_snapshot_failure_tests() {

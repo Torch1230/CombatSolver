@@ -421,7 +421,7 @@ internal static partial class HotCombatEngine
         return -1;
     }
 
-    private static bool MatchesChoiceFilter(
+    internal static bool MatchesChoiceFilter(
         in CombatHotState s,
         in HotCard card,
         HotRules rules,

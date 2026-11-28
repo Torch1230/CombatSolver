@@ -1374,6 +1374,7 @@ internal static partial class HotCombatEngine
         clone.DampenOrigUpg = 0;
         clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
         clone.Flags |= HotCardFlags.IsClone;
+        ClearPerInstanceHistoryOnClone(ref clone, rules);
 
         if ((clone.Flags & HotCardFlags.HasCostOverflow) != 0 && cold?.CostOverflow is { Length: > 0 } overflows)
         {
@@ -1624,6 +1625,16 @@ internal static partial class HotCombatEngine
         {
             short baseAim = (short)GetNamedVarInt(in card, def, "BaseAim", 5);
             card.CardPrivate = baseAim & 0xFFFF;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void ClearPerInstanceHistoryOnClone(ref HotCard card, HotRules rules)
+    {
+        if (card.CardDefId < rules.Cards.Length
+            && rules.Cards[card.CardDefId].CardId is HotCustomCardId.Bounce or HotCustomCardId.ThrummingHatchet or HotCustomCardId.Bolas)
+        {
+            card.CardPrivate = 0;
         }
     }
 

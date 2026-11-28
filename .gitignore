@@ -1,7 +1,8 @@
-# Godot / .NET build output
+# Godot / .NET / Rust build output
 .godot/
 bin/
 obj/
+rust/target/
 
 # Machine-local dependency paths
 local.props

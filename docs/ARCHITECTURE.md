@@ -4,7 +4,7 @@
 
 ## 1. 运行链
 
-主线程捕获稳定战斗根（`CombatRootSnapshot` + `HotRootBundle`）→ 冻结请求政策（`SearchPolicySnapshot`）→ 后台 `HotSearchCoordinator` 在纯值 `CombatHotState` 上并行搜索 → `HotPlanMaterializer` 物化 `CombatPlan` → 主线程 `SolverController` 接收结果并通过原版公开入口部署当前回合 → `HotContinuationStamp` / `ContinuationStamp` 核对跨回合一致性并在失配时重新捕获。
+主线程捕获稳定战斗根（`CombatRootSnapshot` + `HotRootBundle`）→ 冻结请求政策（`SearchPolicySnapshot`）→ 当满足单人原版条件且启用 `UseRustCombatKernel` 时，主线程额外捕获 `RustKernelLiveStateDto` 交由原生 `rust/`（`sts2-ffi`）并行求解，随后由 `InCombatRustKernelResultMaterializer` 在 `HotRootBundle` 上逐动作回放验证并通过 `HotPlanMaterializer.MaterializeFromSteps` 物化 `CombatPlan`；任一排除、加载异常、不支持或回放失配均 fail-closed 自动回退至后台 `HotSearchCoordinator`（`CombatHotState`）→ 主线程 `SolverController` 接收结果并通过原版公开入口部署当前回合 → `HotContinuationStamp` / `ContinuationStamp` 核对跨回合一致性并在失配时重新捕获。
 
 后台只读取纯值内核状态与冻结政策，绝不接触 live 战斗对象、设置单例或 Godot API；未知语义在根捕获或模拟边界显式失败。
 
@@ -20,7 +20,10 @@
 | `src/Runtime/CombatBugReportUploadPolicy.cs` / `CombatBugReportDescription.cs` | 战斗问题上传资格、错误分类与搜索期玩家输入记录 |
 | `src/Runtime/NativeChoiceRuntime.cs` | 原生选牌观察与逐实例计划匹配 |
 | `src/Runtime/PlayerTurnSetupPatches.cs` | 原生回合准备、开局选择与部署交接 |
-| `src/Runtime/SolverSettings.cs` | 玩家设置持久化与配置冻结输入 |
+| `src/Runtime/SolverSettings.cs` | 玩家设置持久化与配置冻结输入（含 `UseRustCombatKernel`） |
+| `src/Runtime/InCombatRustKernelContracts.cs` / `Bridge.cs` / `Eligibility.cs` / `PolicyMapper.cs` / `ResultMaterializer.cs` | 原生 Rust 内核 ABI、生命周期桥接、单人原版准入、政策映射与 `HotKernel` 逐动作回放物化 |
+| `src/Runtime/InCombatLiveStateCapturer.cs` / `.PrivateState.cs` | 主线程实时战斗状态、9 条战斗 RNG 与私有字段快照捕获 |
+| `src/Runtime/InCombatSolverBackendState.cs` | 战斗内活动/已完成/回退后端状态追踪与界面徽章快照 |
 | `src/Api/PreCombatForecastWorker.cs` / `.Idle.cs` | 预战独立子进程会话、请求编排与空闲计时器所有权 |
 
 政策由主线程从设置冻结到 `SearchPolicySnapshot` 与 `SolverSearchProfile`，再经 `SearchDiagnosticsSink` 传递诊断。HotKernel v2 架构下搜索热路径保持纯值低分配，Runtime 不再持有 NoGC 区域、ServerGC 启动配置、GC 恢复状态机或 Harmony 克隆隔离补丁。
@@ -49,7 +52,8 @@
 | `src/HotSearch/HotEvaluator.cs` / `HotRouteQuality.cs` | 分支状态评分与路线质量比较（含药水机会成本与成长/遗物政策） |
 | `src/HotSearch/HotRolloutEvaluator.cs` / `HotEndTurnRiskEvaluator.cs` | 回合边界 Rollout 前瞻与结束回合即时风险评估 |
 | `src/HotSearch/HotPotionPolicy.cs` | 药水机会成本、血瓶 MaxHp 折算、省血阈值与掉药收益抵扣 |
-| `src/HotSearch/HotPlanMaterializer.cs` | 将最优动作轨迹物化为对外 `CombatPlan` 与 `SolverResult` |
+| `src/HotSearch/HotPlanMaterializer.cs` | 将最优动作轨迹（及 Rust 内核经回放验证的动作轨迹）物化为对外 `CombatPlan` 与 `SolverResult` |
+| `rust/` (`sts2-types`, `sts2-kernel`, `sts2-content`, `sts2-search`, `sts2-ffi`) | 独立原生 Rust 战斗内核与并行搜索库（编译为 `rust-kernel/`，经 C ABI v1 与主机通信） |
 | `src/HotSearch/HotNodeArena.cs` / `HotTranspositionTable.cs` | 池化节点/状态仓库与开放定址转置表 |
 | `src/Search/` | 外层轻量 DTO 与策略合同：`CombatPlan`、`SearchPolicySnapshot`、`SolverSearchProfile`、`SearchDiagnosticsSink`、`SearchTransitionException`、`StateFingerprint`、`SolverWeights`、药水/成长/遗物/首领/失窃策略 |
 | `src/Prediction/` | 根捕获共享辅助：`CombatRulesSnapshot`、`IntentForecaster`、`RelicCounterCatalog`、`IncompatibleGameplayModException` |

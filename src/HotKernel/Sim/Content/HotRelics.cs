@@ -761,6 +761,9 @@ internal static class HotRelics
                         if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, out HotChoiceSelection sel))
                             return;
                         scratch.EndChoiceGroup();
+                        HotCombatEngine.FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (HotCombatEngine.IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                         if (sel.Kind == HotChoiceKind.GeneratedCard && sel.CardDefId != 0)
                             HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
                     }
@@ -1192,7 +1195,7 @@ internal static class HotRelics
                     {
                         s.RelicStates[stateSlot].Current = 1;
                         s.RelicStates[stateSlot].PreviousOrAux = 0;
-                        HotCard clone = CloneCardWithCostOverflow(ref s, ref cold, args.CardIdx);
+                        HotCard clone = CloneCardWithCostOverflow(ref s, ref cold, rules, args.CardIdx);
                         HotCombatEngine.ApplyCardKeywordOutsideUpgrade(ref clone, HotCardKeywordMask.Ethereal);
                         HotCombatEngine.AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in clone, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
                     }
@@ -1547,7 +1550,7 @@ internal static class HotRelics
                     && args.CardIdx < s.TotalCardCount)
                 {
                     s.RelicStates[stateSlot].Current = 1;
-                    HotCard clone = CloneCardWithCostOverflow(ref s, ref cold, args.CardIdx);
+                    HotCard clone = CloneCardWithCostOverflow(ref s, ref cold, rules, args.CardIdx);
                     HotCombatEngine.AddGeneratedCardInstance(ref s, ref cold, rules, scratch, in clone, HotPileKind.Hand, dstOffset: -1, createdByPlayer: true);
                 }
                 break;
@@ -2337,6 +2340,9 @@ internal static class HotRelics
                         if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.GeneratedCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, out HotChoiceSelection sel))
                             return;
                         scratch.EndChoiceGroup();
+                        HotCombatEngine.FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                        if (HotCombatEngine.IsOverOrEnding(in s) || scratch.NeedsChoice)
+                            return;
                         if (sel.Kind == HotChoiceKind.GeneratedCard && sel.CardDefId != 0)
                         {
                             int addedIdx = HotCombatEngine.AddGeneratedFixedCard(ref s, ref cold, rules, scratch, sel.CardDefId, HotPileKind.Hand, dstOffset: -1, upgraded: false, createdByPlayer: true);
@@ -2403,6 +2409,9 @@ internal static class HotRelics
                         pickedUids[pickedCount++] = sel.CardUidOrIndex;
                     }
                     scratch.EndChoiceGroup();
+                    HotCombatEngine.FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                    if (HotCombatEngine.IsOverOrEnding(in s) || scratch.NeedsChoice)
+                        return;
                     if (pickedCount > 0 && !HotCombatEngine.IsOverOrEnding(in s))
                         HotCombatEngine.DiscardCardsAndDraw(ref s, ref cold, rules, scratch, pickedUids[..pickedCount], drawCount: pickedCount);
                 }
@@ -2518,6 +2527,9 @@ internal static class HotRelics
                     if (!HotCombatEngine.RequestChoice(ref s, scratch, HotChoiceKind.HandCard, sourceCardDefId: 0, minCount: 1, maxCount: 1, out HotChoiceSelection sel))
                         return;
                     scratch.EndChoiceGroup();
+                    HotCombatEngine.FlushDeferredPlayerSideTurnStartIfInSetup(ref s, ref cold, rules, scratch);
+                    if (HotCombatEngine.IsOverOrEnding(in s) || scratch.NeedsChoice)
+                        return;
                     int idx = HotCombatEngine.FindCardIndexByUid(in s, HotPileKind.Hand, sel.CardUidOrIndex);
                     if (idx >= 0)
                         HotCombatEngine.ExhaustCard(ref s, ref cold, rules, scratch, idx, causedByEthereal: false);
@@ -2798,6 +2810,7 @@ internal static class HotRelics
     private static HotCard CloneCardWithCostOverflow(
         ref CombatHotState s,
         ref HotColdSidecar? cold,
+        HotRules rules,
         int srcIdx)
     {
         HotCard clone = s.Cards[srcIdx];
@@ -2807,6 +2820,7 @@ internal static class HotRelics
         clone.Flags &= ~(HotCardFlags.HasDeckVersion | HotCardFlags.RemovedFromState | HotCardFlags.ExhaustOnNextPlay | HotCardFlags.IsDupe | HotCardFlags.FetchPlayedThisTurn);
         clone.Flags |= HotCardFlags.IsClone;
         clone.DampenOrigUpg = 0;
+        HotCombatEngine.ClearPerInstanceHistoryOnClone(ref clone, rules);
 
         if ((clone.Flags & HotCardFlags.HasCostOverflow) != 0 && cold?.CostOverflow is { Length: > 0 } overflows)
         {

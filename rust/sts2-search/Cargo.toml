@@ -1,0 +1,21 @@
+[package]
+name = "sts2-search"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ahash.workspace = true
+bumpalo.workspace = true
+crossbeam-deque.workspace = true
+hashbrown.workspace = true
+parking_lot.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+smallvec.workspace = true
+sts2-kernel = { path = "../sts2-kernel" }
+sts2-types = { path = "../sts2-types" }
+xxhash-rust.workspace = true
+
+[dev-dependencies]
+sts2-content = { path = "../sts2-content" }
