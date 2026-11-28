@@ -143,15 +143,40 @@ internal static partial class InCombatLiveStateCapturer
         }
     }
 
+    private static TValue ReadRequiredPrivateField<TOwner, TValue>(
+        TOwner instance,
+        string fieldName,
+        string fieldPath)
+    {
+        System.Reflection.FieldInfo? field = typeof(TOwner).GetField(
+            fieldName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (field is null)
+        {
+            throw new InCombatLiveCaptureUnsupportedException(
+                "live_private_state_unmapped",
+                fieldPath,
+                $"Required private field {typeof(TOwner).Name}.{fieldName} was not found.");
+        }
+        object? value = field.GetValue(instance);
+        if (value is not TValue typed)
+        {
+            throw new InCombatLiveCaptureUnsupportedException(
+                "live_private_state_unmapped",
+                fieldPath,
+                $"Required private field {typeof(TOwner).Name}.{fieldName} did not yield {typeof(TValue).Name}.");
+        }
+        return typed;
+    }
+
     private static IReadOnlyDictionary<string, RustKernelFieldValueDto> CaptureEnchantmentPrivateFields(
         EnchantmentModel enchantment)
     {
         var fields = new Dictionary<string, RustKernelFieldValueDto>(StringComparer.Ordinal);
-        if (enchantment is Momentum)
+        if (enchantment is Momentum momentum)
         {
             fields["Momentum._extraDamage"] = IntVal(
-                (int)(typeof(Momentum).GetField("_extraDamage", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(enchantment)
-                ?? throw new MissingFieldException(typeof(Momentum).FullName, "_extraDamage")));
+                ReadRequiredPrivateField<Momentum, int>(momentum, "_extraDamage", "enchantments.Momentum._extraDamage"));
         }
         return fields;
     }
@@ -442,8 +467,8 @@ internal static partial class InCombatLiveStateCapturer
         switch (relic)
         {
             case ArtOfWar aow:
-                bool anyLastTurn = (bool)(typeof(ArtOfWar).GetField("_anyAttacksPlayedLastTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(aow) ?? false);
-                bool anyThisTurn = (bool)(typeof(ArtOfWar).GetField("_anyAttacksPlayedThisTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(aow) ?? false);
+                bool anyLastTurn = ReadRequiredPrivateField<ArtOfWar, bool>(aow, "_anyAttacksPlayedLastTurn", "relics.ArtOfWar._anyAttacksPlayedLastTurn");
+                bool anyThisTurn = ReadRequiredPrivateField<ArtOfWar, bool>(aow, "_anyAttacksPlayedThisTurn", "relics.ArtOfWar._anyAttacksPlayedThisTurn");
                 fields["ArtOfWar._attackPlayedThisTurn"] = BoolVal(anyThisTurn);
                 fields["ArtOfWar._previousTurnHadNoAttack"] = BoolVal(!anyLastTurn);
                 break;
@@ -454,7 +479,7 @@ internal static partial class InCombatLiveStateCapturer
                 fields["BeatingRemnant._hpLostThisTurn"] = IntVal((int)remnant._damageReceivedThisTurn);
                 break;
             case BeltBuckle buckle:
-                bool dexApplied = (bool)(typeof(BeltBuckle).GetField("_dexterityApplied", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(buckle) ?? false);
+                bool dexApplied = ReadRequiredPrivateField<BeltBuckle, bool>(buckle, "_dexterityApplied", "relics.BeltBuckle._dexterityApplied");
                 fields["BeltBuckle._dexterityApplied"] = BoolVal(dexApplied);
                 break;
             case BrilliantScarf bs:
@@ -478,9 +503,7 @@ internal static partial class InCombatLiveStateCapturer
             case FakeHappyFlower fhf:
                 fields["FakeHappyFlower._turnsSeen"] = IntVal(fhf.TurnsSeen);
                 fields["FakeHappyFlower._grantEnergyThisTurn"] = BoolVal(
-                    (bool)(typeof(FakeHappyFlower)
-                        .GetField("_grantEnergyThisTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                        ?.GetValue(fhf) ?? throw new MissingFieldException(typeof(FakeHappyFlower).FullName, "_grantEnergyThisTurn")));
+                    ReadRequiredPrivateField<FakeHappyFlower, bool>(fhf, "_grantEnergyThisTurn", "relics.FakeHappyFlower._grantEnergyThisTurn"));
                 break;
             case FakeOrichalcum fo:
                 fields["FakeOrichalcum._shouldTrigger"] = BoolVal(fo._shouldTrigger);
@@ -494,9 +517,7 @@ internal static partial class InCombatLiveStateCapturer
             case HappyFlower hf:
                 fields["HappyFlower._turnCounter"] = IntVal(hf.TurnsSeen);
                 fields["HappyFlower._grantEnergyThisTurn"] = BoolVal(
-                    (bool)(typeof(HappyFlower)
-                        .GetField("_grantEnergyThisTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                        ?.GetValue(hf) ?? throw new MissingFieldException(typeof(HappyFlower).FullName, "_grantEnergyThisTurn")));
+                    ReadRequiredPrivateField<HappyFlower, bool>(hf, "_grantEnergyThisTurn", "relics.HappyFlower._grantEnergyThisTurn"));
                 break;
             case HistoryCourse:
                 (CardModel? lastAtk, int lastTurn, CardModel? prevAtk, int prevTurn) = FindHistoryCourseAttacks(
@@ -611,9 +632,8 @@ internal static partial class InCombatLiveStateCapturer
                     e.HappenedThisTurn(state) && e.CardPlay.Card.Type == CardType.Attack && ReferenceEquals(e.CardPlay.Player, player));
                 fields["RippleBasin._attackPlayedThisTurn"] = BoolVal(attackPlayed);
                 break;
-            case RuinedHelmet:
-                bool ruinedUsed = (bool)(typeof(RuinedHelmet).GetField("_usedThisCombat", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(relic)
-                    ?? false);
+            case RuinedHelmet ruinedHelmet:
+                bool ruinedUsed = ReadRequiredPrivateField<RuinedHelmet, bool>(ruinedHelmet, "_usedThisCombat", "relics.RuinedHelmet._usedThisCombat");
                 fields["RuinedHelmet._usedThisCombat"] = BoolVal(ruinedUsed);
                 break;
             case Shuriken shu:
@@ -829,9 +849,8 @@ internal static partial class InCombatLiveStateCapturer
                 fields["MonologuePower._strength"] = DecimalVal(mono.DynamicVars.Strength.BaseValue);
                 break;
             case NemesisPower nemesis:
-                bool shouldApplyIntangible = (bool)(typeof(NemesisPower)
-                    .GetField("_shouldApplyIntangible", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                    ?.GetValue(nemesis) ?? false);
+                bool shouldApplyIntangible = ReadRequiredPrivateField<NemesisPower, bool>(
+                    nemesis, "_shouldApplyIntangible", "powers.NemesisPower._shouldApplyIntangible");
                 fields["NemesisPower._shouldApplyIntangible"] = BoolVal(shouldApplyIntangible);
                 break;
             case NightmarePower nightmare:
@@ -876,9 +895,8 @@ internal static partial class InCombatLiveStateCapturer
                 fields["ReattachPower._isReviving"] = BoolVal(reattach.GetInternalData<ReattachPower.Data>().isReviving);
                 break;
             case RitualPower ritual:
-                bool skipFirst = (bool)(typeof(RitualPower)
-                    .GetField("_wasJustAppliedByEnemy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                    ?.GetValue(ritual) ?? false);
+                bool skipFirst = ReadRequiredPrivateField<RitualPower, bool>(
+                    ritual, "_wasJustAppliedByEnemy", "powers.RitualPower._wasJustAppliedByEnemy");
                 fields["RitualPower._skipFirstEnemyTurnEnd"] = BoolVal(skipFirst);
                 break;
             case RupturePower rupture:
@@ -900,9 +918,8 @@ internal static partial class InCombatLiveStateCapturer
                 fields["SkittishPower._hasGainedBlockThisTurn"] = BoolVal(skittish.HasGainedBlockThisTurn);
                 break;
             case SlothPower sloth:
-                int slothPlayed = (int)(typeof(SlothPower)
-                    .GetField("_cardsPlayedThisTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                    ?.GetValue(sloth) ?? sloth.DisplayAmount);
+                int slothPlayed = ReadRequiredPrivateField<SlothPower, int>(
+                    sloth, "_cardsPlayedThisTurn", "powers.SlothPower._cardsPlayedThisTurn");
                 fields["SlothPower._cardsPlayed"] = IntVal(slothPlayed);
                 break;
             case SlowPower slow:
@@ -939,9 +956,8 @@ internal static partial class InCombatLiveStateCapturer
                 fields["SwordSagePower._grantedReplays"] = new RustKernelFieldValueDto("CardIntMap", CardIntMapValue: sovEntries);
                 break;
             case TenderPower tender:
-                int tenderPlayed = (int)(typeof(TenderPower)
-                    .GetField("_cardsPlayedThisTurn", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                    ?.GetValue(tender) ?? tender.DisplayAmount);
+                int tenderPlayed = ReadRequiredPrivateField<TenderPower, int>(
+                    tender, "_cardsPlayedThisTurn", "powers.TenderPower._cardsPlayedThisTurn");
                 fields["TenderPower._cardsPlayedThisTurn"] = IntVal(tenderPlayed);
                 break;
             case TheBombPower bomb:

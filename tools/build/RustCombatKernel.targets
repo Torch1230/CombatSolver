@@ -2,17 +2,59 @@
   <PropertyGroup>
     <StageRustCombatKernelEnabled Condition="'$(StageRustCombatKernelEnabled)' == ''">true</StageRustCombatKernelEnabled>
     <BuildRustCombatKernelOnBuild Condition="'$(BuildRustCombatKernelOnBuild)' == ''">true</BuildRustCombatKernelOnBuild>
+    <RequireRustCombatKernel Condition="'$(RequireRustCombatKernel)' == '' and '$(PublicationBuild)' == 'true' and '$(StageRustCombatKernelEnabled)' == 'true'">true</RequireRustCombatKernel>
+    <RequireRustCombatKernel Condition="'$(RequireRustCombatKernel)' == ''">false</RequireRustCombatKernel>
     <RustCombatKernelManifest>$(MSBuildProjectDirectory)/rust/Cargo.toml</RustCombatKernelManifest>
+    <RustCombatKernelTargetDir Condition="'$(RustCombatKernelTargetDir)' == ''">$(MSBuildProjectDirectory)/rust/target</RustCombatKernelTargetDir>
     <_RustKernelLibName Condition="'$(OS)' == 'Windows_NT'">sts2_combat_rs.dll</_RustKernelLibName>
     <_RustKernelLibName Condition="'$(OS)' != 'Windows_NT'">libsts2_combat_rs.so</_RustKernelLibName>
-    <_RustKernelSourcePath>$(MSBuildProjectDirectory)/rust/target/release/$(_RustKernelLibName)</_RustKernelSourcePath>
+    <_RustKernelSourcePath>$(RustCombatKernelTargetDir)/release/$(_RustKernelLibName)</_RustKernelSourcePath>
   </PropertyGroup>
+
+  <Target Name="ResolveRustCombatKernelCargo"
+          Condition="'$(StageRustCombatKernelEnabled)' == 'true' and '$(BuildRustCombatKernelOnBuild)' != 'false' and Exists('$(RustCombatKernelManifest)')">
+    <PropertyGroup>
+      <_RustCargoExecutable Condition="'$(CargoExecutable)' != ''">$(CargoExecutable)</_RustCargoExecutable>
+    </PropertyGroup>
+    <Exec Condition="'$(_RustCargoExecutable)' == '' and '$(OS)' == 'Windows_NT'"
+          Command="where cargo &gt;nul 2&gt;&amp;1"
+          IgnoreExitCode="true"
+          StandardOutputImportance="Low"
+          StandardErrorImportance="Low">
+      <Output TaskParameter="ExitCode" PropertyName="_RustCargoProbeExitCode" />
+    </Exec>
+    <Exec Condition="'$(_RustCargoExecutable)' == '' and '$(OS)' != 'Windows_NT'"
+          Command="command -v cargo &gt;/dev/null 2&gt;&amp;1"
+          IgnoreExitCode="true"
+          StandardOutputImportance="Low"
+          StandardErrorImportance="Low">
+      <Output TaskParameter="ExitCode" PropertyName="_RustCargoProbeExitCode" />
+    </Exec>
+    <PropertyGroup>
+      <_RustCargoExecutable Condition="'$(_RustCargoExecutable)' == '' and '$(_RustCargoProbeExitCode)' == '0'">cargo</_RustCargoExecutable>
+      <_RustCargoExecutable Condition="'$(_RustCargoExecutable)' == '' and '$(OS)' == 'Windows_NT' and '$(CARGO_HOME)' != '' and Exists('$(CARGO_HOME)\bin\cargo.exe')">$(CARGO_HOME)\bin\cargo.exe</_RustCargoExecutable>
+      <_RustCargoExecutable Condition="'$(_RustCargoExecutable)' == '' and '$(OS)' == 'Windows_NT' and '$(USERPROFILE)' != '' and Exists('$(USERPROFILE)\.cargo\bin\cargo.exe')">$(USERPROFILE)\.cargo\bin\cargo.exe</_RustCargoExecutable>
+      <_RustCargoExecutable Condition="'$(_RustCargoExecutable)' == '' and '$(OS)' != 'Windows_NT' and '$(CARGO_HOME)' != '' and Exists('$(CARGO_HOME)/bin/cargo')">$(CARGO_HOME)/bin/cargo</_RustCargoExecutable>
+      <_RustCargoExecutable Condition="'$(_RustCargoExecutable)' == '' and '$(OS)' != 'Windows_NT' and '$(HOME)' != '' and Exists('$(HOME)/.cargo/bin/cargo')">$(HOME)/.cargo/bin/cargo</_RustCargoExecutable>
+    </PropertyGroup>
+  </Target>
 
   <Target Name="BuildRustCombatKernel"
           AfterTargets="Build"
+          DependsOnTargets="ResolveRustCombatKernelCargo"
           Condition="'$(StageRustCombatKernelEnabled)' == 'true' and '$(BuildRustCombatKernelOnBuild)' != 'false' and Exists('$(RustCombatKernelManifest)')">
-    <Exec Command="cargo build --manifest-path &quot;$(RustCombatKernelManifest)&quot; -p sts2-ffi --release"
+    <Exec Condition="'$(_RustCargoExecutable)' != ''"
+          Command="&quot;$(_RustCargoExecutable)&quot; build --manifest-path &quot;$(RustCombatKernelManifest)&quot; --target-dir &quot;$(RustCombatKernelTargetDir)&quot; -p sts2-ffi --release"
           EnvironmentVariables="CARGO_BUILD_JOBS=8" />
+    <Error Condition="'$(_RustCargoExecutable)' == '' and '$(RequireRustCombatKernel)' == 'true'"
+           Text="RequireRustCombatKernel=true requires cargo to build '$(RustCombatKernelManifest)', but cargo was not found on PATH or in .cargo/bin. Install Rust or pass -p:BuildRustCombatKernelOnBuild=false with a prebuilt artifact." />
+    <Warning Condition="'$(_RustCargoExecutable)' == '' and '$(RequireRustCombatKernel)' != 'true' and Exists('$(_RustKernelSourcePath)')"
+             Text="cargo was not found on PATH or in .cargo/bin; staging existing prebuilt Rust combat kernel artifact '$(_RustKernelSourcePath)'." />
+    <Warning Condition="'$(_RustCargoExecutable)' == '' and '$(RequireRustCombatKernel)' != 'true' and !Exists('$(_RustKernelSourcePath)')"
+             Text="cargo was not found on PATH or in .cargo/bin and no prebuilt Rust combat kernel artifact exists at '$(_RustKernelSourcePath)'; skipping Rust combat kernel build and staging (managed-only HotKernel build)." />
+    <PropertyGroup Condition="'$(_RustCargoExecutable)' == '' and '$(RequireRustCombatKernel)' != 'true' and !Exists('$(_RustKernelSourcePath)')">
+      <_RustKernelMissingWarningEmitted>true</_RustKernelMissingWarningEmitted>
+    </PropertyGroup>
   </Target>
 
   <Target Name="StageRustCombatKernel"
@@ -23,14 +65,18 @@
     </PropertyGroup>
     <RemoveDir Directories="$(_RustKernelStageTargetDir)"
                Condition="'$(StageRustCombatKernelEnabled)' != 'true' and Exists('$(_RustKernelStageTargetDir)')" />
-    <Error Condition="'$(StageRustCombatKernelEnabled)' == 'true' and !Exists('$(_RustKernelSourcePath)')"
+    <Error Condition="'$(StageRustCombatKernelEnabled)' == 'true' and '$(RequireRustCombatKernel)' == 'true' and !Exists('$(_RustKernelSourcePath)')"
            Text="Missing Rust combat kernel artifact '$(_RustKernelSourcePath)'. Build with cargo or pass -p:StageRustCombatKernelEnabled=false." />
+    <Warning Condition="'$(StageRustCombatKernelEnabled)' == 'true' and '$(RequireRustCombatKernel)' != 'true' and !Exists('$(_RustKernelSourcePath)') and '$(_RustKernelMissingWarningEmitted)' != 'true'"
+             Text="Rust combat kernel artifact '$(_RustKernelSourcePath)' is not present; skipping rust-kernel staging (managed-only HotKernel build)." />
+    <RemoveDir Directories="$(_RustKernelStageTargetDir)"
+               Condition="'$(StageRustCombatKernelEnabled)' == 'true' and !Exists('$(_RustKernelSourcePath)') and Exists('$(_RustKernelStageTargetDir)')" />
     <MakeDir Directories="$(_RustKernelStageTargetDir)"
-             Condition="'$(StageRustCombatKernelEnabled)' == 'true'" />
+             Condition="'$(StageRustCombatKernelEnabled)' == 'true' and Exists('$(_RustKernelSourcePath)')" />
     <Copy SourceFiles="$(_RustKernelSourcePath)"
           DestinationFolder="$(_RustKernelStageTargetDir)"
           SkipUnchangedFiles="true"
-          Condition="'$(StageRustCombatKernelEnabled)' == 'true'" />
+          Condition="'$(StageRustCombatKernelEnabled)' == 'true' and Exists('$(_RustKernelSourcePath)')" />
   </Target>
 
   <Target Name="CopyModRustCombatKernel"
@@ -39,14 +85,15 @@
           Condition="'$(CopyModOnBuild)' == 'true'">
     <PropertyGroup>
       <_RustKernelStageTargetDir>$(TargetDir)rust-kernel</_RustKernelStageTargetDir>
+      <_RustKernelStagedLibPath>$(_RustKernelStageTargetDir)/$(_RustKernelLibName)</_RustKernelStagedLibPath>
     </PropertyGroup>
     <RemoveDir Directories="$(ModOutputDir)/rust-kernel" Condition="Exists('$(ModOutputDir)/rust-kernel')" />
-    <ItemGroup Condition="Exists('$(_RustKernelStageTargetDir)')">
+    <ItemGroup Condition="Exists('$(_RustKernelStagedLibPath)')">
       <_RustKernelFiles Include="$(_RustKernelStageTargetDir)/**/*" />
     </ItemGroup>
-    <MakeDir Directories="$(ModOutputDir)/rust-kernel" Condition="Exists('$(_RustKernelStageTargetDir)')" />
+    <MakeDir Directories="$(ModOutputDir)/rust-kernel" Condition="Exists('$(_RustKernelStagedLibPath)')" />
     <Copy SourceFiles="@(_RustKernelFiles)"
           DestinationFiles="@(_RustKernelFiles->'$(ModOutputDir)/rust-kernel/%(RecursiveDir)%(Filename)%(Extension)')"
-          Condition="Exists('$(_RustKernelStageTargetDir)')" />
+          Condition="Exists('$(_RustKernelStagedLibPath)')" />
   </Target>
 </Project>

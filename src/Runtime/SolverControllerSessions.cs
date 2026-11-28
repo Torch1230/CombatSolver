@@ -107,6 +107,12 @@ internal sealed class SolverSearchSession(
     public bool CallbackScheduled { get; set; }
     public int ReferenceReleaseState;
     public int CancellationDisposeState;
+    private int _stoppedByUser;
+    private int _rustKernelActive;
+    public bool StoppedByUser => Volatile.Read(ref _stoppedByUser) != 0;
+    public bool IsRustKernelActive => Volatile.Read(ref _rustKernelActive) != 0;
+    public void MarkStoppedByUser() => Interlocked.Exchange(ref _stoppedByUser, 1);
+    public void SetRustKernelActive(bool active) => Interlocked.Exchange(ref _rustKernelActive, active ? 1 : 0);
     public bool DeployWhenReady { get; set; } = deployWhenReady;
     public SolverResult? PreliminaryResult { get; set; }
     public bool PlayerInputObserved { get; private set; }

@@ -238,7 +238,9 @@ pub fn step_oracle_json(req_json: &[u8]) -> OracleStepResponse {
     }
 }
 
-fn write_owned_bytes(bytes: Vec<u8>, out_ptr: *mut *mut u8, out_len: *mut usize) -> i32 {
+/// # Safety
+/// If non-null, `out_ptr` and `out_len` must be valid, properly aligned, writable pointers.
+unsafe fn write_owned_bytes(bytes: Vec<u8>, out_ptr: *mut *mut u8, out_len: *mut usize) -> i32 {
     if out_ptr.is_null() || out_len.is_null() {
         return -1;
     }
@@ -258,8 +260,11 @@ pub extern "C" fn sts2_rs_abi_version() -> u32 {
     ABI_VERSION
 }
 
+/// # Safety
+/// `out_ptr` and `out_len` must be valid writable pointers (or null, in which case `-1` is returned).
+/// On success (`0`), the caller owns the returned buffer and must release it once via `sts2_rs_free_buffer`.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_capabilities(out_ptr: *mut *mut u8, out_len: *mut usize) -> i32 {
+pub unsafe extern "C" fn sts2_rs_capabilities(out_ptr: *mut *mut u8, out_len: *mut usize) -> i32 {
     let res = catch_unwind(AssertUnwindSafe(|| {
         let caps = CapabilitiesJson {
             abi_version: ABI_VERSION,
@@ -275,13 +280,16 @@ pub extern "C" fn sts2_rs_capabilities(out_ptr: *mut *mut u8, out_len: *mut usiz
             ],
         };
         let bytes = serde_json::to_vec(&caps).unwrap_or_default();
-        write_owned_bytes(bytes, out_ptr, out_len)
+        unsafe { write_owned_bytes(bytes, out_ptr, out_len) }
     }));
     res.unwrap_or(-2)
 }
 
+/// # Safety
+/// `req_ptr` must be readable for `req_len` bytes, and `out_ptr`/`out_len` must be valid writable pointers.
+/// On success (`0`), the caller must release the returned buffer once via `sts2_rs_free_buffer`.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_step_oracle(
+pub unsafe extern "C" fn sts2_rs_step_oracle(
     req_ptr: *const u8,
     req_len: usize,
     out_ptr: *mut *mut u8,
@@ -294,7 +302,7 @@ pub extern "C" fn sts2_rs_step_oracle(
         let req_slice = unsafe { slice::from_raw_parts(req_ptr, req_len) };
         let resp = step_oracle_json(req_slice);
         let bytes = serde_json::to_vec(&resp).unwrap_or_default();
-        write_owned_bytes(bytes, out_ptr, out_len)
+        unsafe { write_owned_bytes(bytes, out_ptr, out_len) }
     }));
     res.unwrap_or(-2)
 }
@@ -339,6 +347,13 @@ pub fn solve_in_combat_json(req_json: &[u8]) -> SolveInCombatJsonResponse {
                 error_code: Some("Unsupported".to_owned()),
                 error: Some(format!("unsupported {kind}: {id}")),
             },
+            KernelErrorKind::PotionPolicyUnsatisfied(_) => SolveInCombatJsonResponse {
+                abi_version: ABI_VERSION,
+                outcome: "Error".to_owned(),
+                solution: None,
+                error_code: Some("hard_potion_policy_unsatisfied".to_owned()),
+                error: Some(e.to_string()),
+            },
             _ => SolveInCombatJsonResponse {
                 abi_version: ABI_VERSION,
                 outcome: "Error".to_owned(),
@@ -350,8 +365,11 @@ pub fn solve_in_combat_json(req_json: &[u8]) -> SolveInCombatJsonResponse {
     }
 }
 
+/// # Safety
+/// `req_ptr` must be readable for `req_len` bytes, and `out_ptr`/`out_len` must be valid writable pointers.
+/// On success (`0`), the caller must release the returned buffer once via `sts2_rs_free_buffer`.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_solve_in_combat(
+pub unsafe extern "C" fn sts2_rs_solve_in_combat(
     req_ptr: *const u8,
     req_len: usize,
     out_ptr: *mut *mut u8,
@@ -364,7 +382,7 @@ pub extern "C" fn sts2_rs_solve_in_combat(
         let req_slice = unsafe { slice::from_raw_parts(req_ptr, req_len) };
         let resp = solve_in_combat_json(req_slice);
         let bytes = serde_json::to_vec(&resp).unwrap_or_default();
-        write_owned_bytes(bytes, out_ptr, out_len)
+        unsafe { write_owned_bytes(bytes, out_ptr, out_len) }
     }));
     res.unwrap_or(-2)
 }
@@ -375,8 +393,10 @@ pub extern "C" fn sts2_rs_cancel_token_create() -> *mut c_void {
     Arc::into_raw(token) as *mut c_void
 }
 
+/// # Safety
+/// `token` must be null or a live pointer returned by `sts2_rs_cancel_token_create` that has not been freed.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_cancel_token_cancel(token: *mut c_void) {
+pub unsafe extern "C" fn sts2_rs_cancel_token_cancel(token: *mut c_void) {
     if token.is_null() {
         return;
     }
@@ -386,8 +406,10 @@ pub extern "C" fn sts2_rs_cancel_token_cancel(token: *mut c_void) {
     }));
 }
 
+/// # Safety
+/// `token` must be null or a live pointer returned by `sts2_rs_cancel_token_create` that is freed at most once.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_cancel_token_free(token: *mut c_void) {
+pub unsafe extern "C" fn sts2_rs_cancel_token_free(token: *mut c_void) {
     if token.is_null() {
         return;
     }
@@ -462,6 +484,13 @@ pub fn solve_in_combat_with_controls_json(
                 error_code: Some("Unsupported".to_owned()),
                 error: Some(format!("unsupported {kind}: {id}")),
             },
+            KernelErrorKind::PotionPolicyUnsatisfied(_) => SolveInCombatJsonResponse {
+                abi_version: ABI_VERSION,
+                outcome: "Error".to_owned(),
+                solution: None,
+                error_code: Some("hard_potion_policy_unsatisfied".to_owned()),
+                error: Some(e.to_string()),
+            },
             _ => SolveInCombatJsonResponse {
                 abi_version: ABI_VERSION,
                 outcome: "Error".to_owned(),
@@ -473,8 +502,13 @@ pub fn solve_in_combat_with_controls_json(
     }
 }
 
+/// # Safety
+/// - `req_ptr` must be readable for `req_len` bytes, and `out_ptr`/`out_len` must be valid writable pointers.
+/// - `cancel_token` must be null or a live pointer created by `sts2_rs_cancel_token_create` and kept valid through return.
+/// - If `progress_cb` is `Some`, it must be safe to invoke concurrently with `user_data` until this call returns.
+/// - On success (`0`), the caller must release the returned buffer once via `sts2_rs_free_buffer`.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_solve_in_combat_with_controls(
+pub unsafe extern "C" fn sts2_rs_solve_in_combat_with_controls(
     req_ptr: *const u8,
     req_len: usize,
     cancel_token: *const c_void,
@@ -509,13 +543,18 @@ pub extern "C" fn sts2_rs_solve_in_combat_with_controls(
             progress_cb.map(|_| &forwarder as &(dyn Fn(&SearchProgress) + Sync));
         let resp = solve_in_combat_with_controls_json(req_slice, &cancel_holder, progress_ref);
         let bytes = serde_json::to_vec(&resp).unwrap_or_default();
-        write_owned_bytes(bytes, out_ptr, out_len)
+        unsafe { write_owned_bytes(bytes, out_ptr, out_len) }
     }));
     res.unwrap_or(-2)
 }
 
+/// # Safety
+/// - `req_ptr` must be readable for `req_len` bytes, and `out_ptr`/`out_len` must be valid writable pointers.
+/// - `cancel_token` must be null or a live pointer created by `sts2_rs_cancel_token_create` and kept valid through return.
+/// - If `progress_cb` is `Some`, it must be safe to invoke concurrently with `user_data` until this call returns.
+/// - On success (`0`), the caller must release the returned buffer once via `sts2_rs_free_buffer`.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_solve_in_combat_host_v1(
+pub unsafe extern "C" fn sts2_rs_solve_in_combat_host_v1(
     req_ptr: *const u8,
     req_len: usize,
     cancel_token: *const c_void,
@@ -550,7 +589,7 @@ pub extern "C" fn sts2_rs_solve_in_combat_host_v1(
             progress_cb.map(|_| &forwarder as &(dyn Fn(&HostProgressDto) + Sync));
         let resp = solve_in_combat_host_v1_json(req_slice, &cancel_holder, progress_ref);
         let bytes = serde_json::to_vec(&resp).unwrap_or_default();
-        write_owned_bytes(bytes, out_ptr, out_len)
+        unsafe { write_owned_bytes(bytes, out_ptr, out_len) }
     }));
     match res {
         Ok(rc) => rc,
@@ -572,15 +611,18 @@ pub extern "C" fn sts2_rs_solve_in_combat_host_v1(
                 total_elapsed_milliseconds: 0.0,
             };
             match serde_json::to_vec(&resp) {
-                Ok(bytes) => write_owned_bytes(bytes, out_ptr, out_len),
+                Ok(bytes) => unsafe { write_owned_bytes(bytes, out_ptr, out_len) },
                 Err(_) => -2,
             }
         }
     }
 }
 
+/// # Safety
+/// `ptr` must be null or a buffer pointer previously returned by an `sts2_rs_*` export with the exact matching `len`,
+/// and must be freed at most once.
 #[unsafe(no_mangle)]
-pub extern "C" fn sts2_rs_free_buffer(ptr: *mut u8, len: usize) {
+pub unsafe extern "C" fn sts2_rs_free_buffer(ptr: *mut u8, len: usize) {
     if ptr.is_null() {
         return;
     }

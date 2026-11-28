@@ -243,6 +243,8 @@ internal static class SolverSettings
                 ?? throw new InvalidDataException("CombatSolver settings file contained null.")
             : new SolverSettingsData();
         SolverSettingsData migrated = ApplyCurrentPerformanceMigration(loaded);
+        if (Entry.IsLiveAutoPilotMode)
+            migrated = migrated with { UseRustCombatKernel = false };
         Validate(migrated);
         lock (Sync)
         {
@@ -526,7 +528,10 @@ internal static class SolverSettings
     }
 
     internal static SolverSettingsData CreateLiveDefaults()
-        => CreateCurrentDefaults();
+        => CreateCurrentDefaults() with
+        {
+            UseRustCombatKernel = false,
+        };
 
     internal static SolverSettingsData RoundTripForTesting(SolverSettingsData data)
         => JsonSerializer.Deserialize<SolverSettingsData>(

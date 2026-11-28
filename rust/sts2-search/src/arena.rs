@@ -759,13 +759,11 @@ impl NodeArena {
 
     #[inline]
     pub fn push_node(&mut self, node: SearchNode) -> NodeId {
-        self.push_node_with(|dst| unsafe {
-            dst.write(node);
-        })
+        self.push_node_with(|| node)
     }
 
     #[inline(always)]
-    pub fn push_node_with<F: FnOnce(*mut SearchNode)>(&mut self, init: F) -> NodeId {
+    pub fn push_node_with<F: FnOnce() -> SearchNode>(&mut self, init: F) -> NodeId {
         let id = self.node_len;
         let chunk_idx = id >> NODE_CHUNK_SHIFT;
         let local_idx = id & NODE_CHUNK_MASK;
@@ -775,11 +773,10 @@ impl NodeArena {
         let chunk = &mut self.node_chunks[chunk_idx];
         debug_assert_eq!(chunk.len(), local_idx);
         debug_assert!(local_idx < chunk.capacity());
-        // SAFETY: Every chunk has `NODE_CHUNK_SIZE` capacity, `local_idx == chunk.len() < NODE_CHUNK_SIZE`,
-        // and `set_len` commits the element after `init` writes a fully initialized `SearchNode`.
+        let node = init();
+        // SAFETY: Every chunk has `NODE_CHUNK_SIZE` capacity and `local_idx == chunk.len() < NODE_CHUNK_SIZE`.
         unsafe {
-            let dst = chunk.as_mut_ptr().add(local_idx);
-            init(dst);
+            chunk.as_mut_ptr().add(local_idx).write(node);
             chunk.set_len(local_idx + 1);
         }
         self.node_len = id + 1;

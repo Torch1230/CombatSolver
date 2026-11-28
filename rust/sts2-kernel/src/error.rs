@@ -16,6 +16,7 @@ pub enum KernelErrorKind {
     Dec(DecError),
     Rng(RngError),
     DeathPreventionLoop,
+    PotionPolicyUnsatisfied(String),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -86,6 +87,12 @@ impl KernelError {
     pub fn death_prevention_loop() -> Self {
         Self(Box::new(KernelErrorKind::DeathPreventionLoop))
     }
+
+    #[cold]
+    #[inline(never)]
+    pub fn potion_policy_unsatisfied(msg: String) -> Self {
+        Self(Box::new(KernelErrorKind::PotionPolicyUnsatisfied(msg)))
+    }
 }
 
 impl fmt::Display for KernelError {
@@ -102,6 +109,9 @@ impl fmt::Display for KernelError {
             KernelErrorKind::Rng(err) => write!(f, "rng error: {err}"),
             KernelErrorKind::DeathPreventionLoop => {
                 write!(f, "death prevention repeatedly left the creature dead")
+            }
+            KernelErrorKind::PotionPolicyUnsatisfied(msg) => {
+                write!(f, "hard potion policy unsatisfied: {msg}")
             }
         }
     }

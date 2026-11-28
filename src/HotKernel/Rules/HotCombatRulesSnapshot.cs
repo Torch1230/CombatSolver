@@ -2,7 +2,6 @@ using System.Text;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Ascension;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Modifiers;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -24,13 +23,13 @@ internal sealed record HotCombatRulesSnapshot(
     public bool HasAscension(AscensionLevel level)
         => (Ascensions & (1UL << (int)level)) != 0;
 
-    public static HotCombatRulesSnapshot Capture(CombatState combat)
+    public static HotCombatRulesSnapshot Capture(CombatState combat, bool hasMurderousModifier = false)
     {
+        if (!NGame.IsMainThread())
+            throw new InvalidOperationException("Capture live run rules on the main thread.");
         IRunState run = combat.RunState
             ?? throw new InvalidOperationException("Combat has no RunState.");
-        bool hasMurderous = combat.Modifiers.Any(static m => m is Murderous)
-            || run.Modifiers.Any(static m => m is Murderous);
-        return Capture(run, combat.Dominion?.Id.Entry, hasMurderous);
+        return Capture(run, combat.Dominion?.Id.Entry, hasMurderousModifier);
     }
 
     internal static HotCombatRulesSnapshot Capture(IRunState run, string? dominionId, bool hasMurderousModifier = false)

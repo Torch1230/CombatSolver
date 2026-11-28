@@ -490,7 +490,9 @@ internal static partial class HotRootBuilder
         hot.Rng[(int)HotRngStream.Niche] = HotImportSupport.CaptureRng(state.RunState.Rng.Niche);
         hot.Rng[(int)HotRngStream.NonCombatGeneration] = HotImportSupport.CaptureRng(player.PlayerRng.NonCombatGeneration);
 
-        HotCombatRulesSnapshot rulesSnapshot = HotCombatRulesSnapshot.Capture(state);
+        bool hasMurderousModifier = state.Modifiers.Any(static m => m is MegaCrit.Sts2.Core.Models.Modifiers.Murderous)
+            || state.RunState.Modifiers.Any(static m => m is MegaCrit.Sts2.Core.Models.Modifiers.Murderous);
+        HotCombatRulesSnapshot rulesSnapshot = HotCombatRulesSnapshot.Capture(state, hasMurderousModifier);
         CardMultiplayerConstraint mpConstraint = state.RunState.CardMultiplayerConstraint;
         List<CardPoolModel> otherCharPools = player.UnlockState.CharacterCardPools.ToList();
         if (otherCharPools.Count > 1)

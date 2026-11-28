@@ -320,7 +320,8 @@ pub struct HostSolveResponse {
     pub total_elapsed_milliseconds: f64,
 }
 
-fn failed_resp(
+fn failed_with_code_resp(
+    failure_code: Option<&str>,
     field_path: Option<&str>,
     msg: impl Into<String>,
     dop: i32,
@@ -329,8 +330,31 @@ fn failed_resp(
     HostSolveResponse {
         abi_version: ABI_VERSION as i32,
         outcome: "Failed".to_owned(),
-        failure_code: None,
+        failure_code: failure_code.map(str::to_owned),
         field_path: field_path.map(str::to_owned),
+        error: Some(msg.into()),
+        result: None,
+        best_so_far: None,
+        effective_degree_of_parallelism: dop.clamp(1, 64),
+        total_elapsed_milliseconds: elapsed_ms.max(0.0),
+    }
+}
+
+fn failed_resp(
+    field_path: Option<&str>,
+    msg: impl Into<String>,
+    dop: i32,
+    elapsed_ms: f64,
+) -> HostSolveResponse {
+    failed_with_code_resp(None, field_path, msg, dop, elapsed_ms)
+}
+
+fn timed_out_resp(msg: impl Into<String>, dop: i32, elapsed_ms: f64) -> HostSolveResponse {
+    HostSolveResponse {
+        abi_version: ABI_VERSION as i32,
+        outcome: "TimedOut".to_owned(),
+        failure_code: Some("overall_timeout".to_owned()),
+        field_path: None,
         error: Some(msg.into()),
         result: None,
         best_so_far: None,
@@ -698,7 +722,7 @@ fn map_policy(
         None => NoveltySearchOptions::default(),
     };
 
-    let novelty_budget = match &p.novelty_budget {
+    let mut novelty_budget = match &p.novelty_budget {
         Some(nb) => {
             if nb.time_divisor < 2 || nb.maximum_milliseconds < 1 || nb.maximum_expanded_nodes < 1 {
                 return Err((
@@ -746,10 +770,23 @@ fn map_policy(
         ));
     }
 
-    let budget_ms = p
+    let mut budget_ms = p
         .soft_time_budget_milliseconds
         .max(req.search_budget_milliseconds)
         .max(1) as u64;
+    let mut etc_budget_ms = p
+        .early_turn_exploration_budget_milliseconds
+        .unwrap_or(0)
+        .max(0) as u64;
+    if req.overall_timeout_milliseconds > 0 {
+        let overall_cap_ms = req.overall_timeout_milliseconds as u64;
+        budget_ms = budget_ms.min(overall_cap_ms).max(1);
+        if etc_budget_ms > 0 {
+            etc_budget_ms = etc_budget_ms.min(overall_cap_ms).max(1);
+        }
+        novelty_budget.maximum_milliseconds =
+            novelty_budget.maximum_milliseconds.min(overall_cap_ms).max(1);
+    }
 
     Ok(SearchPolicy {
         beam_width,
@@ -800,10 +837,7 @@ fn map_policy(
         novelty_options,
         novelty_budget,
         early_turn_exploration_depth: effective_etc_depth,
-        early_turn_exploration_budget_ms: p
-            .early_turn_exploration_budget_milliseconds
-            .unwrap_or(0)
-            .max(0) as u64,
+        early_turn_exploration_budget_ms: etc_budget_ms,
         use_boss_tempo_search: false,
         acceptable_battle_hp_loss: p.acceptable_battle_hp_loss.max(0),
         stop_at_acceptable_battle_hp_loss: p.stop_at_acceptable_battle_hp_loss,
@@ -1530,7 +1564,7 @@ pub fn solve_in_combat_host_v1_json(
         }
     };
 
-    let search_policy = match map_policy(&req, &policy_dto, effective_dop) {
+    let mut search_policy = match map_policy(&req, &policy_dto, effective_dop) {
         Ok(p) => p,
         Err((field, msg)) => {
             return capability_miss_resp(
@@ -1618,6 +1652,31 @@ pub fn solve_in_combat_host_v1_json(
     let progress_ref: Option<&(dyn Fn(&SearchProgress) + Sync)> =
         progress_cb.map(|_| &forward_progress as &(dyn Fn(&SearchProgress) + Sync));
 
+    if req.overall_timeout_milliseconds > 0 {
+        let overall_cap_ms = req.overall_timeout_milliseconds as u64;
+        let elapsed_before_search_ms = started.elapsed().as_millis() as u64;
+        if elapsed_before_search_ms >= overall_cap_ms {
+            return timed_out_resp(
+                "The Rust combat kernel exceeded overallTimeoutMilliseconds before starting search.",
+                dop_i32,
+                started.elapsed().as_secs_f64() * 1000.0,
+            );
+        }
+        let remaining_overall_ms = (overall_cap_ms - elapsed_before_search_ms).max(1);
+        search_policy.time_budget_ms = search_policy.time_budget_ms.min(remaining_overall_ms).max(1);
+        if search_policy.early_turn_exploration_budget_ms > 0 {
+            search_policy.early_turn_exploration_budget_ms = search_policy
+                .early_turn_exploration_budget_ms
+                .min(remaining_overall_ms)
+                .max(1);
+        }
+        search_policy.novelty_budget.maximum_milliseconds = search_policy
+            .novelty_budget
+            .maximum_milliseconds
+            .min(remaining_overall_ms)
+            .max(1);
+    }
+
     let sol = match SearchEngine.solve_state_with_controls(
         &root_state,
         &search_policy,
@@ -1636,6 +1695,15 @@ pub fn solve_in_combat_host_v1_json(
                     started.elapsed().as_secs_f64() * 1000.0,
                 );
             }
+            KernelErrorKind::PotionPolicyUnsatisfied(msg) => {
+                return failed_with_code_resp(
+                    Some("hard_potion_policy_unsatisfied"),
+                    Some("policy.potionPolicy"),
+                    msg.clone(),
+                    dop_i32,
+                    started.elapsed().as_secs_f64() * 1000.0,
+                );
+            }
             _ => {
                 return failed_resp(
                     None,
@@ -1647,7 +1715,6 @@ pub fn solve_in_combat_host_v1_json(
         },
     };
 
-    let is_cancelled = cancel.load(Ordering::Relaxed) || sol.stats.termination == "Cancelled";
     let trace_res = replay_solution_trace(
         &root_state,
         &sol,
@@ -1657,6 +1724,7 @@ pub fn solve_in_combat_host_v1_json(
         &content,
     );
     let elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+    let is_cancelled = cancel.load(Ordering::Relaxed) || sol.stats.termination == "Cancelled";
 
     if is_cancelled {
         let best_so_far = match trace_res {
@@ -1676,6 +1744,19 @@ pub fn solve_in_combat_host_v1_json(
         };
     }
 
+    if req.overall_timeout_milliseconds > 0
+        && elapsed_ms >= req.overall_timeout_milliseconds as f64
+    {
+        return timed_out_resp(
+            format!(
+                "The Rust combat kernel exceeded overallTimeoutMilliseconds ({} ms).",
+                req.overall_timeout_milliseconds
+            ),
+            dop_i32,
+            elapsed_ms,
+        );
+    }
+
     match trace_res {
         Ok(result_dto) => HostSolveResponse {
             abi_version: ABI_VERSION as i32,
@@ -1689,5 +1770,136 @@ pub fn solve_in_combat_host_v1_json(
             total_elapsed_milliseconds: elapsed_ms,
         },
         Err(msg) => failed_resp(Some("result"), msg, dop_i32, elapsed_ms),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_policy_dto() -> HostPolicyDto {
+        serde_json::from_value(serde_json::json!({
+            "potionPolicy": "Smart",
+            "potionDirectives": [],
+            "predictPotionReward": false,
+            "relicStrategyEnabled": true,
+            "relicCounterRules": [],
+            "growthBudgets": {
+                "handOfGreed": 0, "theHunt": 0, "feed": 0, "royalties": 0,
+                "alchemize": 0, "geneticAlgorithm": 0, "theScythe": 0,
+                "goopy": 0, "forbiddenGrimoire": 0, "madScience": 0, "showOff": 0,
+                "thirdParty": null
+            },
+            "brightestFlameMaxHpLossLimit": null,
+            "ignoreLongTermRewards": false,
+            "actTransitionBossHpStrategy": "ProgressionFirst",
+            "finalBossHpStrategy": "ProgressionFirst",
+            "acceptableBattleHpLoss": 0,
+            "stopAtAcceptableBattleHpLoss": true,
+            "useBeamWidthPortfolio": false,
+            "useNoveltyPortfolio": false,
+            "useEarlyTurnExploration": true,
+            "beamWidth": 16,
+            "potionFreeBeamWidth": null,
+            "potionBeamWidth": null,
+            "maxExpandedNodes": 500,
+            "maxCardBranchesPerNode": 32,
+            "maxPileChoiceBranchesPerAction": 18,
+            "maxHandChoiceBranchesPerAction": 24,
+            "softTimeBudgetMilliseconds": 10000,
+            "theftPolicy": "Ignore",
+            "portfolioOptionsVersion": 2,
+            "earlyTurnExplorationDepth": 1,
+            "earlyTurnExplorationBudgetMilliseconds": 8000,
+            "noveltyBudget": {
+                "timeDivisor": 2,
+                "maximumMilliseconds": 6000,
+                "maximumExpandedNodes": 500
+            }
+        }))
+        .unwrap()
+    }
+
+    fn sample_req(search_budget_ms: i32, overall_timeout_ms: i32) -> HostSolveRequest {
+        serde_json::from_value(serde_json::json!({
+            "abiVersion": 1,
+            "requestId": "timeout-test",
+            "liveState": {
+                "encounterId": "FUZZY_WURM_CRAWLER_WEAK",
+                "roomType": "Monster",
+                "currentSide": "Player",
+                "roundNumber": 1,
+                "isPlayerExtraTurn": false,
+                "goldWasStolen": false,
+                "nextCreatureId": 1,
+                "runRngSeed": "SEED",
+                "runRngs": {},
+                "playerRngSeed": 1,
+                "playerRngs": {},
+                "player": {
+                    "currentHp": 80,
+                    "maxHp": 80,
+                    "block": 0,
+                    "cumulativeHpLost": 0,
+                    "gold": 0,
+                    "maxEnergy": 3,
+                    "baseOrbSlotCount": 0,
+                    "isActiveForHooks": true,
+                    "canUseOrRemovePotions": true,
+                    "energy": 3,
+                    "stars": 0,
+                    "phase": "Play",
+                    "turnNumber": 1,
+                    "counters": serde_json::to_value(sts2_kernel::PlayerCounters::default()).unwrap(),
+                    "handHandles": [],
+                    "drawHandles": [],
+                    "discardHandles": [],
+                    "exhaustHandles": [],
+                    "playHandles": [],
+                    "deckHandles": [],
+                    "potionSlots": [],
+                    "orbCapacity": 0,
+                    "orbs": [],
+                    "arrows": []
+                },
+                "cards": [],
+                "relics": [],
+                "creatures": [],
+                "allyHandles": [],
+                "enemyHandles": []
+            },
+            "characterId": "IRONCLAD",
+            "ascension": 0,
+            "gameMode": "Standard",
+            "encounterIsWeak": true,
+            "initialEncounterMonsterCount": 1,
+            "totalFloor": 1,
+            "actIndex": 0,
+            "mapCol": 0,
+            "mapRow": 0,
+            "priorBattleHpLost": 0,
+            "searchBudgetMilliseconds": search_budget_ms,
+            "overallTimeoutMilliseconds": overall_timeout_ms,
+            "maxDegreeOfParallelism": 1,
+            "policy": {}
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn map_policy_clamps_search_budgets_to_overall_timeout_when_positive() {
+        let dto = sample_policy_dto();
+
+        let clamped_req = sample_req(10_000, 750);
+        let clamped = map_policy(&clamped_req, &dto, 1).unwrap();
+        assert_eq!(clamped.time_budget_ms, 750);
+        assert_eq!(clamped.early_turn_exploration_budget_ms, 750);
+        assert_eq!(clamped.novelty_budget.maximum_milliseconds, 750);
+
+        let unclamped_req = sample_req(10_000, 0);
+        let unclamped = map_policy(&unclamped_req, &dto, 1).unwrap();
+        assert_eq!(unclamped.time_budget_ms, 10_000);
+        assert_eq!(unclamped.early_turn_exploration_budget_ms, 8_000);
+        assert_eq!(unclamped.novelty_budget.maximum_milliseconds, 6_000);
     }
 }

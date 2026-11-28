@@ -219,6 +219,14 @@ if (-not $state.workshop) {
     Copy-Item -LiteralPath $solverDllPath -Destination (Join-Path $workshopContentDirectory 'CombatSolver.dll') -Force
     Copy-Item -LiteralPath $licensePath -Destination (Join-Path $workshopContentDirectory 'LICENSE') -Force
     Copy-Item -LiteralPath $noticesPath -Destination (Join-Path $workshopContentDirectory 'THIRD_PARTY_NOTICES.md') -Force
+    $releaseRustKernelDirectory = Join-Path (Split-Path -Parent $solverDllPath) 'rust-kernel'
+    $workshopRustKernelDirectory = Join-Path $workshopContentDirectory 'rust-kernel'
+    if (Test-Path -LiteralPath $workshopRustKernelDirectory) {
+        Remove-Item -LiteralPath $workshopRustKernelDirectory -Recurse -Force
+    }
+    if (Test-Path -LiteralPath $releaseRustKernelDirectory -PathType Container) {
+        Copy-Item -LiteralPath $releaseRustKernelDirectory -Destination $workshopRustKernelDirectory -Recurse -Force
+    }
     & $resolvedModUploaderPath upload -w $resolvedWorkshopDirectory
     Assert-ExitCode $LASTEXITCODE '上传 Steam 创意工坊'
     $state.workshop = $true

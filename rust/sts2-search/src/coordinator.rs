@@ -58,8 +58,57 @@ use sts2_kernel::state::{
     ActiveHookCache, BattleState, CardHandle, CreatureHandle, FieldMap, GrowthCounters,
     RelicDirtyMask, RootStaticContext, SemanticHistory, HOOK_DIRTY_ALL,
 };
-use sts2_kernel::{CombatEngine, ContentDispatcher, KernelError, StepOutcome};
+use sts2_kernel::{CombatEngine, ContentDispatcher, KernelError, KernelErrorKind, StepOutcome};
 use sts2_types::{PileType, PlayerTurnPhase, PotionId, RoomType, TargetType};
+
+struct SearchAbortSlot {
+    tripped: AtomicBool,
+    first_error: parking_lot::Mutex<Option<KernelError>>,
+}
+
+impl SearchAbortSlot {
+    fn new() -> Self {
+        Self {
+            tripped: AtomicBool::new(false),
+            first_error: parking_lot::Mutex::new(None),
+        }
+    }
+
+    #[inline(always)]
+    fn is_tripped(&self) -> bool {
+        self.tripped.load(Ordering::Acquire)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn record_error(&self, err: KernelError) {
+        let mut slot = self.first_error.lock();
+        if slot.is_none() {
+            *slot = Some(err);
+        }
+        self.tripped.store(true, Ordering::Release);
+    }
+
+    #[inline(always)]
+    fn clone_error(&self) -> Option<KernelError> {
+        if !self.is_tripped() {
+            return None;
+        }
+        self.first_error.lock().clone()
+    }
+}
+
+#[inline(always)]
+fn should_abort_search_on_kernel_error(err: &KernelError) -> bool {
+    matches!(
+        err.kind(),
+        KernelErrorKind::Unsupported { .. }
+            | KernelErrorKind::InvalidState(_)
+            | KernelErrorKind::Dec(_)
+            | KernelErrorKind::Rng(_)
+            | KernelErrorKind::SnapshotImport { .. }
+    )
+}
 
 const CHOICE_RESOLVED_CAPACITY: usize = 160;
 const CHOICE_TT_SIZE: usize = 512;
@@ -234,6 +283,7 @@ struct WorkerScratch {
     tt_probe_pruned: u64,
     por_pruned: u64,
     wave_dirty: bool,
+    fatal_error: Option<KernelError>,
 }
 
 impl WorkerScratch {
@@ -276,6 +326,7 @@ impl WorkerScratch {
             tt_probe_pruned: 0,
             por_pruned: 0,
             wave_dirty: false,
+            fatal_error: None,
         }
     }
 
@@ -294,6 +345,15 @@ impl WorkerScratch {
         self.tt_probe_pruned = 0;
         self.por_pruned = 0;
         self.wave_dirty = false;
+        self.fatal_error = None;
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn record_fatal_error(&mut self, err: KernelError) {
+        if self.fatal_error.is_none() {
+            self.fatal_error = Some(err);
+        }
     }
 
     #[inline]
@@ -723,6 +783,7 @@ impl PassResources {
         for s in &mut self.scratches {
             s.eval_intent_cache.clear();
             s.choice_probe_ws.intent_cache.clear();
+            s.fatal_error = None;
         }
         for rw in &mut self.rollout_workspaces {
             rw.intent_cache.clear();
@@ -1696,7 +1757,14 @@ fn prepare_staged_candidate(
                     }
                     final_extra_end = true;
                 }
-                Ok(StepOutcome::NeedsChoice(_)) | Err(_) => {
+                Ok(StepOutcome::NeedsChoice(_)) => {
+                    std::mem::swap(&mut scratch.state, &mut scratch.pre_end_turn_state);
+                }
+                Err(err) => {
+                    if should_abort_search_on_kernel_error(&err) {
+                        scratch.record_fatal_error(err);
+                        return None;
+                    }
                     std::mem::swap(&mut scratch.state, &mut scratch.pre_end_turn_state);
                 }
             }
@@ -2287,8 +2355,14 @@ fn probe_choice_selection_1t(
     clone_battle_state_into(&scratch.choice_paused_states[0], &mut scratch.state);
     scratch.choice_replay_attempts += 1;
     scratch.transitions += 1;
-    let Ok(mut out) = CombatEngine::resume_choice(&mut scratch.state, content, sel) else {
-        return f64::NEG_INFINITY;
+    let mut out = match CombatEngine::resume_choice(&mut scratch.state, content, sel) {
+        Ok(out) => out,
+        Err(err) => {
+            if should_abort_search_on_kernel_error(&err) {
+                scratch.record_fatal_error(err);
+            }
+            return f64::NEG_INFINITY;
+        }
     };
     let mut step_guard = 0usize;
     while let StepOutcome::NeedsChoice(sub_req) = out {
@@ -2296,9 +2370,16 @@ fn probe_choice_selection_1t(
         if step_guard >= 4 || sub_req.candidates.is_empty() {
             if sub_req.min_count == 0 {
                 scratch.choice_replay_attempts += 1;
-                if let Ok(next) = CombatEngine::resume_choice(&mut scratch.state, content, &[]) {
-                    out = next;
-                    continue;
+                match CombatEngine::resume_choice(&mut scratch.state, content, &[]) {
+                    Ok(next) => {
+                        out = next;
+                        continue;
+                    }
+                    Err(err) => {
+                        if should_abort_search_on_kernel_error(&err) {
+                            scratch.record_fatal_error(err);
+                        }
+                    }
                 }
             }
             return f64::NEG_INFINITY;
@@ -2311,9 +2392,14 @@ fn probe_choice_selection_1t(
             (start..sub_req.candidates.len()).collect()
         };
         scratch.choice_replay_attempts += 1;
-        let Ok(next) = CombatEngine::resume_choice(&mut scratch.state, content, &fallback_sel)
-        else {
-            return f64::NEG_INFINITY;
+        let next = match CombatEngine::resume_choice(&mut scratch.state, content, &fallback_sel) {
+            Ok(next) => next,
+            Err(err) => {
+                if should_abort_search_on_kernel_error(&err) {
+                    scratch.record_fatal_error(err);
+                }
+                return f64::NEG_INFINITY;
+            }
         };
         out = next;
     }
@@ -2334,22 +2420,36 @@ fn probe_choice_selection_1t(
     };
     let state_hash = hash_canonical_key(&scratch.state);
     let paused_base = &scratch.choice_paused_states[0];
-    let Some(probe) = evaluate_choice_probe_in_place_with_restore(
+    let mut restore_fatal: Option<KernelError> = None;
+    let probe_opt = evaluate_choice_probe_in_place_with_restore(
         &mut scratch.choice_probe_ws,
         &mut scratch.state,
         |s| {
             clone_battle_state_into(paused_base, s);
-            let Ok(mut re_out) = CombatEngine::resume_choice(s, content, sel) else {
-                return false;
+            let mut re_out = match CombatEngine::resume_choice(s, content, sel) {
+                Ok(out) => out,
+                Err(err) => {
+                    if should_abort_search_on_kernel_error(&err) {
+                        restore_fatal = Some(err);
+                    }
+                    return false;
+                }
             };
             let mut re_guard = 0usize;
             while let StepOutcome::NeedsChoice(sub_req) = re_out {
                 re_guard += 1;
                 if re_guard >= 4 || sub_req.candidates.is_empty() {
                     if sub_req.min_count == 0 {
-                        if let Ok(next) = CombatEngine::resume_choice(s, content, &[]) {
-                            re_out = next;
-                            continue;
+                        match CombatEngine::resume_choice(s, content, &[]) {
+                            Ok(next) => {
+                                re_out = next;
+                                continue;
+                            }
+                            Err(err) => {
+                                if should_abort_search_on_kernel_error(&err) {
+                                    restore_fatal = Some(err);
+                                }
+                            }
                         }
                     }
                     return false;
@@ -2361,8 +2461,14 @@ fn probe_choice_selection_1t(
                     let start = sub_req.candidates.len() - take;
                     (start..sub_req.candidates.len()).collect()
                 };
-                let Ok(next) = CombatEngine::resume_choice(s, content, &fallback_sel) else {
-                    return false;
+                let next = match CombatEngine::resume_choice(s, content, &fallback_sel) {
+                    Ok(next) => next,
+                    Err(err) => {
+                        if should_abort_search_on_kernel_error(&err) {
+                            restore_fatal = Some(err);
+                        }
+                        return false;
+                    }
                 };
                 re_out = next;
             }
@@ -2378,7 +2484,12 @@ fn probe_choice_selection_1t(
         opt_cost,
         opt_count as usize,
         task.parent_action_count + 1,
-    ) else {
+    );
+    if let Some(err) = restore_fatal {
+        scratch.record_fatal_error(err);
+        return f64::NEG_INFINITY;
+    }
+    let Some(probe) = probe_opt else {
         return f64::NEG_INFINITY;
     };
     encode_choice_probe_rank_score(&probe)
@@ -2447,6 +2558,9 @@ fn screen_high_branching_multi_pick(
         scores.reserve(distinct_n);
         order.reserve(distinct_n);
         for g in 0..distinct_n {
+            if scratch.fatal_error.is_some() {
+                break;
+            }
             let rep = groups[g].0;
             let sc = probe_choice_selection_1t(
                 scratch,
@@ -2462,6 +2576,11 @@ fn screen_high_branching_multi_pick(
             scores.push(sc);
             order.push(g);
         }
+        if scratch.fatal_error.is_some() {
+            scratch.marginal_scores = scores;
+            scratch.marginal_order = order;
+            return true;
+        }
         order.sort_unstable_by(|&a, &b| scores[b].total_cmp(&scores[a]).then_with(|| a.cmp(&b)));
 
         let mut greedy_flat: SmallVec<[usize; 24]> = SmallVec::new();
@@ -2470,7 +2589,9 @@ fn screen_high_branching_multi_pick(
         }
         let max_greedy = greedy_flat.len().min(req.max_count).min(15);
         for subset_size in 7..=max_greedy {
-            if scratch.choice_resolved.len() >= CHOICE_RESOLVED_CAPACITY {
+            if scratch.fatal_error.is_some()
+                || scratch.choice_resolved.len() >= CHOICE_RESOLVED_CAPACITY
+            {
                 break;
             }
             let mut sel: SmallVec<[usize; 8]> = greedy_flat[..subset_size].iter().copied().collect();
@@ -2478,8 +2599,15 @@ fn screen_high_branching_multi_pick(
             clone_battle_state_into(&scratch.choice_paused_states[0], &mut scratch.state);
             scratch.choice_replay_attempts += 1;
             scratch.transitions += 1;
-            let Ok(outcome) = CombatEngine::resume_choice(&mut scratch.state, content, &sel) else {
-                continue;
+            let outcome = match CombatEngine::resume_choice(&mut scratch.state, content, &sel) {
+                Ok(outcome) => outcome,
+                Err(err) => {
+                    if should_abort_search_on_kernel_error(&err) {
+                        scratch.record_fatal_error(err);
+                        break;
+                    }
+                    continue;
+                }
             };
             choices_so_far.push(sel);
             match outcome {
@@ -2556,6 +2684,9 @@ fn screen_high_branching_multi_pick(
         kept_orig.dedup();
         scratch.marginal_scores = scores;
         scratch.marginal_order = order;
+        if scratch.fatal_error.is_some() {
+            return true;
+        }
 
         let mut sub_req = req.clone();
         sub_req.candidates = kept_orig.iter().map(|&idx| req.candidates[idx]).collect();
@@ -2670,13 +2801,26 @@ fn screen_high_branching_multi_pick(
 
     // Round 1: tail vs head/mid anchors across distinct equivalence reps only
     for g in 0..distinct_n {
+        if scratch.fatal_error.is_some() {
+            break;
+        }
         let rep = groups[g].0;
         let sel_tail = build_k_selection(rep, &tail_anchors);
         let s_tail = probe_cached_sel(scratch, &sel_tail);
+        if scratch.fatal_error.is_some() {
+            break;
+        }
         let sel_head = build_k_selection(rep, &head_anchors);
         let s_head = probe_cached_sel(scratch, &sel_head);
         scores.push(s_tail.max(s_head));
         order.push(g);
+    }
+    if scratch.fatal_error.is_some() {
+        probed_sels.clear();
+        scratch.probed_sels = probed_sels;
+        scratch.marginal_scores = scores;
+        scratch.marginal_order = order;
+        return true;
     }
 
     // Round 2: coordinate ascent against Round-1 MVP anchors (top 3 + last)
@@ -2692,11 +2836,21 @@ fn screen_high_branching_multi_pick(
         }
     }
     for g in 0..distinct_n {
+        if scratch.fatal_error.is_some() {
+            break;
+        }
         let sel_mvp = build_k_selection(groups[g].0, &mvp_anchors);
         let s_mvp = probe_cached_sel(scratch, &sel_mvp);
         if s_mvp > scores[g] {
             scores[g] = s_mvp;
         }
+    }
+    if scratch.fatal_error.is_some() {
+        probed_sels.clear();
+        scratch.probed_sels = probed_sels;
+        scratch.marginal_scores = scores;
+        scratch.marginal_order = order;
+        return true;
     }
     order.sort_unstable_by(|&a, &b| scores[b].total_cmp(&scores[a]).then_with(|| a.cmp(&b)));
 
@@ -2825,6 +2979,9 @@ fn resolve_choices_recursive(
     } else {
         false
     };
+    if scratch.fatal_error.is_some() {
+        return;
+    }
 
     if !screened {
         let Some(req) = scratch.choice_paused_states[depth]
@@ -2867,7 +3024,9 @@ fn resolve_choices_recursive(
             })
         });
     for (opt_idx, sel) in choice_options.iter().enumerate() {
-        if scratch.choice_resolved.len() >= CHOICE_RESOLVED_CAPACITY {
+        if scratch.fatal_error.is_some()
+            || scratch.choice_resolved.len() >= CHOICE_RESOLVED_CAPACITY
+        {
             break;
         }
         let est_total_options = scratch.choice_resolved.len() + (num_options - opt_idx);
@@ -2894,8 +3053,15 @@ fn resolve_choices_recursive(
         }
         scratch.choice_replay_attempts += 1;
         scratch.transitions += 1;
-        let Ok(outcome) = CombatEngine::resume_choice(&mut scratch.state, content, sel) else {
-            continue;
+        let outcome = match CombatEngine::resume_choice(&mut scratch.state, content, sel) {
+            Ok(outcome) => outcome,
+            Err(err) => {
+                if should_abort_search_on_kernel_error(&err) {
+                    scratch.record_fatal_error(err);
+                    break;
+                }
+                continue;
+            }
         };
         choices_so_far.push(sel.clone());
         match outcome {
@@ -3637,6 +3803,9 @@ fn execute_action_from_parent(
             allow_paid_optional_potions,
             eval_mode,
         );
+        if scratch.fatal_error.is_some() {
+            return;
+        }
         commit_resolved_choices(
             scratch,
             task,
@@ -3682,8 +3851,14 @@ fn execute_action_from_parent(
         ActionSpec::EndTurn => CombatEngine::end_player_turn(&mut scratch.state, content),
     };
 
-    let Ok(outcome) = outcome else {
-        return;
+    let outcome = match outcome {
+        Ok(outcome) => outcome,
+        Err(err) => {
+            if should_abort_search_on_kernel_error(&err) {
+                scratch.record_fatal_error(err);
+            }
+            return;
+        }
     };
 
     match outcome {
@@ -3746,6 +3921,9 @@ fn execute_action_from_parent(
                 allow_paid_optional_potions,
                 eval_mode,
             );
+            if scratch.fatal_error.is_some() {
+                return;
+            }
             commit_resolved_choices(
                 scratch,
                 task,
@@ -3783,6 +3961,7 @@ fn expand_wave_tasks(
     allow_paid_optional_potions: bool,
     eval_mode: EvalMode,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     scratches: &mut [WorkerScratch],
     parent_states: &mut [BattleState],
     flat_tasks: &mut Vec<(usize, ActionTask)>,
@@ -3814,7 +3993,7 @@ fn expand_wave_tasks(
         let parent_state = &mut parent_states[0];
         let mut probe_access = ProbeCacheAccess::SingleThread(probe_cache);
         for (parent_rank, &pid) in parent_slice.iter().enumerate() {
-            if cancel.load(Ordering::Relaxed) {
+            if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                 parent_slices[parent_rank].store(0, Ordering::Relaxed);
                 continue;
             }
@@ -3822,7 +4001,8 @@ fn expand_wave_tasks(
             let p_has_la = pnode.has_choice_lookahead();
             let p_la_score = pnode.choice_lookahead_score();
             let pbytes = parent_source.get(pnode.state_handle);
-            if unpack_state(pbytes, static_ctx, parent_state).is_err() {
+            // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+            if unsafe { unpack_state(pbytes, static_ctx, parent_state) }.is_err() {
                 parent_slices[parent_rank].store(0, Ordering::Relaxed);
                 continue;
             }
@@ -3846,7 +4026,7 @@ fn expand_wave_tasks(
             );
             let c_start = scratch.candidates.len();
             for task in &local_tasks {
-                if cancel.load(Ordering::Relaxed) {
+                if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                     break;
                 }
                 execute_action_from_parent(
@@ -3866,6 +4046,10 @@ fn expand_wave_tasks(
                     allow_paid_optional_potions,
                     eval_mode,
                 );
+                if let Some(err) = scratch.fatal_error.take() {
+                    abort.record_error(err);
+                    break;
+                }
             }
             let c_len = scratch.candidates.len() - c_start;
             parent_slices[parent_rank].store(
@@ -3895,7 +4079,8 @@ fn expand_wave_tasks(
             let p_la_score = pnode.choice_lookahead_score();
             let pbytes = parent_source.get(pnode.state_handle);
             let pstate = &mut parent_states[unpacked_count];
-            if unpack_state(pbytes, static_ctx, pstate).is_err() {
+            // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+            if unsafe { unpack_state(pbytes, static_ctx, pstate) }.is_err() {
                 continue;
             }
             let p_idx = unpacked_count;
@@ -3940,7 +4125,7 @@ fn expand_wave_tasks(
             }
             let mut probe_access = ProbeCacheAccess::SingleThread(probe_cache);
             for &(p_idx, ref task) in flat_tasks.iter() {
-                if cancel.load(Ordering::Relaxed) {
+                if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                     break;
                 }
                 execute_action_from_parent(
@@ -3960,6 +4145,10 @@ fn expand_wave_tasks(
                     allow_paid_optional_potions,
                     eval_mode,
                 );
+                if let Some(err) = scratches[0].fatal_error.take() {
+                    abort.record_error(err);
+                    break;
+                }
             }
             return false;
         }
@@ -3987,7 +4176,7 @@ fn expand_wave_tasks(
                     scratch.wave_dirty = true;
                     let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
                     loop {
-                        if cancel.load(Ordering::Relaxed) {
+                        if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                             break;
                         }
                         let idx = next_ref.fetch_add(1, Ordering::Relaxed);
@@ -4012,12 +4201,16 @@ fn expand_wave_tasks(
                             allow_paid_optional_potions,
                             eval_mode,
                         );
+                        if let Some(err) = scratch.fatal_error.take() {
+                            abort.record_error(err);
+                            break;
+                        }
                     }
                 });
             }
             let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
             loop {
-                if cancel.load(Ordering::Relaxed) {
+                if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                     break;
                 }
                 let idx = next_idx.fetch_add(1, Ordering::Relaxed);
@@ -4042,6 +4235,10 @@ fn expand_wave_tasks(
                     allow_paid_optional_potions,
                     eval_mode,
                 );
+                if let Some(err) = first_scratch.fatal_error.take() {
+                    abort.record_error(err);
+                    break;
+                }
             }
         });
         return false;
@@ -4081,7 +4278,7 @@ fn expand_wave_tasks(
                 scratch.wave_dirty = true;
                 let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
                 loop {
-                    if cancel.load(Ordering::Relaxed) {
+                    if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                         break;
                     }
                     let cur = next_ref.load(Ordering::Relaxed);
@@ -4095,7 +4292,7 @@ fn expand_wave_tasks(
                     }
                     let batch_end = (batch_start + chunk).min(total);
                     for parent_rank in batch_start..batch_end {
-                        if cancel.load(Ordering::Relaxed) {
+                        if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                             break;
                         }
                         let pid = parent_slice[parent_rank];
@@ -4103,7 +4300,8 @@ fn expand_wave_tasks(
                         let p_has_la = pnode.has_choice_lookahead();
                         let p_la_score = pnode.choice_lookahead_score();
                         let pbytes = parent_source.get(pnode.state_handle);
-                        if unpack_state(pbytes, static_ctx, parent_state).is_err() {
+                        // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+                        if unsafe { unpack_state(pbytes, static_ctx, parent_state) }.is_err() {
                             continue;
                         }
                         let mut local_tasks = std::mem::take(&mut scratch.action_buf);
@@ -4126,7 +4324,7 @@ fn expand_wave_tasks(
                         );
                         let c_start = scratch.candidates.len();
                         for task in &local_tasks {
-                            if cancel.load(Ordering::Relaxed) {
+                            if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                                 break;
                             }
                             execute_action_from_parent(
@@ -4146,6 +4344,10 @@ fn expand_wave_tasks(
                                 allow_paid_optional_potions,
                                 eval_mode,
                             );
+                            if let Some(err) = scratch.fatal_error.take() {
+                                abort.record_error(err);
+                                break;
+                            }
                         }
                         let c_len = scratch.candidates.len() - c_start;
                         if c_len > 0 {
@@ -4163,7 +4365,7 @@ fn expand_wave_tasks(
         first_scratch.wave_dirty = true;
         let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
         loop {
-            if cancel.load(Ordering::Relaxed) {
+            if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                 break;
             }
             let cur = next_parent.load(Ordering::Relaxed);
@@ -4177,7 +4379,7 @@ fn expand_wave_tasks(
             }
             let batch_end = (batch_start + chunk).min(total);
             for parent_rank in batch_start..batch_end {
-                if cancel.load(Ordering::Relaxed) {
+                if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                     break;
                 }
                 let pid = parent_slice[parent_rank];
@@ -4185,7 +4387,8 @@ fn expand_wave_tasks(
                 let p_has_la = pnode.has_choice_lookahead();
                 let p_la_score = pnode.choice_lookahead_score();
                 let pbytes = parent_source.get(pnode.state_handle);
-                if unpack_state(pbytes, static_ctx, first_parent).is_err() {
+                // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+                if unsafe { unpack_state(pbytes, static_ctx, first_parent) }.is_err() {
                     continue;
                 }
                 let mut local_tasks = std::mem::take(&mut first_scratch.action_buf);
@@ -4208,7 +4411,7 @@ fn expand_wave_tasks(
                 );
                 let c_start = first_scratch.candidates.len();
                 for task in &local_tasks {
-                    if cancel.load(Ordering::Relaxed) {
+                    if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                         break;
                     }
                     execute_action_from_parent(
@@ -4228,6 +4431,10 @@ fn expand_wave_tasks(
                         allow_paid_optional_potions,
                         eval_mode,
                     );
+                    if let Some(err) = first_scratch.fatal_error.take() {
+                        abort.record_error(err);
+                        break;
+                    }
                 }
                 let c_len = first_scratch.candidates.len() - c_start;
                 if c_len > 0 {
@@ -4625,6 +4832,7 @@ fn run_beam_pass(
     incumbent: &mut FrozenIncumbentBound,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     options: PassSearchOptions,
     fixed_prefix: Option<&[PlannedAction]>,
@@ -4649,6 +4857,7 @@ fn run_beam_pass(
         incumbent,
         pool,
         cancel,
+        abort,
         progress_cb,
         options,
         fixed_prefix,
@@ -4667,6 +4876,7 @@ fn run_beam_pass_with_resources(
     incumbent: &mut FrozenIncumbentBound,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     options: PassSearchOptions,
     fixed_prefix: Option<&[PlannedAction]>,
@@ -4688,6 +4898,7 @@ fn run_beam_pass_with_resources(
                     incumbent,
                     pool,
                     cancel,
+                    abort,
                     progress_cb,
                     options,
                     fixed_prefix,
@@ -4706,6 +4917,7 @@ fn run_beam_pass_with_resources(
         incumbent,
         pool,
         cancel,
+        abort,
         progress_cb,
         options,
         fixed_prefix,
@@ -4724,6 +4936,7 @@ fn run_beam_pass_with_resources_inner(
     incumbent: &mut FrozenIncumbentBound,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     options: PassSearchOptions,
     fixed_prefix: Option<&[PlannedAction]>,
@@ -4990,44 +5203,6 @@ fn run_beam_pass_with_resources_inner(
                 PowerRoutePriority::Low,
             )
         };
-        const _: fn(&SearchNode) = |n| {
-            let SearchNode {
-                state_hash: _,
-                forced_used_mask: _,
-                beam_rank_score: _,
-                rollout_score: _,
-                por_key: _,
-                fast_eval: _,
-                state_handle: _,
-                action: _,
-                parent_raw: _,
-                choices_offset: _,
-                rare_eval_idx: _,
-                effective_defense: _,
-                board_investment: _,
-                persistent_buff_value: _,
-                max_dark_evoke: _,
-                total_poison_and_doom: _,
-                turn: _,
-                action_count: _,
-                used_potion_slot_mask: _,
-                potion_strategic_cost: _,
-                optional_paid_potion_cost: _,
-                setup_score: _,
-                reachable_hand_value: _,
-                optionality_cards: _,
-                choices_len: _,
-                potion_count: _,
-                explicit_potion_count: _,
-                optional_paid_potion_count: _,
-                automatic_potion_count: _,
-                ambergris_count: _,
-                forced_ambergris_count: _,
-                boundary_rank: _,
-                best_power_priority: _,
-                node_flags: _,
-            } = *n;
-        };
         let turn = cand.turn.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
         let potion_strategic_cost =
             cand.potion_strategic_cost.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
@@ -5042,42 +5217,41 @@ fn run_beam_pass_with_resources_inner(
         let automatic_potion_count = cand.automatic_potion_count.min(u8::MAX as u16) as u8;
         let ambergris_count = cand.ambergris_count.min(u8::MAX as u16) as u8;
         let forced_ambergris_count = cand.forced_ambergris_count.min(u8::MAX as u16) as u8;
-        arena.push_node_with(|dst| unsafe {
-            use core::ptr::addr_of_mut;
-            addr_of_mut!((*dst).state_hash).write(cand.state_hash);
-            addr_of_mut!((*dst).forced_used_mask).write(cand.forced_used_mask);
-            addr_of_mut!((*dst).beam_rank_score).write(beam_rank_score);
-            addr_of_mut!((*dst).rollout_score).write(rollout_score);
-            addr_of_mut!((*dst).por_key).write(cand.por_key);
-            addr_of_mut!((*dst).fast_eval).write(cand.fast_eval);
-            addr_of_mut!((*dst).state_handle).write(state_handle);
-            addr_of_mut!((*dst).action).write(cand.action);
-            addr_of_mut!((*dst).parent_raw).write(cand.parent_id.0);
-            addr_of_mut!((*dst).choices_offset).write(choices_offset);
-            addr_of_mut!((*dst).rare_eval_idx).write(rare_eval_idx);
-            addr_of_mut!((*dst).effective_defense).write(effective_defense);
-            addr_of_mut!((*dst).board_investment).write(board_investment);
-            addr_of_mut!((*dst).persistent_buff_value).write(persistent_buff_value);
-            addr_of_mut!((*dst).max_dark_evoke).write(max_dark_evoke);
-            addr_of_mut!((*dst).total_poison_and_doom).write(total_poison_and_doom);
-            addr_of_mut!((*dst).turn).write(turn);
-            addr_of_mut!((*dst).action_count).write(cand.action_count);
-            addr_of_mut!((*dst).used_potion_slot_mask).write(cand.used_potion_slot_mask);
-            addr_of_mut!((*dst).potion_strategic_cost).write(potion_strategic_cost);
-            addr_of_mut!((*dst).optional_paid_potion_cost).write(optional_paid_potion_cost);
-            addr_of_mut!((*dst).setup_score).write(setup_score);
-            addr_of_mut!((*dst).reachable_hand_value).write(reachable_hand_value);
-            addr_of_mut!((*dst).optionality_cards).write(optionality_cards);
-            addr_of_mut!((*dst).choices_len).write(choices_len);
-            addr_of_mut!((*dst).potion_count).write(potion_count);
-            addr_of_mut!((*dst).explicit_potion_count).write(explicit_potion_count);
-            addr_of_mut!((*dst).optional_paid_potion_count).write(optional_paid_potion_count);
-            addr_of_mut!((*dst).automatic_potion_count).write(automatic_potion_count);
-            addr_of_mut!((*dst).ambergris_count).write(ambergris_count);
-            addr_of_mut!((*dst).forced_ambergris_count).write(forced_ambergris_count);
-            addr_of_mut!((*dst).boundary_rank).write(0);
-            addr_of_mut!((*dst).best_power_priority).write(best_power_priority);
-            addr_of_mut!((*dst).node_flags).write(node_flags);
+        arena.push_node_with(|| SearchNode {
+            state_hash: cand.state_hash,
+            forced_used_mask: cand.forced_used_mask,
+            beam_rank_score,
+            rollout_score,
+            por_key: cand.por_key,
+            fast_eval: cand.fast_eval,
+            state_handle,
+            action: cand.action,
+            parent_raw: cand.parent_id.0,
+            choices_offset,
+            rare_eval_idx,
+            effective_defense,
+            board_investment,
+            persistent_buff_value,
+            max_dark_evoke,
+            total_poison_and_doom,
+            turn,
+            action_count: cand.action_count,
+            used_potion_slot_mask: cand.used_potion_slot_mask,
+            potion_strategic_cost,
+            optional_paid_potion_cost,
+            setup_score,
+            reachable_hand_value,
+            optionality_cards,
+            choices_len,
+            potion_count,
+            explicit_potion_count,
+            optional_paid_potion_count,
+            automatic_potion_count,
+            ambergris_count,
+            forced_ambergris_count,
+            boundary_rank: 0,
+            best_power_priority,
+            node_flags,
         })
     }
 
@@ -5685,6 +5859,10 @@ fn run_beam_pass_with_resources_inner(
                 options.eval_mode,
             );
         }
+        if let Some(err) = scratches[0].fatal_error.take() {
+            abort.record_error(err);
+            return Err(abort.clone_error().expect("abort error recorded"));
+        }
         let setup_len = scratches[0].candidates.len();
         parent_slices[0].store(
             if setup_len > 0 {
@@ -5953,6 +6131,9 @@ fn run_beam_pass_with_resources_inner(
                 }
             }
         }
+        if let Some(err) = abort.clone_error() {
+            return Err(err);
+        }
         if cancel.load(Ordering::Relaxed) {
             termination = "Cancelled";
             break;
@@ -5997,6 +6178,9 @@ fn run_beam_pass_with_resources_inner(
         for _action_depth in 0..=MAX_ACTIONS_PER_TURN {
             if active_frontier.is_empty() {
                 break;
+            }
+            if let Some(err) = abort.clone_error() {
+                return Err(err);
             }
             if cancel.load(Ordering::Relaxed) {
                 termination = "Cancelled";
@@ -6056,11 +6240,15 @@ fn run_beam_pass_with_resources_inner(
                 options.allow_paid_optional_potions,
                 options.eval_mode,
                 cancel,
+                abort,
                 scratches,
                 parent_states,
                 flat_tasks,
                 parent_slices,
             );
+            if let Some(err) = abort.clone_error() {
+                return Err(err);
+            }
 
             next_step_candidates.clear();
             accepted_mid_turn.clear();
@@ -6261,7 +6449,7 @@ fn run_beam_pass_with_resources_inner(
                                 scratch.wave_dirty = true;
                                 let mut probe_access = ProbeCacheAccess::Shared(probe_cache_ref);
                                 loop {
-                                    if cancel.load(Ordering::Relaxed) {
+                                    if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
                                         break;
                                     }
                                     let rank = next_ref.fetch_add(1, Ordering::Relaxed);
@@ -6271,7 +6459,8 @@ fn run_beam_pass_with_resources_inner(
                                     let nid = sp_slice[rank];
                                     let pnode = arena_ref.get(nid);
                                     let pbytes = sp_parent_source.get(pnode.state_handle);
-                                    if unpack_state(pbytes, static_ctx_ref, parent_state)
+                                    // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+                                    if unsafe { unpack_state(pbytes, static_ctx_ref, parent_state) }
                                         .is_err()
                                     {
                                         continue;
@@ -6303,6 +6492,10 @@ fn run_beam_pass_with_resources_inner(
                                         options.allow_paid_optional_potions,
                                         options.eval_mode,
                                     );
+                                    if let Some(err) = scratch.fatal_error.take() {
+                                        abort.record_error(err);
+                                        break;
+                                    }
                                     let c_len = scratch.candidates.len() - c_start;
                                     if c_len > 0 {
                                         slices_ref[rank].store(
@@ -6323,9 +6516,13 @@ fn run_beam_pass_with_resources_inner(
                     };
                     let mut probe_access = ProbeCacheAccess::SingleThread(choice_probe_cache);
                     for (rank, &nid) in sp_slice.iter().enumerate() {
+                        if cancel.load(Ordering::Relaxed) || abort.is_tripped() {
+                            break;
+                        }
                         let pnode = arena.get(nid).clone();
                         let pbytes = sp_parent_source.get(pnode.state_handle);
-                        if unpack_state(pbytes, &root.static_ctx, &mut parent_states[0])
+                        // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+                        if unsafe { unpack_state(pbytes, &root.static_ctx, &mut parent_states[0]) }
                             .is_err()
                         {
                             continue;
@@ -6356,6 +6553,10 @@ fn run_beam_pass_with_resources_inner(
                             options.allow_paid_optional_potions,
                             options.eval_mode,
                         );
+                        if let Some(err) = scratches[0].fatal_error.take() {
+                            abort.record_error(err);
+                            break;
+                        }
                         let c_len = scratches[0].candidates.len() - c_start;
                         if c_len > 0 {
                             parent_slices[rank].store(
@@ -6364,6 +6565,9 @@ fn run_beam_pass_with_resources_inner(
                             );
                         }
                     }
+                }
+                if let Some(err) = abort.clone_error() {
+                    return Err(err);
                 }
                 sp_mid_unused.clear();
                 commit_wave_candidates(
@@ -6995,6 +7199,7 @@ fn run_novelty_pass(
     cert: &ClosureCertificate,
     _incumbent_table: &PrimaryIncumbentTable,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     options: &NoveltySearchOptions,
 ) -> Result<BeamRunOutput, KernelError> {
     let started = Instant::now();
@@ -7074,6 +7279,9 @@ fn run_novelty_pass(
     let mut termination = "OpenExhausted";
 
     while let Some(item) = open.dequeue() {
+        if let Some(err) = abort.clone_error() {
+            return Err(err);
+        }
         if cancel.load(Ordering::Relaxed) {
             termination = "Cancelled";
             break;
@@ -7098,7 +7306,8 @@ fn run_novelty_pass(
 
         expanded_nodes += 1;
         let pbytes = main_arena.get(pnode.state_handle);
-        if unpack_state(pbytes, &root.static_ctx, &mut parent_state).is_err() {
+        // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+        if unsafe { unpack_state(pbytes, &root.static_ctx, &mut parent_state) }.is_err() {
             continue;
         }
         let p_has_la = pnode.has_choice_lookahead();
@@ -7150,6 +7359,10 @@ fn run_novelty_pass(
                     true,
                     EvalMode::Balanced,
                 );
+                if let Some(err) = scratch.fatal_error.take() {
+                    abort.record_error(err);
+                    return Err(abort.clone_error().expect("abort error recorded"));
+                }
             }
         }
 
@@ -7219,7 +7432,8 @@ fn run_novelty_pass(
                 continue;
             }
             let state_bytes = scratch.slab.get(cand.state_slab_idx, cand.state_off, cand.state_len);
-            if unpack_state(state_bytes, &root.static_ctx, &mut scratch.state).is_err() {
+            // SAFETY: `state_bytes` was written by `pack_state` in this process.
+            if unsafe { unpack_state(state_bytes, &root.static_ctx, &mut scratch.state) }.is_err() {
                 continue;
             }
             let cfast = evaluate_fast(&scratch.state, content, &root_baseline, None);
@@ -7477,6 +7691,7 @@ fn run_boss_tempo_depth_first(
     cert: &ClosureCertificate,
     _incumbent_table: &PrimaryIncumbentTable,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     options: &BossTempoSearchOptions,
 ) -> Result<BeamRunOutput, KernelError> {
     let started = Instant::now();
@@ -7533,6 +7748,9 @@ fn run_boss_tempo_depth_first(
     let mut termination = "IterationExhausted";
 
     while let Some(item) = pending.pop() {
+        if let Some(err) = abort.clone_error() {
+            return Err(err);
+        }
         if cancel.load(Ordering::Relaxed) {
             termination = "Cancelled";
             break;
@@ -7568,7 +7786,8 @@ fn run_boss_tempo_depth_first(
         }
         expanded_nodes += 1;
         let pbytes = main_arena.get(pnode.state_handle);
-        if unpack_state(pbytes, &root.static_ctx, &mut parent_state).is_err() {
+        // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+        if unsafe { unpack_state(pbytes, &root.static_ctx, &mut parent_state) }.is_err() {
             continue;
         }
         let p_has_la = pnode.has_choice_lookahead();
@@ -7611,6 +7830,10 @@ fn run_boss_tempo_depth_first(
                     true,
                     EvalMode::Balanced,
                 );
+                if let Some(err) = scratch.fatal_error.take() {
+                    abort.record_error(err);
+                    return Err(abort.clone_error().expect("abort error recorded"));
+                }
             }
         }
 
@@ -7893,7 +8116,9 @@ fn has_reached_acceptable_battle_hp_loss_raw(
         && optional_paid_potion_count == 0
         && (root.effective_potion_policy != SolverPotionPolicy::RequireAtLeastOne
             || (explicit_potion_count as usize) >= root.minimum_required_potion_uses)
-        && root.prior_battle_hp_lost + (f.cumulative_hp_lost as i32) <= policy.acceptable_battle_hp_loss
+        && root.prior_battle_hp_lost
+            + ((f.cumulative_hp_lost as i32) - root.initial_cumulative_hp_lost).max(0)
+            <= policy.acceptable_battle_hp_loss
 }
 
 fn has_reached_acceptable_battle_hp_loss_node(
@@ -7933,7 +8158,9 @@ fn has_reached_acceptable_battle_hp_loss(
         && out.optional_paid_potion_count == 0
         && (root.effective_potion_policy != SolverPotionPolicy::RequireAtLeastOne
             || out.explicit_potion_count >= root.minimum_required_potion_uses)
-        && root.prior_battle_hp_lost + out.hp_lost <= policy.acceptable_battle_hp_loss
+        && root.prior_battle_hp_lost
+            + (out.hp_lost - root.initial_cumulative_hp_lost).max(0)
+            <= policy.acceptable_battle_hp_loss
 }
 
 fn can_finish_target_portfolio(
@@ -7952,18 +8179,22 @@ fn can_finish_target_portfolio(
 #[inline]
 fn satisfies_run_output_hard_constraints(out: &BeamRunOutput) -> bool {
     let root = &out.root_baseline;
+    let require_hard = root.has_active_hard_potion_constraint();
+    if require_hard && out.best_node.is_none() {
+        return false;
+    }
     let policy_ok = match root.effective_potion_policy {
         SolverPotionPolicy::Disabled => {
             out.optional_paid_potion_count == 0
                 && out.explicit_potion_count <= root.forced_directive_count
         }
         SolverPotionPolicy::RequireAtLeastOne => {
-            out.explicit_potion_count >= root.minimum_required_potion_uses
+            !require_hard || out.explicit_potion_count >= root.minimum_required_potion_uses
         }
         SolverPotionPolicy::Smart => true,
     };
     out.all_forced_uses_satisfied
-        && out.explicit_potion_count >= root.minimum_required_potion_uses
+        && (!require_hard || out.explicit_potion_count >= root.minimum_required_potion_uses)
         && policy_ok
 }
 
@@ -8109,6 +8340,7 @@ fn run_adaptive_stage(
     shared_incumbent: &mut FrozenIncumbentBound,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     started: &Instant,
     stage_width: usize,
@@ -8125,6 +8357,9 @@ fn run_adaptive_stage(
     selected_best: &mut Option<BeamRunOutput>,
     resources: &mut PassResources,
 ) -> Result<(), KernelError> {
+    if let Some(err) = abort.clone_error() {
+        return Err(err);
+    }
     let stage_available = stage_node_ceiling.saturating_sub(*total_expanded);
     if stage_available == 0 || cancel.load(Ordering::Relaxed) {
         return Ok(());
@@ -8183,6 +8418,7 @@ fn run_adaptive_stage(
         shared_incumbent,
         pool,
         cancel,
+        abort,
         progress_cb,
         PassSearchOptions {
             allow_paid_optional_potions: phase_a_allow_paid,
@@ -8313,6 +8549,7 @@ fn run_adaptive_stage(
                 shared_incumbent,
                 pool,
                 cancel,
+                abort,
                 progress_cb,
                 PassSearchOptions {
                     allow_paid_optional_potions: true,
@@ -8437,6 +8674,7 @@ fn solve_beam_or_portfolio(
     incumbent_table: &PrimaryIncumbentTable,
     pool: Option<&rayon::ThreadPool>,
     cancel: &AtomicBool,
+    abort: &SearchAbortSlot,
     progress_cb: Option<&(dyn Fn(&SearchProgress) + Sync)>,
     total_expanded: &mut usize,
     total_transitions: &mut u64,
@@ -8458,6 +8696,7 @@ fn solve_beam_or_portfolio(
             &mut incumbent,
             pool,
             cancel,
+            abort,
             progress_cb,
             PassSearchOptions::default(),
             None,
@@ -8533,6 +8772,7 @@ fn solve_beam_or_portfolio(
                 &mut shared_incumbent,
                 pool,
                 cancel,
+                abort,
                 progress_cb,
                 PassSearchOptions::default(),
                 None,
@@ -8555,6 +8795,7 @@ fn solve_beam_or_portfolio(
             &mut shared_incumbent,
             pool,
             cancel,
+            abort,
             progress_cb,
             &started,
             stage1_width,
@@ -8583,6 +8824,7 @@ fn solve_beam_or_portfolio(
                 &mut shared_incumbent,
                 pool,
                 cancel,
+                abort,
                 progress_cb,
                 PassSearchOptions::default(),
                 None,
@@ -8639,6 +8881,7 @@ fn solve_beam_or_portfolio(
                 &mut shared_incumbent,
                 pool,
                 cancel,
+                abort,
                 progress_cb,
                 &started,
                 stage2_width,
@@ -8710,6 +8953,7 @@ fn solve_beam_or_portfolio(
                     &mut shared_incumbent,
                     pool,
                     cancel,
+                    abort,
                     progress_cb,
                     &started,
                     stage3_width,
@@ -8786,7 +9030,7 @@ fn solve_beam_or_portfolio(
                     won,
                     battle_hp_lost: Some(hp_lost),
                     potion_count: potions,
-                    stop_portfolio: cancel.load(Ordering::Relaxed),
+                    stop_portfolio: cancel.load(Ordering::Relaxed) || abort.is_tripped(),
                     memory_truncated: false,
                 }
             }
@@ -8865,6 +9109,7 @@ fn solve_beam_or_portfolio(
                     &mut member_incumbent,
                     pool,
                     cancel,
+                    abort,
                     None,
                     PassSearchOptions::default(),
                     None,
@@ -8892,6 +9137,7 @@ fn solve_beam_or_portfolio(
                     &mut member_incumbent,
                     pool,
                     cancel,
+                    abort,
                     progress_cb,
                     PassSearchOptions::default(),
                     None,
@@ -8904,7 +9150,7 @@ fn solve_beam_or_portfolio(
         )
     };
 
-    if let Some(err) = pass_error.into_inner() {
+    if let Some(err) = pass_error.into_inner().or_else(|| abort.clone_error()) {
         return Err(err);
     }
     let out = outcome.selected.expect("portfolio produced no output");
@@ -9075,6 +9321,7 @@ impl CombatSearchCoordinator {
         let mut total_por_pruned = 0u64;
 
         let act_ending_boss = root.static_ctx.room_type == RoomType::Boss;
+        let abort = SearchAbortSlot::new();
 
         let mut selected = if policy.use_novelty_search && !policy.adaptive_novelty_refinement {
             if let Some(exp_profile) = policy
@@ -9089,6 +9336,7 @@ impl CombatSearchCoordinator {
                     &cert,
                     &incumbent_table,
                     cancel,
+                    &abort,
                     &policy.novelty_options,
                 )?;
                 total_expanded += exp_out.expanded_nodes;
@@ -9122,6 +9370,7 @@ impl CombatSearchCoordinator {
                         &incumbent_table,
                         pool_ref,
                         cancel,
+                        &abort,
                         progress_cb,
                         &mut total_expanded,
                         &mut total_transitions,
@@ -9147,6 +9396,7 @@ impl CombatSearchCoordinator {
                     &incumbent_table,
                     pool_ref,
                     cancel,
+                    &abort,
                     progress_cb,
                     &mut total_expanded,
                     &mut total_transitions,
@@ -9168,6 +9418,7 @@ impl CombatSearchCoordinator {
                 &incumbent_table,
                 pool_ref,
                 cancel,
+                &abort,
                 progress_cb,
                 &mut total_expanded,
                 &mut total_transitions,
@@ -9204,6 +9455,7 @@ impl CombatSearchCoordinator {
                     &cert,
                     &incumbent_table,
                     cancel,
+                    &abort,
                     &policy.novelty_options,
                 )?;
                 total_expanded += nov_out.expanded_nodes;
@@ -9230,6 +9482,7 @@ impl CombatSearchCoordinator {
                 &incumbent_table,
                 pool_ref,
                 cancel,
+                &abort,
                 progress_cb,
                 &mut total_expanded,
                 &mut total_transitions,
@@ -9260,7 +9513,7 @@ impl CombatSearchCoordinator {
             scout_profile.max_expanded_nodes = base_profile.max_expanded_nodes.min(150_000);
             scout_profile.soft_time_budget_ms = etc_remaining_ms().max(1);
             let mut etc_incumbent = FrozenIncumbentBound::default();
-            if let Ok(scout) = run_beam_pass_with_resources(
+            match run_beam_pass_with_resources(
                 root,
                 content,
                 policy,
@@ -9270,6 +9523,7 @@ impl CombatSearchCoordinator {
                 &mut etc_incumbent,
                 pool_ref,
                 cancel,
+                &abort,
                 None,
                 PassSearchOptions {
                     early_turn_scout_depth: policy.early_turn_exploration_depth,
@@ -9278,66 +9532,82 @@ impl CombatSearchCoordinator {
                 None,
                 &mut resources,
             ) {
-                total_expanded += scout.expanded_nodes;
-                total_transitions += scout.transition_count;
-                total_choice_replays += scout.choice_replay_attempts;
-                if is_better_run_output(&scout, &selected) {
-                    selected = scout;
-                } else {
-                    let ordered = interleave_potion_frontiers(scout.early_turn_frontiers);
-                    let mut cont_budget = EARLY_TURN_EXPLORATION_NODE_BUDGET;
-                    for (rank, cand) in ordered
-                        .into_iter()
-                        .take(EARLY_TURN_EXPLORATION_MAX_RANK_LIMIT)
-                        .enumerate()
-                    {
-                        if rank >= EARLY_TURN_EXPLORATION_INITIAL_RANK_LIMIT && !selected.won {
-                            break;
-                        }
-                        let rem_ms = etc_remaining_ms();
-                        if cont_budget < 100 || rem_ms == 0 || cancel.load(Ordering::Relaxed) {
-                            break;
-                        }
-                        let _ = select_early_turn_continuation_incumbent(
-                            incumbent_table.try_get(PrimaryIncumbentBucket {
-                                potions: 0,
-                                forfeits_gold: false,
-                            }),
-                            false,
-                            selected.potion_count > 0,
-                            cand.actions
-                                .iter()
-                                .any(|a| matches!(a, PlannedAction::UsePotion { .. })),
-                        );
-                        let mut cont_profile = base_profile.clone();
-                        cont_profile.max_expanded_nodes =
-                            cont_budget.min(base_profile.max_expanded_nodes);
-                        cont_profile.soft_time_budget_ms = rem_ms;
-                        if let Ok(cont) = run_beam_pass_with_resources(
-                            root,
-                            content,
-                            policy,
-                            &cont_profile,
-                            &cert,
-                            &incumbent_table,
-                            &mut etc_incumbent,
-                            pool_ref,
-                            cancel,
-                            None,
-                            PassSearchOptions::default(),
-                            Some(&cand.actions),
-                            &mut resources,
-                        ) {
-                            cont_budget = cont_budget.saturating_sub(cont.expanded_nodes);
-                            total_expanded += cont.expanded_nodes;
-                            total_transitions += cont.transition_count;
-                            total_choice_replays += cont.choice_replay_attempts;
-                            if is_better_run_output(&cont, &selected) {
-                                selected = cont;
+                Ok(scout) => {
+                    total_expanded += scout.expanded_nodes;
+                    total_transitions += scout.transition_count;
+                    total_choice_replays += scout.choice_replay_attempts;
+                    if is_better_run_output(&scout, &selected) {
+                        selected = scout;
+                    } else {
+                        let ordered = interleave_potion_frontiers(scout.early_turn_frontiers);
+                        let mut cont_budget = EARLY_TURN_EXPLORATION_NODE_BUDGET;
+                        for (rank, cand) in ordered
+                            .into_iter()
+                            .take(EARLY_TURN_EXPLORATION_MAX_RANK_LIMIT)
+                            .enumerate()
+                        {
+                            if rank >= EARLY_TURN_EXPLORATION_INITIAL_RANK_LIMIT && !selected.won {
+                                break;
+                            }
+                            let rem_ms = etc_remaining_ms();
+                            if cont_budget < 100 || rem_ms == 0 || cancel.load(Ordering::Relaxed) {
+                                break;
+                            }
+                            let _ = select_early_turn_continuation_incumbent(
+                                incumbent_table.try_get(PrimaryIncumbentBucket {
+                                    potions: 0,
+                                    forfeits_gold: false,
+                                }),
+                                false,
+                                selected.potion_count > 0,
+                                cand.actions
+                                    .iter()
+                                    .any(|a| matches!(a, PlannedAction::UsePotion { .. })),
+                            );
+                            let mut cont_profile = base_profile.clone();
+                            cont_profile.max_expanded_nodes =
+                                cont_budget.min(base_profile.max_expanded_nodes);
+                            cont_profile.soft_time_budget_ms = rem_ms;
+                            match run_beam_pass_with_resources(
+                                root,
+                                content,
+                                policy,
+                                &cont_profile,
+                                &cert,
+                                &incumbent_table,
+                                &mut etc_incumbent,
+                                pool_ref,
+                                cancel,
+                                &abort,
+                                None,
+                                PassSearchOptions::default(),
+                                Some(&cand.actions),
+                                &mut resources,
+                            ) {
+                                Ok(cont) => {
+                                    cont_budget = cont_budget.saturating_sub(cont.expanded_nodes);
+                                    total_expanded += cont.expanded_nodes;
+                                    total_transitions += cont.transition_count;
+                                    total_choice_replays += cont.choice_replay_attempts;
+                                    if is_better_run_output(&cont, &selected) {
+                                        selected = cont;
+                                    }
+                                }
+                                Err(err)
+                                    if abort.is_tripped()
+                                        || should_abort_search_on_kernel_error(&err) =>
+                                {
+                                    return Err(err);
+                                }
+                                Err(_) => {}
                             }
                         }
                     }
                 }
+                Err(err) if abort.is_tripped() || should_abort_search_on_kernel_error(&err) => {
+                    return Err(err);
+                }
+                Err(_) => {}
             }
         }
 
@@ -9358,7 +9628,7 @@ impl CombatSearchCoordinator {
                 policy.time_budget_ms.max(1000),
             );
             let mut tempo_incumbent = FrozenIncumbentBound::default();
-            if let Ok(scout) = run_beam_pass_with_resources(
+            match run_beam_pass_with_resources(
                 root,
                 content,
                 policy,
@@ -9368,6 +9638,7 @@ impl CombatSearchCoordinator {
                 &mut tempo_incumbent,
                 pool_ref,
                 cancel,
+                &abort,
                 None,
                 PassSearchOptions {
                     boss_tempo_scout_turns: policy.boss_tempo_options.scout_turns.max(1),
@@ -9376,42 +9647,58 @@ impl CombatSearchCoordinator {
                 None,
                 &mut resources,
             ) {
-                total_expanded += scout.expanded_nodes;
-                total_transitions += scout.transition_count;
-                total_choice_replays += scout.choice_replay_attempts;
-                let prefixes = scout.boss_tempo_prefixes.clone();
-                if is_better_run_output(&scout, &selected) {
-                    selected = scout;
-                }
-                for prefix in prefixes.into_iter().take(2) {
-                    if cancel.load(Ordering::Relaxed) {
-                        break;
+                Ok(scout) => {
+                    total_expanded += scout.expanded_nodes;
+                    total_transitions += scout.transition_count;
+                    total_choice_replays += scout.choice_replay_attempts;
+                    let prefixes = scout.boss_tempo_prefixes.clone();
+                    if is_better_run_output(&scout, &selected) {
+                        selected = scout;
                     }
-                    if let Ok(cont) = run_beam_pass_with_resources(
-                        root,
-                        content,
-                        policy,
-                        &tempo_budget,
-                        &cert,
-                        &incumbent_table,
-                        &mut tempo_incumbent,
-                        pool_ref,
-                        cancel,
-                        None,
-                        PassSearchOptions::default(),
-                        Some(&prefix.actions),
-                        &mut resources,
-                    ) {
-                        total_expanded += cont.expanded_nodes;
-                        total_transitions += cont.transition_count;
-                        total_choice_replays += cont.choice_replay_attempts;
-                        if is_better_run_output(&cont, &selected) {
-                            selected = cont;
+                    for prefix in prefixes.into_iter().take(2) {
+                        if cancel.load(Ordering::Relaxed) {
+                            break;
+                        }
+                        match run_beam_pass_with_resources(
+                            root,
+                            content,
+                            policy,
+                            &tempo_budget,
+                            &cert,
+                            &incumbent_table,
+                            &mut tempo_incumbent,
+                            pool_ref,
+                            cancel,
+                            &abort,
+                            None,
+                            PassSearchOptions::default(),
+                            Some(&prefix.actions),
+                            &mut resources,
+                        ) {
+                            Ok(cont) => {
+                                total_expanded += cont.expanded_nodes;
+                                total_transitions += cont.transition_count;
+                                total_choice_replays += cont.choice_replay_attempts;
+                                if is_better_run_output(&cont, &selected) {
+                                    selected = cont;
+                                }
+                            }
+                            Err(err)
+                                if abort.is_tripped()
+                                    || should_abort_search_on_kernel_error(&err) =>
+                            {
+                                return Err(err);
+                            }
+                            Err(_) => {}
                         }
                     }
                 }
+                Err(err) if abort.is_tripped() || should_abort_search_on_kernel_error(&err) => {
+                    return Err(err);
+                }
+                Err(_) => {}
             }
-            if let Ok(tempo_out) = run_boss_tempo_depth_first(
+            match run_boss_tempo_depth_first(
                 root,
                 content,
                 policy,
@@ -9419,15 +9706,43 @@ impl CombatSearchCoordinator {
                 &cert,
                 &incumbent_table,
                 cancel,
+                &abort,
                 &policy.boss_tempo_options,
             ) {
-                total_expanded += tempo_out.expanded_nodes;
-                total_transitions += tempo_out.transition_count;
-                total_choice_replays += tempo_out.choice_replay_attempts;
-                if is_better_run_output(&tempo_out, &selected) {
-                    selected = tempo_out;
+                Ok(tempo_out) => {
+                    total_expanded += tempo_out.expanded_nodes;
+                    total_transitions += tempo_out.transition_count;
+                    total_choice_replays += tempo_out.choice_replay_attempts;
+                    if is_better_run_output(&tempo_out, &selected) {
+                        selected = tempo_out;
+                    }
                 }
+                Err(err) if abort.is_tripped() || should_abort_search_on_kernel_error(&err) => {
+                    return Err(err);
+                }
+                Err(_) => {}
             }
+        }
+
+        if let Some(err) = abort.clone_error() {
+            return Err(err);
+        }
+
+        let is_cancelled = cancel.load(Ordering::Relaxed) || selected.termination == "Cancelled";
+        if !is_cancelled
+            && selected.root_baseline.has_active_hard_potion_constraint()
+            && (selected.best_node.is_none() || !satisfies_run_output_hard_constraints(&selected))
+        {
+            return Err(KernelError::potion_policy_unsatisfied(
+                if selected.root_baseline.all_forced_potion_mask != 0 {
+                    "no explored route satisfied all forced potion directives".to_owned()
+                } else {
+                    format!(
+                        "no explored route satisfied minimum required potion uses ({})",
+                        selected.root_baseline.minimum_required_potion_uses
+                    )
+                },
+            ));
         }
 
         let packed_state_bytes_total = selected.packed_state_bytes_total;

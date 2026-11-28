@@ -28,7 +28,7 @@ fn ffi_abi_and_capabilities_smoke() {
     assert_eq!(sts2_rs_abi_version(), ABI_VERSION);
     let mut ptr: *mut u8 = ptr::null_mut();
     let mut len: usize = 0;
-    let rc = sts2_rs_capabilities(&mut ptr, &mut len);
+    let rc = unsafe { sts2_rs_capabilities(&mut ptr, &mut len) };
     assert_eq!(rc, 0);
     assert!(!ptr.is_null());
     assert!(len > 0);
@@ -36,7 +36,7 @@ fn ffi_abi_and_capabilities_smoke() {
     let val: serde_json::Value = serde_json::from_slice(bytes).unwrap();
     assert_eq!(val["abiVersion"], 1);
     assert_eq!(val["engineId"], "sts2-combat-rs");
-    sts2_rs_free_buffer(ptr, len);
+    unsafe { sts2_rs_free_buffer(ptr, len) };
 }
 
 #[test]
@@ -44,13 +44,13 @@ fn ffi_step_oracle_handles_invalid_and_unsupported() {
     let mut ptr: *mut u8 = ptr::null_mut();
     let mut len: usize = 0;
     let bad = b"{not json";
-    let rc = sts2_rs_step_oracle(bad.as_ptr(), bad.len(), &mut ptr, &mut len);
+    let rc = unsafe { sts2_rs_step_oracle(bad.as_ptr(), bad.len(), &mut ptr, &mut len) };
     assert_eq!(rc, 0);
     let bytes = unsafe { slice::from_raw_parts(ptr, len) };
     let resp: OracleStepResponse = serde_json::from_slice(bytes).unwrap();
     assert_eq!(resp.outcome, "Error");
     assert_eq!(resp.error_code.as_deref(), Some("InvalidRequestJson"));
-    sts2_rs_free_buffer(ptr, len);
+    unsafe { sts2_rs_free_buffer(ptr, len) };
 
     // Verify EndTurn works both with and without choices
     let legacy_end_turn: OracleActionJson =
@@ -70,13 +70,15 @@ fn ffi_step_oracle_handles_invalid_and_unsupported() {
     let solve_req = br#"{"policy":{"beamWidth":32,"maxNodes":1000,"timeBudgetMs":100,"allowPotions":true,"allowRandomCards":false},"rootStateJson":null,"traceTag":null}"#;
     let mut s_ptr: *mut u8 = ptr::null_mut();
     let mut s_len: usize = 0;
-    let src = sts2_rs_solve_in_combat(solve_req.as_ptr(), solve_req.len(), &mut s_ptr, &mut s_len);
+    let src = unsafe {
+        sts2_rs_solve_in_combat(solve_req.as_ptr(), solve_req.len(), &mut s_ptr, &mut s_len)
+    };
     assert_eq!(src, 0);
     let s_bytes = unsafe { slice::from_raw_parts(s_ptr, s_len) };
     let s_resp: SolveInCombatJsonResponse = serde_json::from_slice(s_bytes).unwrap();
     assert_eq!(s_resp.outcome, "Unsupported");
     assert_eq!(s_resp.error_code.as_deref(), Some("Unsupported"));
-    sts2_rs_free_buffer(s_ptr, s_len);
+    unsafe { sts2_rs_free_buffer(s_ptr, s_len) };
 }
 
 fn build_smoke_live_state_json() -> sts2_kernel::snapshot::LiveStateJson {
@@ -309,19 +311,21 @@ fn ffi_solve_with_controls_progress_and_cancel_token() {
     let mut progress_events: Vec<SearchProgress> = Vec::new();
     let mut out_ptr: *mut u8 = ptr::null_mut();
     let mut out_len: usize = 0;
-    let rc = sts2_rs_solve_in_combat_with_controls(
-        req_bytes.as_ptr(),
-        req_bytes.len(),
-        token,
-        Some(collect_progress_cb),
-        (&mut progress_events as *mut Vec<SearchProgress>) as *mut c_void,
-        &mut out_ptr,
-        &mut out_len,
-    );
+    let rc = unsafe {
+        sts2_rs_solve_in_combat_with_controls(
+            req_bytes.as_ptr(),
+            req_bytes.len(),
+            token,
+            Some(collect_progress_cb),
+            (&mut progress_events as *mut Vec<SearchProgress>) as *mut c_void,
+            &mut out_ptr,
+            &mut out_len,
+        )
+    };
     assert_eq!(rc, 0);
     let resp_bytes = unsafe { slice::from_raw_parts(out_ptr, out_len) };
     let resp: SolveInCombatJsonResponse = serde_json::from_slice(resp_bytes).unwrap();
-    sts2_rs_free_buffer(out_ptr, out_len);
+    unsafe { sts2_rs_free_buffer(out_ptr, out_len) };
     assert_eq!(resp.outcome, "Ok");
     let sol = resp.solution.unwrap();
     assert!(sol.stats.won);
@@ -329,28 +333,30 @@ fn ffi_solve_with_controls_progress_and_cancel_token() {
     assert!(!progress_events.is_empty());
 
     // 2. Pre-cancel via sts2_rs_cancel_token_cancel and confirm search terminates immediately as Cancelled
-    sts2_rs_cancel_token_cancel(token);
+    unsafe { sts2_rs_cancel_token_cancel(token) };
     let mut c_ptr: *mut u8 = ptr::null_mut();
     let mut c_len: usize = 0;
-    let crc = sts2_rs_solve_in_combat_with_controls(
-        req_bytes.as_ptr(),
-        req_bytes.len(),
-        token,
-        None,
-        ptr::null_mut(),
-        &mut c_ptr,
-        &mut c_len,
-    );
+    let crc = unsafe {
+        sts2_rs_solve_in_combat_with_controls(
+            req_bytes.as_ptr(),
+            req_bytes.len(),
+            token,
+            None,
+            ptr::null_mut(),
+            &mut c_ptr,
+            &mut c_len,
+        )
+    };
     assert_eq!(crc, 0);
     let c_bytes = unsafe { slice::from_raw_parts(c_ptr, c_len) };
     let c_resp: SolveInCombatJsonResponse = serde_json::from_slice(c_bytes).unwrap();
-    sts2_rs_free_buffer(c_ptr, c_len);
+    unsafe { sts2_rs_free_buffer(c_ptr, c_len) };
     assert_eq!(c_resp.outcome, "Ok");
     let c_sol = c_resp.solution.unwrap();
     assert_eq!(c_sol.stats.termination, "Cancelled");
     assert_eq!(c_sol.nodes_expanded, 0);
 
-    sts2_rs_cancel_token_free(token);
+    unsafe { sts2_rs_cancel_token_free(token) };
 }
 
 extern "C" fn collect_host_progress_cb(ptr: *const u8, len: usize, user_data: *mut c_void) {
@@ -447,19 +453,21 @@ fn ffi_solve_in_combat_host_v1_round_trip_cancel_and_unsupported() {
     let mut progress_events: Vec<HostProgressDto> = Vec::new();
     let mut out_ptr: *mut u8 = ptr::null_mut();
     let mut out_len: usize = 0;
-    let rc = sts2_rs_solve_in_combat_host_v1(
-        req_bytes.as_ptr(),
-        req_bytes.len(),
-        token,
-        Some(collect_host_progress_cb),
-        (&mut progress_events as *mut Vec<HostProgressDto>) as *mut c_void,
-        &mut out_ptr,
-        &mut out_len,
-    );
+    let rc = unsafe {
+        sts2_rs_solve_in_combat_host_v1(
+            req_bytes.as_ptr(),
+            req_bytes.len(),
+            token,
+            Some(collect_host_progress_cb),
+            (&mut progress_events as *mut Vec<HostProgressDto>) as *mut c_void,
+            &mut out_ptr,
+            &mut out_len,
+        )
+    };
     assert_eq!(rc, 0);
     let bytes = unsafe { slice::from_raw_parts(out_ptr, out_len) };
     let resp: HostSolveResponse = serde_json::from_slice(bytes).unwrap();
-    sts2_rs_free_buffer(out_ptr, out_len);
+    unsafe { sts2_rs_free_buffer(out_ptr, out_len) };
 
     assert_eq!(resp.abi_version, 1);
     assert_eq!(resp.outcome, "Succeeded");
@@ -483,23 +491,27 @@ fn ffi_solve_in_combat_host_v1_round_trip_cancel_and_unsupported() {
     );
 
     // Pre-cancelled token returns Cancelled cleanly
-    sts2_rs_cancel_token_cancel(token);
+    unsafe { sts2_rs_cancel_token_cancel(token) };
     let mut c_ptr: *mut u8 = ptr::null_mut();
     let mut c_len: usize = 0;
-    let crc = sts2_rs_solve_in_combat_host_v1(
-        req_bytes.as_ptr(),
-        req_bytes.len(),
-        token,
-        None,
-        ptr::null_mut(),
-        &mut c_ptr,
-        &mut c_len,
-    );
+    let crc = unsafe {
+        sts2_rs_solve_in_combat_host_v1(
+            req_bytes.as_ptr(),
+            req_bytes.len(),
+            token,
+            None,
+            ptr::null_mut(),
+            &mut c_ptr,
+            &mut c_len,
+        )
+    };
     assert_eq!(crc, 0);
     let c_bytes = unsafe { slice::from_raw_parts(c_ptr, c_len) };
     let c_resp: HostSolveResponse = serde_json::from_slice(c_bytes).unwrap();
-    sts2_rs_free_buffer(c_ptr, c_len);
-    sts2_rs_cancel_token_free(token);
+    unsafe {
+        sts2_rs_free_buffer(c_ptr, c_len);
+        sts2_rs_cancel_token_free(token);
+    }
     assert_eq!(c_resp.outcome, "Cancelled");
     assert!(c_resp.result.is_none());
 
@@ -509,19 +521,21 @@ fn ffi_solve_in_combat_host_v1_round_trip_cancel_and_unsupported() {
     let bad_bytes = build_host_request_json(bad_live, "Smart", 1);
     let mut u_ptr: *mut u8 = ptr::null_mut();
     let mut u_len: usize = 0;
-    let urc = sts2_rs_solve_in_combat_host_v1(
-        bad_bytes.as_ptr(),
-        bad_bytes.len(),
-        ptr::null(),
-        None,
-        ptr::null_mut(),
-        &mut u_ptr,
-        &mut u_len,
-    );
+    let urc = unsafe {
+        sts2_rs_solve_in_combat_host_v1(
+            bad_bytes.as_ptr(),
+            bad_bytes.len(),
+            ptr::null(),
+            None,
+            ptr::null_mut(),
+            &mut u_ptr,
+            &mut u_len,
+        )
+    };
     assert_eq!(urc, 0);
     let u_bytes = unsafe { slice::from_raw_parts(u_ptr, u_len) };
     let u_resp: HostSolveResponse = serde_json::from_slice(u_bytes).unwrap();
-    sts2_rs_free_buffer(u_ptr, u_len);
+    unsafe { sts2_rs_free_buffer(u_ptr, u_len) };
     assert_eq!(u_resp.outcome, "CapabilityMiss");
     assert_eq!(u_resp.failure_code.as_deref(), Some("model_unmapped"));
 }
@@ -537,19 +551,21 @@ fn ffi_solve_in_combat_host_v1_potion_trace() {
     let req_bytes = build_host_request_json(live_val, "RequireAtLeastOne", 2);
     let mut out_ptr: *mut u8 = ptr::null_mut();
     let mut out_len: usize = 0;
-    let rc = sts2_rs_solve_in_combat_host_v1(
-        req_bytes.as_ptr(),
-        req_bytes.len(),
-        ptr::null(),
-        None,
-        ptr::null_mut(),
-        &mut out_ptr,
-        &mut out_len,
-    );
+    let rc = unsafe {
+        sts2_rs_solve_in_combat_host_v1(
+            req_bytes.as_ptr(),
+            req_bytes.len(),
+            ptr::null(),
+            None,
+            ptr::null_mut(),
+            &mut out_ptr,
+            &mut out_len,
+        )
+    };
     assert_eq!(rc, 0);
     let bytes = unsafe { slice::from_raw_parts(out_ptr, out_len) };
     let resp: HostSolveResponse = serde_json::from_slice(bytes).unwrap();
-    sts2_rs_free_buffer(out_ptr, out_len);
+    unsafe { sts2_rs_free_buffer(out_ptr, out_len) };
     assert_eq!(resp.outcome, "Succeeded");
     let res = resp.result.unwrap();
     assert!(!res.potion_uses.is_empty());
@@ -561,19 +577,21 @@ fn ffi_solve_in_combat_host_v1_potion_trace() {
 fn call_host_v1(req_bytes: &[u8]) -> HostSolveResponse {
     let mut out_ptr: *mut u8 = ptr::null_mut();
     let mut out_len: usize = 0;
-    let rc = sts2_rs_solve_in_combat_host_v1(
-        req_bytes.as_ptr(),
-        req_bytes.len(),
-        ptr::null(),
-        None,
-        ptr::null_mut(),
-        &mut out_ptr,
-        &mut out_len,
-    );
+    let rc = unsafe {
+        sts2_rs_solve_in_combat_host_v1(
+            req_bytes.as_ptr(),
+            req_bytes.len(),
+            ptr::null(),
+            None,
+            ptr::null_mut(),
+            &mut out_ptr,
+            &mut out_len,
+        )
+    };
     assert_eq!(rc, 0);
     let bytes = unsafe { slice::from_raw_parts(out_ptr, out_len) };
     let resp: HostSolveResponse = serde_json::from_slice(bytes).unwrap();
-    sts2_rs_free_buffer(out_ptr, out_len);
+    unsafe { sts2_rs_free_buffer(out_ptr, out_len) };
     resp
 }
 
@@ -725,7 +743,8 @@ fn ffi_host_v1_full_policy_v2_and_fail_closed_validation() {
     assert_eq!(resp_off.outcome, "CapabilityMiss");
     assert_eq!(resp_off.failure_code.as_deref(), Some("policy_unsupported"));
 
-    // 8. "Forbid" alias works identically to "Disabled" in potionDirectives.
+    // 8. "Forbid" alias works identically to "Disabled" in potionDirectives (under RequireAtLeastOne
+    //    with the sole potion forbidden, hard constraint is unsatisfied, matching C# HotSearch).
     let mut forbid_policy = full_policy.clone();
     forbid_policy["potionPolicy"] = serde_json::json!("RequireAtLeastOne");
     forbid_policy["potionDirectives"] = serde_json::json!([
@@ -737,8 +756,12 @@ fn ffi_host_v1_full_policy_v2_and_fail_closed_validation() {
         1,
         Some(forbid_policy),
     ));
-    assert_eq!(resp_forbid.outcome, "Succeeded");
-    assert!(resp_forbid.result.unwrap().potion_uses.is_empty());
+    assert_eq!(resp_forbid.outcome, "Failed");
+    assert_eq!(
+        resp_forbid.failure_code.as_deref(),
+        Some("hard_potion_policy_unsatisfied")
+    );
+    assert!(resp_forbid.result.is_none());
 
     // 9. Out-of-range or unknown potionHpThresholdOverrides fails closed with CapabilityMiss("policy_unsupported").
     let mut bad_override_range = full_policy.clone();
@@ -1072,4 +1095,114 @@ fn ffi_accepts_daily_game_mode_and_murderous_modifier() {
     assert_eq!(resp.outcome, "Succeeded");
     let res = resp.result.unwrap();
     assert!(res.terminal.all_enemies_dead);
+}
+
+#[test]
+fn ffi_host_v1_rejects_unsatisfied_hard_potion_policy_and_propagates_unsupported_expansion() {
+    // 1. Unsatisfied forced potion directive must NOT return Succeeded with a non-compliant win.
+    let mut live_forced = build_smoke_live_state_json();
+    live_forced.player.potion_slots = vec![Some("POTION.FIRE_POTION".to_owned()), None, None];
+    live_forced.player.can_use_or_remove_potions = false;
+    let growth = serde_json::json!({
+        "handOfGreed": 0, "theHunt": 0, "feed": 0, "royalties": 0,
+        "alchemize": 0, "geneticAlgorithm": 0, "theScythe": 0,
+        "goopy": 0, "forbiddenGrimoire": 0, "madScience": 0, "showOff": 0,
+        "thirdParty": null
+    });
+    let forced_policy = serde_json::json!({
+        "potionPolicy": "Smart",
+        "potionDirectives": [
+            { "slot": 0, "potionId": "FIRE_POTION", "directive": "Force" }
+        ],
+        "predictPotionReward": false,
+        "relicStrategyEnabled": true,
+        "relicCounterRules": [],
+        "growthBudgets": growth,
+        "brightestFlameMaxHpLossLimit": null,
+        "ignoreLongTermRewards": false,
+        "actTransitionBossHpStrategy": "ProgressionFirst",
+        "finalBossHpStrategy": "ProgressionFirst",
+        "acceptableBattleHpLoss": 0,
+        "stopAtAcceptableBattleHpLoss": true,
+        "useBeamWidthPortfolio": true,
+        "useNoveltyPortfolio": false,
+        "useEarlyTurnExploration": false,
+        "beamWidth": 16,
+        "potionFreeBeamWidth": null,
+        "potionBeamWidth": null,
+        "maxExpandedNodes": 500,
+        "maxCardBranchesPerNode": 32,
+        "maxPileChoiceBranchesPerAction": 18,
+        "maxHandChoiceBranchesPerAction": 24,
+        "softTimeBudgetMilliseconds": 2000,
+        "theftPolicy": "Ignore"
+    });
+    let forced_req = build_host_request_json_with_policy_override(
+        serde_json::to_value(&live_forced).unwrap(),
+        "Smart",
+        2,
+        Some(forced_policy),
+    );
+    let forced_resp = call_host_v1(&forced_req);
+    assert_eq!(forced_resp.outcome, "Failed");
+    assert_eq!(
+        forced_resp.failure_code.as_deref(),
+        Some("hard_potion_policy_unsatisfied")
+    );
+    assert!(forced_resp.result.is_none());
+
+    // 2. Unsupported action encountered during search expansion (DistilledChaos autoplaying a
+    //    choice-requiring card) propagates out as CapabilityMiss instead of pruning the branch.
+    let mut live_dc = build_smoke_live_state_json();
+    live_dc.player.potion_slots = vec![Some("POTION.DISTILLED_CHAOS".to_owned()), None, None];
+    let bp_handle = live_dc.cards.iter().map(|c| c.handle).max().unwrap_or(0) + 1;
+    let mut bp_card = live_dc.cards[0].clone();
+    bp_card.handle = bp_handle;
+    bp_card.card_id = "CARD.BURNING_PACT".to_owned();
+    bp_card.upgrade_level = 0;
+    bp_card.base_energy_cost = 1;
+    bp_card.canonical_base_energy_cost = 1;
+    bp_card.deck_card_handle = None;
+    bp_card.local_keywords.clear();
+    live_dc.cards.push(bp_card);
+    live_dc.player.draw_handles.push(bp_handle);
+    let dc_policy = serde_json::json!({
+        "potionPolicy": "Smart",
+        "potionDirectives": [],
+        "predictPotionReward": false,
+        "relicStrategyEnabled": true,
+        "relicCounterRules": [],
+        "growthBudgets": growth,
+        "brightestFlameMaxHpLossLimit": null,
+        "ignoreLongTermRewards": false,
+        "actTransitionBossHpStrategy": "ProgressionFirst",
+        "finalBossHpStrategy": "ProgressionFirst",
+        "acceptableBattleHpLoss": 0,
+        "stopAtAcceptableBattleHpLoss": true,
+        "useBeamWidthPortfolio": false,
+        "useNoveltyPortfolio": false,
+        "useEarlyTurnExploration": false,
+        "beamWidth": 16,
+        "potionFreeBeamWidth": null,
+        "potionBeamWidth": null,
+        "maxExpandedNodes": 500,
+        "maxCardBranchesPerNode": 32,
+        "maxPileChoiceBranchesPerAction": 18,
+        "maxHandChoiceBranchesPerAction": 24,
+        "softTimeBudgetMilliseconds": 2000,
+        "theftPolicy": "Ignore"
+    });
+    let dc_req = build_host_request_json_with_policy_override(
+        serde_json::to_value(&live_dc).unwrap(),
+        "Smart",
+        2,
+        Some(dc_policy),
+    );
+    let dc_resp = call_host_v1(&dc_req);
+    assert_eq!(dc_resp.outcome, "CapabilityMiss");
+    assert_eq!(
+        dc_resp.failure_code.as_deref(),
+        Some("projection_unsupported")
+    );
+    assert!(dc_resp.result.is_none());
 }

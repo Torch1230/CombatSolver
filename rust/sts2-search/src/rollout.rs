@@ -4762,7 +4762,8 @@ pub(crate) fn evaluate_choice_probe_in_place(
     evaluate_choice_probe_in_place_core(
         ws,
         state,
-        |s| unpack_state(packed_fallback, static_ctx, s).is_ok(),
+        // SAFETY: `packed_fallback` was produced by `pack_state` in this process.
+        |s| unsafe { unpack_state(packed_fallback, static_ctx, s) }.is_ok(),
         exact_state_hash,
         probe_cache,
         content,
@@ -4841,7 +4842,8 @@ pub(crate) fn evaluate_choice_probe_packed(
             )
         });
     }
-    if unpack_state(packed_state, static_ctx, &mut ws.probe_state).is_err() {
+    // SAFETY: `packed_state` was produced by `pack_state` in this process.
+    if unsafe { unpack_state(packed_state, static_ctx, &mut ws.probe_state) }.is_err() {
         probe_cache.insert_with_l1(&mut ws.l1, exact_state_hash, cfg_hash, None);
         return None;
     }
@@ -4861,7 +4863,8 @@ pub(crate) fn evaluate_choice_probe_packed(
         &mut ws.choice_scored_buf,
         &mut ws.sel_buf,
         &mut ws.intent_cache,
-        |s| unpack_state(packed_state, static_ctx, s).is_ok(),
+        // SAFETY: `packed_state` was produced by `pack_state` in this process.
+        |s| unsafe { unpack_state(packed_state, static_ctx, s) }.is_ok(),
         content,
         root_baseline,
         PilotKind::DefensiveTempo,
@@ -5098,7 +5101,8 @@ fn evaluate_single_candidate(
     }
 
     let pbytes = state_arena.get(pnode.state_handle);
-    if unpack_state(pbytes, root_ctx, &mut ws.base_state).is_err() {
+    // SAFETY: `pbytes` was committed from `pack_state` output in this process.
+    if unsafe { unpack_state(pbytes, root_ctx, &mut ws.base_state) }.is_err() {
         return None;
     }
     #[cfg(debug_assertions)]
@@ -5209,7 +5213,7 @@ fn evaluate_single_candidate(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn evaluate_turn_boundary_rollouts(
+pub(crate) fn evaluate_turn_boundary_rollouts(
     state_arena: &MainStateArena,
     arena: &NodeArena,
     shortlist: &[NodeId],

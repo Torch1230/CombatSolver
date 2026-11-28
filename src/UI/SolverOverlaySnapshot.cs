@@ -87,6 +87,7 @@ internal sealed record SolverOverlaySnapshot(
     public string? PlannedPotionOutcomeText { get; init; }
     public bool PendingTurnSetup { get; init; }
     public bool IsPreliminary { get; init; }
+    public InCombatBackendDisplaySnapshot? BackendDisplay { get; init; }
     public IReadOnlyList<SolverStrategyOutcome> StrategyOutcomes { get; init; } = [];
     public static SolverOverlaySnapshot Capture(SolverResult result, bool unexpectedReplan)
         => CaptureWithReviewedWorldlines(result, unexpectedReplan, reviewedWorldlinesTotal: 0);
@@ -318,6 +319,7 @@ internal sealed record SolverOverlaySnapshot(
         {
             PendingTurnSetup = pendingTurnSetup,
             IsPreliminary = result.IsPreliminary,
+            BackendDisplay = InCombatSolverBackendState.CaptureCachedDisplaySnapshot(SolverSettings.Current.UseRustCombatKernel),
             RewardOutcomeText = RewardOutcome(result),
             UsedPotionOutcomeText = UsedPotionOutcome(result),
             PlannedPotionOutcomeText = PlannedPotionOutcome(result),

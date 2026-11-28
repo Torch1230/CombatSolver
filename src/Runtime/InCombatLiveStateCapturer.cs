@@ -33,7 +33,9 @@ internal sealed class InCombatLiveCaptureUnsupportedException(
 
 internal static partial class InCombatLiveStateCapturer
 {
-    public static InCombatRustHostMetadata CaptureHostMetadata(CombatState state)
+    public static InCombatRustHostMetadata CaptureHostMetadata(
+        CombatState state,
+        int? initialEncounterMonsterCount = null)
     {
         if (state.RunState is not RunState concreteRun || concreteRun.Players.Count != 1)
         {
@@ -53,6 +55,10 @@ internal static partial class InCombatLiveStateCapturer
         Player player = LocalContext.GetMe(state) ?? concreteRun.Players[0];
         bool hasMurderous = state.Modifiers.Any(static m => m is Murderous)
             || concreteRun.Modifiers.Any(static m => m is Murderous);
+        int frozenEncounterMonsterCount = initialEncounterMonsterCount
+            ?? (state.Encounter is { IsMutable: true, HaveMonstersBeenGenerated: true } enc
+                ? enc.MonstersWithSlots.Count
+                : state.Enemies.Count);
         return new InCombatRustHostMetadata(
             CharacterId: player.Character.Id.ToString(),
             Ascension: (byte)Math.Clamp(concreteRun.AscensionLevel, 0, 255),
@@ -60,7 +66,7 @@ internal static partial class InCombatLiveStateCapturer
             DominionId: state.Dominion?.Id.ToString(),
             RunModelIds: concreteRun.RunModels.Select(static m => m.Id.ToString()).ToArray(),
             EncounterIsWeak: state.Encounter.IsWeak,
-            InitialEncounterMonsterCount: state.Enemies.Count,
+            InitialEncounterMonsterCount: frozenEncounterMonsterCount,
             TotalFloor: concreteRun.TotalFloor,
             ActIndex: concreteRun.CurrentActIndex,
             MapCol: concreteRun.CurrentMapCoord?.col ?? 0,

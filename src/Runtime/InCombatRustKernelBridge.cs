@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using MegaCrit.Sts2.Core.Debug;
 
 namespace CombatSolver;
 
@@ -72,6 +73,10 @@ internal static class InCombatRustKernelBridge
         string? SupportedGameVersion);
 
     private static readonly object Sync = new();
+    // Keep successfully activated native handles resident for process lifetime because sts2-search
+    // retains persistent OnceLock<rayon::ThreadPool> worker threads whose code lives in the DLL.
+    private static readonly Dictionary<string, ActivatedRustKernel> ResidentActivatedLibraries = new(
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private static volatile KernelAvailabilitySnapshot _snapshot = KernelAvailabilitySnapshot.Initial;
 
     internal static string? ModDirectoryOverrideForTesting { get; set; }
@@ -88,8 +93,8 @@ internal static class InCombatRustKernelBridge
     {
         lock (Sync)
         {
-            if (_snapshot.Activated is { LibraryHandle: not 0 } active)
-                NativeLibrary.Free(active.LibraryHandle);
+            // Never call NativeLibrary.Free on an activated library handle; keep it resident
+            // in ResidentActivatedLibraries so Rayon worker threads can never outlive unmapped code.
             _snapshot = KernelAvailabilitySnapshot.Initial;
         }
         RunInCombatHookForTesting = null;
@@ -102,7 +107,7 @@ internal static class InCombatRustKernelBridge
         string? kernelDir = ResolveKernelDirectory();
         if (kernelDir is null)
             return false;
-        return Directory.Exists(kernelDir) || File.Exists(Path.Combine(kernelDir, NativeLibraryFileName));
+        return File.Exists(Path.Combine(kernelDir, NativeLibraryFileName));
     }
 
     public static RustKernelAvailability EnsureActivated(out string? error)
@@ -128,7 +133,14 @@ internal static class InCombatRustKernelBridge
                 return RustKernelAvailability.Absent;
             }
 
-            string libPath = Path.Combine(kernelDir, NativeLibraryFileName);
+            string libPath = Path.GetFullPath(Path.Combine(kernelDir, NativeLibraryFileName));
+            if (ResidentActivatedLibraries.TryGetValue(libPath, out ActivatedRustKernel? resident))
+            {
+                _snapshot = new KernelAvailabilitySnapshot(resident, false, null);
+                error = null;
+                return RustKernelAvailability.Ready;
+            }
+
             nint handle = 0;
             try
             {
@@ -171,6 +183,18 @@ internal static class InCombatRustKernelBridge
                     {
                         throw new InvalidDataException("Rust combat kernel reported incompatible capabilities metadata.");
                     }
+                    if (!string.Equals(probe.SupportedGameVersion, RustKernelAbi.SupportedGameVersion, StringComparison.Ordinal))
+                    {
+                        throw new InvalidDataException(
+                            $"Rust combat kernel game version mismatch: expected '{RustKernelAbi.SupportedGameVersion}', got '{probe.SupportedGameVersion ?? "null"}'.");
+                    }
+                    string? liveGameVersion = TryReadLiveGameVersion();
+                    if (!string.IsNullOrWhiteSpace(liveGameVersion)
+                        && !string.Equals(liveGameVersion, probe.SupportedGameVersion, StringComparison.Ordinal))
+                    {
+                        throw new InvalidDataException(
+                            $"Live game version '{liveGameVersion}' does not match Rust combat kernel '{probe.SupportedGameVersion}'.");
+                    }
                 }
                 finally
                 {
@@ -187,6 +211,7 @@ internal static class InCombatRustKernelBridge
                     cancelFree,
                     solveHostV1,
                     freeBuffer);
+                ResidentActivatedLibraries[libPath] = activated;
                 _snapshot = new KernelAvailabilitySnapshot(activated, false, null);
                 error = null;
                 return RustKernelAvailability.Ready;
@@ -201,6 +226,18 @@ internal static class InCombatRustKernelBridge
                 Entry.Logger.Error($"[CombatSolver/InCombatRustKernel] RUST_KERNEL_ACTIVATION_FAILED error={ex}");
                 return RustKernelAvailability.CorruptOrIncompatible;
             }
+        }
+    }
+
+    internal static string? TryReadLiveGameVersion()
+    {
+        try
+        {
+            return ReleaseInfoManager.Instance?.ReleaseInfo?.Version;
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 

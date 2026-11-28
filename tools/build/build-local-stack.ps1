@@ -1,7 +1,8 @@
-param(
+﻿param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
     [switch]$ForPublication,
+    [switch]$SkipRustKernel,
     [string]$PrivateConfigDirectory = ""
 )
 
@@ -10,6 +11,12 @@ $solverRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $solverProject = Join-Path $solverRoot "CombatSolver.csproj"
 
 $buildArguments = @('build', $solverProject, '-c', $Configuration, '--nologo')
+if ($SkipRustKernel) {
+    $buildArguments += '-p:StageRustCombatKernelEnabled=false'
+}
+elseif ($ForPublication) {
+    $buildArguments += '-p:RequireRustCombatKernel=true'
+}
 if ($ForPublication) {
     $buildArguments += '-p:PublicationBuild=true'
     $configDirectory = if ([string]::IsNullOrWhiteSpace($PrivateConfigDirectory)) {

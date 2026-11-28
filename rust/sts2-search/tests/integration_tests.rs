@@ -350,7 +350,7 @@ fn packer_round_trip_and_2305_card_spillover() {
     let mut buf = Vec::new();
     pack_state(&state, &mut buf);
     let mut unpacked = empty_scratch_state(state.static_ctx.clone());
-    unpack_state(&buf, &state.static_ctx, &mut unpacked).unwrap();
+    unsafe { unpack_state(&buf, &state.static_ctx, &mut unpacked) }.unwrap();
     assert_eq!(state, unpacked);
 
     // 2,305-card deck spillover test across LocalStateSlab & MainStateArena
@@ -382,11 +382,13 @@ fn packer_round_trip_and_2305_card_spillover() {
     let handle = main_arena.commit_slice(local_slab.get(s_idx, off, len));
 
     let mut huge_unpacked = empty_scratch_state(huge_state.static_ctx.clone());
-    unpack_state(
-        main_arena.get(handle),
-        &huge_state.static_ctx,
-        &mut huge_unpacked,
-    )
+    unsafe {
+        unpack_state(
+            main_arena.get(handle),
+            &huge_state.static_ctx,
+            &mut huge_unpacked,
+        )
+    }
     .unwrap();
     assert_eq!(huge_state.cards.len(), huge_unpacked.cards.len());
     assert_eq!(huge_state, huge_unpacked);
@@ -896,14 +898,13 @@ fn potion_directives_force_and_disabled() {
         }],
         ..Default::default()
     };
-    let disabled_resp = SearchEngine
+    let disabled_err = SearchEngine
         .solve_state(&single_pot_root, &disabled_policy, &Sts2Content)
-        .unwrap();
-    assert!(disabled_resp.stats.won);
-    assert!(!disabled_resp
-        .actions
-        .iter()
-        .any(|a| matches!(a, PlannedAction::UsePotion { .. })));
+        .expect_err("Disabled sole slot under RequireAtLeastOne must return PotionPolicyUnsatisfied");
+    assert!(matches!(
+        disabled_err.kind(),
+        sts2_kernel::KernelErrorKind::PotionPolicyUnsatisfied(_)
+    ));
 }
 
 #[test]
@@ -1809,7 +1810,7 @@ fn pack_unpack_roundtrip_preserves_compact_cards_and_counters() {
         .collect(),
     });
     restored.card_extensions.push(CardExtension::default());
-    unpack_state(&packed, &root.static_ctx, &mut restored).unwrap();
+    unsafe { unpack_state(&packed, &root.static_ctx, &mut restored) }.unwrap();
 
     assert_eq!(restored, root);
 }
@@ -2152,7 +2153,7 @@ fn combat_generated_potion_mask_roundtrip_and_policy_semantics() {
     let mut buf = Vec::new();
     pack_state(&root, &mut buf);
     let mut restored = empty_scratch_state(root.static_ctx.clone());
-    unpack_state(&buf, &root.static_ctx, &mut restored).unwrap();
+    unsafe { unpack_state(&buf, &root.static_ctx, &mut restored) }.unwrap();
     assert_eq!(
         restored.player.combat_generated_potion_mask,
         root.player.combat_generated_potion_mask
@@ -2790,13 +2791,13 @@ fn battle_friend_v3_timeout_returns_event_defeat_and_roundtrips_pack() {
     let mut bytes = Vec::new();
     sts2_search::packer::pack_state(&root, &mut bytes);
     let mut unpacked = sts2_search::packer::empty_scratch_state(root.static_ctx.clone());
-    sts2_search::packer::unpack_state(&bytes, &root.static_ctx, &mut unpacked).unwrap();
+    unsafe { sts2_search::packer::unpack_state(&bytes, &root.static_ctx, &mut unpacked) }.unwrap();
     assert!(!unpacked.battleworn_dummy_timed_out);
     let h0 = sts2_search::packer::hash_canonical_key(&root);
 
     root.battleworn_dummy_timed_out = true;
     sts2_search::packer::pack_state(&root, &mut bytes);
-    sts2_search::packer::unpack_state(&bytes, &root.static_ctx, &mut unpacked).unwrap();
+    unsafe { sts2_search::packer::unpack_state(&bytes, &root.static_ctx, &mut unpacked) }.unwrap();
     assert!(unpacked.battleworn_dummy_timed_out);
     assert_ne!(h0, sts2_search::packer::hash_canonical_key(&root));
     root.battleworn_dummy_timed_out = false;
@@ -2885,7 +2886,7 @@ fn pack_unpack_roundtrips_auto_post_play_and_mad_science_int_growth() {
     let mut bytes = Vec::new();
     pack_state(&paused, &mut bytes);
     let mut unpacked = empty_scratch_state(paused.static_ctx.clone());
-    unpack_state(&bytes, &paused.static_ctx, &mut unpacked).unwrap();
+    unsafe { unpack_state(&bytes, &paused.static_ctx, &mut unpacked) }.unwrap();
     assert_eq!(unpacked.pending, paused.pending);
 
     let r1 = CombatEngine::resume_choice(&mut unpacked, &Sts2Content, &[0]).unwrap();
@@ -2921,4 +2922,131 @@ fn pack_unpack_roundtrips_auto_post_play_and_mad_science_int_growth() {
     ms_root.invalidate_hook_cache();
     let rb = RootEvalBaseline::from_state_with_policy(&ms_root, &Sts2Content, &SearchPolicy::default());
     assert!(rb.effective_has_growth_targets);
+}
+
+#[test]
+fn hard_potion_policy_unsatisfied_returns_error_instead_of_non_compliant_win() {
+    use sts2_kernel::KernelErrorKind;
+
+    let deck = vec![
+        CardId::Bash,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::DefendIronclad,
+        CardId::DefendIronclad,
+    ];
+    let mut root = build_combat(
+        CharacterId::Ironclad,
+        &deck,
+        &[RelicId::BurningBlood],
+        &[PotionId::FirePotion],
+        &[(MonsterId::Nibbit, 12)],
+        RoomType::Monster,
+        "HARD_POTION_UNSAT_TEST",
+    );
+    // Player can win cleanly with cards alone, but potions cannot be used.
+    root.player.can_use_or_remove_potions = false;
+
+    let forced_policy = SearchPolicy {
+        beam_width: 16,
+        max_nodes: 500,
+        time_budget_ms: 5_000,
+        potion_policy: SolverPotionPolicy::Smart,
+        potion_directives: vec![PotionSlotDirective {
+            slot: 0,
+            potion_id: PotionId::FirePotion,
+            directive: SolverPotionDirective::Force,
+        }],
+        ..Default::default()
+    };
+    let forced_err = SearchEngine
+        .solve_state(&root, &forced_policy, &Sts2Content)
+        .expect_err("unsatisfied forced potion directive must not return Ok with a non-compliant route");
+    assert!(matches!(
+        forced_err.kind(),
+        KernelErrorKind::PotionPolicyUnsatisfied(_)
+    ));
+
+    let require_one_policy = SearchPolicy {
+        beam_width: 16,
+        max_nodes: 500,
+        time_budget_ms: 5_000,
+        potion_policy: SolverPotionPolicy::RequireAtLeastOne,
+        ..Default::default()
+    };
+    let req_err = SearchEngine
+        .solve_state(&root, &require_one_policy, &Sts2Content)
+        .expect_err("unsatisfied RequireAtLeastOne with eligible potion must not return Ok");
+    assert!(matches!(
+        req_err.kind(),
+        KernelErrorKind::PotionPolicyUnsatisfied(_)
+    ));
+}
+
+#[test]
+fn unsupported_branch_error_during_expansion_propagates_instead_of_pruning() {
+    use sts2_kernel::KernelErrorKind;
+
+    let deck = vec![
+        CardId::Bash,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::StrikeIronclad,
+        CardId::DefendIronclad,
+        CardId::BurningPact,
+    ];
+    let mut root = build_combat(
+        CharacterId::Ironclad,
+        &deck,
+        &[],
+        &[PotionId::DistilledChaos],
+        &[(MonsterId::Nibbit, 80)],
+        RoomType::Monster,
+        "DISTILLED_CHAOS_UNSUPPORTED_TEST",
+    );
+    // Guarantee BurningPact sits on top of the draw pile while the player holds a winning hand.
+    let combat_hs: Vec<CardHandle> = root
+        .cards
+        .iter()
+        .filter(|c| c.pile != PileType::Deck && !c.removed_from_state)
+        .map(|c| c.handle)
+        .collect();
+    root.player.hand.clear();
+    root.player.draw.clear();
+    root.player.discard.clear();
+    root.player.exhaust.clear();
+    root.player.play.clear();
+    for h in combat_hs {
+        if root.card(h).unwrap().id == CardId::BurningPact {
+            root.card_mut(h).unwrap().pile = PileType::Draw;
+            root.player.draw.push(h);
+        } else {
+            root.card_mut(h).unwrap().pile = PileType::Hand;
+            root.player.hand.push(h);
+        }
+    }
+    root.invalidate_hook_cache();
+
+    let policy = SearchPolicy {
+        beam_width: 16,
+        max_nodes: 500,
+        time_budget_ms: 5_000,
+        allow_random_cards: true,
+        max_degree_of_parallelism: 2,
+        potion_policy: SolverPotionPolicy::Smart,
+        potion_hp_threshold_overrides: [(PotionId::DistilledChaos, 0)].into_iter().collect(),
+        stop_at_acceptable_battle_hp_loss: false,
+        use_beam_width_portfolio: false,
+        ..Default::default()
+    };
+    let err = SearchEngine
+        .solve_state(&root, &policy, &Sts2Content)
+        .expect_err("DistilledChaos autoplay choice Unsupported must propagate out of search");
+    assert!(matches!(
+        err.kind(),
+        KernelErrorKind::Unsupported {
+            kind: "PotionAutoplayChoice",
+            ..
+        }
+    ));
 }

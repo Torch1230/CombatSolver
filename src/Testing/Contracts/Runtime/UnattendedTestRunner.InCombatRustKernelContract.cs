@@ -59,6 +59,48 @@ internal sealed partial class UnattendedTestRunner
             };
             SolverSettings.ApplyForTesting(contractSettings);
 
+            // Probe corrupt-DLL fallback BEFORE the first valid native activation so this test
+            // never requires unloading a library that owns persistent Rayon worker threads.
+            SetStage("verify_in_combat_rust_kernel_corrupt_fallback");
+            string corruptScratch = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                ".local",
+                "tool-tasks",
+                "rust-kernel",
+                "corrupt-" + Guid.NewGuid().ToString("N"));
+            string? prevOverride = InCombatRustKernelBridge.ModDirectoryOverrideForTesting;
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(corruptScratch, "rust-kernel"));
+                File.WriteAllText(
+                    Path.Combine(corruptScratch, "rust-kernel", InCombatRustKernelBridge.NativeLibraryFileName),
+                    "corrupt-native-binary-bytes");
+                InCombatRustKernelBridge.ResetForTesting();
+                InCombatRustKernelBridge.ModDirectoryOverrideForTesting = corruptScratch;
+                SolverSettings.ApplyForTesting(contractSettings with { UseRustCombatKernel = true });
+
+                long successBeforeCorrupt = InCombatSolverBackendState.RustKernelSuccessCountForTesting;
+                SolverController.RequestSearch(host, combatState, SearchReason.Manual);
+                SolverResult corruptFallbackResult = await WaitForManualSearchResultAsync(host, TimeSpan.FromSeconds(25));
+                corruptFallbackResult.AssertCompleteTurnOutcomes();
+
+                if (!InCombatRustKernelBridge.IsCorrupt)
+                    throw new InvalidOperationException("损坏的 rust-kernel 本地库未标记为 IsCorrupt。");
+                if (InCombatSolverBackendState.LastUsedBackendForTesting != InCombatBackendKind.HotKernel
+                    || InCombatSolverBackendState.RustKernelSuccessCountForTesting != successBeforeCorrupt)
+                {
+                    throw new InvalidOperationException(
+                        $"损坏 rust-kernel 后未回退到 HotKernel：last={InCombatSolverBackendState.LastUsedBackendForTesting}。");
+                }
+            }
+            finally
+            {
+                InCombatRustKernelBridge.ModDirectoryOverrideForTesting = prevOverride;
+                InCombatRustKernelBridge.ResetForTesting();
+                if (Directory.Exists(corruptScratch))
+                    Directory.Delete(corruptScratch, recursive: true);
+            }
+
             SetStage("verify_in_combat_rust_kernel_turn1");
             long successBeforeTurn1 = InCombatSolverBackendState.RustKernelSuccessCountForTesting;
             SolverController.RequestSearch(host, combatState, SearchReason.Manual);
@@ -138,46 +180,6 @@ internal sealed partial class UnattendedTestRunner
             {
                 throw new InvalidOperationException(
                     $"关闭 Rust 内核后界面徽章仍显示 Rust：'{SolverOverlay.InCombatBackendBadgeTextForTesting}'");
-            }
-
-            SetStage("verify_in_combat_rust_kernel_corrupt_fallback");
-            string corruptScratch = Path.Combine(
-                Directory.GetCurrentDirectory(),
-                ".local",
-                "tool-tasks",
-                "rust-kernel",
-                "corrupt-" + Guid.NewGuid().ToString("N"));
-            string? prevOverride = InCombatRustKernelBridge.ModDirectoryOverrideForTesting;
-            try
-            {
-                Directory.CreateDirectory(Path.Combine(corruptScratch, "rust-kernel"));
-                File.WriteAllText(
-                    Path.Combine(corruptScratch, "rust-kernel", InCombatRustKernelBridge.NativeLibraryFileName),
-                    "corrupt-native-binary-bytes");
-                InCombatRustKernelBridge.ResetForTesting();
-                InCombatRustKernelBridge.ModDirectoryOverrideForTesting = corruptScratch;
-                SolverSettings.ApplyForTesting(contractSettings with { UseRustCombatKernel = true });
-
-                long successBeforeCorrupt = InCombatSolverBackendState.RustKernelSuccessCountForTesting;
-                SolverController.RequestSearch(host, combatState, SearchReason.Manual);
-                SolverResult corruptFallbackResult = await WaitForManualSearchResultAsync(host, TimeSpan.FromSeconds(25));
-                corruptFallbackResult.AssertCompleteTurnOutcomes();
-
-                if (!InCombatRustKernelBridge.IsCorrupt)
-                    throw new InvalidOperationException("损坏的 rust-kernel 本地库未标记为 IsCorrupt。");
-                if (InCombatSolverBackendState.LastUsedBackendForTesting != InCombatBackendKind.HotKernel
-                    || InCombatSolverBackendState.RustKernelSuccessCountForTesting != successBeforeCorrupt)
-                {
-                    throw new InvalidOperationException(
-                        $"损坏 rust-kernel 后未回退到 HotKernel：last={InCombatSolverBackendState.LastUsedBackendForTesting}。");
-                }
-            }
-            finally
-            {
-                InCombatRustKernelBridge.ModDirectoryOverrideForTesting = prevOverride;
-                InCombatRustKernelBridge.ResetForTesting();
-                if (Directory.Exists(corruptScratch))
-                    Directory.Delete(corruptScratch, recursive: true);
             }
 
             _completedChecks.Add(string.Create(

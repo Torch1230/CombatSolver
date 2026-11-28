@@ -6,6 +6,7 @@ namespace CombatSolver;
 internal static class RustKernelAbi
 {
     public const int Version = 1;
+    public const string SupportedGameVersion = "v0.114.0";
     public const int MaxSoftTimeBudgetMilliseconds = 600_000;
 
     public static readonly JsonSerializerOptions JsonOptions = new()
@@ -589,7 +590,41 @@ internal static class RustKernelWireValidator
             throw new InvalidDataException($"Unknown RustKernel response outcome '{response.Outcome}'.");
         if (response.EffectiveDegreeOfParallelism < 1)
             throw new InvalidDataException("RustKernel response effectiveDegreeOfParallelism must be >= 1.");
-        if (response.Outcome == "Succeeded" && response.Result is null)
-            throw new InvalidDataException("RustKernel Succeeded response is missing Result.");
+        if (response.Outcome == "Succeeded")
+        {
+            if (response.Result is null)
+                throw new InvalidDataException("RustKernel Succeeded response is missing Result.");
+            ValidateResultPayload(response.Result, "result");
+        }
+        if (response.BestSoFar is { } bestSoFar)
+            ValidateResultPayload(bestSoFar, "bestSoFar");
+    }
+
+    private static void ValidateResultPayload(RustKernelResultDto result, string label)
+    {
+        if (result.Actions is null)
+            throw new InvalidDataException($"RustKernel {label}.actions must not be null.");
+        if (result.TurnOutcomes is null)
+            throw new InvalidDataException($"RustKernel {label}.turnOutcomes must not be null.");
+        if (result.Terminal is null)
+            throw new InvalidDataException($"RustKernel {label}.terminal must not be null.");
+        if (result.PotionUses is null)
+            throw new InvalidDataException($"RustKernel {label}.potionUses must not be null.");
+        for (int i = 0; i < result.Actions.Count; i++)
+        {
+            RustKernelActionTraceDto action = result.Actions[i];
+            if (action is null)
+                throw new InvalidDataException($"RustKernel {label}.actions[{i}] must not be null.");
+            if (action.Choices is null)
+                throw new InvalidDataException($"RustKernel {label}.actions[{i}].choices must not be null.");
+            if (action.KilledEnemyCombatIds is null)
+                throw new InvalidDataException($"RustKernel {label}.actions[{i}].killedEnemyCombatIds must not be null.");
+            for (int c = 0; c < action.Choices.Count; c++)
+            {
+                RustKernelChoiceTraceDto choice = action.Choices[c];
+                if (choice is null || choice.Cards is null)
+                    throw new InvalidDataException($"RustKernel {label}.actions[{i}].choices[{c}] is missing cards.");
+            }
+        }
     }
 }

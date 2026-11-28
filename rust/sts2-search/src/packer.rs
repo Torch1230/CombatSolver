@@ -630,8 +630,11 @@ struct ByteReader<'a> {
 }
 
 impl<'a> ByteReader<'a> {
+    /// # Safety
+    /// `buf` must have been produced by `pack_state` in the current process so that any
+    /// serialized `&'static str` addresses decoded by `read_borrowed_static_str*` are valid.
     #[inline]
-    fn new(buf: &'a [u8]) -> Self {
+    unsafe fn new(buf: &'a [u8]) -> Self {
         let range = buf.as_ptr_range();
         Self {
             start: range.start,
@@ -826,8 +829,11 @@ impl<'a> ByteReader<'a> {
         }
     }
 
+    /// # Safety
+    /// The underlying buffer must originate from `pack_state` in the current process so the
+    /// encoded pointer and `len` refer to a valid UTF-8 `&'static str`.
     #[inline(always)]
-    fn read_borrowed_static_str_len(&mut self, len: usize) -> Result<&'static str, ()> {
+    unsafe fn read_borrowed_static_str_len(&mut self, len: usize) -> Result<&'static str, ()> {
         #[cfg(target_pointer_width = "64")]
         let ptr_val = self.u64()? as usize;
         #[cfg(not(target_pointer_width = "64"))]
@@ -847,8 +853,11 @@ impl<'a> ByteReader<'a> {
         Ok(unsafe { std::str::from_utf8_unchecked(slice) })
     }
 
+    /// # Safety
+    /// The underlying buffer must originate from `pack_state` in the current process so the
+    /// encoded pointer and length refer to a valid UTF-8 `&'static str`.
     #[inline(always)]
-    fn read_borrowed_static_str(&mut self) -> Result<&'static str, ()> {
+    unsafe fn read_borrowed_static_str(&mut self) -> Result<&'static str, ()> {
         #[cfg(target_pointer_width = "64")]
         let ptr_val = self.u64()? as usize;
         #[cfg(not(target_pointer_width = "64"))]
@@ -873,9 +882,13 @@ impl<'a> ByteReader<'a> {
     fn cow_str(&mut self) -> Result<Cow<'static, str>, ()> {
         let tag = self.u8()?;
         if tag < 0x80 {
-            Ok(Cow::Borrowed(self.read_borrowed_static_str_len(tag as usize)?))
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            Ok(Cow::Borrowed(unsafe {
+                self.read_borrowed_static_str_len(tag as usize)?
+            }))
         } else if tag == 0x80 {
-            Ok(Cow::Borrowed(self.read_borrowed_static_str()?))
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            Ok(Cow::Borrowed(unsafe { self.read_borrowed_static_str()? }))
         } else if tag == 0x81 {
             self.sym_cow()
         } else {
@@ -889,11 +902,15 @@ impl<'a> ByteReader<'a> {
         if tag == 0 {
             Ok(None)
         } else if tag < 0x80 {
-            Ok(Some(Cow::Borrowed(
-                self.read_borrowed_static_str_len((tag - 1) as usize)?,
-            )))
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            Ok(Some(Cow::Borrowed(unsafe {
+                self.read_borrowed_static_str_len((tag - 1) as usize)?
+            })))
         } else if tag == 0x80 {
-            Ok(Some(Cow::Borrowed(self.read_borrowed_static_str()?)))
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            Ok(Some(Cow::Borrowed(unsafe {
+                self.read_borrowed_static_str()?
+            })))
         } else if tag == 0x81 {
             Ok(Some(self.sym_cow()?))
         } else {
@@ -938,7 +955,8 @@ impl<'a> ByteReader<'a> {
     fn read_cow_str_encoded_into(&mut self, dst: &mut Cow<'static, str>) -> Result<(), ()> {
         let tag = self.u8()?;
         if tag < 0x80 {
-            let s = self.read_borrowed_static_str_len(tag as usize)?;
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            let s = unsafe { self.read_borrowed_static_str_len(tag as usize)? };
             if let Cow::Borrowed(existing) = dst {
                 if existing.as_ptr() != s.as_ptr() || existing.len() != s.len() {
                     *existing = s;
@@ -948,7 +966,8 @@ impl<'a> ByteReader<'a> {
             }
             Ok(())
         } else if tag == 0x80 {
-            let s = self.read_borrowed_static_str()?;
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            let s = unsafe { self.read_borrowed_static_str()? };
             if let Cow::Borrowed(existing) = dst {
                 if existing.as_ptr() != s.as_ptr() || existing.len() != s.len() {
                     *existing = s;
@@ -981,7 +1000,8 @@ impl<'a> ByteReader<'a> {
             }
             Ok(())
         } else if tag < 0x80 {
-            let s = self.read_borrowed_static_str_len((tag - 1) as usize)?;
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            let s = unsafe { self.read_borrowed_static_str_len((tag - 1) as usize)? };
             match dst {
                 Some(Cow::Borrowed(existing)) => {
                     if existing.as_ptr() != s.as_ptr() || existing.len() != s.len() {
@@ -996,7 +1016,8 @@ impl<'a> ByteReader<'a> {
             }
             Ok(())
         } else if tag == 0x80 {
-            let s = self.read_borrowed_static_str()?;
+            // SAFETY: `ByteReader::new` requires buffers produced by `pack_state` in this process.
+            let s = unsafe { self.read_borrowed_static_str()? };
             match dst {
                 Some(Cow::Borrowed(existing)) => {
                     if existing.as_ptr() != s.as_ptr() || existing.len() != s.len() {
@@ -3886,12 +3907,18 @@ fn read_packed_card_at(
 }
 
 /// Unpacks a packed binary state directly into a reusable `BattleState` scratch buffer.
-pub fn unpack_state(
+///
+/// # Safety
+/// `bytes` must have been produced by `pack_state` within the current process. The binary format
+/// encodes `Cow::Borrowed(&'static str)` values as raw in-process pointer addresses and lengths,
+/// so passing arbitrary or cross-process bytes is undefined behavior.
+pub unsafe fn unpack_state(
     bytes: &[u8],
     static_ctx: &Arc<RootStaticContext>,
     out: &mut BattleState,
 ) -> Result<(), KernelError> {
-    let mut r = ByteReader::new(bytes);
+    // SAFETY: Caller guarantees `bytes` originated from `pack_state` in the current process.
+    let mut r = unsafe { ByteReader::new(bytes) };
     unpack_state_inner(&mut r, static_ctx, out)
         .map_err(|()| KernelError::InvalidState(format!("state unpack error at {}", r.pos())))
 }
@@ -7208,14 +7235,16 @@ mod tests {
         pack_state(&s2, &mut b2);
 
         let mut out = empty_scratch_state(s1.static_ctx.clone());
-        unpack_state(&b1, &s1.static_ctx, &mut out).unwrap();
-        assert_eq!(out, s1);
+        unsafe {
+            unpack_state(&b1, &s1.static_ctx, &mut out).unwrap();
+            assert_eq!(out, s1);
 
-        unpack_state(&b2, &s1.static_ctx, &mut out).unwrap();
-        assert_eq!(out, s2);
+            unpack_state(&b2, &s1.static_ctx, &mut out).unwrap();
+            assert_eq!(out, s2);
 
-        unpack_state(&b1, &s1.static_ctx, &mut out).unwrap();
-        assert_eq!(out, s1);
+            unpack_state(&b1, &s1.static_ctx, &mut out).unwrap();
+            assert_eq!(out, s1);
+        }
     }
 
     #[test]
@@ -7321,11 +7350,11 @@ mod tests {
         assert!(buf_delta.len() < buf_full.len());
 
         let mut out_delta = empty_scratch_state(ctx_with_root.clone());
-        unpack_state(&buf_delta, &ctx_with_root, &mut out_delta).unwrap();
+        unsafe { unpack_state(&buf_delta, &ctx_with_root, &mut out_delta) }.unwrap();
         assert_eq!(out_delta, s1);
 
         let mut out_full = empty_scratch_state(s_no_root.static_ctx.clone());
-        unpack_state(&buf_full, &s_no_root.static_ctx, &mut out_full).unwrap();
+        unsafe { unpack_state(&buf_full, &s_no_root.static_ctx, &mut out_full) }.unwrap();
         assert_eq!(out_full, s_no_root);
 
         // Root card floors + root relics delta + afflicted fast card roundtrip & reuse restore
@@ -7424,9 +7453,9 @@ mod tests {
         pack_state(&st_mut, &mut b_mut);
 
         let mut reuse = empty_scratch_state(r_ctx.clone());
-        unpack_state(&b_mut, &r_ctx, &mut reuse).unwrap();
+        unsafe { unpack_state(&b_mut, &r_ctx, &mut reuse) }.unwrap();
         assert_eq!(reuse, st_mut);
-        unpack_state(&b_clean, &r_ctx, &mut reuse).unwrap();
+        unsafe { unpack_state(&b_clean, &r_ctx, &mut reuse) }.unwrap();
         assert_eq!(reuse, st_clean);
     }
 
@@ -7478,15 +7507,15 @@ mod tests {
         let mut reuse = empty_scratch_state(r_ctx.clone());
         reuse.player.relics = root_relics;
         reuse.relic_dirty_mask = RelicDirtyMask(0);
-        unpack_state(&b_mut, &r_ctx, &mut reuse).unwrap();
+        unsafe { unpack_state(&b_mut, &r_ctx, &mut reuse) }.unwrap();
         assert_eq!(reuse, st_mut);
         assert_eq!(reuse.relic_dirty_mask.0, 0b11);
 
-        unpack_state(&b_rev, &r_ctx, &mut reuse).unwrap();
+        unsafe { unpack_state(&b_rev, &r_ctx, &mut reuse) }.unwrap();
         assert_eq!(reuse, st_reverted);
         assert_eq!(reuse.relic_dirty_mask.0, 0b01);
 
-        unpack_state(&b_clean, &r_ctx, &mut reuse).unwrap();
+        unsafe { unpack_state(&b_clean, &r_ctx, &mut reuse) }.unwrap();
         assert_eq!(reuse, st_clean);
         assert_eq!(reuse.relic_dirty_mask.0, 0);
 
@@ -7603,13 +7632,13 @@ mod tests {
         assert!(b_clean.len() < b_clean_full.len());
 
         let mut reuse = empty_scratch_state(r_ctx.clone());
-        unpack_state(&b_mut, &r_ctx, &mut reuse).unwrap();
+        unsafe { unpack_state(&b_mut, &r_ctx, &mut reuse) }.unwrap();
         assert_eq!(reuse, st_mut);
         assert_eq!(reuse.cards.len(), 5);
         assert!(reuse.handle_layout.cards);
         assert_eq!(reuse.card_meta_dirty.0[0], 1u64 << 2);
 
-        unpack_state(&b_clean, &r_ctx, &mut reuse).unwrap();
+        unsafe { unpack_state(&b_clean, &r_ctx, &mut reuse) }.unwrap();
         assert_eq!(reuse, st_clean);
         assert_eq!(reuse.cards.len(), 4);
         assert_eq!(reuse.cards[3].pile, PileType::None);
@@ -7825,7 +7854,7 @@ mod tests {
         let mut buf = Vec::new();
         pack_state(&s, &mut buf);
         let mut unpacked = empty_scratch_state(dummy_ctx());
-        unpack_state(&buf, &dummy_ctx(), &mut unpacked).unwrap();
+        unsafe { unpack_state(&buf, &dummy_ctx(), &mut unpacked) }.unwrap();
         assert_eq!(unpacked.cards, s.cards);
         assert_eq!(unpacked.semantic_history, s.semantic_history);
     }
@@ -7882,7 +7911,7 @@ mod tests {
         let mut buf = Vec::new();
         pack_state(&s, &mut buf);
         let mut unpacked = empty_scratch_state(dummy_ctx());
-        unpack_state(&buf, &dummy_ctx(), &mut unpacked).unwrap();
+        unsafe { unpack_state(&buf, &dummy_ctx(), &mut unpacked) }.unwrap();
         assert_eq!(unpacked.cards, s.cards);
         assert_eq!(unpacked.card_extensions, s.card_extensions);
     }
@@ -7974,7 +8003,7 @@ mod tests {
         let mut buf = Vec::new();
         pack_state(&s, &mut buf);
         let mut unpacked = empty_scratch_state(dummy_ctx());
-        unpack_state(&buf, &dummy_ctx(), &mut unpacked).unwrap();
+        unsafe { unpack_state(&buf, &dummy_ctx(), &mut unpacked) }.unwrap();
         assert_eq!(unpacked.cards, s.cards);
     }
 
@@ -8098,7 +8127,7 @@ mod tests {
                 let mut packed = Vec::new();
                 pack_state(&s, &mut packed);
                 let mut unpacked = empty_scratch_state(Arc::clone(&s.static_ctx));
-                unpack_state(&packed, &s.static_ctx, &mut unpacked).unwrap();
+                unsafe { unpack_state(&packed, &s.static_ctx, &mut unpacked) }.unwrap();
                 let pending = unpacked.pending.expect("pending round-trip");
                 assert_eq!(pending.frames.len(), 1);
                 assert_eq!(pending.frames[0], frame);

@@ -69,6 +69,15 @@ internal static class InCombatRustKernelEligibility
 
     public static RustKernelEligibilityResult AssessHostEligibility(CombatState state)
     {
+        string? liveGameVersion = InCombatRustKernelBridge.TryReadLiveGameVersion();
+        if (!string.IsNullOrWhiteSpace(liveGameVersion)
+            && !string.Equals(liveGameVersion, RustKernelAbi.SupportedGameVersion, StringComparison.Ordinal))
+        {
+            return RustKernelEligibilityResult.Ineligible(
+                "game_version_mismatch",
+                $"Live game version '{liveGameVersion}' does not match Rust combat kernel '{RustKernelAbi.SupportedGameVersion}'.");
+        }
+
         if (!CombatManager.Instance.IsInProgress
             || state.CurrentSide != CombatSide.Player
             || !RunManager.Instance.IsSingleplayerOrFakeMultiplayer

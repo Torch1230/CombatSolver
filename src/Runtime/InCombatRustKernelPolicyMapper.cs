@@ -23,6 +23,7 @@ internal static class InCombatRustKernelPolicyMapper
         SolverSettingsSnapshot settingsSnapshot,
         SearchPolicySnapshot searchPolicy,
         IReadOnlyList<(int Slot, string PotionId)> effectivePotions,
+        int priorPotionsUsed,
         out RustKernelPolicyDto? policy,
         out int searchBudgetMilliseconds,
         out string? unsupportedReason)
@@ -116,9 +117,14 @@ internal static class InCombatRustKernelPolicyMapper
         int? potionBeamWidth = profile == settingsSnapshot.Profile ? settingsData.SearchPotionBeamWidth : null;
 
         bool useBeamWidthPortfolio = searchPolicy.AdaptiveEscalationEnabled;
+        SolverPotionPolicy effectivePotionPolicy = searchPolicy.TheftPolicy == SolverTheftPolicy.PreserveResources
+            ? SolverPotionPolicy.Smart
+            : searchPolicy.PotionPolicy == SolverPotionPolicy.RequireAtLeastOne && priorPotionsUsed > 0
+                ? SolverPotionPolicy.Smart
+                : searchPolicy.PotionPolicy;
 
         policy = new RustKernelPolicyDto(
-            PotionPolicy: searchPolicy.PotionPolicy.ToString(),
+            PotionPolicy: effectivePotionPolicy.ToString(),
             PotionDirectives: directives,
             PotionHpThresholdOverrides: thresholdOverrides,
             PredictPotionReward: searchPolicy.PredictPotionReward,

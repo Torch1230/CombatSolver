@@ -1,5 +1,6 @@
 using CombatSolver.HotKernel;
 using CombatSolver.HotSearch;
+using MegaCrit.Sts2.Core.Combat;
 
 namespace CombatSolver;
 
@@ -29,6 +30,8 @@ internal static class InCombatRustKernelResultMaterializer
         HotRootBundle rootBundle = root.HotRoot;
         HotRules rules = rootBundle.Rules;
         CombatHotState state = rootBundle.RootState;
+        int rootPlayerHp = state.Player.CurrentHp;
+        int rootShuffleCounter = state.Rng[(int)HotRngStream.Shuffle].Counter;
         HotColdSidecar? cold = rootBundle.RootCold;
         HotExecScratch scratch = new();
         HotExecScratch probeScratch = new();
@@ -43,6 +46,10 @@ internal static class InCombatRustKernelResultMaterializer
         short[] rootPotionCosts = HotPotionPolicy.BuildRootSlotCosts(
             root, in state, rules, policy.PotionStrategy.Thresholds);
         HotSearchPolicy hotPolicy = new(root, battleDamage, policy, rules, in state, rootPotionCosts);
+        bool isDisabledPotionMode = hotPolicy.EffectivePotionPolicy == SolverPotionPolicy.Disabled;
+        bool allowPaidOptionalPotions = !isDisabledPotionMode;
+        bool allowZeroCostOptionalPotions = !isDisabledPotionMode;
+        bool allowForcedPotions = hotPolicy.HasForcedDirectives;
 
         var hotActions = new HotAction[rustResult.Actions.Count];
         var stepChoices = new HotChoiceSelection[rustResult.Actions.Count][];
@@ -54,6 +61,8 @@ internal static class InCombatRustKernelResultMaterializer
         int rawPotionStrategicCost = 0;
         ushort potionMask = 0;
         byte ambergrisCount = 0;
+        Span<byte> aliveEnemySlotsBefore = stackalloc byte[HotLimits.MaxEnemies];
+        Span<uint> aliveEnemyCombatIdsBefore = stackalloc uint[HotLimits.MaxEnemies];
 
         for (int stepIdx = 0; stepIdx < rustResult.Actions.Count; stepIdx++)
         {
@@ -101,17 +110,40 @@ internal static class InCombatRustKernelResultMaterializer
             ushort generatedMaskBefore = state.CombatGeneratedPotionMask;
             if (hotAction.Kind == HotActionKind.UsePotion)
             {
-                explicitPotionCount++;
-                totalPotionCount++;
                 int slot = hotAction.SlotOrHandIdx;
                 ushort pDefId = state.Potions[slot];
-                bool isGen = (generatedMaskBefore & (1 << slot)) != 0;
+                if (!HotPotionPolicy.TryClassifyPotionUseForPass(
+                        in state,
+                        slot,
+                        pDefId,
+                        rules,
+                        rootPotionCosts,
+                        in hotPolicy,
+                        allowPaidOptionalPotions,
+                        allowZeroCostOptionalPotions,
+                        allowForcedPotions,
+                        explicitPotionCount,
+                        maxPotionUses: -1,
+                        out bool isGen,
+                        out bool isForced,
+                        out short optionalPaidCostDelta,
+                        out byte optionalPaidCountDelta,
+                        out ushort rootPotionSlotBit))
+                {
+                    failureCode = "hard_potion_policy_violation";
+                    failureDetail = $"Step {stepIdx} UsePotion '{trace.PotionId}'@{slot} violates potion policy " +
+                        $"(effective={hotPolicy.EffectivePotionPolicy}, disabledMask=0x{hotPolicy.DisabledPotionSlotMask:X}, " +
+                        $"forcedMask=0x{hotPolicy.ForcedPotionSlotMask:X}).";
+                    return false;
+                }
+
+                explicitPotionCount++;
+                totalPotionCount++;
                 if (!isGen)
                 {
-                    potionMask |= (ushort)(1 << slot);
+                    potionMask |= rootPotionSlotBit;
                     if (HotPotionPolicy.ResolvePotionId(rules.Potions[pDefId]) == HotCustomPotionId.Ambergris)
                         ambergrisCount++;
-                    bool isForced = (hotPolicy.ForcedPotionSlotMask & (1 << slot)) != 0;
                     short slotCost = (uint)slot < (uint)rootPotionCosts.Length && rootPotionCosts[slot] >= 0
                         ? rootPotionCosts[slot]
                         : HotPotionPolicy.ComputePotionDefCost(
@@ -120,19 +152,33 @@ internal static class InCombatRustKernelResultMaterializer
                             hotPolicy.InitialPlayerMaxHp,
                             hotPolicy.PotionThresholds);
                     rawPotionStrategicCost += slotCost;
-                    if (!isForced && slotCost > 0)
+                    if (!isForced && optionalPaidCountDelta > 0)
                     {
-                        optionalPaidPotionCount++;
-                        optionalPotionStrategicCost += slotCost;
+                        optionalPaidPotionCount += optionalPaidCountDelta;
+                        optionalPotionStrategicCost += optionalPaidCostDelta;
                     }
                 }
             }
 
+            int aliveBeforeCount = SnapshotAliveEnemies(in state, aliveEnemySlotsBefore, aliveEnemyCombatIdsBefore);
             HotStepResult stepRes = HotCombatEngine.Step(ref state, ref cold, rules, scratch, hotAction, resolvedChoices);
             if (!stepRes.Executed || stepRes.NeedsChoice)
             {
                 failureCode = "replay_step_failed";
                 failureDetail = $"HotCombatEngine.Step failed at step {stepIdx} ({trace.Kind}): executed={stepRes.Executed}, needsChoice={stepRes.NeedsChoice}.";
+                return false;
+            }
+
+            if (!VerifyStepKilledEnemies(
+                    in state,
+                    aliveEnemySlotsBefore[..aliveBeforeCount],
+                    aliveEnemyCombatIdsBefore[..aliveBeforeCount],
+                    trace.KilledEnemyCombatIds,
+                    stepIdx,
+                    out string? killDivergence))
+            {
+                failureCode = "replay_state_divergence";
+                failureDetail = killDivergence;
                 return false;
             }
 
@@ -165,7 +211,7 @@ internal static class InCombatRustKernelResultMaterializer
         }
 
         HotFastSummary summary = HotEvaluator.ExtractStage1(in state, in hotPolicy);
-        if (!VerifyTerminalMatch(in state, in summary, rustResult.Terminal, out string? divergence))
+        if (!VerifyTerminalMatch(rootPlayerHp, rootShuffleCounter, in state, in summary, in hotPolicy, rustResult.Terminal, out string? divergence))
         {
             failureCode = "replay_state_divergence";
             failureDetail = divergence;
@@ -257,6 +303,16 @@ internal static class InCombatRustKernelResultMaterializer
             AllGrowthTargetsSatisfied = !hotPolicy.HasPureGrowthTargets || summary.AllGrowthTargetsSatisfied,
             AllRelicTargetsSatisfied = !hotPolicy.HasRelicTargets || summary.AllRelicTargetsSatisfied,
         };
+
+        if (!HotPotionPolicy.SatisfiesHardConstraints(in winningKey, in hotPolicy))
+        {
+            failureCode = "hard_potion_policy_violation";
+            failureDetail = $"Rust route violated hard potion policy " +
+                $"(effective={hotPolicy.EffectivePotionPolicy}, potionMask=0x{winningKey.PotionMask:X}, " +
+                $"forcedMask=0x{hotPolicy.ForcedPotionSlotMask:X}, explicitPotions={winningKey.ExplicitPotionCount}, " +
+                $"minRequired={hotPolicy.MinimumRequiredPotionUses}, optionalPaid={winningKey.OptionalPaidPotionCount}).";
+            return false;
+        }
 
         SearchBoundaryReason boundary = ParseBoundaryReason(rustResult.Terminal.SearchBoundary);
         if (won || !survives || summary.IsEventDefeat)
@@ -383,7 +439,12 @@ internal static class InCombatRustKernelResultMaterializer
                     return false;
                 }
 
-                int targetSlot = ResolveTargetEnemySlot(in state, trace.TargetCombatId, trace.TargetIndex);
+                if (!TryResolveTargetEnemySlot(in state, trace.TargetCombatId, trace.TargetIndex, out int targetSlot, out string? targetErr))
+                {
+                    action = default;
+                    error = $"Step {stepIdx} PlayCard '{trace.CardId}': {targetErr}";
+                    return false;
+                }
                 if (!HotCombatEngine.CanPlayCard(in state, cold, rules, matchedHandIdx, targetSlot))
                 {
                     action = default;
@@ -420,7 +481,12 @@ internal static class InCombatRustKernelResultMaterializer
                     return false;
                 }
 
-                int targetSlot = ResolveTargetEnemySlot(in state, trace.TargetCombatId, trace.TargetIndex);
+                if (!TryResolveTargetEnemySlot(in state, trace.TargetCombatId, trace.TargetIndex, out int targetSlot, out string? targetErr))
+                {
+                    action = default;
+                    error = $"Step {stepIdx} UsePotion '{trace.PotionId}'@{slot}: {targetErr}";
+                    return false;
+                }
                 if (!HotCombatEngine.CanUsePotion(in state, rules, slot, targetSlot))
                 {
                     action = default;
@@ -571,6 +637,12 @@ internal static class InCombatRustKernelResultMaterializer
             {
                 if (probeScratch.PendingChoiceMin == 0)
                 {
+                    if (!ValidateChoicePrompt(in stateBefore, in probeState, action, probeScratch.PendingChoiceKind, currentPrompt, out string? emptyPromptErr))
+                    {
+                        resolved = [];
+                        error = $"Step {stepIdx} prompt {promptIdx}: {emptyPromptErr}";
+                        return false;
+                    }
                     selections.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
                     promptIdx++;
                     cardInPromptIdx = 0;
@@ -608,6 +680,12 @@ internal static class InCombatRustKernelResultMaterializer
                 {
                     if (probeScratch.PendingChoiceMin == 0)
                     {
+                        if (!ValidateChoicePrompt(in stateBefore, in probeState, action, probeScratch.PendingChoiceKind, currentPrompt, out string? emptyNextPromptErr))
+                        {
+                            resolved = [];
+                            error = $"Step {stepIdx} prompt {promptIdx}: {emptyNextPromptErr}";
+                            return false;
+                        }
                         selections.Add(new HotChoiceSelection(HotChoiceKind.None, 0, 0));
                         promptIdx++;
                         continue;
@@ -620,6 +698,17 @@ internal static class InCombatRustKernelResultMaterializer
 
             RustKernelChoiceCardTokenDto token = currentPrompt.Cards[cardInPromptIdx];
             HotChoiceKind pendingKind = probeScratch.PendingChoiceKind;
+            if (!ValidateChoicePrompt(in stateBefore, in probeState, action, pendingKind, currentPrompt, out string? promptMetaErr))
+            {
+                if (cardInPromptIdx == 0 && TryPickForcedPileChoice(in probeState, rules, probeScratch, out HotChoiceSelection forcedMeta))
+                {
+                    selections.Add(forcedMeta);
+                    continue;
+                }
+                resolved = [];
+                error = $"Step {stepIdx} prompt {promptIdx}: {promptMetaErr}";
+                return false;
+            }
             if (!TryMatchChoiceToken(in probeState, rules, probeScratch, pendingKind, token, out HotChoiceSelection matchedSelection, out string? matchErr))
             {
                 if (cardInPromptIdx == 0 && TryPickForcedPileChoice(in probeState, rules, probeScratch, out HotChoiceSelection forcedMid))
@@ -725,6 +814,74 @@ internal static class InCombatRustKernelResultMaterializer
         return false;
     }
 
+    private static bool ValidateChoicePrompt(
+        in CombatHotState stateBefore,
+        in CombatHotState probeState,
+        HotAction action,
+        HotChoiceKind pendingKind,
+        RustKernelChoiceTraceDto prompt,
+        out string? error)
+    {
+        string? expectedSourcePile = pendingKind switch
+        {
+            HotChoiceKind.HandCard => "Hand",
+            HotChoiceKind.DrawPile => "Draw",
+            HotChoiceKind.DiscardPile => "Discard",
+            HotChoiceKind.ExhaustPile => "Exhaust",
+            HotChoiceKind.GeneratedCard => "None",
+            _ => null,
+        };
+        if (expectedSourcePile is null
+            || !string.Equals(prompt.SourcePile, expectedSourcePile, StringComparison.Ordinal))
+        {
+            error = $"Choice source pile mismatch for '{prompt.SourceId}': Rust='{prompt.SourcePile}', HotKernel='{expectedSourcePile ?? pendingKind.ToString()}'.";
+            return false;
+        }
+
+        PlanChoiceTiming expectedTiming = ResolveChoiceTiming(in stateBefore, in probeState, action);
+        bool timingMatches = expectedTiming switch
+        {
+            PlanChoiceTiming.Action => string.Equals(prompt.Timing, "Action", StringComparison.Ordinal),
+            PlanChoiceTiming.EnemyTurn => string.Equals(prompt.Timing, "EnemyTurn", StringComparison.Ordinal),
+            PlanChoiceTiming.PlayerTurnStart => string.Equals(prompt.Timing, "PlayerTurnStart", StringComparison.Ordinal),
+            PlanChoiceTiming.PlayerTurnEnd => string.Equals(prompt.Timing, "PlayerTurnEnd", StringComparison.Ordinal)
+                || string.Equals(prompt.Timing, "Action", StringComparison.Ordinal),
+            _ => false,
+        };
+        if (!timingMatches)
+        {
+            error = $"Choice timing mismatch for '{prompt.SourceId}': Rust='{prompt.Timing}', HotKernel='{expectedTiming}'.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private static PlanChoiceTiming ResolveChoiceTiming(
+        in CombatHotState stateBefore,
+        in CombatHotState probeState,
+        HotAction action)
+    {
+        if (action.Kind == HotActionKind.TurnSetup)
+            return PlanChoiceTiming.PlayerTurnStart;
+        if (probeState.CurrentSide == HotCombatSide.Enemy)
+            return PlanChoiceTiming.EnemyTurn;
+        if (probeState.PlayerTurnNumber > stateBefore.PlayerTurnNumber
+            || probeState.RoundNumber > stateBefore.RoundNumber)
+        {
+            return PlanChoiceTiming.PlayerTurnStart;
+        }
+        if (action.Kind == HotActionKind.EndTurn)
+            return PlanChoiceTiming.PlayerTurnEnd;
+        if (probeState.PlayerPhase == (byte)PlayerTurnPhase.End
+            || probeState.PlayerPhase == (byte)PlayerTurnPhase.AutoPostPlay)
+        {
+            return PlanChoiceTiming.PlayerTurnEnd;
+        }
+        return PlanChoiceTiming.Action;
+    }
+
     private static bool TryMatchChoiceToken(
         in CombatHotState probeState,
         HotRules rules,
@@ -753,19 +910,8 @@ internal static class InCombatRustKernelResultMaterializer
                 }
                 seenMatch++;
             }
-            for (int i = 0; i < genOpts.Length; i++)
-            {
-                ushort defId = genOpts[i];
-                if (defId != 0 && defId < rules.Cards.Length
-                    && string.Equals(rules.Cards[defId].Entry, token.CardId, StringComparison.Ordinal))
-                {
-                    selection = new HotChoiceSelection(HotChoiceKind.GeneratedCard, (ushort)i, defId);
-                    error = null;
-                    return true;
-                }
-            }
             selection = default;
-            error = $"Generated card '{token.CardId}' not found among {genOpts.Length} options.";
+            error = $"Generated card '{token.CardId}' (optOcc={token.OptionOccurrence}) not found among {genOpts.Length} options.";
             return false;
         }
 
@@ -801,8 +947,6 @@ internal static class InCombatRustKernelResultMaterializer
         }
         int sourceOcc = 0;
         int filteredOcc = 0;
-        ushort fallbackUid = 0;
-        ushort fallbackDefId = 0;
 
         for (int i = 0; i < zoneCount; i++)
         {
@@ -830,26 +974,14 @@ internal static class InCombatRustKernelResultMaterializer
                         error = null;
                         return true;
                     }
-                    if (fallbackUid == 0)
-                    {
-                        fallbackUid = card.CardUid;
-                        fallbackDefId = card.CardDefId;
-                    }
                     filteredOcc++;
                 }
                 sourceOcc++;
             }
         }
 
-        if (fallbackUid != 0)
-        {
-            selection = new HotChoiceSelection(pendingKind, fallbackUid, fallbackDefId);
-            error = null;
-            return true;
-        }
-
         selection = default;
-        error = $"Choice card '{token.CardId}+{token.UpgradeLevel}' (srcOcc={token.SourceOccurrence}, optOcc={token.OptionOccurrence}) not found in {pile}.";
+        error = $"Choice card '{token.CardId}+{token.UpgradeLevel}' (srcOcc={token.SourceOccurrence}, optOcc={token.OptionOccurrence}) not found at requested occurrence in {pile}.";
         return false;
     }
 
@@ -863,20 +995,145 @@ internal static class InCombatRustKernelResultMaterializer
         return false;
     }
 
-    private static int ResolveTargetEnemySlot(in CombatHotState state, uint? targetCombatId, int targetIndex)
+    private static bool TryResolveTargetEnemySlot(
+        in CombatHotState state,
+        uint? targetCombatId,
+        int targetIndex,
+        out int targetSlot,
+        out string? error)
     {
-        if (targetCombatId is uint cid)
+        if (targetIndex <= -2)
+        {
+            if (targetCombatId is uint allyCid && allyCid > 0)
+            {
+                bool matchesAlly = state.Player.CombatId == allyCid
+                    || ((state.CombatFlags & HotCombatFlags.HasOsty) != 0 && state.Osty.CombatId == allyCid)
+                    || ((state.CombatFlags & HotCombatFlags.HasWuppy) != 0 && state.Wuppy.CombatId == allyCid);
+                if (!matchesAlly)
+                {
+                    targetSlot = -1;
+                    error = $"Target ally combatId={allyCid} does not match player or active pet in HotKernel.";
+                    return false;
+                }
+            }
+            targetSlot = -1;
+            error = null;
+            return true;
+        }
+
+        if (targetCombatId is uint cid && cid > 0)
         {
             for (int r = 0; r < state.RosterCount; r++)
             {
                 byte slot = state.ActiveEnemyRoster[r];
-                if (state.Enemies[slot].Vital.CombatId == cid)
-                    return slot;
+                ref readonly HotEnemy enemy = ref state.Enemies[slot];
+                if ((enemy.Vital.Flags & HotCreatureFlags.Alive) != 0
+                    && enemy.Vital.CombatId == cid)
+                {
+                    targetSlot = slot;
+                    error = null;
+                    return true;
+                }
+            }
+            targetSlot = -1;
+            error = $"Target enemy combatId={cid} was not found among live enemies in HotKernel.";
+            return false;
+        }
+
+        if (targetIndex < 0)
+        {
+            targetSlot = -1;
+            error = null;
+            return true;
+        }
+
+        if (targetIndex < state.RosterCount)
+        {
+            byte slot = state.ActiveEnemyRoster[targetIndex];
+            if ((state.Enemies[slot].Vital.Flags & HotCreatureFlags.Alive) != 0)
+            {
+                targetSlot = slot;
+                error = null;
+                return true;
+            }
+            targetSlot = -1;
+            error = $"Target enemy index {targetIndex} (slot {slot}) is not alive in HotKernel.";
+            return false;
+        }
+
+        targetSlot = -1;
+        error = $"Target enemy index {targetIndex} is out of bounds (rosterCount={state.RosterCount}).";
+        return false;
+    }
+
+    private static int SnapshotAliveEnemies(
+        in CombatHotState s,
+        Span<byte> slotsOut,
+        Span<uint> combatIdsOut)
+    {
+        int count = 0;
+        for (int r = 0; r < s.RosterCount; r++)
+        {
+            byte slot = s.ActiveEnemyRoster[r];
+            ref readonly HotEnemy enemy = ref s.Enemies[slot];
+            if ((enemy.Vital.Flags & HotCreatureFlags.Alive) != 0
+                && enemy.Vital.CombatId > 0
+                && enemy.Vital.CombatId != uint.MaxValue)
+            {
+                slotsOut[count] = slot;
+                combatIdsOut[count] = enemy.Vital.CombatId;
+                count++;
             }
         }
-        if (targetIndex >= 0 && targetIndex < state.RosterCount)
-            return state.ActiveEnemyRoster[targetIndex];
-        return -1;
+        return count;
+    }
+
+    private static bool VerifyStepKilledEnemies(
+        in CombatHotState afterState,
+        ReadOnlySpan<byte> aliveSlotsBefore,
+        ReadOnlySpan<uint> aliveCombatIdsBefore,
+        IReadOnlyList<uint> rustKilledIds,
+        int stepIdx,
+        out string? divergence)
+    {
+        Span<uint> hotKilled = stackalloc uint[HotLimits.MaxEnemies];
+        int hotKilledCount = 0;
+        for (int i = 0; i < aliveSlotsBefore.Length; i++)
+        {
+            ref readonly HotEnemy afterEnemy = ref afterState.Enemies[aliveSlotsBefore[i]];
+            if ((afterEnemy.Vital.Flags & HotCreatureFlags.Escaped) != 0)
+                continue;
+            if ((afterEnemy.Vital.Flags & HotCreatureFlags.Alive) == 0)
+                hotKilled[hotKilledCount++] = aliveCombatIdsBefore[i];
+        }
+
+        if (hotKilledCount != rustKilledIds.Count)
+        {
+            divergence = $"Step {stepIdx} killed enemy count mismatch: Rust=[{string.Join(',', rustKilledIds)}], HotKernel=[{string.Join(',', hotKilled[..hotKilledCount].ToArray())}].";
+            return false;
+        }
+        if (hotKilledCount == 0)
+        {
+            divergence = null;
+            return true;
+        }
+
+        Span<uint> rustSorted = stackalloc uint[hotKilledCount];
+        for (int i = 0; i < hotKilledCount; i++)
+            rustSorted[i] = rustKilledIds[i];
+        hotKilled[..hotKilledCount].Sort();
+        rustSorted.Sort();
+        for (int i = 0; i < hotKilledCount; i++)
+        {
+            if (hotKilled[i] != rustSorted[i])
+            {
+                divergence = $"Step {stepIdx} killed enemy identity mismatch: Rust=[{string.Join(',', rustKilledIds)}], HotKernel=[{string.Join(',', hotKilled[..hotKilledCount].ToArray())}].";
+                return false;
+            }
+        }
+
+        divergence = null;
+        return true;
     }
 
     private static int[] SnapshotPotionSlots(in CombatHotState s)
@@ -889,8 +1146,11 @@ internal static class InCombatRustKernelResultMaterializer
     }
 
     private static bool VerifyTerminalMatch(
+        int rootPlayerHp,
+        int rootShuffleCounter,
         in CombatHotState state,
         in HotFastSummary summary,
+        in HotSearchPolicy hotPolicy,
         RustKernelTerminalSnapshotDto terminal,
         out string? divergence)
     {
@@ -917,6 +1177,23 @@ internal static class InCombatRustKernelResultMaterializer
             divergence = $"PlayerMaxHp mismatch: Rust={terminal.PlayerMaxHp}, HotKernel={summary.PlayerMaxHp}.";
             return false;
         }
+        if (summary.HpLost != terminal.CumulativePlayerHpLost)
+        {
+            divergence = $"CumulativePlayerHpLost mismatch: Rust={terminal.CumulativePlayerHpLost}, HotKernel={summary.HpLost}.";
+            return false;
+        }
+        int replayedRecoveredHp = Math.Max(0, summary.PlayerHp - rootPlayerHp + summary.HpLost);
+        if (replayedRecoveredHp != terminal.RecoveredPlayerHp)
+        {
+            divergence = $"RecoveredPlayerHp mismatch: Rust={terminal.RecoveredPlayerHp}, HotKernel={replayedRecoveredHp}.";
+            return false;
+        }
+        int replayedProjectedBattleHpLost = hotPolicy.BattleHpLostSoFar + summary.HpLost;
+        if (replayedProjectedBattleHpLost != terminal.ProjectedBattleHpLost)
+        {
+            divergence = $"ProjectedBattleHpLost mismatch: Rust={terminal.ProjectedBattleHpLost}, HotKernel={replayedProjectedBattleHpLost}.";
+            return false;
+        }
         if (summary.PlayerBlock != terminal.PlayerBlock)
         {
             divergence = $"PlayerBlock mismatch: Rust={terminal.PlayerBlock}, HotKernel={summary.PlayerBlock}.";
@@ -932,9 +1209,32 @@ internal static class InCombatRustKernelResultMaterializer
             divergence = $"AliveEnemyCount mismatch: Rust={terminal.AliveEnemyCount}, HotKernel={summary.AliveEnemyCount}.";
             return false;
         }
+        if (summary.Energy != terminal.Energy)
+        {
+            divergence = $"Energy mismatch: Rust={terminal.Energy}, HotKernel={summary.Energy}.";
+            return false;
+        }
+        if (summary.Stars != terminal.Stars)
+        {
+            divergence = $"Stars mismatch: Rust={terminal.Stars}, HotKernel={summary.Stars}.";
+            return false;
+        }
+        if (state.HandCount != terminal.HandCount)
+        {
+            divergence = $"HandCount mismatch: Rust={terminal.HandCount}, HotKernel={state.HandCount}.";
+            return false;
+        }
         if (state.PlayerTurnNumber != terminal.Turn)
         {
             divergence = $"Turn mismatch: Rust={terminal.Turn}, HotKernel={state.PlayerTurnNumber}.";
+            return false;
+        }
+        int replayedShufflesCrossed = Math.Max(
+            0,
+            state.Rng[(int)HotRngStream.Shuffle].Counter - rootShuffleCounter);
+        if (replayedShufflesCrossed != terminal.ShufflesCrossed)
+        {
+            divergence = $"ShufflesCrossed mismatch: Rust={terminal.ShufflesCrossed}, HotKernel={replayedShufflesCrossed}.";
             return false;
         }
 

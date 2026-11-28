@@ -2588,10 +2588,11 @@ internal static class SolverOverlay
         if (_engineBackendBadge == null || _engineBackendLabel == null)
             return;
 
-        CombatState? combat = CombatManager.Instance.DebugOnlyGetState();
-        InCombatBackendDisplaySnapshot snap = InCombatSolverBackendState.CaptureDisplaySnapshot(
-            CombatManager.Instance.IsInProgress ? combat : null,
-            SolverSettings.Capture());
+        InCombatBackendDisplaySnapshot snap = !SolverController.IsSearching
+            && _presentation == SolverOverlayPresentation.Ready
+            && _lastSnapshot?.BackendDisplay is { } snapshotDisplay
+            ? snapshotDisplay
+            : InCombatSolverBackendState.CaptureCachedDisplaySnapshot(SolverSettings.Current.UseRustCombatKernel);
 
         string text;
         string summaryTooltip;
@@ -2630,7 +2631,7 @@ internal static class SolverOverlay
                  && snap.HasInstalledRustKernel
                  && !snap.IsRustKernelCorrupt
                  && snap.UseRustKernel
-                 && (combat == null || snap.RustKernelHostEligible)
+                 && snap.RustKernelHostEligible
                  && string.IsNullOrEmpty(snap.LastFallbackCode))
         {
             text = SolverText.Get("引擎：Rust 内核（就绪）");
@@ -2671,7 +2672,7 @@ internal static class SolverOverlay
                 summaryTooltip = SolverText.Get("本次战斗已回退至 HotKernel。");
                 tone = Warning;
             }
-            else if (combat != null && !snap.RustKernelHostEligible)
+            else if (!snap.RustKernelHostEligible)
             {
                 summaryTooltip = SolverText.Get("当前战斗条件超出 Rust 内核支持范围，已自动使用 HotKernel。");
                 tone = TextMuted;

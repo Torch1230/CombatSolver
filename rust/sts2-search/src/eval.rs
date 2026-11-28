@@ -1834,7 +1834,8 @@ fn compute_stand_pat(
     }
 
     pack_state(state, pack_buf);
-    if unpack_state(pack_buf, &state.static_ctx, scratch).is_err() {
+    // SAFETY: `pack_buf` was just populated by `pack_state` in this process.
+    if unsafe { unpack_state(pack_buf, &state.static_ctx, scratch) }.is_err() {
         let hp = state
             .player_creature()
             .map_or(state.player.current_hp, |c| c.current_hp);
@@ -1923,6 +1924,7 @@ pub struct RootEvalBaseline {
     pub all_forced_potion_mask: u64,
     pub forced_directive_count: usize,
     pub minimum_required_potion_uses: usize,
+    pub has_eligible_usable_potion: bool,
     pub can_stop_at_hp_target: bool,
     pub paid_optional_potion_count: usize,
     pub min_paid_potion_cost: i32,
@@ -1981,6 +1983,7 @@ impl Default for RootEvalBaseline {
             all_forced_potion_mask: 0,
             forced_directive_count: 0,
             minimum_required_potion_uses: 0,
+            has_eligible_usable_potion: false,
             can_stop_at_hp_target: false,
             paid_optional_potion_count: 0,
             min_paid_potion_cost: 0,
@@ -2220,6 +2223,7 @@ impl RootEvalBaseline {
         let mut paid_entropic_brew_slot_mask = 0u16;
         let mut min_paid_potion_cost = i32::MAX;
         let mut has_paid_heal_or_growth_potion = false;
+        let mut has_eligible_usable_potion = false;
         let allow_optional_at_root =
             policy.allow_potions && effective_potion_policy != SolverPotionPolicy::Disabled;
         for (slot, maybe_pid) in state.player.potion_slots.iter().enumerate().take(16) {
@@ -2231,6 +2235,10 @@ impl RootEvalBaseline {
                 &policy.potion_hp_threshold_overrides,
             );
             root_slot_costs[slot] = cost.clamp(0, i16::MAX as i32) as i16;
+            if pid != PotionId::FairyInABottle && policy.allows_explicit_potion_use(slot, pid, false)
+            {
+                has_eligible_usable_potion = true;
+            }
             if pid == PotionId::FairyInABottle || !allow_optional_at_root {
                 continue;
             }
@@ -2269,6 +2277,9 @@ impl RootEvalBaseline {
         }
         if min_paid_potion_cost == i32::MAX {
             min_paid_potion_cost = 0;
+        }
+        if has_alchemize_in_deck && !has_sozu && allow_optional_at_root {
+            has_eligible_usable_potion = true;
         }
         let has_any_heal_or_unknown_generation =
             detect_any_heal_or_unknown_generation(state, content);
@@ -2392,6 +2403,7 @@ impl RootEvalBaseline {
             all_forced_potion_mask: policy.all_forced_potion_mask(),
             forced_directive_count: policy.forced_directive_count(),
             minimum_required_potion_uses: policy.minimum_required_potion_uses(),
+            has_eligible_usable_potion,
             can_stop_at_hp_target,
             paid_optional_potion_count,
             min_paid_potion_cost,
@@ -2405,6 +2417,13 @@ impl RootEvalBaseline {
         baseline.initial_enemy_strength_suppression = full.enemy_strength_suppression;
         baseline.initial_enemy_weak_turns = full.enemy_weak_turns;
         baseline
+    }
+
+    #[inline]
+    pub fn has_active_hard_potion_constraint(&self) -> bool {
+        self.all_forced_potion_mask != 0
+            || (self.effective_potion_policy == SolverPotionPolicy::RequireAtLeastOne
+                && self.minimum_required_potion_uses > 0)
     }
 
     #[inline]
@@ -4403,6 +4422,7 @@ pub(crate) fn cmp_eval_cand(
 pub(crate) struct FinalPlanTracker {
     effective_policy: SolverPotionPolicy,
     enforce_forced: bool,
+    require_hard: bool,
     forced_directive_count: i32,
     check_theft: bool,
     theft_policy: Option<SolverTheftPolicy>,
@@ -4422,9 +4442,14 @@ impl FinalPlanTracker {
             Some(SolverTheftPolicy::PreserveResources) => SolverPotionPolicy::Smart,
             _ => potion_policy,
         };
+        let require_hard = root.all_forced_potion_mask != 0
+            || (effective_policy == SolverPotionPolicy::RequireAtLeastOne
+                && minimum_potion_uses > 0
+                && root.has_eligible_usable_potion);
         Self {
             effective_policy,
             enforce_forced: root.all_forced_potion_mask != 0,
+            require_hard,
             forced_directive_count: root.forced_directive_count as i32,
             check_theft: theft_policy == Some(SolverTheftPolicy::PreserveResources),
             theft_policy,
@@ -4632,7 +4657,8 @@ impl FinalPlanTracker {
                 .as_ref()
                 .is_none_or(|cur| cmp_eval_cand(cand, cur, self.check_theft).is_lt())
         } else {
-            self.best_hard.is_none()
+            !self.require_hard
+                && self.best_hard.is_none()
                 && self
                     .best_any
                     .as_ref()
@@ -4650,7 +4676,7 @@ impl FinalPlanTracker {
         cand.node_id = nid;
         if satisfies_hard {
             self.best_hard = Some(cand);
-        } else if self.best_hard.is_none() {
+        } else if !self.require_hard && self.best_hard.is_none() {
             self.best_any = Some(cand);
         }
     }
@@ -4705,7 +4731,11 @@ pub fn select_final_plan(
         tracker.observe_node(arena, nid, root);
     }
 
-    let best = tracker.best_hard.or(tracker.best_any)?;
+    let best = if tracker.require_hard {
+        tracker.best_hard?
+    } else {
+        tracker.best_hard.or(tracker.best_any)?
+    };
     Some(FinalPlanSelection {
         node_id: best.node_id,
         turn: best.turn,
@@ -4881,5 +4911,51 @@ mod tests {
         assert_eq!(sel_all.hp_lost, sel_filt.hp_lost);
         assert_eq!(sel_all.net_persistent_hp_delta_centi, sel_filt.net_persistent_hp_delta_centi);
         assert_eq!(sel_all.net_potion_opportunity_cost_centi, sel_filt.net_potion_opportunity_cost_centi);
+    }
+
+    #[test]
+    fn select_final_plan_returns_none_when_hard_potion_constraint_unsatisfied() {
+        let mut root = RootEvalBaseline::default();
+        root.initial_player_hp = 80;
+        root.initial_player_max_hp = 80;
+        root.all_forced_potion_mask = 0b01;
+        root.forced_directive_count = 1;
+        root.minimum_required_potion_uses = 1;
+
+        let mut arena = NodeArena::default();
+        let mut f = StoredFastEval::default();
+        f.player_hp = 80;
+        f.player_max_hp = 80;
+        f.projected_player_hp = 80;
+        f.cumulative_hp_lost = 0;
+        f.flags |= FAST_FLAG_WON | FAST_FLAG_ALL_ENEMIES_DEAD;
+        f.combat_ended_turn_encoded = 2;
+
+        let non_compliant_win = arena.push_node(SearchNode {
+            state_hash: StateHash::from_parts(1, 3),
+            forced_used_mask: 0,
+            beam_rank_score: 1000.0,
+            fast_eval: f,
+            turn: 1,
+            action_count: 2,
+            potion_count: 0,
+            explicit_potion_count: 0,
+            node_flags: crate::arena::NODE_FLAG_IS_TERMINAL,
+            ..Default::default()
+        });
+
+        let selected = select_final_plan(
+            &arena,
+            &[non_compliant_win],
+            &root,
+            SolverPotionPolicy::Smart,
+            None,
+            0,
+            1,
+        );
+        assert!(
+            selected.is_none(),
+            "must not fall back to best_any when a forced potion constraint is unsatisfied"
+        );
     }
 }

@@ -7,7 +7,10 @@ public sealed record LiveAutoPilotCombatOptions(
     int MaxCombatSolveSeconds = 15,
     int SearchMaxDegreeOfParallelism = 4,
     bool FastAnimations = false,
-    string? DeploymentSpeedMode = null);
+    string? DeploymentSpeedMode = null)
+{
+    public bool UseRustCombatKernel { get; init; } = false;
+}
 
 public sealed record LiveCombatTelemetrySnapshot(
     bool CombatActive,
@@ -48,6 +51,7 @@ public static class LiveAutoPilotApi
         {
             SolverDisabled = false,
             AutomaticCalculationEnabled = true,
+            UseRustCombatKernel = options.UseRustCombatKernel,
             AutoEnableFullAuto = true,
             OnlineStatisticsEnabled = false,
             StopFullAutoOnCombatEnd = false,
@@ -69,7 +73,8 @@ public static class LiveAutoPilotApi
         SolverController.ApplyPersistentSettings(SolverSettings.Capture());
         Entry.Logger.Info(
             $"[CombatSolver/LiveAutoPilot] SESSION_CONFIGURED delay={delaySeconds:0.###} " +
-            $"max_solve_sec={maxSolveSeconds} dop={dop} fast_mode={fastMode}");
+            $"max_solve_sec={maxSolveSeconds} dop={dop} fast_mode={fastMode} " +
+            $"use_rust={options.UseRustCombatKernel.ToString().ToLowerInvariant()}");
     }
 
     private static SolverDeploymentFastMode ResolveDeploymentSpeedMode(string? mode, bool fastAnimations)
