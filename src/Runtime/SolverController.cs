@@ -72,6 +72,8 @@ internal static partial class SolverController
     private static CancellationTokenSource? _deferredSearchCts;
     private static int _deferredSearchId;
     private static CancellationTokenSource _combatDeferredOperationCancellation = new();
+    private static volatile string? _liveLastStopReason;
+    private static long _liveLastActionUtcMs;
 
     public static bool IsSearching
         => _search != null
@@ -2125,6 +2127,7 @@ internal static partial class SolverController
         CancelDeployment();
         Task deploymentReferenceRelease = DrainDeploymentReferenceReleases();
         _combat = new SolverCombatSession();
+        _liveLastStopReason = null;
         ResetFullAutoDriftReplanState();
         LastFullAutoStoppedForWorseRecalculationForTesting = false;
         LastFullAutoStoppedAtLiveRiskForTesting = false;
@@ -2541,8 +2544,10 @@ internal static partial class SolverController
             Exception ex = task.Exception?.GetBaseException() ?? new InvalidOperationException("后台搜索失败但没有异常对象。");
             _combat.BugReportIssues.RecordFailure(CombatBugReportIssueKind.SearchFailure, ex);
             LastSearchFailureForTesting = ex;
+            _liveLastStopReason = "search_failure:" + ex.GetType().Name;
             if (ex is PotionPolicyUnsatisfiedException)
             {
+                _liveLastStopReason = "potion_policy_unsatisfied";
                 _combat.FullAutoEnabled = false;
                 ResetFullAutoDriftReplanState();
                 SolverOverlay.RefreshControls();
@@ -2746,6 +2751,7 @@ internal static partial class SolverController
             : null;
         ResetFullAutoDriftReplanState();
         _combat.FullAutoEnabled = false;
+        _liveLastStopReason = "consecutive_drift_replans";
         LastFullAutoPausedForConsecutiveDriftForTesting = true;
         Entry.Logger.Warn(
             $"[CombatSolver/Test] FULL_AUTO_PAUSED reason=consecutive_drift_replans " +
@@ -2832,6 +2838,7 @@ internal static partial class SolverController
                 CombatBugReportIssueKind.FullAutoStoppedAfterWorseRecalculation,
                 $"第 {result.StartTurnNumber} 回合，预计战损 {result.PreviousProjectedBattleHpLost} → {result.ProjectedBattleHpLost}");
             _combat.FullAutoEnabled = false;
+            _liveLastStopReason = "worse_recalculation";
             ResetFullAutoDriftReplanState();
             LastFullAutoStoppedForWorseRecalculationForTesting = true;
             SolverOverlay.RefreshControls();
@@ -2847,6 +2854,7 @@ internal static partial class SolverController
         if (_stopFullAutoOnCombatEnd && result.CombatEndedTurn == result.StartTurnNumber)
         {
             _combat.FullAutoEnabled = false;
+            _liveLastStopReason = "combat_end_turn";
             ResetFullAutoDriftReplanState();
             SolverOverlay.RefreshControls();
             SolverOverlay.ShowFullAutoStoppedAtCombatEnd(result.StartTurnNumber);
@@ -2859,6 +2867,7 @@ internal static partial class SolverController
                 CombatBugReportIssueKind.FullAutoStoppedAtDeathTurn,
                 $"第 {result.StartTurnNumber} 回合");
             _combat.FullAutoEnabled = false;
+            _liveLastStopReason = "death_turn";
             ResetFullAutoDriftReplanState();
             SolverOverlay.RefreshControls();
             SolverOverlay.ShowFullAutoStoppedAtDeathTurn(result.StartTurnNumber);
@@ -2866,6 +2875,7 @@ internal static partial class SolverController
             return;
         }
 
+        _liveLastStopReason = null;
         Entry.Logger.Info($"[CombatSolver/Test] FULL_AUTO_DEPLOY turn={result.StartTurnNumber}");
         StartDeployment(host, state, result);
     }
@@ -3055,6 +3065,7 @@ internal static partial class SolverController
                         token);
                     actionCompletion = queuedAction.CompletionTask;
                     LastDeployedActionStartedAtMillisecondsForTesting = System.Environment.TickCount64;
+                    Interlocked.Exchange(ref _liveLastActionUtcMs, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                     DeployedPotionIdsForTesting.Add(action.PotionId);
                     Entry.Logger.Info($"[CombatSolver/Test] DEPLOY_ACTION turn={turn} potion={action.PotionId} slot={action.PotionSlot} target_index={action.TargetIndex} target_combat_id={action.TargetCombatId?.ToString() ?? "-"}");
                 }
@@ -3093,6 +3104,7 @@ internal static partial class SolverController
                         token);
                     actionCompletion = queuedAction.CompletionTask;
                     LastDeployedActionStartedAtMillisecondsForTesting = System.Environment.TickCount64;
+                    Interlocked.Exchange(ref _liveLastActionUtcMs, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                     DeployedCardIdsForTesting.Add(card.Id.Entry);
                     Entry.Logger.Info($"[CombatSolver/Test] DEPLOY_ACTION turn={turn} card={action.CardId} target_index={action.TargetIndex} target_combat_id={action.TargetCombatId?.ToString() ?? "-"} choice={action.Choice?.Effect.ToString() ?? "-"}");
                 }
@@ -3188,6 +3200,7 @@ internal static partial class SolverController
                                 : CombatBugReportIssueKind.FullAutoStoppedAtLiveRiskWorsening,
                             $"第 {turn} 回合，路线预计 {plannedHpLoss} HP，实机复核 {liveRisk.HpLost} HP");
                         _combat.FullAutoEnabled = false;
+                        _liveLastStopReason = "live_end_turn_risk";
                         ResetFullAutoDriftReplanState();
                         LastFullAutoStoppedAtLiveRiskForTesting = true;
                         _combat.ContinuationSource = null;
@@ -3244,6 +3257,7 @@ internal static partial class SolverController
                     RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new EndPlayerTurnAction(player, turn));
                 }
                 SolverOverlay.ShowDeploymentComplete(host, turn, actions.Count, endedTurn: true);
+                Interlocked.Exchange(ref _liveLastActionUtcMs, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 string deploymentEndMessage =
                     $"[CombatSolver/Test] DEPLOY_END turn={turn} action_count={actions.Count} end_turn=true " +
                     $"forecast_turn_start_choices={plannedEndTurn.TurnStartChoices?.Count ?? 0} " +
@@ -3317,6 +3331,7 @@ internal static partial class SolverController
             _combat.UploadPolicy.Observe(state);
             _combat.ContinuationSource = null;
             _combat.FullAutoEnabled = false;
+            _liveLastStopReason = "deploy_failure:" + ex.GetType().Name;
             ResetFullAutoDriftReplanState();
             _combat.AutomaticSearchPaused = true;
             _combat.AutomaticSearchPausedTurn = turn;
@@ -3355,6 +3370,7 @@ internal static partial class SolverController
         _combat.UploadPolicy.Observe(deployment.State!);
         _combat.ContinuationSource = null;
         _combat.FullAutoEnabled = false;
+        _liveLastStopReason = "native_choice_paused";
         ResetFullAutoDriftReplanState();
         _combat.AutomaticSearchPaused = true;
         _combat.AutomaticSearchPausedTurn = turn;
@@ -3740,6 +3756,96 @@ internal static partial class SolverController
             && state.CurrentSide == CombatSide.Player
             && player?.PlayerCombatState?.TurnNumber == turn
             && player.PlayerCombatState.Phase == PlayerTurnPhase.Play;
+    }
+
+    internal static CombatSolver.Api.LiveCombatTelemetrySnapshot CaptureLiveTelemetry()
+    {
+        CombatState? state = CombatManager.Instance.IsInProgress
+            ? CombatManager.Instance.DebugOnlyGetState()
+            : null;
+        bool combatActive = state != null && CombatManager.Instance.IsInProgress;
+        int turnNumber = combatActive
+            ? LocalContext.GetMe(state)?.PlayerCombatState?.TurnNumber ?? 0
+            : 0;
+        bool isPlayerTurn = combatActive && state!.CurrentSide == CombatSide.Player;
+        bool isSearching = IsSearching;
+        bool isDeploying = IsDeploying;
+        bool fullAuto = _combat.FullAutoEnabled;
+        string statusCode = !combatActive ? "inactive"
+            : !isPlayerTurn ? "enemy_turn"
+            : isDeploying ? "deploying"
+            : isSearching ? "searching"
+            : _combat.AutomaticSearchPaused || !fullAuto ? "paused"
+            : _combat.LatestResult != null ? "ready"
+            : "idle";
+
+        SolverResult? result = combatActive ? CurrentResultForBugReport : null;
+        int? projectedHpLost = result?.ProjectedBattleHpLost;
+        int? projectedFinalTurn = result == null
+            ? null
+            : result.CombatEndedTurn ?? result.BestNode.Actions.LastOrDefault()?.Turn;
+        IReadOnlyList<string> plannedActions = result == null || turnNumber <= 0
+            ? Array.Empty<string>()
+            : result.BestNode.Actions
+                .Where(action => action.Turn == turnNumber && action.IsExecutable)
+                .Take(12)
+                .Select(FormatLiveActionSummary)
+                .ToArray();
+
+        return new CombatSolver.Api.LiveCombatTelemetrySnapshot(
+            CombatActive: combatActive,
+            TurnNumber: turnNumber,
+            IsPlayerTurn: isPlayerTurn,
+            IsSearching: isSearching,
+            IsDeploying: isDeploying,
+            FullAutoEnabled: fullAuto,
+            StatusCode: statusCode,
+            LastStopReason: _liveLastStopReason,
+            ProjectedBattleHpLost: projectedHpLost,
+            ProjectedFinalTurn: projectedFinalTurn,
+            PlannedActionSummaries: plannedActions,
+            LastActionUtcMs: Interlocked.Read(ref _liveLastActionUtcMs));
+    }
+
+    internal static bool TryResumeFullAutoForLive(string reason)
+    {
+        if (!Entry.IsLiveAutoPilotMode || !Entry.Enabled || _solverDisabled || IsMultiplayerSession)
+            return false;
+        if (!NGame.IsMainThread())
+        {
+            SolverDispatcher.Post(() => TryResumeFullAutoForLive(reason));
+            return true;
+        }
+        if (IsSearching || IsDeploying)
+            return false;
+        NGame? host = NGame.Instance;
+        CombatState? state = CombatManager.Instance.DebugOnlyGetState();
+        if (host == null
+            || state == null
+            || !CombatManager.Instance.IsInProgress
+            || CombatManager.Instance.IsOverOrEnding
+            || state.CurrentSide != CombatSide.Player)
+        {
+            return false;
+        }
+
+        _combat.AutomaticSearchPaused = false;
+        _combat.AutomaticSearchPausedTurn = null;
+        _combat.RouteFrozen = false;
+        _liveLastStopReason = null;
+        Entry.Logger.Info($"[CombatSolver/LiveAutoPilot] RESUME_FULL_AUTO reason={reason}");
+        SetFullAuto(host, state, enabled: true);
+        return _combat.FullAutoEnabled || IsSearching || IsDeploying;
+    }
+
+    private static string FormatLiveActionSummary(PlanAction action)
+    {
+        string title = action.Kind == PlanActionKind.UsePotion
+            ? SolverUiModelNames.Potion(action.PotionId, action.PotionTitle)
+            : SolverUiModelNames.Card(action.CardId, action.CardUpgradeLevel, action.CardTitle);
+        return string.IsNullOrWhiteSpace(action.TargetName)
+            ? title
+            : $"{title} -> {action.TargetName}";
     }
 
     private static void AssertMainThread()

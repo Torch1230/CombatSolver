@@ -39,6 +39,16 @@ public static class Entry
             "1",
             StringComparison.Ordinal);
 
+    /// <summary>
+    /// 直播隐身全自动托管模式（子进程环境变量 <c>STS2_AI_LIVE_MODE=1</c>）。
+    /// 仅在通过直播脚本启动的子进程中为 true；正常 Steam 游玩完全不受影响。
+    /// </summary>
+    public static bool IsLiveAutoPilotMode { get; } =
+        string.Equals(
+            System.Environment.GetEnvironmentVariable("STS2_AI_LIVE_MODE"),
+            "1",
+            StringComparison.Ordinal);
+
     internal static bool IsHeadlessAutomationEnabled =>
         OnlinePresence.IsHeadless()
         && (IsPreCombatWorker
@@ -97,6 +107,8 @@ public static class Entry
                 $"cached_route_rows={HotSearchConstants.SetupValueHorizonTurns}");
             Logger.Info("[CombatSolver/Test] ENGINE embedded=true hot_kernel=true rf_dependency=false");
             Logger.Info("战斗路线求解器已启用。每个玩家新回合会自动后台搜索，也可在面板中执行当前回合路线或开启全自动。");
+            if (IsLiveAutoPilotMode)
+                Logger.Info("[CombatSolver/LiveAutoPilot] STEALTH_ACTIVE overlay=suppressed");
             NGame? host = NGame.Instance;
             if (host != null)
             {

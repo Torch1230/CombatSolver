@@ -514,6 +514,16 @@ internal static class SolverSettings
             _current = data;
     }
 
+    internal static void ApplyInMemoryOverride(SolverSettingsData data)
+    {
+        Validate(data);
+        lock (Sync)
+            _current = data;
+    }
+
+    internal static SolverSettingsData CreateLiveDefaults()
+        => CreateCurrentDefaults();
+
     internal static SolverSettingsData RoundTripForTesting(SolverSettingsData data)
         => JsonSerializer.Deserialize<SolverSettingsData>(
                JsonSerializer.Serialize(data, JsonOptions),
@@ -573,6 +583,8 @@ internal static class SolverSettings
 
     private static void SaveLocked(SolverSettingsData data)
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         string path = ProjectSettings.GlobalizePath(SettingsUri);
         string directory = Path.GetDirectoryName(path)
             ?? throw new InvalidOperationException("CombatSolver settings path has no directory.");

@@ -615,6 +615,11 @@ internal static class SolverOverlay
 
     public static void Show(Node host, string text)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _lastSnapshot = null;
         _preliminarySnapshot = null;
         _lastMessageText = text;
@@ -633,6 +638,11 @@ internal static class SolverOverlay
 
     public static void ShowDisabled(Node host)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _lastSnapshot = null;
         _preliminarySnapshot = null;
         _lastMessageText = null;
@@ -648,6 +658,11 @@ internal static class SolverOverlay
 
     public static void ShowSearchStopped(Node host)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _preliminarySnapshot = null;
         _lastMessageText = null;
         EnsureCreated(host);
@@ -676,6 +691,11 @@ internal static class SolverOverlay
 
     public static void ShowManualCalculationReady(Node host, bool hasPreviousCalculation)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _lastSnapshot = null;
         _preliminarySnapshot = null;
         _searchBestSnapshot = null;
@@ -693,6 +713,11 @@ internal static class SolverOverlay
 
     public static void ShowRetainedRoute(Node host)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         EnsureCreated(host);
         if (_lastSnapshot == null)
             throw new InvalidOperationException("保留路线必须先显示对应的搜索结果。");
@@ -717,6 +742,8 @@ internal static class SolverOverlay
         long reviewedWorldlinesBeforeSearch,
         SolverOverlaySnapshot? bestSnapshot = null)
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         _presentation = SolverOverlayPresentation.Searching;
         _waitingForNextTurnPlan = false;
         if (_layer == null || !GodotObject.IsInstanceValid(_layer) || !_layer.Visible)
@@ -850,6 +877,8 @@ internal static class SolverOverlay
 
     internal static void AdvanceSearchReadouts(double delta)
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         if (!SearchReadoutsActive())
             return;
         // Between progress reports the elapsed clock runs on frame time, but never more than a short
@@ -951,6 +980,11 @@ internal static class SolverOverlay
         long reviewedWorldlinesBeforeSearch,
         PotionRewardOutlook potionRewardOutlook = default)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _presentation = SolverOverlayPresentation.Searching;
         _waitingForNextTurnPlan = false;
         SolverController.InvalidateRenderedRouteAdoptionSeed();
@@ -1041,6 +1075,11 @@ internal static class SolverOverlay
 
     public static void ShowPreliminaryResult(Node host, SolverOverlaySnapshot snapshot)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _presentation = SolverOverlayPresentation.Searching;
         _waitingForNextTurnPlan = false;
         _preliminarySnapshot = snapshot;
@@ -1084,6 +1123,8 @@ internal static class SolverOverlay
 
     public static void ClearPreliminaryRefiningIndicator()
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         if (_preliminarySnapshot is not { } preliminary)
             return;
         _preliminarySnapshot = null;
@@ -1104,6 +1145,11 @@ internal static class SolverOverlay
 
     public static void ShowResult(Node host, SolverOverlaySnapshot snapshot)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _presentation = SolverOverlayPresentation.Ready;
         _waitingForNextTurnPlan = false;
         _preliminarySnapshot = null;
@@ -1276,6 +1322,11 @@ internal static class SolverOverlay
 
     public static void ShowDeploying(Node host, int turn, int actionCount)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _presentation = SolverOverlayPresentation.Deploying;
         _waitingForNextTurnPlan = false;
         _lastDeploymentTurn = turn;
@@ -1307,6 +1358,8 @@ internal static class SolverOverlay
 
     public static void ShowDeploymentStep(int turn, int completedActions, int actionCount, string? currentCardTitle)
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         if (_presentation != SolverOverlayPresentation.Deploying || _lastDeploymentTurn != turn
             || _lastSnapshot?.StartTurnNumber != turn)
             return;
@@ -1333,6 +1386,8 @@ internal static class SolverOverlay
 
     public static void ShowEndTurnDeploymentStep()
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         if (RouteRows[0] == null)
             return;
         RouteRows[0].SetEndTurnDeploymentState(active: true, completed: false);
@@ -1347,6 +1402,11 @@ internal static class SolverOverlay
 
     public static void ShowDeploymentComplete(Node host, int turn, int actionCount, bool endedTurn)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         if (_presentation != SolverOverlayPresentation.Deploying || _lastDeploymentTurn != turn
             || _lastSnapshot?.StartTurnNumber != turn)
         {
@@ -1383,6 +1443,11 @@ internal static class SolverOverlay
 
     public static void ShowWaitingForNextTurnPlan(Node host)
     {
+        if (Entry.IsLiveAutoPilotMode)
+        {
+            _initializationPending = false;
+            return;
+        }
         _presentation = SolverOverlayPresentation.ExecutedHistory;
         _waitingForNextTurnPlan = true;
         if (_lastSnapshot == null)
@@ -1407,6 +1472,7 @@ internal static class SolverOverlay
 
     public static void ShowFullAutoStoppedAtCombatEnd(int turn)
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         SetStatus(SolverText.Get("方案就绪"), Success, SolverText.Format($"第 {turn} 回合    全自动已暂停"));
         if (_summaryText != null)
         {
@@ -1417,6 +1483,7 @@ internal static class SolverOverlay
 
     public static void ShowFullAutoStoppedAtDeathTurn(int turn)
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         SetStatus(SolverText.Get("已暂停执行"), Danger, SolverText.Format($"第 {turn} 回合    预计死亡"));
         if (_summaryText != null)
         {
@@ -1430,6 +1497,7 @@ internal static class SolverOverlay
         int? previousProjectedBattleHpLost,
         int projectedBattleHpLost)
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         SetStatus(SolverText.Get("已暂停执行"), Danger, SolverText.Format($"第 {turn} 回合    重算后战损上升"));
         if (_summaryText != null)
         {
@@ -1447,6 +1515,7 @@ internal static class SolverOverlay
         int liveHpLoss,
         bool playerDead)
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         SetStatus(
             SolverText.Get("已暂停执行"),
             Danger,
@@ -1465,6 +1534,7 @@ internal static class SolverOverlay
 
     public static void RefreshControls()
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         if (_recalculateButton == null || _stopSearchButton == null || _adoptRouteButton == null
             || _freezeRouteButton == null
             || _executeButton == null || _fullAutoButton == null)
@@ -1613,6 +1683,7 @@ internal static class SolverOverlay
 
     public static void Hide()
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         _ = CommitPendingGrowthStrategy();
         if (_layer != null && GodotObject.IsInstanceValid(_layer))
             _layer.Visible = false;
@@ -1620,6 +1691,7 @@ internal static class SolverOverlay
 
     public static void ApplyOverlayOpacity()
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         if (_panel == null || !GodotObject.IsInstanceValid(_panel))
             return;
         float opacity = Math.Clamp(SolverSettings.Current.OverlayOpacity, 0.25f, 1f);
@@ -1640,6 +1712,7 @@ internal static class SolverOverlay
 
     public static void ApplyConfiguredTheme()
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         if (_themeRefreshQueued)
             return;
         _themeRefreshQueued = true;
@@ -1768,6 +1841,8 @@ internal static class SolverOverlay
 
     private static void EnsureCreated(Node host)
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         if (_layer != null && GodotObject.IsInstanceValid(_layer))
             return;
         Create(host);
@@ -2560,6 +2635,7 @@ internal static class SolverOverlay
 
     internal static void RefreshGuidanceHints(bool? speedXPresentForTesting = null)
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         SolverSettingsData settings = SolverSettings.Current;
         SetGuidanceHint(
             _speedXWarningButton,
@@ -2602,12 +2678,16 @@ internal static class SolverOverlay
     {
         // 呈现路径完成后消费初始化请求，并应用用户选择的可见性。
         _initializationPending = false;
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         if (_layer != null)
             _layer.Visible = !_userHiddenFromShortcut;
     }
 
     internal static bool ToggleVisibilityFromShortcut()
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return false;
         CombatState? state = CombatManager.Instance.DebugOnlyGetState();
         if (_layer == null
             || !GodotObject.IsInstanceValid(_layer)
@@ -2724,6 +2804,7 @@ internal static class SolverOverlay
 
     public static void RefreshBossHpStrategyHint()
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         if (_bossHpStrategyHintButton == null)
             return;
         SolverSettingsData settings = SolverSettings.Current;

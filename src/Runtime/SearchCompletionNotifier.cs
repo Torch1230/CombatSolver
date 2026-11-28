@@ -38,6 +38,8 @@ internal static class SearchCompletionNotifier
 
     public static void Notify(SearchCompletionNotificationKind kind)
     {
+        if (Entry.IsLiveAutoPilotMode)
+            return;
         Interlocked.Increment(ref _requestCountForTesting);
         SolverSettingsData settings = SolverSettings.Current;
         if (!ShouldNotify(

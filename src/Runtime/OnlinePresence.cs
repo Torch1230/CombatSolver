@@ -39,7 +39,7 @@ internal sealed partial class OnlinePresence : Node
 
     public static void Start(NGame host)
     {
-        if (_instance != null || IsHeadless()) return;
+        if (Entry.IsLiveAutoPilotMode || _instance != null || IsHeadless()) return;
         _instance = new OnlinePresence { Name = "CombatSolverOnlinePresence" };
         host.AddChild(_instance);
     }

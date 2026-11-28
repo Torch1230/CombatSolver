@@ -36,7 +36,7 @@ internal sealed partial class RunStatistics : Node
     internal static RunStatisticsSnapshot? Snapshot => _instance?._recordingStopped == true ? null : _instance?._run is { } run && _instance._snapshot?.ProfileId != run.ProfileId ? null : _instance?._snapshot;
     internal static void Start(NGame host)
     {
-        if (_instance != null || OnlinePresence.IsHeadless() || UnattendedTestRunner.IsActive) return;
+        if (Entry.IsLiveAutoPilotMode || _instance != null || OnlinePresence.IsHeadless() || UnattendedTestRunner.IsActive) return;
         _instance = new RunStatistics { Name = "CombatSolverRunStatistics" };
         host.AddChild(_instance);
         string directory = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "CombatSolver", "run-statistics-v1");
@@ -88,6 +88,7 @@ internal sealed partial class RunStatistics : Node
     private static string Key(string value) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..32];
     internal static void Launched(RunManager manager)
     {
+        if (Entry.IsLiveAutoPilotMode) return;
         bool fromStart = NewRunPrepared;
         NewRunPrepared = false;
         if (_instance != null) { _instance._run = null; _instance._snapshot = null; }
@@ -115,21 +116,21 @@ internal sealed partial class RunStatistics : Node
     }
     internal static void Battle(ICombatState? state)
     {
-        if (state == null || _instance?._run == null || OnlinePresence.IsHeadless() || UnattendedTestRunner.IsActive
+        if (Entry.IsLiveAutoPilotMode || state == null || _instance?._run == null || OnlinePresence.IsHeadless() || UnattendedTestRunner.IsActive
             || state.Players.Count != 1 || !ReferenceEquals(state, CombatManager.Instance.DebugOnlyGetState())) return;
         _instance.Enqueue(new("battle", _instance._run, Battle: BattleKey(state), Enabled: !SolverController.SolverDisabled, InCombat: true));
     }
     private static string BattleKey(ICombatState state) => state.RunState.TotalFloor + ":" + state.Encounter?.Id.Entry;
     internal static void Activity(CombatState state, bool execution = false, bool auto = false)
     {
-        if (_instance?._run == null || OnlinePresence.IsHeadless() || SolverController.IsMultiplayerSession) return;
+        if (Entry.IsLiveAutoPilotMode || _instance?._run == null || OnlinePresence.IsHeadless() || SolverController.IsMultiplayerSession) return;
         string battle = BattleKey(state);
         if (!_instance._activities.Add(battle + ":" + execution + ":" + auto)) return;
         _instance.Enqueue(new(execution ? "execute" : "solve", _instance._run, battle, true, true, auto));
     }
     internal static void Ended(RunHistory history)
     {
-        if (_instance?._run == null || history.Players.Count != 1 || history.GameMode != GameMode.Standard) return;
+        if (Entry.IsLiveAutoPilotMode || _instance?._run == null || history.Players.Count != 1 || history.GameMode != GameMode.Standard) return;
         if (_instance._run.StartedAt != history.StartTime * 1000) return;
         var ended = _instance._run with { Outcome = history.WasAbandoned ? "abandoned" : history.Win ? "win" : "loss",
             EndedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() };
