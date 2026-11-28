@@ -86,9 +86,16 @@ def compare(reference, candidate):
     for key in before:
         if before[key] != after[key]:
             if isinstance(before[key], dict) and isinstance(after[key], dict):
-                differences[key] = {field: {"A": before[key].get(field), "B": after[key].get(field)}
-                                    for field in before[key].keys() | after[key].keys()
-                                    if before[key].get(field) != after[key].get(field)}
+                previous, current = before[key], after[key]
+                changed_fields = {}
+                for field in previous.keys() | current.keys():
+                    if field not in previous:
+                        changed_fields[field] = {"B": current[field]}
+                    elif field not in current:
+                        changed_fields[field] = {"A": previous[field]}
+                    elif previous[field] != current[field]:
+                        changed_fields[field] = {"A": previous[field], "B": current[field]}
+                differences[key] = changed_fields
             else:
                 differences[key] = {"A": before[key], "B": after[key]}
     result = {"oracleEqual": not differences, "differences": differences, "A": a, "B": b}
